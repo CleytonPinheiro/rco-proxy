@@ -4,6 +4,7 @@ hidden = [".config", "package-lock.json"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["openssh"]
 
 [deployment]
 run = ["node", "index.js"]
