@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCO Digital - Painel</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>RCO Digital</h1>
+            <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando seus dados...</p>
+        </div>
+
+        <div id="content" class="content" style="display: none;">
+            <section class="section">
+                <h2>Turmas</h2>
+                <div id="turmas" class="cards-grid"></div>
+            </section>
+
+            <section class="section">
+                <h2>Disciplinas</h2>
+                <div id="disciplinas" class="cards-grid"></div>
+            </section>
+
+            <section class="section">
+                <h2>Livros de Classe</h2>
+                <div id="livros" class="cards-grid"></div>
+            </section>
+
+            <section class="section">
+                <h2>Dados Completos (JSON)</h2>
+                <div id="dadosCompletos" class="dados-json"></div>
+            </section>
+        </div>
+
+        <div id="erro" class="erro" style="display: none;">
+            <p id="erroMensagem"></p>
+            <button id="btnVoltar" class="btn-primary">Voltar para Login</button>
+        </div>
+    </main>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
