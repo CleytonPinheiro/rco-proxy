@@ -1,0 +1,19 @@
+curl 'https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/api/v1/authorize/jwt' \
+  -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' \
+  -H 'Accept-Language: pt-BR,pt;q=0.9' \
+  -H 'Cache-Control: max-age=0' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -b 'CS-AUTH=af2e2c4d43c592fac5c9618de3ae474c1767313234090' \
+  -H 'Origin: https://auth-cs.identidadedigital.pr.gov.br' \
+  -H 'Referer: https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/login.html?response_type=token&client_id=f340f1b1f65b6df5b5e3f94d95b11daf&redirect_uri=https%3A%2F%2Frco.paas.pr.gov.br&scope=emgpr.mobile%20emgpr.v1.ocorrencia.post&state=null&urlCert=https://certauth-cs.identidadedigital.pr.gov.br&dnsCidadao=https://cidadao-cs.identidadedigital.pr.gov.br/centralcidadao&loginPadrao=btnCentral&labelCentral=CPF,Login%20Sentinela&modulosDeAutenticacao=btnSentinela,btnSms,btnCpf,btnCentral&urlLogo=https%3A%2F%2Fwww.registrodeclasse.seed.pr.gov.br%2Frcdig%2Fimages%2Flogo_sistema.png&acesso=2053&tokenFormat=jwt&exibirLinkAutoCadastro=true&exibirLinkRecuperarSenha=true&exibirLinkAutoCadastroCertificado=false&exibirAviso=true&captcha=false' \
+  -H 'Sec-Fetch-Dest: document' \
+  -H 'Sec-Fetch-Mode: navigate' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'Sec-Fetch-User: ?1' \
+  -H 'Upgrade-Insecure-Requests: 1' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  --data-raw 'paginaLogin=&provedorselecionado=tabCentral&origemRequisicao=&valorCPF=&urlLogo=https%253A%252F%252Fwww.registrodeclasse.seed.pr.gov.br%252Frcdig%252Fimages%252Flogo_sistema.png&loginPadrao=btnCentral&modulosDeAutenticacao=btnSentinela%2CbtnSms%2CbtnCpf%2CbtnCentral&labelCentral=CPF%2CLogin%2520Sentinela&moduloAtual=&dataAcesso=2053&exibirLinkAutoCadastro=true&exibirLinkAutoCadastroCertificado=false&exibirLinkRecuperarSenha=true&exibirAviso=true&formaAutenticacao=btnCpf&response_type=token&client_id=f340f1b1f65b6df5b5e3f94d95b11daf&redirect_uri=https%253A%252F%252Frco.paas.pr.gov.br&scope=emgpr.mobile%2520emgpr.v1.ocorrencia.post&state=null&mensagem=&dnsCidadao=https%3A%2F%2Fcidadao-cs.identidadedigital.pr.gov.br%2Fcentralcidadao&provedores=&provedor=tabCentral&tokenFormat=jwt&code_challenge=&code_challenge_method=&captcha=false&codCaptcha=&attribute=06357914983&attribute_central=06357914983&password=87047%402025Cp&captchaCentral=&attribute_Sms=&celular=&captchaSms=&codigoSeguranca=&attribute_token=&codigoOTP=&attribute_expresso=&password_expresso=&captchaExpresso=&attribute_emailToken=&email=&captchaEmailToken=&codigoSegurancaEmail='
