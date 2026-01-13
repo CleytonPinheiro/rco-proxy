@@ -1,8 +1,20 @@
 import express from "express";
 import axios from "axios";
+import path from "path";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Variáveis em memória (em produção, usar banco de dados ou criptografia)
+let userCredentials = {
+	cpf: process.env.RCO_CPF || "",
+	senha: process.env.RCO_SENHA || ""
+};
 
 let cachedToken = null;
 let tokenExpiration = null;
@@ -45,7 +57,6 @@ async function getSessionCookie() {
 		}
 
 		const cookieValue = csAuthCookie.split(";")[0];
-		console.log("Cookie CS-AUTH obtido com sucesso");
 		return cookieValue;
 	} catch (error) {
 		console.error("Erro ao obter cookie de sessão:", error.message);
@@ -55,11 +66,10 @@ async function getSessionCookie() {
 
 async function performLogin(sessionCookie) {
 	try {
-		const cpf = process.env.RCO_CPF;
-		const senha = process.env.RCO_SENHA;
+		const { cpf, senha } = userCredentials;
 
 		if (!cpf || !senha) {
-			throw new Error("Credenciais não configuradas. Configure RCO_CPF e RCO_SENHA nos Secrets.");
+			throw new Error("Credenciais não configuradas no painel.");
 		}
 
 		const formData = new URLSearchParams({
@@ -126,42 +136,14 @@ async function performLogin(sessionCookie) {
 
 		if (response.status === 302 || response.status === 301) {
 			const redirectUrl = response.headers["location"];
-			
 			if (redirectUrl && redirectUrl.includes("access_token=")) {
 				const tokenMatch = redirectUrl.match(/access_token=([^&]+)/);
 				if (tokenMatch && tokenMatch[1]) {
-					const token = decodeURIComponent(tokenMatch[1]);
-					console.log("Token JWT obtido com sucesso via redirect");
-					return token;
-				}
-			}
-			
-			if (redirectUrl && redirectUrl.includes("#")) {
-				const hashPart = redirectUrl.split("#")[1];
-				const params = new URLSearchParams(hashPart);
-				const token = params.get("access_token");
-				if (token) {
-					console.log("Token JWT obtido com sucesso via fragment");
-					return token;
+					return decodeURIComponent(tokenMatch[1]);
 				}
 			}
 		}
-
-		if (response.data && typeof response.data === "string") {
-			const tokenMatch = response.data.match(/access_token[=:][\s"']*([a-zA-Z0-9._-]+)/);
-			if (tokenMatch && tokenMatch[1]) {
-				console.log("Token JWT obtido com sucesso via body");
-				return tokenMatch[1];
-			}
-		}
-
-		console.error("Resposta do login:", {
-			status: response.status,
-			headers: response.headers,
-			data: typeof response.data === "string" ? response.data.substring(0, 500) : response.data
-		});
-
-		throw new Error(`Falha ao obter token. Status: ${response.status}`);
+		throw new Error(`Falha no login. Status: ${response.status}`);
 	} catch (error) {
 		console.error("Erro ao fazer login:", error.message);
 		throw error;
@@ -171,175 +153,120 @@ async function performLogin(sessionCookie) {
 function decodeJwtExpiration(token) {
 	try {
 		const parts = token.split(".");
-		if (parts.length !== 3) {
-			return null;
-		}
 		const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
 		return payload.exp ? payload.exp * 1000 : null;
-	} catch (error) {
-		console.error("Erro ao decodificar JWT:", error.message);
-		return null;
-	}
-}
-
-function isTokenExpired() {
-	if (!cachedToken || !tokenExpiration) {
-		return true;
-	}
-	const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
-	return tokenExpiration < fiveMinutesFromNow;
+	} catch (e) { return null; }
 }
 
 async function getValidToken(forceRefresh = false) {
-	if (!forceRefresh && !isTokenExpired()) {
-		console.log("Usando token em cache (válido)");
+	if (!forceRefresh && cachedToken && tokenExpiration && tokenExpiration > Date.now() + 300000) {
 		return cachedToken;
 	}
-
-	console.log("Obtendo novo token...");
-	
-	try {
-		const sessionCookie = await getSessionCookie();
-		const token = await performLogin(sessionCookie);
-		
-		cachedToken = token.replace(/[^a-zA-Z0-9._-]/g, "");
-		tokenExpiration = decodeJwtExpiration(cachedToken);
-		
-		if (tokenExpiration) {
-			const expiresIn = Math.round((tokenExpiration - Date.now()) / 1000 / 60);
-			console.log(`Novo token obtido. Expira em ${expiresIn} minutos.`);
-		} else {
-			tokenExpiration = Date.now() + (60 * 60 * 1000);
-			console.log("Novo token obtido. Expiração padrão: 1 hora.");
-		}
-		
-		return cachedToken;
-	} catch (error) {
-		console.error("Falha ao obter novo token:", error.message);
-		
-		if (process.env.AUTHORIZATION_TOKEN) {
-			console.log("Usando AUTHORIZATION_TOKEN como fallback");
-			return process.env.AUTHORIZATION_TOKEN.trim().replace(/[^a-zA-Z0-9._-]/g, "");
-		}
-		
-		throw error;
-	}
+	const sessionCookie = await getSessionCookie();
+	const token = await performLogin(sessionCookie);
+	cachedToken = token.replace(/[^a-zA-Z0-9._-]/g, "");
+	tokenExpiration = decodeJwtExpiration(cachedToken) || (Date.now() + 3600000);
+	return cachedToken;
 }
 
+// Rota principal com formulário
 app.get("/", (req, res) => {
-	res.send(
-		"Servidor Express funcionando! Use /api/acessos para consultar a API do RCO Digital.",
-	);
+	res.send(`
+		<!DOCTYPE html>
+		<html lang="pt-br">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>Configuração Proxy RCO</title>
+			<style>
+				body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+				.card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+				input { display: block; width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+				button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+				button:hover { background: #0056b3; }
+				.status { margin-top: 20px; padding: 10px; border-radius: 4px; }
+				.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+				.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+			</style>
+		</head>
+		<body>
+			<div class="card">
+				<h2>Configuração RCO Digital</h2>
+				<p>Insira suas credenciais para que o servidor possa automatizar a renovação do token.</p>
+				<form action="/api/configurar" method="POST">
+					<label>CPF (apenas números)</label>
+					<input type="text" name="cpf" value="${userCredentials.cpf}" required>
+					<label>Senha</label>
+					<input type="password" name="senha" required>
+					<button type="submit">Salvar e Conectar</button>
+				</form>
+				<div id="status" class="status" style="display:none"></div>
+			</div>
+			<div style="margin-top: 20px;">
+				<a href="/api/acessos">Testar Endpoint de Dados</a>
+			</div>
+		</body>
+		</html>
+	`);
+});
+
+// Endpoint para configurar credenciais via form
+app.post("/api/configurar", async (req, res) => {
+	const { cpf, senha } = req.body;
+	if (!cpf || !senha) return res.status(400).send("CPF e Senha são obrigatórios");
+	
+	userCredentials.cpf = cpf;
+	userCredentials.senha = senha;
+	
+	try {
+		await getValidToken(true);
+		res.send(`
+			<div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+				<h2 style="color: #28a745;">Configuração Salva com Sucesso!</h2>
+				<p>O token foi gerado e as credenciais estão prontas para renovação automática.</p>
+				<a href="/">Voltar</a> | <a href="/api/acessos">Ver Acessos</a>
+			</div>
+		`);
+	} catch (error) {
+		res.status(500).send(`
+			<div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+				<h2 style="color: #dc3545;">Erro na Autenticação</h2>
+				<p>${error.message}</p>
+				<a href="/">Tentar Novamente</a>
+			</div>
+		`);
+	}
 });
 
 app.get("/api/acessos", async (req, res) => {
 	try {
-		let authToken = await getValidToken();
-
+		const authToken = await getValidToken();
 		const response = await axios.get(
 			"https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar",
 			{
-				headers: {
-					consumerId: "RCDIGWEB",
-					Authorization: `Bearer ${authToken}`,
-				},
+				headers: { consumerId: "RCDIGWEB", Authorization: `Bearer ${authToken}` },
 				timeout: 30000,
 				validateStatus: () => true,
 			},
 		);
 
 		if (response.status === 401 || response.status === 403) {
-			console.log("Token expirado/inválido. Tentando renovar...");
-			
-			try {
-				authToken = await getValidToken(true);
-				
-				const retryResponse = await axios.get(
-					"https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar",
-					{
-						headers: {
-							consumerId: "RCDIGWEB",
-							Authorization: `Bearer ${authToken}`,
-						},
-						timeout: 30000,
-						validateStatus: () => true,
-					},
-				);
-
-				if (retryResponse.status >= 400) {
-					return res.status(retryResponse.status).json({
-						erro: "Erro na API do RCO Digital após renovação de token",
-						detalhes: retryResponse.data,
-						status: retryResponse.status,
-					});
-				}
-
-				return res.json(retryResponse.data);
-			} catch (renewError) {
-				return res.status(response.status).json({
-					erro: "Token de autorização inválido ou expirado",
-					detalhes: response.data,
-					status: response.status,
-					dica: "Verifique se as credenciais RCO_CPF e RCO_SENHA estão corretas nos Secrets.",
-				});
-			}
+			const newToken = await getValidToken(true);
+			const retry = await axios.get(
+				"https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar",
+				{
+					headers: { consumerId: "RCDIGWEB", Authorization: `Bearer ${newToken}` },
+					timeout: 30000,
+				},
+			);
+			return res.json(retry.data);
 		}
-
-		if (response.status >= 400) {
-			return res.status(response.status).json({
-				erro: "Erro na API do RCO Digital",
-				detalhes: response.data,
-				status: response.status,
-			});
-		}
-
 		res.json(response.data);
 	} catch (erro) {
-		console.error("Erro ao consultar API:", erro.message);
-
-		if (erro.response) {
-			return res.status(erro.response.status).json({
-				erro: "Erro ao consultar a API do RCO Digital",
-				detalhes: erro.response.data || erro.message,
-				status: erro.response.status,
-			});
-		}
-
-		res.status(500).json({
-			erro: "Erro ao consultar a API do RCO Digital",
-			detalhes: erro.message,
-		});
-	}
-});
-
-app.get("/api/token/status", async (req, res) => {
-	res.json({
-		tokenEmCache: !!cachedToken,
-		tokenExpirado: isTokenExpired(),
-		expiracao: tokenExpiration ? new Date(tokenExpiration).toISOString() : null,
-		credenciaisConfiguradas: !!(process.env.RCO_CPF && process.env.RCO_SENHA),
-		fallbackDisponivel: !!process.env.AUTHORIZATION_TOKEN
-	});
-});
-
-app.post("/api/token/renovar", async (req, res) => {
-	try {
-		await getValidToken(true);
-		res.json({
-			sucesso: true,
-			mensagem: "Token renovado com sucesso",
-			expiracao: tokenExpiration ? new Date(tokenExpiration).toISOString() : null
-		});
-	} catch (error) {
-		res.status(500).json({
-			sucesso: false,
-			erro: error.message
-		});
+		res.status(500).json({ erro: "Erro ao consultar a API", detalhes: erro.message });
 	}
 });
 
 app.listen(5000, "0.0.0.0", () => {
 	console.log("Servidor Express rodando na porta 5000");
-	console.log("Acesse /api/acessos para consultar a API do RCO Digital");
-	console.log("Acesse /api/token/status para verificar o status do token");
 });
