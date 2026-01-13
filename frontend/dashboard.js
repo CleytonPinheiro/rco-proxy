@@ -15,7 +15,7 @@ async function verificarAutenticacao() {
         const response = await fetch(`${API_URL}/api/status`);
         const data = await response.json();
 
-        if (!data.credenciaisConfiguradas || !data.tokenEmCache) {
+        if (!data.credenciaisConfiguradas) {
             window.location.href = '/';
         }
     } catch (error) {
@@ -233,6 +233,22 @@ function extrairLivros(data) {
                 status: l.status
             }));
         }
+        
+        Object.values(data).forEach(val => {
+            if (Array.isArray(val)) {
+                val.forEach(item => {
+                    if (item && (item.nmLivro || item.livro || item.livroClasse)) {
+                        livros.push({
+                            nome: item.nmLivro || item.livro || item.livroClasse,
+                            turma: item.nmTurma || item.turma,
+                            disciplina: item.nmDisciplina || item.disciplina,
+                            periodo: item.periodo || item.bimestre,
+                            status: item.statusLivro || 'Em andamento'
+                        });
+                    }
+                });
+            }
+        });
     }
 
     return livros;

@@ -19,10 +19,12 @@ Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do
 │   ├── package.json      # Dependências do backend
 │   └── node_modules/
 ├── frontend/
-│   ├── index.html        # Página principal
-│   ├── style.css         # Estilos
-│   ├── app.js            # Lógica do frontend
-│   └── package.json      # (não utilizado em produção)
+│   ├── index.html        # Página de login
+│   ├── style.css         # Estilos do login
+│   ├── app.js            # Lógica do login
+│   ├── dashboard.html    # Painel com dados do usuário
+│   ├── dashboard.css     # Estilos do painel
+│   └── dashboard.js      # Lógica do painel
 ├── replit.md             # Este arquivo
 └── README.md             # Documentação
 ```
@@ -46,9 +48,13 @@ O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná
 4. Em caso de erro 403, tenta renovar o token automaticamente
 
 ### Interface Web
-- Formulário para inserir CPF e senha
-- Exibe status do token (configurado, em cache, expiração)
-- Botão para testar endpoint de dados
+- **Página de Login** (`/`): Formulário para inserir CPF e senha
+- **Dashboard** (`/dashboard.html`): Painel com dados do usuário
+  - Cards de Turmas
+  - Cards de Disciplinas
+  - Cards de Livros de Classe
+  - Dados completos em JSON
+- Redirecionamento automático após login bem-sucedido
 
 ## Configuração
 
@@ -68,6 +74,11 @@ O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná
 3. **Retry automático**: Se receber 403, tenta renovar token antes de retornar erro
 
 ## Mudanças Recentes
+
+- **13/01/2026**: Dashboard com dados do usuário
+  - Criada página dashboard.html com cards de turmas, disciplinas e livros
+  - Redirecionamento automático após login bem-sucedido
+  - Extração inteligente de dados do JSON da API
 
 - **13/01/2026**: Separação em frontend e backend
   - Criada interface web para configurar credenciais
