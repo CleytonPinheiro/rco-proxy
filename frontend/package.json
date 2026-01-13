@@ -1,0 +1,11 @@
+{
+  "name": "rco-proxy-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx serve -l 5000 .",
+    "dev": "npx serve -l 5000 ."
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
+  }
+}
