@@ -43,8 +43,100 @@ const DADOS_EXEMPLO = {
         { nmLivro: "Livro de Classe - Física", nmTurma: "9º Ano A", nmDisciplina: "Física", periodo: "1º Bimestre", statusLivro: "Aberto" },
         { nmLivro: "Livro de Classe - Ciências", nmTurma: "8º Ano C", nmDisciplina: "Ciências", periodo: "1º Bimestre", statusLivro: "Em andamento" },
         { nmLivro: "Livro de Classe - Matemática", nmTurma: "7º Ano A", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Fechado" }
+    ],
+    alunos: [
+        { nome: "Ana Clara Silva", registro: "2026090101", turma: "9º Ano A", dataNascimento: "15/03/2011", status: "Ativo" },
+        { nome: "Bruno Oliveira Santos", registro: "2026090102", turma: "9º Ano A", dataNascimento: "22/07/2011", status: "Ativo" },
+        { nome: "Carla Fernanda Costa", registro: "2026090103", turma: "9º Ano A", dataNascimento: "10/01/2011", status: "Ativo" },
+        { nome: "Daniel Almeida Souza", registro: "2026090104", turma: "9º Ano A", dataNascimento: "05/09/2011", status: "Ativo" },
+        { nome: "Eduarda Lima Pereira", registro: "2026090105", turma: "9º Ano A", dataNascimento: "18/11/2011", status: "Ativo" },
+        { nome: "Felipe Rodrigues Martins", registro: "2026090201", turma: "9º Ano B", dataNascimento: "03/04/2011", status: "Ativo" },
+        { nome: "Gabriela Santos Ribeiro", registro: "2026090202", turma: "9º Ano B", dataNascimento: "27/06/2011", status: "Ativo" },
+        { nome: "Henrique Costa Barbosa", registro: "2026090203", turma: "9º Ano B", dataNascimento: "14/02/2011", status: "Ativo" },
+        { nome: "Isabela Ferreira Gomes", registro: "2026090204", turma: "9º Ano B", dataNascimento: "30/08/2011", status: "Ativo" },
+        { nome: "João Pedro Alves", registro: "2026090205", turma: "9º Ano B", dataNascimento: "08/12/2011", status: "Ativo" },
+        { nome: "Larissa Mendes Cardoso", registro: "2026080301", turma: "8º Ano C", dataNascimento: "12/05/2012", status: "Ativo" },
+        { nome: "Lucas Pereira Nunes", registro: "2026080302", turma: "8º Ano C", dataNascimento: "25/10/2012", status: "Ativo" },
+        { nome: "Mariana Souza Dias", registro: "2026080303", turma: "8º Ano C", dataNascimento: "07/07/2012", status: "Ativo" },
+        { nome: "Nicolas Rocha Teixeira", registro: "2026080304", turma: "8º Ano C", dataNascimento: "19/03/2012", status: "Ativo" },
+        { nome: "Olivia Campos Moreira", registro: "2026080305", turma: "8º Ano C", dataNascimento: "02/09/2012", status: "Ativo" },
+        { nome: "Pedro Henrique Castro", registro: "2026070101", turma: "7º Ano A", dataNascimento: "16/06/2013", status: "Ativo" },
+        { nome: "Rafaela Borges Lima", registro: "2026070102", turma: "7º Ano A", dataNascimento: "28/01/2013", status: "Ativo" },
+        { nome: "Samuel Vieira Machado", registro: "2026070103", turma: "7º Ano A", dataNascimento: "11/08/2013", status: "Ativo" },
+        { nome: "Thais Andrade Pinto", registro: "2026070104", turma: "7º Ano A", dataNascimento: "04/04/2013", status: "Ativo" },
+        { nome: "Vinicius Freitas Correia", registro: "2026070105", turma: "7º Ano A", dataNascimento: "21/11/2013", status: "Ativo" }
     ]
 };
+
+function gerarCodigoBarrasSVG(codigo) {
+    const barWidth = 2;
+    const height = 50;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="${height + 20}" viewBox="0 0 200 ${height + 20}">`;
+    
+    let x = 10;
+    for (let i = 0; i < codigo.length; i++) {
+        const digit = parseInt(codigo[i]);
+        const pattern = [
+            [1,1,1,0,0,1,0], // 0
+            [0,0,1,1,0,1,0], // 1
+            [0,1,0,0,1,1,0], // 2
+            [1,1,0,0,1,0,0], // 3
+            [0,1,1,0,0,1,0], // 4
+            [1,0,1,0,0,1,0], // 5
+            [0,0,0,1,1,1,0], // 6
+            [1,0,0,1,0,1,0], // 7
+            [0,0,1,0,1,1,0], // 8
+            [1,1,0,1,0,0,0]  // 9
+        ][digit];
+        
+        for (let j = 0; j < pattern.length; j++) {
+            if (pattern[j] === 1) {
+                svg += `<rect x="${x}" y="0" width="${barWidth}" height="${height}" fill="black"/>`;
+            }
+            x += barWidth;
+        }
+        x += barWidth;
+    }
+    
+    svg += `<text x="100" y="${height + 15}" text-anchor="middle" font-family="monospace" font-size="12">${codigo}</text>`;
+    svg += '</svg>';
+    
+    return svg;
+}
+
+function abrirModalAlunos(nomeTurma) {
+    const alunos = DADOS_EXEMPLO.alunos.filter(a => a.turma === nomeTurma);
+    
+    const modal = document.getElementById('modalAlunos');
+    const titulo = document.getElementById('modalTitulo');
+    const lista = document.getElementById('listaAlunos');
+    
+    titulo.textContent = `Alunos - ${nomeTurma}`;
+    
+    if (alunos.length === 0) {
+        lista.innerHTML = '<div class="empty-message">Nenhum aluno encontrado nesta turma</div>';
+    } else {
+        lista.innerHTML = alunos.map(aluno => `
+            <div class="aluno-card">
+                <div class="aluno-info">
+                    <div class="aluno-nome">${aluno.nome}</div>
+                    <div class="aluno-detalhe"><strong>Registro:</strong> ${aluno.registro}</div>
+                    <div class="aluno-detalhe"><strong>Nascimento:</strong> ${aluno.dataNascimento}</div>
+                    <div class="aluno-detalhe"><strong>Status:</strong> <span class="status-ativo">${aluno.status}</span></div>
+                </div>
+                <div class="aluno-codigo-barras">
+                    ${gerarCodigoBarrasSVG(aluno.registro)}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function fecharModal() {
+    document.getElementById('modalAlunos').style.display = 'none';
+}
 
 async function carregarDados() {
     const loading = document.getElementById('loading');
@@ -91,7 +183,7 @@ function renderizarTurmas(data) {
     }
 
     container.innerHTML = turmas.map(turma => `
-        <div class="card">
+        <div class="card card-turma" onclick="abrirModalAlunos('${turma.nome}')">
             <div class="card-title">${turma.nome || 'Turma'}</div>
             ${turma.serie ? `<div class="card-info"><strong>Série:</strong> ${turma.serie}</div>` : ''}
             ${turma.turno ? `<div class="card-info"><strong>Turno:</strong> ${turma.turno}</div>` : ''}
