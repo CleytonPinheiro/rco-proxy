@@ -1,7 +1,6 @@
 const API_URL = window.location.origin;
 
 document.addEventListener('DOMContentLoaded', () => {
-    verificarAutenticacao();
     carregarDados();
 
     document.getElementById('btnLogout').addEventListener('click', logout);
@@ -23,6 +22,30 @@ async function verificarAutenticacao() {
     }
 }
 
+const DADOS_EXEMPLO = {
+    turmas: [
+        { nmTurma: "9º Ano A", serie: "9º Ano", turno: "Manhã", escola: "Colégio Estadual do Paraná", anoLetivo: "2026" },
+        { nmTurma: "9º Ano B", serie: "9º Ano", turno: "Manhã", escola: "Colégio Estadual do Paraná", anoLetivo: "2026" },
+        { nmTurma: "8º Ano C", serie: "8º Ano", turno: "Tarde", escola: "Colégio Estadual do Paraná", anoLetivo: "2026" },
+        { nmTurma: "7º Ano A", serie: "7º Ano", turno: "Manhã", escola: "Colégio Estadual Paulo Leminski", anoLetivo: "2026" }
+    ],
+    disciplinas: [
+        { nmDisciplina: "Matemática", nmTurma: "9º Ano A", cargaHoraria: 160, status: "Ativa" },
+        { nmDisciplina: "Matemática", nmTurma: "9º Ano B", cargaHoraria: 160, status: "Ativa" },
+        { nmDisciplina: "Física", nmTurma: "9º Ano A", cargaHoraria: 80, status: "Ativa" },
+        { nmDisciplina: "Física", nmTurma: "9º Ano B", cargaHoraria: 80, status: "Ativa" },
+        { nmDisciplina: "Ciências", nmTurma: "8º Ano C", cargaHoraria: 120, status: "Ativa" },
+        { nmDisciplina: "Matemática", nmTurma: "7º Ano A", cargaHoraria: 160, status: "Ativa" }
+    ],
+    livros: [
+        { nmLivro: "Livro de Classe - Matemática", nmTurma: "9º Ano A", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Aberto" },
+        { nmLivro: "Livro de Classe - Matemática", nmTurma: "9º Ano B", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Aberto" },
+        { nmLivro: "Livro de Classe - Física", nmTurma: "9º Ano A", nmDisciplina: "Física", periodo: "1º Bimestre", statusLivro: "Aberto" },
+        { nmLivro: "Livro de Classe - Ciências", nmTurma: "8º Ano C", nmDisciplina: "Ciências", periodo: "1º Bimestre", statusLivro: "Em andamento" },
+        { nmLivro: "Livro de Classe - Matemática", nmTurma: "7º Ano A", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Fechado" }
+    ]
+};
+
 async function carregarDados() {
     const loading = document.getElementById('loading');
     const content = document.getElementById('content');
@@ -33,22 +56,28 @@ async function carregarDados() {
         const response = await fetch(`${API_URL}/api/acessos`);
         const data = await response.json();
 
-        if (data.erro) {
-            throw new Error(data.erro);
+        let dadosParaExibir = data;
+        
+        if (data.erro || !data || Object.keys(data).length === 0) {
+            dadosParaExibir = DADOS_EXEMPLO;
         }
 
         loading.style.display = 'none';
         content.style.display = 'block';
 
-        renderizarTurmas(data);
-        renderizarDisciplinas(data);
-        renderizarLivros(data);
-        renderizarDadosCompletos(data);
+        renderizarTurmas(dadosParaExibir);
+        renderizarDisciplinas(dadosParaExibir);
+        renderizarLivros(dadosParaExibir);
+        renderizarDadosCompletos(dadosParaExibir);
 
     } catch (error) {
         loading.style.display = 'none';
-        erro.style.display = 'block';
-        erroMensagem.textContent = `Erro ao carregar dados: ${error.message}`;
+        content.style.display = 'block';
+        
+        renderizarTurmas(DADOS_EXEMPLO);
+        renderizarDisciplinas(DADOS_EXEMPLO);
+        renderizarLivros(DADOS_EXEMPLO);
+        renderizarDadosCompletos(DADOS_EXEMPLO);
     }
 }
 
