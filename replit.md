@@ -1,73 +1,75 @@
-# Informações do Projeto
+# RCO Digital Proxy
 
 ## Visão Geral
-Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do estado do Paraná.
+Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do estado do Paraná com autenticação automática.
 
 ## Estado Atual
-- **Data**: 04/11/2025
-- **Status**: Funcional
+- **Data**: 13/01/2026
+- **Status**: Funcional com login automático
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
 
 ## Arquitetura do Projeto
 
-### Estrutura de Arquivos
+### Estrutura de Pastas
 ```
 .
-├── index.js          # Servidor Express principal
-├── package.json      # Dependências (express, node-fetch)
-├── README.md         # Documentação em português
-└── replit.md         # Este arquivo
+├── backend/
+│   ├── index.js          # Servidor Express (API + arquivos estáticos)
+│   ├── package.json      # Dependências do backend
+│   └── node_modules/
+├── frontend/
+│   ├── index.html        # Página principal
+│   ├── style.css         # Estilos
+│   ├── app.js            # Lógica do frontend
+│   └── package.json      # (não utilizado em produção)
+├── replit.md             # Este arquivo
+└── README.md             # Documentação
 ```
 
-### Endpoints Implementados
+### Endpoints da API
 
-1. **GET /** - Página inicial de boas-vindas
-2. **GET /api/acessos** - Consome API do RCO Digital
-   - URL da API: `https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar`
-   - Requer: Token de autorização via variável de ambiente `AUTHORIZATION_TOKEN`
-   - Retorna: Dados da API do RCO ou erro em JSON
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/` | Página de configuração (frontend) |
+| GET | `/api/status` | Retorna status das credenciais e token |
+| POST | `/api/configurar` | Salva CPF/senha e testa conexão |
+| GET | `/api/acessos` | Retorna dados do RCO Digital |
+
+## Funcionalidades
+
+### Login Automático
+O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná:
+1. Acessa a página de login e obtém cookie `CS-AUTH`
+2. Faz POST com CPF/senha para obter token JWT
+3. Armazena token em memória e renova automaticamente antes de expirar
+4. Em caso de erro 403, tenta renovar o token automaticamente
+
+### Interface Web
+- Formulário para inserir CPF e senha
+- Exibe status do token (configurado, em cache, expiração)
+- Botão para testar endpoint de dados
 
 ## Configuração
 
-### Variáveis de Ambiente Necessárias
-- `AUTHORIZATION_TOKEN`: Bearer token para autenticação na API do RCO Digital
-
-### Porta
-- O servidor roda na porta **5000** (0.0.0.0)
-
 ### Workflow
-- **Nome**: `servidor-express`
-- **Comando**: `node index.js`
-- **Tipo**: webview (porta 5000)
+- **Nome**: `backend`
+- **Comando**: `cd backend && node index.js`
+- **Porta**: 5000 (webview)
+
+### Variáveis de Ambiente (opcionais)
+- `RCO_CPF`: CPF para login (alternativa ao formulário)
+- `RCO_SENHA`: Senha para login (alternativa ao formulário)
 
 ## Decisões Técnicas
 
-1. **Segurança**: Token armazenado como variável de ambiente ao invés de hardcoded
-2. **Tratamento de Erros**: Try-catch com mensagens de erro detalhadas em português
-3. **Headers**: Mantidos todos os headers originais da requisição do navegador para compatibilidade
-4. **Idioma**: Toda documentação e mensagens em português brasileiro (conforme solicitado)
-
-## Preferências do Usuário
-- Idioma: Português do Brasil
-- Comunicação: Explicações claras e simples, sem jargão técnico
+1. **Frontend integrado ao backend**: O Express serve os arquivos estáticos do frontend, evitando problemas de CORS
+2. **Token em memória**: Mais seguro que salvar em arquivo, renova automaticamente
+3. **Retry automático**: Se receber 403, tenta renovar token antes de retornar erro
 
 ## Mudanças Recentes
-- **04/11/2025**: Projeto criado com conversão de fetch para endpoint Express
-  - Implementado endpoint `/api/acessos` que consome API do RCO Digital
-  - Configurado tratamento de erros e validação de token
-  - Criada documentação completa em português
-  - Resolvido problema de caracteres inválidos em headers HTTP com filtro de sanitização
-  - Adicionado tratamento específico para tokens expirados (status 401/403)
-  - Removido dependência desnecessária (node-fetch), usando axios para melhor compatibilidade
 
-## Problemas Conhecidos e Soluções
-
-### Token Expirado
-- **Sintoma**: API retorna erro 403 "Falha com o token informado"
-- **Causa**: Tokens JWT têm validade limitada (campo "exp" no token)
-- **Solução**: Obter novo token no portal RCO Digital e atualizar a variável AUTHORIZATION_TOKEN nos Secrets
-
-### Caracteres Inválidos no Token
-- **Problema resolvido**: O código agora filtra automaticamente caracteres inválidos do token
-- **Implementação**: Regex `replace(/[^a-zA-Z0-9._-]/g, '')` mantém apenas caracteres válidos em JWT
+- **13/01/2026**: Separação em frontend e backend
+  - Criada interface web para configurar credenciais
+  - Implementado login automático via Central de Segurança PR
+  - Token renovado automaticamente antes de expirar
