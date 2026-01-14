@@ -1,102 +1,37 @@
-const ALUNOS = [
-    { nome: "Ana Clara Silva", registro: "2026090101", turma: "9º Ano A" },
-    { nome: "Bruno Oliveira Santos", registro: "2026090102", turma: "9º Ano A" },
-    { nome: "Carla Fernanda Costa", registro: "2026090103", turma: "9º Ano A" },
-    { nome: "Daniel Almeida Souza", registro: "2026090104", turma: "9º Ano A" },
-    { nome: "Eduarda Lima Pereira", registro: "2026090105", turma: "9º Ano A" },
-    { nome: "Felipe Rodrigues Martins", registro: "2026090201", turma: "9º Ano B" },
-    { nome: "Gabriela Santos Ribeiro", registro: "2026090202", turma: "9º Ano B" },
-    { nome: "Henrique Costa Barbosa", registro: "2026090203", turma: "9º Ano B" },
-    { nome: "Isabela Ferreira Gomes", registro: "2026090204", turma: "9º Ano B" },
-    { nome: "João Pedro Alves", registro: "2026090205", turma: "9º Ano B" },
-    { nome: "Larissa Mendes Cardoso", registro: "2026080301", turma: "8º Ano C" },
-    { nome: "Lucas Pereira Nunes", registro: "2026080302", turma: "8º Ano C" },
-    { nome: "Mariana Souza Dias", registro: "2026080303", turma: "8º Ano C" },
-    { nome: "Nicolas Rocha Teixeira", registro: "2026080304", turma: "8º Ano C" },
-    { nome: "Olivia Campos Moreira", registro: "2026080305", turma: "8º Ano C" },
-    { nome: "Pedro Henrique Castro", registro: "2026070101", turma: "7º Ano A" },
-    { nome: "Rafaela Borges Lima", registro: "2026070102", turma: "7º Ano A" },
-    { nome: "Samuel Vieira Machado", registro: "2026070103", turma: "7º Ano A" },
-    { nome: "Thais Andrade Pinto", registro: "2026070104", turma: "7º Ano A" },
-    { nome: "Vinicius Freitas Correia", registro: "2026070105", turma: "7º Ano A" }
-];
-
-const MATERIAIS = [
-    { id: 1, codigo: 'TAB-001', tipo: 'tablet', descricao: 'Samsung Galaxy Tab A7', status: 'disponivel' },
-    { id: 2, codigo: 'TAB-002', tipo: 'tablet', descricao: 'Samsung Galaxy Tab A7', status: 'emprestado' },
-    { id: 3, codigo: 'TAB-003', tipo: 'tablet', descricao: 'Samsung Galaxy Tab A7', status: 'disponivel' },
-    { id: 4, codigo: 'TAB-004', tipo: 'tablet', descricao: 'Samsung Galaxy Tab S6 Lite', status: 'disponivel' },
-    { id: 6, codigo: 'NOT-001', tipo: 'notebook', descricao: 'Dell Inspiron 15', status: 'disponivel' },
-    { id: 7, codigo: 'NOT-002', tipo: 'notebook', descricao: 'Dell Inspiron 15', status: 'emprestado' },
-    { id: 9, codigo: 'CALC-001', tipo: 'calculadora', descricao: 'Casio FX-82MS', status: 'disponivel' },
-    { id: 11, codigo: 'CALC-003', tipo: 'calculadora', descricao: 'Casio FX-991ES Plus', status: 'emprestado' }
-];
-
-let emprestimos = [
-    {
-        id: 1,
-        aluno: { nome: "Bruno Oliveira Santos", registro: "2026090102", turma: "9º Ano A" },
-        material: { codigo: 'TAB-002', descricao: 'Samsung Galaxy Tab A7' },
-        professor: "Prof. Maria Silva",
-        aulas: [1, 2, 3],
-        dataEmprestimo: "14/01/2026 07:25",
-        status: 'ativo',
-        observacoes: ""
-    },
-    {
-        id: 2,
-        aluno: { nome: "Isabela Ferreira Gomes", registro: "2026090204", turma: "9º Ano B" },
-        material: { codigo: 'NOT-002', descricao: 'Dell Inspiron 15' },
-        professor: "Prof. Carlos Santos",
-        aulas: [4, 5, 6],
-        dataEmprestimo: "14/01/2026 10:15",
-        status: 'ativo',
-        observacoes: "Para trabalho de pesquisa"
-    },
-    {
-        id: 3,
-        aluno: { nome: "Lucas Pereira Nunes", registro: "2026080302", turma: "8º Ano C" },
-        material: { codigo: 'CALC-003', descricao: 'Casio FX-991ES Plus' },
-        professor: "Prof. Ana Paula",
-        aulas: [3, 4],
-        dataEmprestimo: "14/01/2026 09:25",
-        status: 'ativo',
-        observacoes: ""
-    },
-    {
-        id: 4,
-        aluno: { nome: "Ana Clara Silva", registro: "2026090101", turma: "9º Ano A" },
-        material: { codigo: 'TAB-001', descricao: 'Samsung Galaxy Tab A7' },
-        professor: "Prof. Roberto Lima",
-        aulas: [1, 2],
-        dataEmprestimo: "13/01/2026 07:30",
-        dataDevolucao: "13/01/2026 09:15",
-        status: 'devolvido',
-        estadoDevolucao: 'otimo',
-        observacoes: ""
-    },
-    {
-        id: 5,
-        aluno: { nome: "Pedro Henrique Castro", registro: "2026070101", turma: "7º Ano A" },
-        material: { codigo: 'NOT-001', descricao: 'Dell Inspiron 15' },
-        professor: "Prof. Fernanda Costa",
-        aulas: [1, 2, 3, 4, 5, 6],
-        dataEmprestimo: "13/01/2026 07:30",
-        dataDevolucao: "13/01/2026 12:50",
-        status: 'devolvido',
-        estadoDevolucao: 'bom',
-        observacoes: "Projeto de programação"
-    }
-];
-
-let proximoIdEmprestimo = 6;
+let emprestimos = [];
+let alunos = [];
+let materiais = [];
 let alunoSelecionado = null;
 let materialSelecionado = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    renderizarEmprestimosAtivos();
-    renderizarHistorico();
+    carregarDados();
 });
+
+async function carregarDados() {
+    try {
+        const [empResp, alunosResp, matResp] = await Promise.all([
+            fetch('/api/emprestimos'),
+            fetch('/api/alunos'),
+            fetch('/api/materiais')
+        ]);
+        
+        if (!empResp.ok || !alunosResp.ok || !matResp.ok) {
+            throw new Error('Erro ao carregar dados');
+        }
+        
+        emprestimos = await empResp.json();
+        alunos = await alunosResp.json();
+        materiais = await matResp.json();
+        
+        renderizarEmprestimosAtivos();
+        renderizarHistorico();
+    } catch (erro) {
+        console.error('Erro:', erro);
+        document.getElementById('listaEmprestimosAtivos').innerHTML = 
+            '<div class="empty-message">Erro ao carregar dados. Execute o SQL no Supabase.</div>';
+    }
+}
 
 function trocarTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -111,6 +46,12 @@ function trocarTab(tab) {
     }
 }
 
+function formatarData(dataISO) {
+    if (!dataISO) return '';
+    const data = new Date(dataISO);
+    return `${data.getDate().toString().padStart(2, '0')}/${(data.getMonth()+1).toString().padStart(2, '0')}/${data.getFullYear()} ${data.getHours().toString().padStart(2, '0')}:${data.getMinutes().toString().padStart(2, '0')}`;
+}
+
 function renderizarEmprestimosAtivos() {
     const container = document.getElementById('listaEmprestimosAtivos');
     const ativos = emprestimos.filter(e => e.status === 'ativo');
@@ -123,22 +64,22 @@ function renderizarEmprestimosAtivos() {
     container.innerHTML = ativos.map(e => `
         <div class="emprestimo-card ativo">
             <div class="emprestimo-aluno">
-                <h4>${e.aluno.nome}</h4>
-                <p><strong>Registro:</strong> ${e.aluno.registro}</p>
-                <p><strong>Turma:</strong> ${e.aluno.turma}</p>
+                <h4>${e.aluno?.nome || 'Aluno'}</h4>
+                <p><strong>Registro:</strong> ${e.aluno?.registro || ''}</p>
+                <p><strong>Turma:</strong> ${e.aluno?.turma || ''}</p>
             </div>
             <div class="emprestimo-material">
-                <h4>${e.material.codigo} - ${e.material.descricao}</h4>
+                <h4>${e.material?.codigo || ''} - ${e.material?.descricao || ''}</h4>
                 <p><strong>Professor:</strong> ${e.professor || 'Não informado'}</p>
                 <div class="emprestimo-aulas">
                     ${[1,2,3,4,5,6].map(a => `
-                        <span class="aula-badge ${e.aulas.includes(a) ? 'ativa' : 'inativa'}">${a}</span>
+                        <span class="aula-badge ${(e.aulas || []).includes(a) ? 'ativa' : 'inativa'}">${a}</span>
                     `).join('')}
                 </div>
             </div>
             <div class="emprestimo-acoes">
                 <button class="btn-devolver" onclick="abrirModalDevolucao(${e.id})">Devolver</button>
-                <span class="emprestimo-hora">${e.dataEmprestimo}</span>
+                <span class="emprestimo-hora">${formatarData(e.data_emprestimo)}</span>
             </div>
         </div>
     `).join('');
@@ -156,23 +97,23 @@ function renderizarHistorico() {
     container.innerHTML = historico.map(e => `
         <div class="emprestimo-card devolvido">
             <div class="emprestimo-aluno">
-                <h4>${e.aluno.nome}</h4>
-                <p><strong>Registro:</strong> ${e.aluno.registro}</p>
-                <p><strong>Turma:</strong> ${e.aluno.turma}</p>
+                <h4>${e.aluno?.nome || 'Aluno'}</h4>
+                <p><strong>Registro:</strong> ${e.aluno?.registro || ''}</p>
+                <p><strong>Turma:</strong> ${e.aluno?.turma || ''}</p>
             </div>
             <div class="emprestimo-material">
-                <h4>${e.material.codigo} - ${e.material.descricao}</h4>
+                <h4>${e.material?.codigo || ''} - ${e.material?.descricao || ''}</h4>
                 <p><strong>Professor:</strong> ${e.professor || 'Não informado'}</p>
                 <div class="emprestimo-aulas">
                     ${[1,2,3,4,5,6].map(a => `
-                        <span class="aula-badge ${e.aulas.includes(a) ? 'ativa' : 'inativa'}">${a}</span>
+                        <span class="aula-badge ${(e.aulas || []).includes(a) ? 'ativa' : 'inativa'}">${a}</span>
                     `).join('')}
                 </div>
             </div>
             <div class="emprestimo-acoes">
                 <span class="emprestimo-hora">
-                    <strong>Empréstimo:</strong> ${e.dataEmprestimo}<br>
-                    <strong>Devolução:</strong> ${e.dataDevolucao}
+                    <strong>Empréstimo:</strong> ${formatarData(e.data_emprestimo)}<br>
+                    <strong>Devolução:</strong> ${formatarData(e.data_devolucao)}
                 </span>
             </div>
         </div>
@@ -194,7 +135,7 @@ function fecharModalEmprestimo() {
     document.getElementById('modalEmprestimo').style.display = 'none';
 }
 
-function buscarAluno() {
+async function buscarAluno() {
     const registro = document.getElementById('alunoRegistro').value.trim();
     const infoDiv = document.getElementById('alunoInfo');
     
@@ -204,23 +145,26 @@ function buscarAluno() {
         return;
     }
     
-    const aluno = ALUNOS.find(a => a.registro === registro);
-    
-    if (aluno) {
-        alunoSelecionado = aluno;
-        infoDiv.className = 'info-preview show sucesso';
-        infoDiv.innerHTML = `
-            <strong>${aluno.nome}</strong><br>
-            Turma: ${aluno.turma}
-        `;
-    } else {
+    try {
+        const response = await fetch(`/api/alunos/${registro}`);
+        if (response.ok) {
+            const aluno = await response.json();
+            alunoSelecionado = aluno;
+            infoDiv.className = 'info-preview show sucesso';
+            infoDiv.innerHTML = `<strong>${aluno.nome}</strong><br>Turma: ${aluno.turma}`;
+        } else {
+            alunoSelecionado = null;
+            infoDiv.className = 'info-preview show erro';
+            infoDiv.innerHTML = 'Aluno não encontrado';
+        }
+    } catch (erro) {
         alunoSelecionado = null;
         infoDiv.className = 'info-preview show erro';
-        infoDiv.innerHTML = 'Aluno não encontrado';
+        infoDiv.innerHTML = 'Erro ao buscar aluno';
     }
 }
 
-function buscarMaterial() {
+async function buscarMaterial() {
     const codigo = document.getElementById('materialCodigo').value.trim().toUpperCase();
     const infoDiv = document.getElementById('materialInfo');
     
@@ -230,25 +174,28 @@ function buscarMaterial() {
         return;
     }
     
-    const material = MATERIAIS.find(m => m.codigo === codigo);
-    
-    if (material) {
-        if (material.status !== 'disponivel') {
+    try {
+        const response = await fetch(`/api/materiais/${codigo}`);
+        if (response.ok) {
+            const material = await response.json();
+            if (material.status !== 'disponivel') {
+                materialSelecionado = null;
+                infoDiv.className = 'info-preview show erro';
+                infoDiv.innerHTML = `${material.descricao}<br><strong>Status: Material não disponível</strong>`;
+                return;
+            }
+            materialSelecionado = material;
+            infoDiv.className = 'info-preview show sucesso';
+            infoDiv.innerHTML = `<strong>${material.descricao}</strong><br>Código: ${material.codigo}`;
+        } else {
             materialSelecionado = null;
             infoDiv.className = 'info-preview show erro';
-            infoDiv.innerHTML = `${material.descricao}<br><strong>Status: Material não disponível</strong>`;
-            return;
+            infoDiv.innerHTML = 'Material não encontrado';
         }
-        materialSelecionado = material;
-        infoDiv.className = 'info-preview show sucesso';
-        infoDiv.innerHTML = `
-            <strong>${material.descricao}</strong><br>
-            Código: ${material.codigo}
-        `;
-    } else {
+    } catch (erro) {
         materialSelecionado = null;
         infoDiv.className = 'info-preview show erro';
-        infoDiv.innerHTML = 'Material não encontrado';
+        infoDiv.innerHTML = 'Erro ao buscar material';
     }
 }
 
@@ -264,11 +211,11 @@ function limparAulas() {
     }
 }
 
-function registrarEmprestimo(e) {
+async function registrarEmprestimo(e) {
     e.preventDefault();
     
     if (!alunoSelecionado) {
-        buscarAluno();
+        await buscarAluno();
         if (!alunoSelecionado) {
             alert('Por favor, busque e selecione um aluno válido');
             return;
@@ -276,7 +223,7 @@ function registrarEmprestimo(e) {
     }
     
     if (!materialSelecionado) {
-        buscarMaterial();
+        await buscarMaterial();
         if (!materialSelecionado) {
             alert('Por favor, busque e selecione um material disponível');
             return;
@@ -295,31 +242,30 @@ function registrarEmprestimo(e) {
         return;
     }
     
-    const agora = new Date();
-    const dataFormatada = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth()+1).toString().padStart(2, '0')}/${agora.getFullYear()} ${agora.getHours().toString().padStart(2, '0')}:${agora.getMinutes().toString().padStart(2, '0')}`;
-    
-    const emprestimo = {
-        id: proximoIdEmprestimo++,
-        aluno: { ...alunoSelecionado },
-        material: { codigo: materialSelecionado.codigo, descricao: materialSelecionado.descricao },
-        professor: document.getElementById('professorResponsavel').value,
-        aulas: aulas,
-        dataEmprestimo: dataFormatada,
-        status: 'ativo',
-        observacoes: document.getElementById('observacoes').value
-    };
-    
-    emprestimos.push(emprestimo);
-    
-    const matIndex = MATERIAIS.findIndex(m => m.codigo === materialSelecionado.codigo);
-    if (matIndex !== -1) {
-        MATERIAIS[matIndex].status = 'emprestado';
+    try {
+        const response = await fetch('/api/emprestimos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                aluno_registro: alunoSelecionado.registro,
+                material_codigo: materialSelecionado.codigo,
+                professor: document.getElementById('professorResponsavel').value,
+                aulas: aulas,
+                observacoes: document.getElementById('observacoes').value
+            })
+        });
+        
+        if (!response.ok) {
+            const erro = await response.json();
+            throw new Error(erro.erro || 'Erro ao registrar');
+        }
+        
+        fecharModalEmprestimo();
+        await carregarDados();
+        alert(`Empréstimo registrado com sucesso!\n\nAluno: ${alunoSelecionado.nome}\nMaterial: ${materialSelecionado.codigo}`);
+    } catch (erro) {
+        alert('Erro: ' + erro.message);
     }
-    
-    fecharModalEmprestimo();
-    renderizarEmprestimosAtivos();
-    
-    alert(`Empréstimo registrado com sucesso!\n\nAluno: ${emprestimo.aluno.nome}\nMaterial: ${emprestimo.material.codigo}`);
 }
 
 function abrirModalDevolucao(id) {
@@ -329,9 +275,9 @@ function abrirModalDevolucao(id) {
     document.getElementById('emprestimoIdDevolucao').value = id;
     document.getElementById('infoDevolucao').innerHTML = `
         <div class="devolucao-info">
-            <p><strong>Aluno:</strong> ${emprestimo.aluno.nome}</p>
-            <p><strong>Material:</strong> ${emprestimo.material.codigo} - ${emprestimo.material.descricao}</p>
-            <p><strong>Emprestado em:</strong> ${emprestimo.dataEmprestimo}</p>
+            <p><strong>Aluno:</strong> ${emprestimo.aluno?.nome || ''}</p>
+            <p><strong>Material:</strong> ${emprestimo.material?.codigo || ''} - ${emprestimo.material?.descricao || ''}</p>
+            <p><strong>Emprestado em:</strong> ${formatarData(emprestimo.data_emprestimo)}</p>
         </div>
     `;
     document.getElementById('estadoDevolucao').value = 'otimo';
@@ -343,29 +289,30 @@ function fecharModalDevolucao() {
     document.getElementById('modalDevolucao').style.display = 'none';
 }
 
-function confirmarDevolucao(e) {
+async function confirmarDevolucao(e) {
     e.preventDefault();
     
-    const id = parseInt(document.getElementById('emprestimoIdDevolucao').value);
-    const emprestimo = emprestimos.find(e => e.id === id);
-    if (!emprestimo) return;
+    const id = document.getElementById('emprestimoIdDevolucao').value;
     
-    const agora = new Date();
-    const dataFormatada = `${agora.getDate().toString().padStart(2, '0')}/${(agora.getMonth()+1).toString().padStart(2, '0')}/${agora.getFullYear()} ${agora.getHours().toString().padStart(2, '0')}:${agora.getMinutes().toString().padStart(2, '0')}`;
-    
-    emprestimo.status = 'devolvido';
-    emprestimo.dataDevolucao = dataFormatada;
-    emprestimo.estadoDevolucao = document.getElementById('estadoDevolucao').value;
-    emprestimo.observacoesDevolucao = document.getElementById('obsDevolucao').value;
-    
-    const matIndex = MATERIAIS.findIndex(m => m.codigo === emprestimo.material.codigo);
-    if (matIndex !== -1) {
-        MATERIAIS[matIndex].status = 'disponivel';
+    try {
+        const response = await fetch(`/api/emprestimos/${id}/devolver`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                estado_devolucao: document.getElementById('estadoDevolucao').value,
+                observacoes_devolucao: document.getElementById('obsDevolucao').value
+            })
+        });
+        
+        if (!response.ok) {
+            const erro = await response.json();
+            throw new Error(erro.erro || 'Erro ao devolver');
+        }
+        
+        fecharModalDevolucao();
+        await carregarDados();
+        alert('Devolução registrada com sucesso!');
+    } catch (erro) {
+        alert('Erro: ' + erro.message);
     }
-    
-    fecharModalDevolucao();
-    renderizarEmprestimosAtivos();
-    renderizarHistorico();
-    
-    alert('Devolução registrada com sucesso!');
 }

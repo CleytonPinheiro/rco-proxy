@@ -5,9 +5,10 @@ Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do
 
 ## Estado Atual
 - **Data**: 14/01/2026
-- **Status**: Funcional com login automático + módulo de empréstimos
+- **Status**: Funcional com login automático + módulo de empréstimos + Supabase
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
+- **Banco de Dados**: Supabase (PostgreSQL)
 
 ## Arquitetura do Projeto
 

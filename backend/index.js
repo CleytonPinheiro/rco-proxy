@@ -233,8 +233,12 @@ app.get("/api/alunos/:registro", async (req, res) => {
                         .eq('registro', req.params.registro)
                         .single();
                 
-                if (error) throw error;
-                if (!data) return res.status(404).json({ erro: 'Aluno não encontrado' });
+                if (error) {
+                        if (error.code === 'PGRST116') {
+                                return res.status(404).json({ erro: 'Aluno não encontrado' });
+                        }
+                        throw error;
+                }
                 res.json(data);
         } catch (erro) {
                 res.status(500).json({ erro: erro.message });
@@ -268,8 +272,12 @@ app.get("/api/materiais/:codigo", async (req, res) => {
                         .eq('codigo', req.params.codigo)
                         .single();
                 
-                if (error) throw error;
-                if (!data) return res.status(404).json({ erro: 'Material não encontrado' });
+                if (error) {
+                        if (error.code === 'PGRST116') {
+                                return res.status(404).json({ erro: 'Material não encontrado' });
+                        }
+                        throw error;
+                }
                 res.json(data);
         } catch (erro) {
                 res.status(500).json({ erro: erro.message });
@@ -367,8 +375,11 @@ app.post("/api/emprestimos", async (req, res) => {
                         .eq('registro', aluno_registro)
                         .single();
                 
-                if (alunoErr || !aluno) {
-                        return res.status(404).json({ erro: 'Aluno não encontrado' });
+                if (alunoErr) {
+                        if (alunoErr.code === 'PGRST116') {
+                                return res.status(404).json({ erro: 'Aluno não encontrado' });
+                        }
+                        throw alunoErr;
                 }
                 
                 const { data: material, error: matErr } = await supabase
@@ -377,8 +388,11 @@ app.post("/api/emprestimos", async (req, res) => {
                         .eq('codigo', material_codigo)
                         .single();
                 
-                if (matErr || !material) {
-                        return res.status(404).json({ erro: 'Material não encontrado' });
+                if (matErr) {
+                        if (matErr.code === 'PGRST116') {
+                                return res.status(404).json({ erro: 'Material não encontrado' });
+                        }
+                        throw matErr;
                 }
                 
                 if (material.status !== 'disponivel') {
@@ -426,8 +440,11 @@ app.put("/api/emprestimos/:id/devolver", async (req, res) => {
                         .eq('id', req.params.id)
                         .single();
                 
-                if (getErr || !emprestimo) {
-                        return res.status(404).json({ erro: 'Empréstimo não encontrado' });
+                if (getErr) {
+                        if (getErr.code === 'PGRST116') {
+                                return res.status(404).json({ erro: 'Empréstimo não encontrado' });
+                        }
+                        throw getErr;
                 }
                 
                 const { error: updateMatErr } = await supabase

@@ -2,7 +2,7 @@ const TIPOS_MATERIAL = {
     'tablet': { nome: 'Tablet', icone: '📱' },
     'notebook': { nome: 'Notebook', icone: '💻' },
     'calculadora': { nome: 'Calculadora', icone: '🔢' },
-    'kit-lab': { nome: 'Kit Laboratório', icone: '🔬' },
+    'kit_laboratorio': { nome: 'Kit Laboratório', icone: '🔬' },
     'esportivo': { nome: 'Material Esportivo', icone: '⚽' },
     'outro': { nome: 'Outro', icone: '📦' }
 };
@@ -14,32 +14,25 @@ const ESTADOS = {
     'ruim': 'Necessita Reparo'
 };
 
-let materiais = [
-    { id: 1, codigo: 'TAB-001', tipo: 'tablet', descricao: 'Samsung Galaxy Tab A7', localizacao: 'Sala 12, Armário 1', estado: 'otimo', status: 'disponivel' },
-    { id: 2, codigo: 'TAB-002', tipo: 'tablet', descricao: 'Samsung Galaxy Tab A7', localizacao: 'Sala 12, Armário 1', estado: 'bom', status: 'emprestado' },
-    { id: 3, codigo: 'TAB-003', tipo: 'tablet', descricao: 'Samsung Galaxy Tab A7', localizacao: 'Sala 12, Armário 1', estado: 'otimo', status: 'disponivel' },
-    { id: 4, codigo: 'TAB-004', tipo: 'tablet', descricao: 'Samsung Galaxy Tab S6 Lite', localizacao: 'Sala 12, Armário 2', estado: 'otimo', status: 'disponivel' },
-    { id: 5, codigo: 'TAB-005', tipo: 'tablet', descricao: 'Samsung Galaxy Tab S6 Lite', localizacao: 'Sala 12, Armário 2', estado: 'regular', status: 'manutencao' },
-    { id: 6, codigo: 'NOT-001', tipo: 'notebook', descricao: 'Dell Inspiron 15', localizacao: 'Laboratório Info', estado: 'bom', status: 'disponivel' },
-    { id: 7, codigo: 'NOT-002', tipo: 'notebook', descricao: 'Dell Inspiron 15', localizacao: 'Laboratório Info', estado: 'bom', status: 'emprestado' },
-    { id: 8, codigo: 'NOT-003', tipo: 'notebook', descricao: 'Lenovo IdeaPad 3', localizacao: 'Laboratório Info', estado: 'otimo', status: 'disponivel' },
-    { id: 9, codigo: 'CALC-001', tipo: 'calculadora', descricao: 'Casio FX-82MS', localizacao: 'Sala Matemática', estado: 'otimo', status: 'disponivel' },
-    { id: 10, codigo: 'CALC-002', tipo: 'calculadora', descricao: 'Casio FX-82MS', localizacao: 'Sala Matemática', estado: 'bom', status: 'disponivel' },
-    { id: 11, codigo: 'CALC-003', tipo: 'calculadora', descricao: 'Casio FX-991ES Plus', localizacao: 'Sala Matemática', estado: 'otimo', status: 'emprestado' },
-    { id: 12, codigo: 'LAB-001', tipo: 'kit-lab', descricao: 'Kit Microscópio Óptico', localizacao: 'Lab. Ciências', estado: 'bom', status: 'disponivel' },
-    { id: 13, codigo: 'LAB-002', tipo: 'kit-lab', descricao: 'Kit Química Básica', localizacao: 'Lab. Ciências', estado: 'otimo', status: 'disponivel' },
-    { id: 14, codigo: 'LAB-003', tipo: 'kit-lab', descricao: 'Kit Eletricidade', localizacao: 'Lab. Física', estado: 'regular', status: 'manutencao' },
-    { id: 15, codigo: 'ESP-001', tipo: 'esportivo', descricao: 'Kit Voleibol (rede + bola)', localizacao: 'Depósito Ed. Física', estado: 'bom', status: 'disponivel' },
-    { id: 16, codigo: 'ESP-002', tipo: 'esportivo', descricao: 'Kit Basquete (5 bolas)', localizacao: 'Depósito Ed. Física', estado: 'otimo', status: 'emprestado' },
-    { id: 17, codigo: 'ESP-003', tipo: 'esportivo', descricao: 'Kit Futebol (10 bolas)', localizacao: 'Depósito Ed. Física', estado: 'bom', status: 'disponivel' }
-];
-
-let proximoId = 18;
+let materiais = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    renderizarMateriais();
-    atualizarEstatisticas();
+    carregarMateriais();
 });
+
+async function carregarMateriais() {
+    try {
+        const response = await fetch('/api/materiais');
+        if (!response.ok) throw new Error('Erro ao carregar');
+        materiais = await response.json();
+        renderizarMateriais();
+        atualizarEstatisticas();
+    } catch (erro) {
+        console.error('Erro:', erro);
+        document.getElementById('listaMateriais').innerHTML = 
+            '<div class="empty-message">Erro ao carregar materiais. Execute o SQL no Supabase.</div>';
+    }
+}
 
 function gerarCodigoBarrasSVG(codigo) {
     const barWidth = 2;
@@ -79,7 +72,7 @@ function renderizarMateriais() {
     let materiaisFiltrados = materiais.filter(m => {
         const matchBusca = m.codigo.toLowerCase().includes(busca) || 
                           m.descricao.toLowerCase().includes(busca) ||
-                          m.localizacao.toLowerCase().includes(busca);
+                          (m.localizacao || '').toLowerCase().includes(busca);
         const matchTipo = !filtroTipo || m.tipo === filtroTipo;
         const matchStatus = !filtroStatus || m.status === filtroStatus;
         return matchBusca && matchTipo && matchStatus;
@@ -143,12 +136,12 @@ function fecharModalCadastro() {
     document.getElementById('modalCadastro').style.display = 'none';
 }
 
-function salvarMaterial(e) {
+async function salvarMaterial(e) {
     e.preventDefault();
     
     const id = document.getElementById('materialId').value;
     const material = {
-        codigo: document.getElementById('codigo').value,
+        codigo: document.getElementById('codigo').value.toUpperCase(),
         tipo: document.getElementById('tipo').value,
         descricao: document.getElementById('descricao').value,
         localizacao: document.getElementById('localizacao').value,
@@ -156,19 +149,33 @@ function salvarMaterial(e) {
         status: document.getElementById('status').value
     };
 
-    if (id) {
-        const index = materiais.findIndex(m => m.id === parseInt(id));
-        if (index !== -1) {
-            materiais[index] = { ...materiais[index], ...material };
+    try {
+        let response;
+        if (id) {
+            response = await fetch(`/api/materiais/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(material)
+            });
+        } else {
+            response = await fetch('/api/materiais', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(material)
+            });
         }
-    } else {
-        material.id = proximoId++;
-        materiais.push(material);
+        
+        if (!response.ok) {
+            const erro = await response.json();
+            throw new Error(erro.erro || 'Erro ao salvar');
+        }
+        
+        fecharModalCadastro();
+        await carregarMateriais();
+        alert(id ? 'Material atualizado!' : 'Material cadastrado!');
+    } catch (erro) {
+        alert('Erro: ' + erro.message);
     }
-
-    fecharModalCadastro();
-    renderizarMateriais();
-    atualizarEstatisticas();
 }
 
 function editarMaterial(id) {
@@ -187,14 +194,24 @@ function editarMaterial(id) {
     document.getElementById('modalCadastro').style.display = 'flex';
 }
 
-function excluirMaterial(id) {
-    if (confirm('Tem certeza que deseja excluir este material?')) {
-        materiais = materiais.filter(m => m.id !== id);
-        renderizarMateriais();
-        atualizarEstatisticas();
+async function excluirMaterial(id) {
+    const material = materiais.find(m => m.id === id);
+    if (!material) return;
+    
+    if (material.status === 'emprestado') {
+        alert('Não é possível excluir um material emprestado.');
+        return;
     }
-}
-
-if (typeof window !== 'undefined') {
-    window.materiais = materiais;
+    
+    if (!confirm(`Deseja excluir o material ${material.codigo}?`)) return;
+    
+    try {
+        const response = await fetch(`/api/materiais/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Erro ao excluir');
+        
+        await carregarMateriais();
+        alert('Material excluído!');
+    } catch (erro) {
+        alert('Erro: ' + erro.message);
+    }
 }
