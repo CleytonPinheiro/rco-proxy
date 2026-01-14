@@ -30,30 +30,46 @@ const AUTH_CONFIG = {
 };
 
 async function getSessionCookie() {
+    try {
         const response = await axios.get(AUTH_CONFIG.loginPageUrl, {
-                params: {
-                        response_type: "token",
-                        client_id: AUTH_CONFIG.clientId,
-                        redirect_uri: AUTH_CONFIG.redirectUri,
-                        scope: AUTH_CONFIG.scope,
-                        tokenFormat: "jwt",
-                        captcha: "false"
-                },
-                headers: {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9"
-                },
-                maxRedirects: 5,
-                validateStatus: () => true
+            params: {
+                response_type: "token",
+                client_id: AUTH_CONFIG.clientId,
+                redirect_uri: AUTH_CONFIG.redirectUri,
+                scope: AUTH_CONFIG.scope,
+                tokenFormat: "jwt",
+                captcha: "false"
+            },
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Referer": "https://rco.paas.pr.gov.br/"
+            },
+            maxRedirects: 5,
+            validateStatus: () => true
         });
 
+        console.log("Headers recebidos:", response.headers);
+
         const cookies = response.headers["set-cookie"];
-        if (!cookies) throw new Error("Nenhum cookie retornado");
+        if (!cookies || cookies.length === 0) {
+            // Fallback: Tentar prosseguir sem o cookie ou logar erro detalhado
+            console.error("DEBUG: Nenhum cookie retornado nos headers");
+            throw new Error("A Central de Segurança PR não retornou cookies de sessão. Isso pode ser um bloqueio de IP ou mudança no sistema.");
+        }
 
         const csAuthCookie = cookies.find(c => c.startsWith("CS-AUTH="));
-        if (!csAuthCookie) throw new Error("Cookie CS-AUTH não encontrado");
+        if (!csAuthCookie) {
+            console.error("DEBUG: Cookie CS-AUTH não encontrado entre os cookies:", cookies);
+            throw new Error("Cookie de autenticação CS-AUTH não encontrado.");
+        }
 
         return csAuthCookie.split(";")[0];
+    } catch (error) {
+        console.error("Erro em getSessionCookie:", error.message);
+        throw error;
+    }
 }
 
 async function performLogin(sessionCookie) {
