@@ -4,8 +4,8 @@
 Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do estado do Paraná com autenticação automática.
 
 ## Estado Atual
-- **Data**: 13/01/2026
-- **Status**: Funcional com login automático
+- **Data**: 14/01/2026
+- **Status**: Funcional com login automático + módulo de empréstimos
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
 
@@ -22,9 +22,15 @@ Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do
 │   ├── index.html        # Página de login
 │   ├── style.css         # Estilos do login
 │   ├── app.js            # Lógica do login
-│   ├── dashboard.html    # Painel com dados do usuário
+│   ├── dashboard.html    # Painel com turmas e alunos
 │   ├── dashboard.css     # Estilos do painel
-│   └── dashboard.js      # Lógica do painel
+│   ├── dashboard.js      # Lógica do painel
+│   ├── materiais.html    # Gerenciamento de materiais
+│   ├── materiais.css     # Estilos de materiais
+│   ├── materiais.js      # Lógica de materiais
+│   ├── emprestimos.html  # Registro de empréstimos
+│   ├── emprestimos.css   # Estilos de empréstimos
+│   └── emprestimos.js    # Lógica de empréstimos
 ├── replit.md             # Este arquivo
 └── README.md             # Documentação
 ```
@@ -50,10 +56,19 @@ O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná
 ### Interface Web
 - **Página de Login** (`/`): Formulário para inserir CPF e senha
 - **Dashboard** (`/dashboard.html`): Painel com dados do usuário
-  - Cards de Turmas
+  - Cards de Turmas (clicáveis para ver alunos)
   - Cards de Disciplinas
   - Cards de Livros de Classe
-  - Dados completos em JSON
+  - Modal com lista de alunos e código de barras
+- **Materiais** (`/materiais.html`): Gerenciamento de materiais
+  - Cadastro de materiais (tablets, notebooks, calculadoras, etc.)
+  - Filtros por tipo e status
+  - Código de barras para cada material
+- **Empréstimos** (`/emprestimos.html`): Controle de empréstimos
+  - Registro de empréstimo por aluno/material
+  - Seleção de aulas/período de uso
+  - Registro de devolução
+  - Histórico de empréstimos
 - Redirecionamento automático após login bem-sucedido
 
 ## Configuração
@@ -74,6 +89,14 @@ O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná
 3. **Retry automático**: Se receber 403, tenta renovar token antes de retornar erro
 
 ## Mudanças Recentes
+
+- **14/01/2026**: Módulo de Empréstimos de Materiais
+  - Cadastro e gerenciamento de materiais do colégio
+  - Sistema de empréstimo com seleção de aulas
+  - Registro de devolução com verificação de estado
+  - Histórico completo de empréstimos
+  - Código de barras para materiais e alunos
+  - Navegação entre páginas do sistema
 
 - **13/01/2026**: Dashboard com dados do usuário
   - Criada página dashboard.html com cards de turmas, disciplinas e livros

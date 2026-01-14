@@ -1,0 +1,318 @@
+.tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.tab:hover {
+    color: #333;
+}
+
+.tab.active {
+    color: #007bff;
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #007bff;
+}
+
+.lista-emprestimos {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.emprestimo-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 20px;
+    align-items: center;
+}
+
+.emprestimo-card.atrasado {
+    border-left: 4px solid #dc3545;
+}
+
+.emprestimo-card.ativo {
+    border-left: 4px solid #ffc107;
+}
+
+.emprestimo-card.devolvido {
+    border-left: 4px solid #28a745;
+}
+
+.emprestimo-aluno h4 {
+    font-size: 16px;
+    color: #333;
+    margin: 0 0 5px 0;
+}
+
+.emprestimo-aluno p {
+    font-size: 13px;
+    color: #666;
+    margin: 2px 0;
+}
+
+.emprestimo-material h4 {
+    font-size: 14px;
+    color: #333;
+    margin: 0 0 5px 0;
+}
+
+.emprestimo-material p {
+    font-size: 13px;
+    color: #666;
+    margin: 2px 0;
+}
+
+.emprestimo-aulas {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+.aula-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.aula-badge.ativa {
+    background: #007bff;
+    color: white;
+}
+
+.aula-badge.inativa {
+    background: #e0e0e0;
+    color: #999;
+}
+
+.emprestimo-acoes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-devolver {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-devolver:hover {
+    background: #218838;
+}
+
+.emprestimo-hora {
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+}
+
+.modal-lg {
+    max-width: 700px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.input-with-btn {
+    display: flex;
+    gap: 8px;
+}
+
+.input-with-btn input {
+    flex: 1;
+}
+
+.btn-scan {
+    width: 44px;
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background 0.2s;
+}
+
+.btn-scan:hover {
+    background: #bbdefb;
+}
+
+.info-preview {
+    margin-top: 8px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 13px;
+    display: none;
+}
+
+.info-preview.show {
+    display: block;
+}
+
+.info-preview.erro {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.info-preview.sucesso {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.periodo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.periodo-item {
+    position: relative;
+}
+
+.periodo-item input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.periodo-item label {
+    display: block;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.periodo-item label small {
+    display: block;
+    font-size: 11px;
+    font-weight: normal;
+    color: #999;
+    margin-top: 3px;
+}
+
+.periodo-item input:checked + label {
+    background: #e3f2fd;
+    border-color: #007bff;
+    color: #007bff;
+}
+
+.periodo-item input:checked + label small {
+    color: #1976d2;
+}
+
+.periodo-acoes {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #007bff;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.devolucao-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.devolucao-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.devolucao-info strong {
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    .emprestimo-card {
+        grid-template-columns: 1fr;
+    }
+    
+    .periodo-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+}

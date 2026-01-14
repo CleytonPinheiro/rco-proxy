@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCO Digital - Empréstimos</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="materiais.css">
+    <link rel="stylesheet" href="emprestimos.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>RCO Digital</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="materiais.html">Materiais</a>
+                <a href="emprestimos.html" class="active">Empréstimos</a>
+            </nav>
+            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <h2>Gerenciamento de Empréstimos</h2>
+            <button class="btn-primary" onclick="abrirModalEmprestimo()">+ Novo Empréstimo</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="trocarTab('ativos')">Empréstimos Ativos</button>
+            <button class="tab" onclick="trocarTab('historico')">Histórico</button>
+        </div>
+
+        <div id="tabAtivos" class="tab-content">
+            <div id="listaEmprestimosAtivos" class="lista-emprestimos"></div>
+        </div>
+
+        <div id="tabHistorico" class="tab-content" style="display: none;">
+            <div id="listaHistorico" class="lista-emprestimos"></div>
+        </div>
+    </main>
+
+    <div id="modalEmprestimo" class="modal" style="display: none;">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>Novo Empréstimo</h2>
+                <button class="modal-close" onclick="fecharModalEmprestimo()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formEmprestimo" onsubmit="registrarEmprestimo(event)">
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="alunoRegistro">Registro do Aluno</label>
+                            <div class="input-with-btn">
+                                <input type="text" id="alunoRegistro" placeholder="Digite ou escaneie o código" required>
+                                <button type="button" class="btn-scan" onclick="buscarAluno()">🔍</button>
+                            </div>
+                            <div id="alunoInfo" class="info-preview"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="materialCodigo">Código do Material</label>
+                            <div class="input-with-btn">
+                                <input type="text" id="materialCodigo" placeholder="Digite ou escaneie o código" required>
+                                <button type="button" class="btn-scan" onclick="buscarMaterial()">🔍</button>
+                            </div>
+                            <div id="materialInfo" class="info-preview"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="professorResponsavel">Professor Responsável</label>
+                        <input type="text" id="professorResponsavel" placeholder="Nome do professor">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Período de Uso</label>
+                        <div class="periodo-grid">
+                            <div class="periodo-item">
+                                <input type="checkbox" id="aula1" value="1">
+                                <label for="aula1">1ª Aula<br><small>07:30 - 08:20</small></label>
+                            </div>
+                            <div class="periodo-item">
+                                <input type="checkbox" id="aula2" value="2">
+                                <label for="aula2">2ª Aula<br><small>08:20 - 09:10</small></label>
+                            </div>
+                            <div class="periodo-item">
+                                <input type="checkbox" id="aula3" value="3">
+                                <label for="aula3">3ª Aula<br><small>09:30 - 10:20</small></label>
+                            </div>
+                            <div class="periodo-item">
+                                <input type="checkbox" id="aula4" value="4">
+                                <label for="aula4">4ª Aula<br><small>10:20 - 11:10</small></label>
+                            </div>
+                            <div class="periodo-item">
+                                <input type="checkbox" id="aula5" value="5">
+                                <label for="aula5">5ª Aula<br><small>11:10 - 12:00</small></label>
+                            </div>
+                            <div class="periodo-item">
+                                <input type="checkbox" id="aula6" value="6">
+                                <label for="aula6">6ª Aula<br><small>12:00 - 12:50</small></label>
+                            </div>
+                        </div>
+                        <div class="periodo-acoes">
+                            <button type="button" class="btn-link" onclick="selecionarTodasAulas()">Selecionar todas</button>
+                            <button type="button" class="btn-link" onclick="limparAulas()">Limpar</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="observacoes">Observações</label>
+                        <textarea id="observacoes" rows="3" placeholder="Observações adicionais..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="fecharModalEmprestimo()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Registrar Empréstimo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalDevolucao" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrar Devolução</h2>
+                <button class="modal-close" onclick="fecharModalDevolucao()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="infoDevolucao"></div>
+                <form id="formDevolucao" onsubmit="confirmarDevolucao(event)">
+                    <input type="hidden" id="emprestimoIdDevolucao">
+                    
+                    <div class="form-group">
+                        <label for="estadoDevolucao">Estado do Material na Devolução</label>
+                        <select id="estadoDevolucao" required>
+                            <option value="otimo">Ótimo</option>
+                            <option value="bom">Bom</option>
+                            <option value="regular">Regular</option>
+                            <option value="danificado">Danificado</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="obsDevolucao">Observações da Devolução</label>
+                        <textarea id="obsDevolucao" rows="3" placeholder="Algum problema encontrado?"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="fecharModalDevolucao()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Confirmar Devolução</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="emprestimos.js"></script>
+</body>
+</html>

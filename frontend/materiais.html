@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCO Digital - Materiais</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="materiais.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>RCO Digital</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="materiais.html" class="active">Materiais</a>
+                <a href="emprestimos.html">Empréstimos</a>
+            </nav>
+            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <h2>Gerenciamento de Materiais</h2>
+            <button class="btn-primary" onclick="abrirModalCadastro()">+ Novo Material</button>
+        </div>
+
+        <div class="filtros">
+            <input type="text" id="busca" placeholder="Buscar material..." oninput="filtrarMateriais()">
+            <select id="filtroTipo" onchange="filtrarMateriais()">
+                <option value="">Todos os tipos</option>
+                <option value="tablet">Tablet</option>
+                <option value="notebook">Notebook</option>
+                <option value="calculadora">Calculadora</option>
+                <option value="kit-lab">Kit Laboratório</option>
+                <option value="esportivo">Material Esportivo</option>
+                <option value="outro">Outro</option>
+            </select>
+            <select id="filtroStatus" onchange="filtrarMateriais()">
+                <option value="">Todos os status</option>
+                <option value="disponivel">Disponível</option>
+                <option value="emprestado">Emprestado</option>
+                <option value="manutencao">Em Manutenção</option>
+            </select>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-numero" id="totalMateriais">0</div>
+                <div class="stat-label">Total de Materiais</div>
+            </div>
+            <div class="stat-card disponivel">
+                <div class="stat-numero" id="totalDisponiveis">0</div>
+                <div class="stat-label">Disponíveis</div>
+            </div>
+            <div class="stat-card emprestado">
+                <div class="stat-numero" id="totalEmprestados">0</div>
+                <div class="stat-label">Emprestados</div>
+            </div>
+            <div class="stat-card manutencao">
+                <div class="stat-numero" id="totalManutencao">0</div>
+                <div class="stat-label">Em Manutenção</div>
+            </div>
+        </div>
+
+        <div id="listaMateriais" class="lista-materiais"></div>
+    </main>
+
+    <div id="modalCadastro" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTituloCadastro">Novo Material</h2>
+                <button class="modal-close" onclick="fecharModalCadastro()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formMaterial" onsubmit="salvarMaterial(event)">
+                    <input type="hidden" id="materialId">
+                    
+                    <div class="form-group">
+                        <label for="codigo">Código Patrimonial</label>
+                        <input type="text" id="codigo" required placeholder="Ex: TAB-001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Material</label>
+                        <select id="tipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="tablet">Tablet</option>
+                            <option value="notebook">Notebook</option>
+                            <option value="calculadora">Calculadora Científica</option>
+                            <option value="kit-lab">Kit de Laboratório</option>
+                            <option value="esportivo">Material Esportivo</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descricao">Descrição / Modelo</label>
+                        <input type="text" id="descricao" required placeholder="Ex: Samsung Galaxy Tab A7">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="localizacao">Localização</label>
+                        <input type="text" id="localizacao" placeholder="Ex: Sala 12, Armário 3">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estado">Estado de Conservação</label>
+                        <select id="estado" required>
+                            <option value="otimo">Ótimo</option>
+                            <option value="bom">Bom</option>
+                            <option value="regular">Regular</option>
+                            <option value="ruim">Necessita Reparo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" required>
+                            <option value="disponivel">Disponível</option>
+                            <option value="emprestado">Emprestado</option>
+                            <option value="manutencao">Em Manutenção</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="fecharModalCadastro()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="materiais.js"></script>
+</body>
+</html>
