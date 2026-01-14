@@ -21,71 +21,114 @@ let cachedToken = null;
 let tokenExpiration = null;
 
 const AUTH_CONFIG = {
+	loginPageUrl: "https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/login.html",
 	loginApiUrl: "https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/api/v1/authorize/jwt",
 	clientId: "f340f1b1f65b6df5b5e3f94d95b11daf",
 	redirectUri: "https://rco.paas.pr.gov.br",
 	scope: "emgpr.mobile emgpr.v1.ocorrencia.post"
 };
 
-async function performLogin() {
+async function getSessionCookie() {
+	const response = await axios.get(AUTH_CONFIG.loginPageUrl, {
+		params: {
+			response_type: "token",
+			client_id: AUTH_CONFIG.clientId,
+			redirect_uri: AUTH_CONFIG.redirectUri,
+			scope: AUTH_CONFIG.scope,
+			tokenFormat: "jwt",
+			captcha: "false"
+		},
+		headers: {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9"
+		},
+		maxRedirects: 5,
+		validateStatus: () => true
+	});
+
+	const cookies = response.headers["set-cookie"];
+	if (!cookies) throw new Error("Nenhum cookie retornado");
+
+	const csAuthCookie = cookies.find(c => c.startsWith("CS-AUTH="));
+	if (!csAuthCookie) throw new Error("Cookie CS-AUTH não encontrado");
+
+	return csAuthCookie.split(";")[0];
+}
+
+async function performLogin(sessionCookie) {
 	const { cpf, senha } = userCredentials;
-	if (!cpf || !senha) throw new Error("Credenciais não configuradas. Preencha CPF e senha.");
+	if (!cpf || !senha) throw new Error("Credenciais não configuradas");
 
 	const formData = new URLSearchParams({
+		paginaLogin: "",
+		provedorselecionado: "tabCentral",
+		origemRequisicao: "",
+		valorCPF: "",
+		urlLogo: encodeURIComponent("https://www.registrodeclasse.seed.pr.gov.br/rcdig/images/logo_sistema.png"),
+		loginPadrao: "btnCentral",
+		modulosDeAutenticacao: "btnSentinela,btnSms,btnCpf,btnCentral",
+		labelCentral: "CPF,Login Sentinela",
+		moduloAtual: "",
+		dataAcesso: "2053",
+		exibirLinkAutoCadastro: "true",
+		exibirLinkAutoCadastroCertificado: "false",
+		exibirLinkRecuperarSenha: "true",
+		exibirAviso: "true",
+		formaAutenticacao: "btnCpf",
 		response_type: "token",
 		client_id: AUTH_CONFIG.clientId,
-		redirect_uri: AUTH_CONFIG.redirectUri,
-		scope: AUTH_CONFIG.scope,
+		redirect_uri: encodeURIComponent(AUTH_CONFIG.redirectUri),
+		scope: encodeURIComponent(AUTH_CONFIG.scope),
+		state: "null",
+		mensagem: "",
+		dnsCidadao: "https://cidadao-cs.identidadedigital.pr.gov.br/centralcidadao",
+		provedores: "",
+		provedor: "tabCentral",
 		tokenFormat: "jwt",
+		code_challenge: "",
+		code_challenge_method: "",
+		captcha: "false",
+		codCaptcha: "",
 		attribute: cpf,
 		attribute_central: cpf,
 		password: senha,
-		formaAutenticacao: "btnCpf",
-		provedor: "tabCentral",
-		provedorselecionado: "tabCentral",
-		loginPadrao: "btnCentral",
-		captcha: "false"
+		captchaCentral: "",
+		attribute_Sms: "",
+		celular: "",
+		captchaSms: "",
+		codigoSeguranca: "",
+		attribute_token: "",
+		codigoOTP: "",
+		attribute_expresso: "",
+		password_expresso: "",
+		captchaExpresso: "",
+		attribute_emailToken: "",
+		email: "",
+		captchaEmailToken: "",
+		codigoSegurancaEmail: ""
 	});
-
-	console.log("Tentando login com CPF:", cpf.substring(0, 3) + "***");
 
 	const response = await axios.post(AUTH_CONFIG.loginApiUrl, formData.toString(), {
 		headers: {
 			"Content-Type": "application/x-www-form-urlencoded",
+			"Cookie": sessionCookie,
 			"Origin": "https://auth-cs.identidadedigital.pr.gov.br",
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 		},
 		maxRedirects: 0,
 		validateStatus: () => true
 	});
 
-	console.log("Resposta do login - Status:", response.status);
-
 	if (response.status === 302 || response.status === 301) {
 		const redirectUrl = response.headers["location"];
-		console.log("Redirect URL:", redirectUrl ? redirectUrl.substring(0, 100) + "..." : "null");
-
-		if (redirectUrl) {
-			if (redirectUrl.includes("access_token=")) {
-				const tokenMatch = redirectUrl.match(/access_token=([^&]+)/);
-				if (tokenMatch && tokenMatch[1]) {
-					console.log("Token obtido com sucesso!");
-					return decodeURIComponent(tokenMatch[1]);
-				}
-			}
-
-			if (redirectUrl.includes("mensagem=")) {
-				const mensagemMatch = redirectUrl.match(/mensagem=([^&]+)/);
-				if (mensagemMatch && mensagemMatch[1]) {
-					const mensagem = decodeURIComponent(mensagemMatch[1].replace(/\+/g, " "));
-					throw new Error(`Erro de autenticação: ${mensagem}`);
-				}
+		if (redirectUrl && redirectUrl.includes("access_token=")) {
+			const tokenMatch = redirectUrl.match(/access_token=([^&]+)/);
+			if (tokenMatch && tokenMatch[1]) {
+				return decodeURIComponent(tokenMatch[1]);
 			}
 		}
 	}
-
-	throw new Error(`Falha no login. Status: ${response.status}. Verifique suas credenciais.`);
+	throw new Error(`Falha no login. Status: ${response.status}`);
 }
 
 function decodeJwtExpiration(token) {
@@ -98,18 +141,12 @@ function decodeJwtExpiration(token) {
 
 async function getValidToken(forceRefresh = false) {
 	if (!forceRefresh && cachedToken && tokenExpiration && tokenExpiration > Date.now() + 300000) {
-		console.log("Usando token em cache (válido por mais", Math.round((tokenExpiration - Date.now()) / 60000), "minutos)");
 		return cachedToken;
 	}
-
-	console.log("Obtendo novo token...");
-	const token = await performLogin();
+	const sessionCookie = await getSessionCookie();
+	const token = await performLogin(sessionCookie);
 	cachedToken = token.replace(/[^a-zA-Z0-9._-]/g, "");
 	tokenExpiration = decodeJwtExpiration(cachedToken) || (Date.now() + 3600000);
-	
-	const expiresInMinutes = Math.round((tokenExpiration - Date.now()) / 60000);
-	console.log(`Novo token obtido. Expira em ${expiresInMinutes} minutos.`);
-	
 	return cachedToken;
 }
 
@@ -127,7 +164,7 @@ app.post("/api/configurar", async (req, res) => {
 		return res.status(400).json({ erro: "CPF e Senha são obrigatórios" });
 	}
 
-	userCredentials.cpf = cpf.replace(/\D/g, "");
+	userCredentials.cpf = cpf;
 	userCredentials.senha = senha;
 
 	try {
@@ -138,7 +175,6 @@ app.post("/api/configurar", async (req, res) => {
 			expiracao: tokenExpiration ? new Date(tokenExpiration).toISOString() : null
 		});
 	} catch (error) {
-		console.error("Erro ao configurar:", error.message);
 		res.status(500).json({ sucesso: false, erro: error.message });
 	}
 });
@@ -156,7 +192,6 @@ app.get("/api/acessos", async (req, res) => {
 		);
 
 		if (response.status === 401 || response.status === 403) {
-			console.log("Token expirado, renovando...");
 			authToken = await getValidToken(true);
 			response = await axios.get(
 				"https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar",
@@ -169,7 +204,6 @@ app.get("/api/acessos", async (req, res) => {
 
 		res.json(response.data);
 	} catch (erro) {
-		console.error("Erro ao consultar API:", erro.message);
 		res.status(500).json({ erro: "Erro ao consultar a API", detalhes: erro.message });
 	}
 });
