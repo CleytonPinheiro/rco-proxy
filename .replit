@@ -4,7 +4,7 @@ hidden = [".config", "package-lock.json"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["openssh"]
+packages = ["openssh", "glib", "nss", "nspr", "at-spi2-atk", "cups", "dbus", "libdrm", "expat", "xorg.libxcb", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "mesa", "alsa-lib", "pango", "cairo", "gtk3", "chromium"]
 
 [deployment]
 run = ["node", "index.js"]

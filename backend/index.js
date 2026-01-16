@@ -34,7 +34,7 @@ async function getValidToken(forceRefresh = false) {
     
     console.log("Obtendo novo token via navegador automatizado...");
     const token = await loginWithPuppeteer(cpf, senha);
-    cachedToken = token.replace(/[^a-zA-Z0-9._-]/g, "");
+    cachedToken = token.trim();
     tokenExpiration = decodeJwtExpiration(cachedToken) || (Date.now() + 3600000);
     console.log("Token obtido. Expira em:", new Date(tokenExpiration).toISOString());
     return cachedToken;

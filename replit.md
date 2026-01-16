@@ -4,11 +4,12 @@
 Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do estado do Paraná com autenticação automática.
 
 ## Estado Atual
-- **Data**: 14/01/2026
-- **Status**: Funcional com login automático + módulo de empréstimos + Supabase
+- **Data**: 16/01/2026
+- **Status**: Funcional com login via navegador automatizado + módulo de empréstimos + Supabase
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
 - **Banco de Dados**: Supabase (PostgreSQL)
+- **Automação**: Puppeteer (Chromium) para autenticação
 
 ## Arquitetura do Projeto
 
@@ -17,6 +18,8 @@ Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do
 .
 ├── backend/
 │   ├── index.js          # Servidor Express (API + arquivos estáticos)
+│   ├── auth-puppeteer.js # Módulo de autenticação via navegador
+│   ├── supabase.js       # Cliente Supabase
 │   ├── package.json      # Dependências do backend
 │   └── node_modules/
 ├── frontend/
@@ -47,12 +50,15 @@ Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do
 
 ## Funcionalidades
 
-### Login Automático
-O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná:
-1. Acessa a página de login e obtém cookie `CS-AUTH`
-2. Faz POST com CPF/senha para obter token JWT
-3. Armazena token em memória e renova automaticamente antes de expirar
-4. Em caso de erro 403, tenta renovar o token automaticamente
+### Login Automático (Puppeteer)
+O sistema utiliza navegador automatizado (Chromium via Puppeteer) para autenticação:
+1. Abre navegador headless e navega até a página de login da Central de Segurança
+2. Preenche formulário com CPF e senha automaticamente
+3. Aguarda redirecionamento e captura token JWT da URL
+4. Armazena token em memória e renova automaticamente antes de expirar
+5. Em caso de erro 403, tenta renovar o token automaticamente
+
+**Nota**: Esta abordagem foi necessária porque a Central de Segurança PR gera cookies dinamicamente via JavaScript, impossibilitando autenticação via requisições HTTP simples.
 
 ### Interface Web
 - **Página de Login** (`/`): Formulário para inserir CPF e senha
@@ -90,6 +96,12 @@ O sistema obtém automaticamente o token JWT da Central de Segurança do Paraná
 3. **Retry automático**: Se receber 403, tenta renovar token antes de retornar erro
 
 ## Mudanças Recentes
+
+- **16/01/2026**: Autenticação via Navegador Automatizado
+  - Substituído método HTTP direto por Puppeteer com Chromium
+  - Resolve problema "Nenhum cookie retornado" da Central de Segurança PR
+  - Detecta erros de credenciais inválidas e retorna mensagens claras
+  - Validação do caminho do Chromium com suporte a PUPPETEER_EXECUTABLE_PATH
 
 - **14/01/2026**: Módulo de Empréstimos de Materiais
   - Cadastro e gerenciamento de materiais do colégio
