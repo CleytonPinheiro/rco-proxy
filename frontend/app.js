@@ -10,23 +10,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function carregarStatus() {
         const statusDiv = document.getElementById('status');
-        statusDiv.innerHTML = '<p>Carregando...</p>';
+        statusDiv.textContent = 'Carregando...';
 
         try {
                 const response = await fetch(`${API_URL}/api/status`);
                 const data = await response.json();
 
-                statusDiv.innerHTML = `
-                        <p>Credenciais: <span class="${data.credenciaisConfiguradas ? 'status-ok' : 'status-erro'}">
-                                ${data.credenciaisConfiguradas ? 'Configuradas' : 'Não configuradas'}
-                        </span></p>
-                        <p>Token em cache: <span class="${data.tokenEmCache ? 'status-ok' : 'status-erro'}">
-                                ${data.tokenEmCache ? 'Sim' : 'Não'}
-                        </span></p>
-                        ${data.tokenExpiracao ? `<p>Expira em: ${new Date(data.tokenExpiracao).toLocaleString('pt-BR')}</p>` : ''}
-                `;
+                statusDiv.textContent = '';
+
+                const p1 = document.createElement('p');
+                p1.textContent = 'Credenciais: ';
+                const span1 = document.createElement('span');
+                span1.className = data.credenciaisConfiguradas ? 'status-ok' : 'status-erro';
+                span1.textContent = data.credenciaisConfiguradas ? 'Configuradas' : 'Não configuradas';
+                p1.appendChild(span1);
+                statusDiv.appendChild(p1);
+
+                const p2 = document.createElement('p');
+                p2.textContent = 'Token em cache: ';
+                const span2 = document.createElement('span');
+                span2.className = data.tokenEmCache ? 'status-ok' : 'status-erro';
+                span2.textContent = data.tokenEmCache ? 'Sim' : 'Não';
+                p2.appendChild(span2);
+                statusDiv.appendChild(p2);
+
+                if (data.tokenExpiracao) {
+                        const p3 = document.createElement('p');
+                        p3.textContent = 'Expira em: ' + new Date(data.tokenExpiracao).toLocaleString('pt-BR');
+                        statusDiv.appendChild(p3);
+                }
         } catch (error) {
-                statusDiv.innerHTML = `<p class="status-erro">Erro ao carregar status: ${error.message}</p>`;
+                statusDiv.textContent = '';
+                const errorP = document.createElement('p');
+                errorP.className = 'status-erro';
+                errorP.textContent = 'Erro ao carregar status: ' + error.message;
+                statusDiv.appendChild(errorP);
         }
 }
 
