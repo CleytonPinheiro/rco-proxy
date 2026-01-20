@@ -124,6 +124,70 @@ export async function loginWithPuppeteer(cpf, senha) {
             return token;
         }
 
+        // Tentar obter token do localStorage (alguns sites armazenam lá)
+        const localStorageToken = await page.evaluate(() => {
+            const keys = ['access_token', 'token', 'authToken', 'jwt', 'id_token'];
+            for (const key of keys) {
+                const value = localStorage.getItem(key);
+                if (value) return { key, value };
+            }
+            // Procurar em todas as chaves do localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                if (value && (key.toLowerCase().includes('token') || (value.length > 100 && value.includes('.')))) {
+                    return { key, value };
+                }
+            }
+            return null;
+        });
+        
+        if (localStorageToken) {
+            console.log(`Token encontrado no localStorage (chave: ${localStorageToken.key})`);
+            return localStorageToken.value;
+        }
+
+        // Tentar obter token do sessionStorage
+        const sessionStorageToken = await page.evaluate(() => {
+            const keys = ['access_token', 'token', 'authToken', 'jwt', 'id_token'];
+            for (const key of keys) {
+                const value = sessionStorage.getItem(key);
+                if (value) return { key, value };
+            }
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                const value = sessionStorage.getItem(key);
+                if (value && (key.toLowerCase().includes('token') || (value.length > 100 && value.includes('.')))) {
+                    return { key, value };
+                }
+            }
+            return null;
+        });
+        
+        if (sessionStorageToken) {
+            console.log(`Token encontrado no sessionStorage (chave: ${sessionStorageToken.key})`);
+            return sessionStorageToken.value;
+        }
+
+        console.log("Verificando página final...");
+        const finalUrl = await page.evaluate(() => window.location.href);
+        
+        // Se chegou na página home, o login foi bem-sucedido mas o token está em outro lugar
+        if (finalUrl.includes('/home') || finalUrl.includes('rco.paas.pr.gov.br')) {
+            // Tentar obter cookies
+            const cookies = await page.cookies();
+            console.log("Cookies encontrados:", cookies.map(c => c.name).join(', '));
+            const tokenCookie = cookies.find(c => 
+                c.name.toLowerCase().includes('token') || 
+                c.name.toLowerCase().includes('auth') ||
+                c.name.toLowerCase().includes('jwt')
+            );
+            if (tokenCookie) {
+                console.log(`Token encontrado em cookie: ${tokenCookie.name}`);
+                return tokenCookie.value;
+            }
+        }
+
         const errorSelectors = [".alert-danger", ".erro", ".mensagem-erro", "#mensagemErro", ".text-danger"];
         for (const selector of errorSelectors) {
             try {
