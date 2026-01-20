@@ -3,17 +3,13 @@ import axios from "axios";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import { supabase } from "./supabase.js";
-import { loginWithPuppeteer, decodeJwtExpiration } from "./auth-puppeteer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// Health check endpoints - MUST be first, before any middleware
+// Health check endpoints - MUST be FIRST before any other middleware
 app.get("/health", (req, res) => {
     res.status(200).send("OK");
 });
@@ -21,6 +17,40 @@ app.get("/health", (req, res) => {
 app.get("/", (req, res) => {
     res.status(200).send("OK");
 });
+
+// Start server IMMEDIATELY - before loading heavy dependencies
+const PORT = 5000;
+const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+    console.log(`Frontend: http://localhost:${PORT}/app`);
+    console.log(`API: http://localhost:${PORT}/api`);
+    // Load heavy dependencies after server starts
+    initializeApp();
+});
+
+// Lazy-loaded modules
+let supabase = null;
+let loginWithPuppeteer = null;
+let decodeJwtExpiration = null;
+
+async function initializeApp() {
+    try {
+        console.log("Carregando dependências...");
+        const supabaseModule = await import("./supabase.js");
+        supabase = supabaseModule.supabase;
+        
+        const authModule = await import("./auth-puppeteer.js");
+        loginWithPuppeteer = authModule.loginWithPuppeteer;
+        decodeJwtExpiration = authModule.decodeJwtExpiration;
+        
+        console.log("Dependências carregadas com sucesso!");
+    } catch (error) {
+        console.error("Erro ao carregar dependências:", error.message);
+    }
+}
+
+app.use(cors());
+app.use(express.json());
 
 // Serve frontend at /app
 app.get("/app", (req, res) => {
@@ -38,6 +68,10 @@ let cachedToken = null;
 let tokenExpiration = null;
 
 async function getValidToken(forceRefresh = false) {
+    if (!loginWithPuppeteer) {
+        throw new Error("Sistema ainda inicializando, aguarde alguns segundos");
+    }
+    
     if (!forceRefresh && cachedToken && tokenExpiration && tokenExpiration > Date.now() + 300000) {
         return cachedToken;
     }
@@ -406,11 +440,4 @@ app.get("/api/estatisticas/materiais", async (req, res) => {
 
 app.get("*", (req, res) => {
         res.sendFile(path.join(__dirname, "../frontend/index.html"));
-});
-
-const PORT = 5000;
-app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Servidor rodando na porta ${PORT}`);
-        console.log(`Frontend: http://localhost:${PORT}`);
-        console.log(`API: http://localhost:${PORT}/api`);
 });
