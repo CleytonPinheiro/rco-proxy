@@ -13,20 +13,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoints - MUST be before static middleware
+// Health check endpoints - MUST be first, before any middleware
 app.get("/health", (req, res) => {
     res.status(200).send("OK");
 });
 
-// Root health check for Cloud Run
-app.get("/", (req, res, next) => {
-    // If it's a health check (no Accept header for HTML), respond quickly
-    const acceptHeader = req.get('Accept') || '';
-    if (!acceptHeader.includes('text/html')) {
-        return res.status(200).send("OK");
-    }
-    // Otherwise, let static middleware serve index.html
-    next();
+app.get("/", (req, res) => {
+    res.status(200).send("OK");
+});
+
+// Serve frontend at /app
+app.get("/app", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
 app.use(express.static(path.join(__dirname, "../frontend")));
