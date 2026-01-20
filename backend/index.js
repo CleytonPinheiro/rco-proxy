@@ -12,12 +12,24 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "../frontend")));
 
-// Health check endpoint for deployment
+// Health check endpoints - MUST be before static middleware
 app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok" });
+    res.status(200).send("OK");
 });
+
+// Root health check for Cloud Run
+app.get("/", (req, res, next) => {
+    // If it's a health check (no Accept header for HTML), respond quickly
+    const acceptHeader = req.get('Accept') || '';
+    if (!acceptHeader.includes('text/html')) {
+        return res.status(200).send("OK");
+    }
+    // Otherwise, let static middleware serve index.html
+    next();
+});
+
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 let userCredentials = {
     cpf: process.env.RCO_CPF || "",
