@@ -97,15 +97,27 @@ export async function loginWithPuppeteer(cpf, senha) {
         const currentUrl = page.url();
         console.log("URL após submit:", currentUrl);
         
+        // Tentar obter token da URL normal
         let token = extractTokenFromUrl(currentUrl);
         if (token) {
             console.log("Token obtido com sucesso!");
             return token;
         }
 
+        // Tentar obter token do hash/fragmento da URL (OAuth implicit flow)
+        const hashUrl = await page.evaluate(() => window.location.href);
+        console.log("URL completa (com hash):", hashUrl);
+        token = extractTokenFromUrl(hashUrl);
+        if (token) {
+            console.log("Token obtido do hash da URL!");
+            return token;
+        }
+
         await new Promise(resolve => setTimeout(resolve, 3000));
         
-        const urlAfterWait = page.url();
+        // Tentar novamente após aguardar
+        const urlAfterWait = await page.evaluate(() => window.location.href);
+        console.log("URL após aguardar:", urlAfterWait);
         token = extractTokenFromUrl(urlAfterWait);
         if (token) {
             console.log("Token obtido após aguardar!");
