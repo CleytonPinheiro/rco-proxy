@@ -8,7 +8,7 @@ packages = ["openssh", "glib", "nss", "nspr", "at-spi2-atk", "cups", "dbus", "li
 
 [deployment]
 run = ["node", "backend/index.js"]
-deploymentTarget = "vm"
+deploymentTarget = "cloudrun"
 
 [[ports]]
 localPort = 5000
