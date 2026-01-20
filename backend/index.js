@@ -14,6 +14,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../frontend")));
 
+// Health check endpoint for deployment
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 let userCredentials = {
     cpf: process.env.RCO_CPF || "",
     senha: process.env.RCO_SENHA || ""
