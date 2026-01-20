@@ -19,10 +19,10 @@ function getChromiumPath() {
 }
 
 const AUTH_CONFIG = {
-    loginPageUrl: "https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/login.html",
-    clientId: "f340f1b1f65b6df5b5e3f94d95b11daf",
-    redirectUri: "https://rco.paas.pr.gov.br",
-    scope: "emgpr.mobile emgpr.v1.ocorrencia.post"
+    loginPageUrl: process.env.AUTH_LOGIN_PAGE_URL || "https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/login.html",
+    clientId: process.env.AUTH_CLIENT_ID || "f340f1b1f65b6df5b5e3f94d95b11daf",
+    redirectUri: process.env.AUTH_REDIRECT_URI || "https://rco.paas.pr.gov.br",
+    scope: process.env.AUTH_SCOPE || "emgpr.mobile emgpr.v1.ocorrencia.post"
 };
 
 function extractTokenFromUrl(url) {
