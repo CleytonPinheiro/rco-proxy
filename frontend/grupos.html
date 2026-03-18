@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCO Digital - Grupos</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="grupos.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>RCO Digital</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="frequencias.html">Frequências</a>
+                <a href="grupos.html" class="active">Grupos</a>
+                <a href="materiais.html">Materiais</a>
+                <a href="emprestimos.html">Empréstimos</a>
+            </nav>
+            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando turmas...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+            <!-- Seletor de turma -->
+            <div class="grupos-top">
+                <div class="grupos-title-row">
+                    <h2 class="grupos-titulo">Grupos de Trabalho</h2>
+                    <div id="turmaTabs" class="turma-tabs"></div>
+                </div>
+                <button id="btnNovoGrupo" class="btn-novo-grupo" onclick="abrirModalNovoGrupo()">+ Novo Grupo</button>
+            </div>
+
+            <!-- Área principal: pool de alunos + grupos -->
+            <div id="workspace" class="workspace">
+                <!-- Pool de alunos sem grupo -->
+                <div class="pool-col">
+                    <div class="pool-header">
+                        <span class="pool-titulo">Alunos disponíveis</span>
+                        <span id="poolCount" class="pool-count">0</span>
+                    </div>
+                    <div id="poolAlunos" class="pool-alunos"
+                         ondragover="event.preventDefault()" ondrop="dropNoPool(event)">
+                        <p class="pool-vazio" id="poolVazio">Selecione uma turma para carregar os alunos.</p>
+                    </div>
+                </div>
+
+                <!-- Grupos -->
+                <div class="grupos-col">
+                    <div id="listaGrupos" class="lista-grupos"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Novo Grupo -->
+    <div id="modalNovoGrupo" class="modal-overlay" style="display:none;" onclick="fecharModalNovoGrupo(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Novo Grupo de Trabalho</h3>
+                <button class="modal-close" onclick="fecharModalNovoGrupo()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Nome do grupo *</label>
+                <input id="novoGrupoNome" class="form-input" type="text" placeholder="Ex: Grupo A" maxlength="60">
+                <label class="form-label" style="margin-top:14px;">Descrição / Objetivo da atividade</label>
+                <textarea id="novoGrupoDesc" class="form-textarea" placeholder="Descreva a proposta, tema ou objetivo do grupo..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalNovoGrupo()">Cancelar</button>
+                <button class="btn-salvar" onclick="criarGrupo()">Criar Grupo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Registrar Atividade -->
+    <div id="modalAtividade" class="modal-overlay" style="display:none;" onclick="fecharModalAtividade(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalAtivTitulo">Registrar Atividade</h3>
+                <button class="modal-close" onclick="fecharModalAtividade()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Data</label>
+                <input id="ativData" class="form-input" type="date">
+                <label class="form-label" style="margin-top:14px;">Descrição da atividade *</label>
+                <textarea id="ativDescricao" class="form-textarea" placeholder="Descreva a atividade realizada hoje..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalAtividade()">Cancelar</button>
+                <button class="btn-salvar" id="btnSalvarAtiv" onclick="salvarAtividade()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Atividades -->
+    <div id="modalVerAtiv" class="modal-overlay" style="display:none;" onclick="fecharModalVerAtiv(event)">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3 id="modalVerAtivTitulo">Atividades do Grupo</h3>
+                <button class="modal-close" onclick="fecharModalVerAtiv()">✕</button>
+            </div>
+            <div class="modal-body" id="modalVerAtivBody"></div>
+        </div>
+    </div>
+
+    <script src="grupos.js"></script>
+</body>
+</html>

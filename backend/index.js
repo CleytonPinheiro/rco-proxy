@@ -1008,6 +1008,152 @@ app.put("/api/emprestimos/:id/devolver", async (req, res) => {
         }
 });
 
+// ==================== GRUPOS DE TRABALHO ====================
+
+const GRUPOS_FILE = path.join(__dirname, 'data', 'grupos.json');
+
+function lerGrupos() {
+        try {
+                const raw = require('fs').readFileSync(GRUPOS_FILE, 'utf8');
+                return JSON.parse(raw).grupos || [];
+        } catch { return []; }
+}
+
+function salvarGrupos(grupos) {
+        require('fs').writeFileSync(GRUPOS_FILE, JSON.stringify({ grupos }, null, 2), 'utf8');
+}
+
+function gerarId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// Listar grupos de uma turma
+app.get('/api/grupos', (req, res) => {
+        const { codTurma } = req.query;
+        const todos = lerGrupos();
+        const lista = codTurma ? todos.filter(g => String(g.codTurma) === String(codTurma)) : todos;
+        res.json(lista);
+});
+
+// Criar grupo
+app.post('/api/grupos', (req, res) => {
+        const { codTurma, nome, descricao } = req.body;
+        if (!codTurma || !nome) return res.status(400).json({ erro: 'codTurma e nome são obrigatórios' });
+        const grupos = lerGrupos();
+        const novo = {
+                id: gerarId(),
+                codTurma: parseInt(codTurma),
+                nome,
+                descricao: descricao || '',
+                bloqueado: false,
+                criadoEm: new Date().toISOString(),
+                alunos: [],
+                atividades: [],
+        };
+        grupos.push(novo);
+        salvarGrupos(grupos);
+        res.json(novo);
+});
+
+// Atualizar grupo (nome, descricao, bloqueado)
+app.put('/api/grupos/:id', (req, res) => {
+        const grupos = lerGrupos();
+        const idx = grupos.findIndex(g => g.id === req.params.id);
+        if (idx === -1) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        const { nome, descricao, bloqueado } = req.body;
+        if (nome !== undefined)      grupos[idx].nome      = nome;
+        if (descricao !== undefined) grupos[idx].descricao = descricao;
+        if (bloqueado !== undefined) grupos[idx].bloqueado = !!bloqueado;
+        salvarGrupos(grupos);
+        res.json(grupos[idx]);
+});
+
+// Excluir grupo
+app.delete('/api/grupos/:id', (req, res) => {
+        const grupos = lerGrupos();
+        const idx = grupos.findIndex(g => g.id === req.params.id);
+        if (idx === -1) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        if (grupos[idx].bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Desbloqueie antes de excluir.' });
+        grupos.splice(idx, 1);
+        salvarGrupos(grupos);
+        res.json({ ok: true });
+});
+
+// Adicionar aluno ao grupo
+app.post('/api/grupos/:id/alunos', (req, res) => {
+        const grupos = lerGrupos();
+        const grupo = grupos.find(g => g.id === req.params.id);
+        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado' });
+        const { codMatrizAluno, nome, numChamada } = req.body;
+        if (!codMatrizAluno) return res.status(400).json({ erro: 'codMatrizAluno é obrigatório' });
+        // Remover aluno de outros grupos da mesma turma antes de adicionar
+        grupos.forEach(g => {
+                if (g.codTurma === grupo.codTurma && g.id !== grupo.id && !g.bloqueado) {
+                        g.alunos = g.alunos.filter(a => a.codMatrizAluno !== codMatrizAluno);
+                }
+        });
+        // Evitar duplicata no grupo atual
+        if (!grupo.alunos.find(a => a.codMatrizAluno === codMatrizAluno)) {
+                grupo.alunos.push({ codMatrizAluno, nome: nome || '', numChamada: numChamada || null });
+        }
+        salvarGrupos(grupos);
+        res.json(grupo);
+});
+
+// Remover aluno do grupo
+app.delete('/api/grupos/:id/alunos/:codMatrizAluno', (req, res) => {
+        const grupos = lerGrupos();
+        const grupo = grupos.find(g => g.id === req.params.id);
+        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Desbloqueie primeiro.' });
+        grupo.alunos = grupo.alunos.filter(a => String(a.codMatrizAluno) !== String(req.params.codMatrizAluno));
+        salvarGrupos(grupos);
+        res.json(grupo);
+});
+
+// Adicionar atividade ao grupo
+app.post('/api/grupos/:id/atividades', (req, res) => {
+        const grupos = lerGrupos();
+        const grupo = grupos.find(g => g.id === req.params.id);
+        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        const { data, descricao } = req.body;
+        if (!descricao) return res.status(400).json({ erro: 'Descrição é obrigatória' });
+        const ativ = {
+                id: gerarId(),
+                data: data || new Date().toISOString().split('T')[0],
+                descricao,
+                criadoEm: new Date().toISOString(),
+        };
+        grupo.atividades.push(ativ);
+        salvarGrupos(grupos);
+        res.json(ativ);
+});
+
+// Atualizar atividade
+app.put('/api/grupos/:id/atividades/:ativId', (req, res) => {
+        const grupos = lerGrupos();
+        const grupo = grupos.find(g => g.id === req.params.id);
+        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        const ativ = grupo.atividades.find(a => a.id === req.params.ativId);
+        if (!ativ) return res.status(404).json({ erro: 'Atividade não encontrada' });
+        const { data, descricao } = req.body;
+        if (data)      ativ.data      = data;
+        if (descricao) ativ.descricao = descricao;
+        salvarGrupos(grupos);
+        res.json(ativ);
+});
+
+// Excluir atividade
+app.delete('/api/grupos/:id/atividades/:ativId', (req, res) => {
+        const grupos = lerGrupos();
+        const grupo = grupos.find(g => g.id === req.params.id);
+        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+        grupo.atividades = grupo.atividades.filter(a => a.id !== req.params.ativId);
+        salvarGrupos(grupos);
+        res.json({ ok: true });
+});
+
 // ==================== ESTATÍSTICAS ====================
 
 app.get("/api/estatisticas/materiais", async (req, res) => {
