@@ -3,6 +3,7 @@ import axios from "axios";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1014,13 +1015,13 @@ const GRUPOS_FILE = path.join(__dirname, 'data', 'grupos.json');
 
 function lerGrupos() {
         try {
-                const raw = require('fs').readFileSync(GRUPOS_FILE, 'utf8');
+                const raw = fs.readFileSync(GRUPOS_FILE, 'utf8');
                 return JSON.parse(raw).grupos || [];
         } catch { return []; }
 }
 
 function salvarGrupos(grupos) {
-        require('fs').writeFileSync(GRUPOS_FILE, JSON.stringify({ grupos }, null, 2), 'utf8');
+        fs.writeFileSync(GRUPOS_FILE, JSON.stringify({ grupos }, null, 2), 'utf8');
 }
 
 function gerarId() {

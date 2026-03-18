@@ -322,7 +322,7 @@ function abrirModalAtividade(grupoId, grupoNome) {
     // Injetar histórico dinamicamente (após inputs no modal-body)
     const body = document.querySelector('#modalAtividade .modal-body');
     const existente = body.querySelector('.ativ-historico');
-    if (existente) existante.remove();
+    if (existente) existente.remove();
     body.insertAdjacentHTML('beforeend', historicoHtml);
 }
 
