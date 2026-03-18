@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS aluno_ocorrencias (
     data             DATE        NOT NULL,
     tipo             TEXT        NOT NULL CHECK (tipo IN ('positivo','atencao','grave')),
     categoria        TEXT        NOT NULL,
+    categoria_label  TEXT        DEFAULT '',
     descricao        TEXT        DEFAULT '',
     pontos           INTEGER     NOT NULL DEFAULT 0,
     criado_em        TIMESTAMPTZ DEFAULT NOW()
