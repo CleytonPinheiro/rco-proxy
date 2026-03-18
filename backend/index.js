@@ -118,31 +118,92 @@ app.post("/api/configurar", async (req, res) => {
         }
 });
 
+// ==================== DIAGNÓSTICO RCO ====================
+app.get("/api/debug/rco", async (req, res) => {
+        try {
+                const authToken = await getValidToken();
+                const BASE = "https://apigateway-educacao.paas.pr.gov.br/seed/rcdig";
+                const headers = { consumerId: "RCDIGWEB", Authorization: `Bearer ${authToken}` };
+                const opts = { headers, timeout: 20000, validateStatus: () => true };
+
+                // Data de hoje no formato YYYY-MM-DD
+                const hoje = new Date().toISOString().split("T")[0];
+
+                // Base correto: seed/rcdig + /{dependencia}/v1 (interceptor do RCO)
+                // dependencia para Rede Estadual = "estadual"
+                const BASE_ESTADUAL = BASE + "/estadual/v1";
+                const optsEst = { headers, timeout: 20000, validateStatus: () => true };
+
+                const endpoints = [
+                        { url: `${BASE_ESTADUAL}/educador/estabelecimentos/v2/${hoje}`, label: "estabelecimentos/hoje" },
+                        { url: `${BASE_ESTADUAL}/educador/estabelecimentos/v2/${hoje.substring(0,7)}`, label: "estabelecimentos/mes" },
+                        { url: `${BASE_ESTADUAL}/educador/grade/aula/v2/lista`, label: "grade/aula/lista" },
+                        { url: `${BASE_ESTADUAL}/educador/grade/dia/v2/`, label: "grade/dia" },
+                        { url: `${BASE_ESTADUAL}/classe/v1/acessos/contatos`, label: "acessos/contatos" },
+                        { url: `${BASE_ESTADUAL}/classe/v1/acessos/atualizar`, label: "acessos/atualizar" },
+                        { url: `${BASE_ESTADUAL}/v1/turma/`, label: "v1/turma" },
+                        { url: `${BASE_ESTADUAL}/v1/salas`, label: "v1/salas" },
+                ];
+
+                const results = {};
+                for (const ep of endpoints) {
+                        try {
+                                const r = await axios.get(ep.url, optsEst);
+                                const bodyStr = JSON.stringify(r.data);
+                                results[ep.label] = {
+                                        url: ep.url,
+                                        status: r.status,
+                                        contentType: r.headers["content-type"],
+                                        bodyLength: bodyStr.length,
+                                        preview: bodyStr.substring(0, 500),
+                                };
+                        } catch (e) {
+                                results[ep.label] = { url: ep.url, erro: e.message };
+                        }
+                }
+
+                res.json(results);
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message });
+        }
+});
+
+// Função auxiliar para requisições à API RCO com renovação de token
+async function rcoGet(path, authToken) {
+        const BASE = "https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1";
+        const headers = { consumerId: "RCDIGWEB", Authorization: `Bearer ${authToken}` };
+        let response = await axios.get(BASE + path, { headers, timeout: 30000, validateStatus: () => true });
+
+        if (response.status === 401 || response.status === 403) {
+                const newToken = await getValidToken(true);
+                response = await axios.get(BASE + path, {
+                        headers: { consumerId: "RCDIGWEB", Authorization: `Bearer ${newToken}` },
+                        timeout: 30000,
+                        validateStatus: () => true,
+                });
+        }
+
+        return response;
+}
+
+// Endpoint principal: retorna estabelecimentos, turmas e disciplinas
 app.get("/api/acessos", async (req, res) => {
         try {
-                let authToken = await getValidToken();
-                let response = await axios.get(
-                        "https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar",
-                        {
-                                headers: { consumerId: "RCDIGWEB", Authorization: `Bearer ${authToken}` },
-                                timeout: 30000,
-                                validateStatus: () => true,
-                        }
-                );
+                const authToken = await getValidToken();
+                const hoje = new Date().toISOString().split("T")[0];
 
-                if (response.status === 401 || response.status === 403) {
-                        authToken = await getValidToken(true);
-                        response = await axios.get(
-                                "https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/acessos/atualizar",
-                                {
-                                        headers: { consumerId: "RCDIGWEB", Authorization: `Bearer ${authToken}` },
-                                        timeout: 30000,
-                                }
-                        );
+                console.log(`Consultando estabelecimentos para ${hoje}...`);
+                const response = await rcoGet(`/educador/estabelecimentos/v2/${hoje}`, authToken);
+
+                console.log("RCO API status:", response.status, "| bytes:", JSON.stringify(response.data).length);
+
+                if (response.status !== 200) {
+                        return res.status(response.status).json({ erro: "Erro na API RCO", data: response.data });
                 }
 
                 res.json(response.data);
         } catch (erro) {
+                console.error("Erro ao consultar API RCO:", erro.message);
                 res.status(500).json({ erro: "Erro ao consultar a API", detalhes: erro.message });
         }
 });

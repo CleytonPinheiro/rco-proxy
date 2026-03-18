@@ -56,7 +56,9 @@ async function carregarDados() {
         const response = await fetch(`${API_URL}/api/acessos`);
         const data = await response.json();
 
-        const vazio = !data || data === "" || (typeof data === 'object' && Object.keys(data).length === 0);
+        const vazio = !data || data === "" ||
+            (Array.isArray(data) && data.length === 0) ||
+            (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0);
         dadosGlobais = (vazio || data.erro) ? DADOS_EXEMPLO : normalizarDados(data);
 
     } catch {
@@ -74,62 +76,112 @@ async function carregarDados() {
 }
 
 // ── Normalizar dados da API real para o formato esperado ──────────────────────
+// Estrutura real do RCO:
+// [ estab { nomeCompletoEstab, codEstabelecimento, periodoLetivos: [
+//     { descrPeriodoLetivo, livros: [
+//         { classe: { codClasse, turma: { codTurma, descrTurma, seriacao },
+//                     disciplina: { codDisciplina, nomeDisciplina, corFundo } },
+//           calendarioAvaliacaos: [...] }] }] } ]
 function normalizarDados(raw) {
     const turmas      = [];
     const disciplinas = [];
     const livros      = [];
 
-    function percorrer(obj, escola) {
-        if (!obj || typeof obj !== 'object') return;
-        if (Array.isArray(obj)) {
-            obj.forEach(item => percorrer(item, escola));
-            return;
-        }
+    const estabs = Array.isArray(raw) ? raw : (raw ? [raw] : []);
 
-        const escolaAtual = obj.nmEstabelecimento || obj.escola || obj.nmEscola || escola || '';
+    estabs.forEach(estab => {
+        const escola = estab.nomeCompletoEstab || estab.nmEstabelecimento || '';
 
-        if (obj.nmTurma || obj.descTurma) {
-            turmas.push({
-                nmTurma:    obj.nmTurma || obj.descTurma,
-                serie:      obj.serie   || obj.nmSerie  || '',
-                turno:      obj.turno   || obj.nmTurno  || '',
-                escola:     escolaAtual,
-                anoLetivo:  obj.anoLetivo || obj.ano    || ''
-            });
-        }
-        if (obj.nmDisciplina || obj.disciplina || obj.componente) {
-            disciplinas.push({
-                nmDisciplina: obj.nmDisciplina || obj.disciplina || obj.componente,
-                nmTurma:      obj.nmTurma      || obj.turma      || '',
-                cargaHoraria: obj.cargaHoraria || obj.chTotal    || '',
-                status:       obj.status       || 'Ativa',
-                escola:       escolaAtual
-            });
-        }
-        if (obj.nmLivro || obj.livro || obj.livroClasse) {
-            livros.push({
-                nmLivro:      obj.nmLivro      || obj.livro   || obj.livroClasse,
-                nmTurma:      obj.nmTurma      || obj.turma   || '',
-                nmDisciplina: obj.nmDisciplina || obj.disciplina || '',
-                periodo:      obj.periodo      || obj.bimestre || '',
-                statusLivro:  obj.statusLivro  || obj.status  || 'Em andamento',
-                escola:       escolaAtual
-            });
-        }
+        (estab.periodoLetivos || []).forEach(periodo => {
+            const anoLetivo = periodo.descrPeriodoLetivo || '';
 
-        Object.values(obj).forEach(v => {
-            if (v && typeof v === 'object') percorrer(v, escolaAtual);
+            (periodo.livros || []).forEach(livro => {
+                const classe = livro.classe;
+                if (!classe) return;
+
+                const turma = classe.turma || {};
+                const disc  = classe.disciplina || {};
+
+                const nmTurma = turma.descrTurma || turma.nmTurma || '';
+                const nmDisc  = disc.nomeDisciplina || disc.nmDisciplina || '';
+
+                // Turma
+                if (nmTurma) {
+                    turmas.push({
+                        nmTurma,
+                        serie:      extrairSerie(nmTurma),
+                        turno:      extrairTurno(nmTurma),
+                        escola,
+                        anoLetivo,
+                        codTurma:   turma.codTurma,
+                        codClasse:  classe.codClasse,
+                    });
+                }
+
+                // Disciplina
+                if (nmDisc) {
+                    disciplinas.push({
+                        nmDisciplina: nmDisc,
+                        nmTurma,
+                        cargaHoraria: '',
+                        status:       'Ativa',
+                        escola,
+                        corFundo:     disc.corFundo || '',
+                        codDisciplina: disc.codDisciplina,
+                        codClasse:    classe.codClasse,
+                    });
+                }
+
+                // Livros de classe (calendários/trimestres)
+                const calendarios = livro.calendarioAvaliacaos || [];
+                if (calendarios.length > 0) {
+                    calendarios.forEach(cal => {
+                        const periodoAval = cal.periodoAvaliacao || {};
+                        livros.push({
+                            nmLivro:      `${nmDisc} — ${periodoAval.descrPeriodoAvaliacao || anoLetivo}`,
+                            nmTurma,
+                            nmDisciplina: nmDisc,
+                            periodo:      periodoAval.descrPeriodoAvaliacao || '',
+                            statusLivro:  'Em andamento',
+                            escola,
+                            codCalendario: cal.codCalendarioAvaliacao,
+                            dataInicio:   cal.dataInicio,
+                            dataFim:      cal.dataFim,
+                        });
+                    });
+                } else {
+                    livros.push({
+                        nmLivro:      nmDisc || 'Livro de Classe',
+                        nmTurma,
+                        nmDisciplina: nmDisc,
+                        periodo:      anoLetivo,
+                        statusLivro:  'Em andamento',
+                        escola,
+                    });
+                }
+            });
         });
-    }
-
-    percorrer(raw, '');
+    });
 
     return {
-        turmas:      deduplicate(turmas,      t => t.nmTurma + t.escola),
-        disciplinas: deduplicate(disciplinas, d => d.nmDisciplina + d.nmTurma + d.escola),
-        livros:      deduplicate(livros,      l => l.nmLivro + l.nmTurma + l.escola),
+        turmas:      deduplicate(turmas,      t => t.codTurma + '|' + t.escola),
+        disciplinas: deduplicate(disciplinas, d => d.codDisciplina + '|' + d.codClasse),
+        livros:      deduplicate(livros,      l => (l.codCalendario || l.nmLivro) + '|' + l.nmTurma),
         alunos:      []
     };
+}
+
+function extrairSerie(descrTurma) {
+    const m = descrTurma.match(/(\d+)[aªº]\s*[Ss]érie|\d+[aªº]\s*[Aa]no/);
+    return m ? m[0] : '';
+}
+
+function extrairTurno(descrTurma) {
+    if (/manh[ãa]/i.test(descrTurma)) return 'Manhã';
+    if (/tarde/i.test(descrTurma)) return 'Tarde';
+    if (/noite/i.test(descrTurma)) return 'Noite';
+    if (/integral/i.test(descrTurma)) return 'Integral';
+    return '';
 }
 
 function deduplicate(arr, keyFn) {
