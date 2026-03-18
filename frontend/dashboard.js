@@ -366,16 +366,22 @@ function renderizarLivros(livros) {
 }
 
 // ── Modal de alunos ───────────────────────────────────────────────────────────
-function abrirModalAlunos(nomeTurma) {
-    const alunos = (dadosGlobais.alunos || []).filter(a => a.turma === nomeTurma);
-
+async function abrirModalAlunos(nomeTurma) {
     document.getElementById('modalTitulo').textContent = `Alunos — ${nomeTurma}`;
-
     const lista = document.getElementById('listaAlunos');
+    lista.innerHTML = '<div class="empty-message">Carregando alunos...</div>';
+    document.getElementById('modalAlunos').style.display = 'flex';
 
-    if (!alunos.length) {
-        lista.innerHTML = '<div class="empty-message">Nenhum aluno encontrado nesta turma</div>';
-    } else {
+    try {
+        const resp = await fetch(`${API_URL}/api/alunos?turma=${encodeURIComponent(nomeTurma)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const alunos = await resp.json();
+
+        if (!alunos || alunos.length === 0) {
+            lista.innerHTML = '<div class="empty-message">Nenhum aluno cadastrado nesta turma</div>';
+            return;
+        }
+
         lista.innerHTML = '';
         alunos.forEach(aluno => {
             const div = document.createElement('div');
@@ -384,16 +390,16 @@ function abrirModalAlunos(nomeTurma) {
                 <div class="aluno-info">
                     <div class="aluno-nome">${aluno.nome}</div>
                     <div class="aluno-detalhe"><strong>Registro:</strong> ${aluno.registro}</div>
-                    <div class="aluno-detalhe"><strong>Nascimento:</strong> ${aluno.dataNascimento || '—'}</div>
+                    <div class="aluno-detalhe"><strong>Nascimento:</strong> ${aluno.data_nascimento || '—'}</div>
                     <div class="aluno-detalhe"><strong>Status:</strong> <span class="status-ativo">${aluno.status || 'Ativo'}</span></div>
                 </div>
                 <div class="aluno-codigo-barras">${gerarCodigoBarrasSVG(aluno.registro)}</div>
             `;
             lista.appendChild(div);
         });
+    } catch (e) {
+        lista.innerHTML = `<div class="empty-message">Erro ao carregar alunos: ${e.message}</div>`;
     }
-
-    document.getElementById('modalAlunos').style.display = 'flex';
 }
 
 function fecharModal() {

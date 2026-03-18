@@ -152,25 +152,27 @@ app.get("/api/debug/rco", async (req, res) => {
                 const authToken = await getValidToken();
                 const BASE = "https://apigateway-educacao.paas.pr.gov.br/seed/rcdig";
                 const headers = { consumerId: "RCDIGWEB", Authorization: `Bearer ${authToken}` };
-                const opts = { headers, timeout: 20000, validateStatus: () => true };
 
-                // Data de hoje no formato YYYY-MM-DD
                 const hoje = new Date().toISOString().split("T")[0];
-
-                // Base correto: seed/rcdig + /{dependencia}/v1 (interceptor do RCO)
-                // dependencia para Rede Estadual = "estadual"
                 const BASE_ESTADUAL = BASE + "/estadual/v1";
                 const optsEst = { headers, timeout: 20000, validateStatus: () => true };
 
+                // codClasse e codTurma reais do estabelecimento
+                const COD_CLASSE = req.query.codClasse || 8682303;
+                const COD_TURMA  = req.query.codTurma  || 2604991;
+
                 const endpoints = [
                         { url: `${BASE_ESTADUAL}/educador/estabelecimentos/v2/${hoje}`, label: "estabelecimentos/hoje" },
-                        { url: `${BASE_ESTADUAL}/educador/estabelecimentos/v2/${hoje.substring(0,7)}`, label: "estabelecimentos/mes" },
-                        { url: `${BASE_ESTADUAL}/educador/grade/aula/v2/lista`, label: "grade/aula/lista" },
-                        { url: `${BASE_ESTADUAL}/educador/grade/dia/v2/`, label: "grade/dia" },
                         { url: `${BASE_ESTADUAL}/classe/v1/acessos/contatos`, label: "acessos/contatos" },
-                        { url: `${BASE_ESTADUAL}/classe/v1/acessos/atualizar`, label: "acessos/atualizar" },
-                        { url: `${BASE_ESTADUAL}/v1/turma/`, label: "v1/turma" },
-                        { url: `${BASE_ESTADUAL}/v1/salas`, label: "v1/salas" },
+                        // Endpoints candidatos para alunos
+                        { url: `${BASE_ESTADUAL}/frequencia/v1/classe/${COD_CLASSE}/alunos`, label: "frequencia/classe/alunos" },
+                        { url: `${BASE_ESTADUAL}/educador/classe/v1/${COD_CLASSE}/alunos`, label: "educador/classe/alunos" },
+                        { url: `${BASE_ESTADUAL}/aluno/v1/classe/${COD_CLASSE}`, label: "aluno/classe" },
+                        { url: `${BASE_ESTADUAL}/educador/turma/v1/${COD_TURMA}/alunos`, label: "educador/turma/alunos" },
+                        { url: `${BASE_ESTADUAL}/frequencia/v1/turma/${COD_TURMA}/alunos`, label: "frequencia/turma/alunos" },
+                        { url: `${BASE_ESTADUAL}/educador/frequencia/v1/classe/${COD_CLASSE}/alunos`, label: "educador/frequencia/classe/alunos" },
+                        { url: `${BASE_ESTADUAL}/frequencia/v2/classe/${COD_CLASSE}/alunos`, label: "frequencia/v2/classe/alunos" },
+                        { url: `${BASE_ESTADUAL}/diario/v1/classe/${COD_CLASSE}/alunos`, label: "diario/classe/alunos" },
                 ];
 
                 const results = {};
@@ -418,11 +420,14 @@ app.get("/api/acessos", async (req, res) => {
 
 app.get("/api/alunos", async (req, res) => {
         try {
-                const { data, error } = await supabase
-                        .from('alunos')
-                        .select('*')
-                        .order('nome');
-                
+                const { turma, registro } = req.query;
+                let query = supabase.from('alunos').select('*');
+
+                if (turma)    query = query.eq('turma', turma);
+                if (registro) query = query.eq('registro', registro);
+
+                const { data, error } = await query.order('nome');
+
                 if (error) throw error;
                 res.json(data);
         } catch (erro) {
