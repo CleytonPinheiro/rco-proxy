@@ -129,6 +129,7 @@ function normalizarDados(raw) {
                         corFundo:     disc.corFundo || '',
                         codDisciplina: disc.codDisciplina,
                         codClasse:    classe.codClasse,
+                        codTurma:     turma.codTurma,
                     });
                 }
 
@@ -272,7 +273,13 @@ function renderizarTurmas(turmas) {
     turmas.forEach(turma => {
         const card = document.createElement('div');
         card.className = 'card card-turma';
-        card.addEventListener('click', () => abrirModalAlunos(turma.nmTurma));
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => abrirModalAlunos({
+            titulo:   turma.nmTurma,
+            nmTurma:  turma.nmTurma,
+            codTurma: turma.codTurma,
+            codClasse: turma.codClasse,
+        }));
 
         const turnoIcon = turno => {
             if (!turno) return '';
@@ -305,12 +312,12 @@ function renderizarDisciplinas(disciplinas) {
         return;
     }
 
-    // Agrupar por disciplina (nome), listando as turmas
+    // Agrupar por disciplina (nome), preservando codClasse por turma
     const agrupadas = {};
     disciplinas.forEach(d => {
         const nome = d.nmDisciplina || 'Disciplina';
-        if (!agrupadas[nome]) agrupadas[nome] = { nome, turmas: [], cargaHoraria: d.cargaHoraria, status: d.status };
-        if (d.nmTurma) agrupadas[nome].turmas.push(d.nmTurma);
+        if (!agrupadas[nome]) agrupadas[nome] = { nome, items: [], cargaHoraria: d.cargaHoraria, status: d.status };
+        if (d.nmTurma) agrupadas[nome].items.push({ nmTurma: d.nmTurma, codClasse: d.codClasse, codTurma: d.codTurma });
     });
 
     container.innerHTML = '';
@@ -318,8 +325,16 @@ function renderizarDisciplinas(disciplinas) {
         const card = document.createElement('div');
         card.className = 'card card-disciplina';
 
-        const turmasHtml = disc.turmas.length
-            ? disc.turmas.map(t => `<span class="turma-pill">${t}</span>`).join('')
+        const turmasHtml = disc.items.length
+            ? disc.items.map(it => {
+                const label = it.nmTurma.match(/(\d+)[aªº]\s*[Ss]érie/)?.[0] || it.nmTurma.substring(0, 18);
+                return `<span class="turma-pill turma-pill-btn"
+                    data-codclasse="${it.codClasse || ''}"
+                    data-codturma="${it.codTurma || ''}"
+                    data-nmturma="${it.nmTurma}"
+                    data-disc="${disc.nome}"
+                    title="${it.nmTurma}">${label}</span>`;
+            }).join('')
             : '';
 
         card.innerHTML = `
@@ -329,6 +344,21 @@ function renderizarDisciplinas(disciplinas) {
             ${turmasHtml ? `<div class="turmas-pills">${turmasHtml}</div>` : ''}
             <span class="card-badge verde">${disc.status || 'Ativa'}</span>
         `;
+
+        // Turma pills clicáveis para ver alunos da disciplina naquela turma
+        card.querySelectorAll('.turma-pill-btn').forEach(pill => {
+            pill.style.cursor = 'pointer';
+            pill.addEventListener('click', e => {
+                e.stopPropagation();
+                abrirModalAlunos({
+                    titulo:    `${pill.dataset.disc} — ${pill.dataset.nmturma}`,
+                    nmTurma:   pill.dataset.nmturma,
+                    codTurma:  pill.dataset.codturma ? parseInt(pill.dataset.codturma) : null,
+                    codClasse: pill.dataset.codclasse ? parseInt(pill.dataset.codclasse) : null,
+                });
+            });
+        });
+
         container.appendChild(card);
     });
 }
@@ -366,34 +396,67 @@ function renderizarLivros(livros) {
 }
 
 // ── Modal de alunos ───────────────────────────────────────────────────────────
-async function abrirModalAlunos(nomeTurma) {
-    document.getElementById('modalTitulo').textContent = `Alunos — ${nomeTurma}`;
+// ctx pode ser uma string (nome da turma) ou objeto { titulo, nmTurma, codTurma, codClasse }
+async function abrirModalAlunos(ctx) {
+    const titulo    = typeof ctx === 'string' ? ctx : (ctx.titulo || ctx.nmTurma || 'Turma');
+    const nmTurma   = typeof ctx === 'string' ? ctx : (ctx.nmTurma  || '');
+    const codTurma  = typeof ctx === 'string' ? null : (ctx.codTurma  || null);
+    const codClasse = typeof ctx === 'string' ? null : (ctx.codClasse || null);
+
+    document.getElementById('modalTitulo').textContent = `Alunos — ${titulo}`;
     const lista = document.getElementById('listaAlunos');
     lista.innerHTML = '<div class="empty-message">Carregando alunos...</div>';
     document.getElementById('modalAlunos').style.display = 'flex';
 
     try {
-        const resp = await fetch(`${API_URL}/api/alunos?turma=${encodeURIComponent(nomeTurma)}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const alunos = await resp.json();
+        let alunos = [];
 
-        if (!alunos || alunos.length === 0) {
-            lista.innerHTML = '<div class="empty-message">Nenhum aluno cadastrado nesta turma</div>';
+        // 1. Tenta Supabase por codturma (mais rápido, sem RCO)
+        if (codTurma) {
+            const r = await fetch(`${API_URL}/api/alunos?codturma=${codTurma}`);
+            if (r.ok) alunos = await r.json();
+        }
+
+        // 2. Fallback: Supabase por nome de turma
+        if (!alunos.length && nmTurma) {
+            const r = await fetch(`${API_URL}/api/alunos?turma=${encodeURIComponent(nmTurma)}`);
+            if (r.ok) alunos = await r.json();
+        }
+
+        // 3. Fallback: busca direta no RCO por codClasse (funciona sem migração Supabase)
+        if (!alunos.length && codClasse) {
+            const r = await fetch(`${API_URL}/api/alunos-rco?codClasse=${codClasse}&codPeriodoAvaliacao=9`);
+            if (r.ok) {
+                const rcoAlunos = await r.json();
+                // Normalizar formato RCO para o formato do modal
+                alunos = (Array.isArray(rcoAlunos) ? rcoAlunos : []).map(a => ({
+                    nome:          a.nome,
+                    registro:      String(a.codMatrizAluno || ''),
+                    numchamada:    a.numChamada || a.numchamada,
+                    status:        a.situacao || 'Ativo',
+                    codmatrizaluno: a.codMatrizAluno,
+                }));
+            }
+        }
+
+        if (!alunos.length) {
+            lista.innerHTML = '<div class="empty-message">Nenhum aluno encontrado nesta turma</div>';
             return;
         }
 
         lista.innerHTML = '';
         alunos.forEach(aluno => {
+            const chamada  = aluno.numchamada || aluno.numChamada || '';
+            const registro = aluno.codmatrizaluno || aluno.registro || '';
             const div = document.createElement('div');
             div.className = 'aluno-card';
             div.innerHTML = `
                 <div class="aluno-info">
+                    ${chamada ? `<div class="aluno-chamada">#${chamada}</div>` : ''}
                     <div class="aluno-nome">${aluno.nome}</div>
-                    <div class="aluno-detalhe"><strong>Registro:</strong> ${aluno.registro}</div>
-                    <div class="aluno-detalhe"><strong>Nascimento:</strong> ${aluno.data_nascimento || '—'}</div>
                     <div class="aluno-detalhe"><strong>Status:</strong> <span class="status-ativo">${aluno.status || 'Ativo'}</span></div>
                 </div>
-                <div class="aluno-codigo-barras">${gerarCodigoBarrasSVG(aluno.registro)}</div>
+                <div class="aluno-codigo-barras">${gerarCodigoBarrasSVG(String(registro))}</div>
             `;
             lista.appendChild(div);
         });

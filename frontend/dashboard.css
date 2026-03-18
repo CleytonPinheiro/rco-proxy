@@ -315,6 +315,31 @@ body {
     border-radius: 6px; border: 1px solid #e5e7eb; flex-shrink: 0;
 }
 
+/* ── Número de chamada no modal de alunos ────────────────────────────────── */
+.aluno-chamada {
+    display: inline-block;
+    background: #007bff;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 1px 8px;
+    margin-bottom: 5px;
+    min-width: 28px;
+    text-align: center;
+}
+
+/* ── Turma pill clicável (nas disciplinas) ───────────────────────────────── */
+.turma-pill-btn {
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.turma-pill-btn:hover {
+    background: #0056b3;
+    color: white;
+    border-color: #0056b3;
+}
+
 /* ── Responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
     .header-content { flex-wrap: wrap; gap: 10px; }
