@@ -30,6 +30,7 @@ const server = app.listen(PORT, "0.0.0.0", () => {
 
 // Lazy-loaded modules
 let supabase = null;
+let supabaseAdmin = null;
 let loginWithPuppeteer = null;
 let decodeJwtExpiration = null;
 
@@ -38,6 +39,7 @@ async function initializeApp() {
         console.log("Carregando dependências...");
         const supabaseModule = await import("./supabase.js");
         supabase = supabaseModule.supabase;
+        supabaseAdmin = supabaseModule.supabaseAdmin;
         
         const authModule = await import("./auth-puppeteer.js");
         loginWithPuppeteer = authModule.loginWithPuppeteer;
@@ -277,7 +279,7 @@ async function sincronizarComSupabase() {
                 const classesUnicas = dedup(classesPayload, 'cod_classe');
 
                 // Upsert em ordem: estabelecimentos → turmas → disciplinas → classes
-                const { error: e1 } = await supabase.from('rco_estabelecimentos').upsert(estabsUnicos, { onConflict: 'cod_estabelecimento' });
+                const { error: e1 } = await supabaseAdmin.from('rco_estabelecimentos').upsert(estabsUnicos, { onConflict: 'cod_estabelecimento' });
                 if (e1) {
                         if (e1.message?.includes('schema cache') || e1.code === 'PGRST204') {
                                 throw new Error("TABELAS_NAO_CONFIGURADAS: Execute o SQL em backend/setup_rco_tables.sql no Supabase Studio.");
@@ -285,17 +287,17 @@ async function sincronizarComSupabase() {
                         throw new Error(`Erro em rco_estabelecimentos: ${e1.message}`);
                 }
 
-                const { error: e2 } = await supabase.from('rco_turmas').upsert(turmasUnicas, { onConflict: 'cod_turma' });
+                const { error: e2 } = await supabaseAdmin.from('rco_turmas').upsert(turmasUnicas, { onConflict: 'cod_turma' });
                 if (e2) throw new Error(`Erro em rco_turmas: ${e2.message}`);
 
-                const { error: e3 } = await supabase.from('rco_disciplinas').upsert(disciplinasUnicas, { onConflict: 'cod_disciplina' });
+                const { error: e3 } = await supabaseAdmin.from('rco_disciplinas').upsert(disciplinasUnicas, { onConflict: 'cod_disciplina' });
                 if (e3) throw new Error(`Erro em rco_disciplinas: ${e3.message}`);
 
-                const { error: e4 } = await supabase.from('rco_classes').upsert(classesUnicas, { onConflict: 'cod_classe' });
+                const { error: e4 } = await supabaseAdmin.from('rco_classes').upsert(classesUnicas, { onConflict: 'cod_classe' });
                 if (e4) throw new Error(`Erro em rco_classes: ${e4.message}`);
 
                 // Log de sucesso
-                await supabase.from('rco_sync_log').insert({
+                await supabaseAdmin.from('rco_sync_log').insert({
                         status: 'sucesso',
                         estabelecimentos: estabsUnicos.length,
                         turmas: turmasUnicas.length,
@@ -317,7 +319,7 @@ async function sincronizarComSupabase() {
         } catch (erro) {
                 console.error(`[SYNC] Erro:`, erro.message);
                 try {
-                        await supabase.from('rco_sync_log').insert({
+                        await supabaseAdmin.from('rco_sync_log').insert({
                                 status: 'erro',
                                 mensagem: erro.message,
                         });
