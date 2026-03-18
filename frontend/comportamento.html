@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCO Digital - Comportamento</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="comportamento.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>RCO Digital</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="frequencias.html">Frequências</a>
+                <a href="grupos.html">Grupos</a>
+                <a href="comportamento.html" class="active">Comportamento</a>
+                <a href="materiais.html">Materiais</a>
+                <a href="emprestimos.html">Empréstimos</a>
+            </nav>
+            <button class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando turmas...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+            <!-- Cabeçalho -->
+            <div class="comp-top">
+                <div class="comp-title-row">
+                    <h2 class="comp-titulo">Comportamento & Reconhecimento</h2>
+                    <div id="turmaTabs" class="turma-tabs"></div>
+                </div>
+                <div class="comp-top-actions">
+                    <button class="btn-ranking" onclick="abrirRanking()" title="Ranking da turma">🏆 Ranking</button>
+                    <button class="btn-nova-ocorrencia" onclick="abrirModalOcorrencia(null)">+ Registrar</button>
+                </div>
+            </div>
+
+            <!-- Legenda de níveis -->
+            <div class="niveis-legenda">
+                <span class="nivel-chip nivel-0">🌱 Iniciante</span>
+                <span class="nivel-chip nivel-1">📗 Aprendiz</span>
+                <span class="nivel-chip nivel-2">📘 Dedicado</span>
+                <span class="nivel-chip nivel-3">⭐ Destaque</span>
+                <span class="nivel-chip nivel-4">🌟 Excelência</span>
+                <span class="nivel-chip nivel-5">🏆 Mestre</span>
+                <span class="legenda-hint">10 pontos = 1 estrela</span>
+            </div>
+
+            <!-- Grid de alunos -->
+            <div id="alunosGrid" class="alunos-grid">
+                <div class="grid-loading">Selecione uma turma para carregar os alunos...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Registrar Ocorrência -->
+    <div id="modalOcorrencia" class="modal-overlay" style="display:none;" onclick="fecharModalOcorrencia(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalOcorrenciaTitulo">Registrar Ocorrência</h3>
+                <button class="modal-close" onclick="fecharModalOcorrencia()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Aluno (seleção) -->
+                <label class="form-label">Aluno</label>
+                <select id="ocorrAluno" class="form-select"></select>
+
+                <!-- Data -->
+                <label class="form-label" style="margin-top:14px;">Data</label>
+                <input id="ocorrData" class="form-input" type="date">
+
+                <!-- Tipo rápido -->
+                <label class="form-label" style="margin-top:14px;">Tipo de registro</label>
+                <div class="tipo-btns">
+                    <button class="tipo-btn tipo-positivo active" data-tipo="positivo" onclick="selecionarTipo('positivo')">✅ Positivo</button>
+                    <button class="tipo-btn tipo-atencao" data-tipo="atencao" onclick="selecionarTipo('atencao')">⚠️ Atenção</button>
+                    <button class="tipo-btn tipo-grave" data-tipo="grave" onclick="selecionarTipo('grave')">❌ Grave</button>
+                </div>
+
+                <!-- Categoria (varia com tipo) -->
+                <label class="form-label" style="margin-top:14px;">Categoria</label>
+                <div id="categoriasGrid" class="categorias-grid"></div>
+
+                <!-- Pontos -->
+                <div class="pontos-preview" id="pontosPreview">
+                    <span id="pontosValor">+3 pontos</span>
+                </div>
+
+                <!-- Descrição -->
+                <label class="form-label" style="margin-top:14px;">Observação <span style="font-weight:400;font-size:11px;">(opcional)</span></label>
+                <textarea id="ocorrDescricao" class="form-textarea" placeholder="Detalhe a situação se necessário..." rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalOcorrencia()">Cancelar</button>
+                <button class="btn-salvar" onclick="salvarOcorrencia()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico do Aluno -->
+    <div id="modalHistorico" class="modal-overlay" style="display:none;" onclick="fecharModalHistorico(event)">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalHistoricoNome">Histórico do Aluno</h3>
+                    <p id="modalHistoricoResumo" style="margin:4px 0 0;font-size:12px;color:#6b7280;"></p>
+                </div>
+                <button class="modal-close" onclick="fecharModalHistorico()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalHistoricoBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalHistorico()">Fechar</button>
+                <button class="btn-salvar" id="btnRegistrarParaAluno" onclick="registrarParaAluno()">+ Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ranking -->
+    <div id="modalRanking" class="modal-overlay" style="display:none;" onclick="fecharRanking(event)">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3>🏆 Ranking da Turma</h3>
+                <button class="modal-close" onclick="fecharRanking()">✕</button>
+            </div>
+            <div class="modal-body" id="rankingBody"></div>
+        </div>
+    </div>
+
+    <script src="comportamento.js"></script>
+</body>
+</html>
