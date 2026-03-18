@@ -136,6 +136,35 @@ export async function loginWithPuppeteer(cpf, senha) {
         console.log("Navegando para página de login...");
         await page.goto(loginUrl, { waitUntil: "networkidle2", timeout: 60000 });
 
+        // Verificar se o browser já está logado (sessão ativa → redireciona para /home)
+        const urlAposNavegacao = await page.evaluate(() => window.location.href);
+        if (urlAposNavegacao.includes("rco.paas.pr.gov.br") && !urlAposNavegacao.includes("identidadedigital")) {
+            console.log("Browser já está logado. Extraindo token da sessão existente...");
+
+            // Tentar pegar token do localStorage da sessão atual
+            const lsTokenExistente = await page.evaluate(() => {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    if (value && value.startsWith("eyJ") && value.length > 100) return { key, value };
+                }
+                return null;
+            });
+
+            if (lsTokenExistente) {
+                console.log(`Token de sessão obtido do localStorage (chave: ${lsTokenExistente.key})`);
+                return lsTokenExistente.value;
+            }
+
+            // Sessão ativa mas token não encontrado → limpar e tentar login limpo
+            console.log("Token não encontrado na sessão. Limpando cookies para fazer login novamente...");
+            const clientClear = await page.createCDPSession();
+            await clientClear.send('Network.clearBrowserCookies');
+            await clientClear.send('Network.clearBrowserCache');
+            await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch {} });
+            await page.goto(loginUrl, { waitUntil: "networkidle2", timeout: 60000 });
+        }
+
         console.log("Aguardando formulário de login...");
 
         // Tentar múltiplos seletores possíveis para o campo CPF
@@ -153,7 +182,6 @@ export async function loginWithPuppeteer(cpf, senha) {
         }
 
         if (!seletorEncontrado) {
-            // Capturar a URL atual para diagnóstico
             const urlAtual = await page.evaluate(() => window.location.href);
             console.error("Nenhum campo de CPF encontrado. URL atual:", urlAtual);
             throw new Error("Formulário de login não encontrado na página");

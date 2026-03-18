@@ -66,6 +66,7 @@ let userCredentials = {
 
 let cachedToken = null;
 let tokenExpiration = null;
+let tokenRefreshPromise = null; // Semáforo: evita renovações simultâneas
 
 async function getValidToken(forceRefresh = false) {
     if (!loginWithPuppeteer) {
@@ -75,6 +76,13 @@ async function getValidToken(forceRefresh = false) {
     if (!forceRefresh && cachedToken && tokenExpiration && tokenExpiration > Date.now() + 300000) {
         return cachedToken;
     }
+
+    // Se já há uma renovação em andamento, aguardar ela terminar
+    if (tokenRefreshPromise) {
+        console.log("Renovação de token já em andamento, aguardando...");
+        await tokenRefreshPromise;
+        return cachedToken;
+    }
     
     const { cpf, senha } = userCredentials;
     if (!cpf || !senha) {
@@ -82,10 +90,21 @@ async function getValidToken(forceRefresh = false) {
     }
     
     console.log("Obtendo novo token via navegador automatizado...");
-    const token = await loginWithPuppeteer(cpf, senha);
-    cachedToken = token.trim();
-    tokenExpiration = decodeJwtExpiration(cachedToken) || (Date.now() + 3600000);
-    console.log("Token obtido. Expira em:", new Date(tokenExpiration).toISOString());
+    tokenRefreshPromise = loginWithPuppeteer(cpf, senha)
+        .then(token => {
+            cachedToken = token.trim();
+            tokenExpiration = decodeJwtExpiration(cachedToken) || (Date.now() + 3600000);
+            console.log("Token obtido. Expira em:", new Date(tokenExpiration).toISOString());
+        })
+        .catch(err => {
+            console.error("Falha ao obter token:", err.message);
+            throw err;
+        })
+        .finally(() => {
+            tokenRefreshPromise = null;
+        });
+
+    await tokenRefreshPromise;
     return cachedToken;
 }
 
