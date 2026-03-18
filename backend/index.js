@@ -44,6 +44,13 @@ async function initializeApp() {
         decodeJwtExpiration = authModule.decodeJwtExpiration;
         
         console.log("Dependências carregadas com sucesso!");
+
+        // Sincronizar com Supabase na inicialização e a cada 6 horas
+        await sincronizarComSupabase().catch(e => console.warn("[SYNC] Falha no sync inicial:", e.message));
+        setInterval(() => {
+            sincronizarComSupabase().catch(e => console.warn("[SYNC] Falha no sync periódico:", e.message));
+        }, 6 * 60 * 60 * 1000); // a cada 6 horas
+
     } catch (error) {
         console.error("Erro ao carregar dependências:", error.message);
     }
@@ -184,6 +191,184 @@ app.get("/api/debug/rco", async (req, res) => {
                 res.json(results);
         } catch (erro) {
                 res.status(500).json({ erro: erro.message });
+        }
+});
+
+// ==================== SYNC RCO → SUPABASE ====================
+
+async function sincronizarComSupabase() {
+        const agora = new Date().toISOString();
+        console.log(`[SYNC] Iniciando sincronização com Supabase em ${agora}...`);
+
+        try {
+                const authToken = await getValidToken();
+                const hoje = new Date().toISOString().split("T")[0];
+                const response = await rcoGet(`/educador/estabelecimentos/v2/${hoje}`, authToken);
+
+                if (response.status !== 200) {
+                        throw new Error(`API RCO retornou status ${response.status}`);
+                }
+
+                const raw = response.data;
+                const estabs = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+
+                const estabelecimentosPayload = [];
+                const turmasPayload = [];
+                const disciplinasPayload = [];
+                const classesPayload = [];
+
+                estabs.forEach(estab => {
+                        estabelecimentosPayload.push({
+                                cod_estabelecimento: estab.codEstabelecimento,
+                                nome_estabelecimento: estab.nomeCompletoEstab,
+                                cod_municipio: estab.municipio?.codMunicipio || null,
+                                atualizado_em: agora,
+                        });
+
+                        (estab.periodoLetivos || []).forEach(periodo => {
+                                (periodo.livros || []).forEach(livro => {
+                                        const classe = livro.classe;
+                                        if (!classe) return;
+
+                                        const turma = classe.turma || {};
+                                        const disc = classe.disciplina || {};
+
+                                        if (turma.codTurma) {
+                                                turmasPayload.push({
+                                                        cod_turma: turma.codTurma,
+                                                        descr_turma: turma.descrTurma || '',
+                                                        cod_seriacao: turma.seriacao?.codSeriacao || null,
+                                                        cod_estabelecimento: estab.codEstabelecimento,
+                                                        periodo_letivo: periodo.descrPeriodoLetivo || null,
+                                                        atualizado_em: agora,
+                                                });
+                                        }
+
+                                        if (disc.codDisciplina) {
+                                                disciplinasPayload.push({
+                                                        cod_disciplina: disc.codDisciplina,
+                                                        nome_disciplina: disc.nomeDisciplina || '',
+                                                        sigla: (disc.siglaDisciplina || '').trim() || null,
+                                                        cor_fundo: disc.corFundo || null,
+                                                        cor_letra: disc.corLetra || null,
+                                                        atualizado_em: agora,
+                                                });
+                                        }
+
+                                        if (classe.codClasse) {
+                                                classesPayload.push({
+                                                        cod_classe: classe.codClasse,
+                                                        cod_turma: turma.codTurma || null,
+                                                        cod_disciplina: disc.codDisciplina || null,
+                                                        cod_estabelecimento: estab.codEstabelecimento,
+                                                        periodo_letivo: periodo.descrPeriodoLetivo || null,
+                                                        atualizado_em: agora,
+                                                });
+                                        }
+                                });
+                        });
+                });
+
+                // Deduplicar
+                const dedup = (arr, key) => [...new Map(arr.map(x => [x[key], x])).values()];
+                const estabsUnicos = dedup(estabelecimentosPayload, 'cod_estabelecimento');
+                const turmasUnicas = dedup(turmasPayload, 'cod_turma');
+                const disciplinasUnicas = dedup(disciplinasPayload, 'cod_disciplina');
+                const classesUnicas = dedup(classesPayload, 'cod_classe');
+
+                // Upsert em ordem: estabelecimentos → turmas → disciplinas → classes
+                const { error: e1 } = await supabase.from('rco_estabelecimentos').upsert(estabsUnicos, { onConflict: 'cod_estabelecimento' });
+                if (e1) {
+                        if (e1.message?.includes('schema cache') || e1.code === 'PGRST204') {
+                                throw new Error("TABELAS_NAO_CONFIGURADAS: Execute o SQL em backend/setup_rco_tables.sql no Supabase Studio.");
+                        }
+                        throw new Error(`Erro em rco_estabelecimentos: ${e1.message}`);
+                }
+
+                const { error: e2 } = await supabase.from('rco_turmas').upsert(turmasUnicas, { onConflict: 'cod_turma' });
+                if (e2) throw new Error(`Erro em rco_turmas: ${e2.message}`);
+
+                const { error: e3 } = await supabase.from('rco_disciplinas').upsert(disciplinasUnicas, { onConflict: 'cod_disciplina' });
+                if (e3) throw new Error(`Erro em rco_disciplinas: ${e3.message}`);
+
+                const { error: e4 } = await supabase.from('rco_classes').upsert(classesUnicas, { onConflict: 'cod_classe' });
+                if (e4) throw new Error(`Erro em rco_classes: ${e4.message}`);
+
+                // Log de sucesso
+                await supabase.from('rco_sync_log').insert({
+                        status: 'sucesso',
+                        estabelecimentos: estabsUnicos.length,
+                        turmas: turmasUnicas.length,
+                        disciplinas: disciplinasUnicas.length,
+                        classes: classesUnicas.length,
+                });
+
+                const resultado = {
+                        status: 'sucesso',
+                        estabelecimentos: estabsUnicos.length,
+                        turmas: turmasUnicas.length,
+                        disciplinas: disciplinasUnicas.length,
+                        classes: classesUnicas.length,
+                        executadoEm: agora,
+                };
+                console.log(`[SYNC] Concluído:`, resultado);
+                return resultado;
+
+        } catch (erro) {
+                console.error(`[SYNC] Erro:`, erro.message);
+                try {
+                        await supabase.from('rco_sync_log').insert({
+                                status: 'erro',
+                                mensagem: erro.message,
+                        });
+                } catch {}
+                throw erro;
+        }
+}
+
+// Endpoint para disparar sincronização manualmente
+app.post("/api/sync", async (req, res) => {
+        try {
+                const resultado = await sincronizarComSupabase();
+                res.json(resultado);
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message });
+        }
+});
+
+// Endpoint para ver o log de sincronizações
+app.get("/api/sync/log", async (req, res) => {
+        try {
+                const { data, error } = await supabase
+                        .from('rco_sync_log')
+                        .select('*')
+                        .order('executado_em', { ascending: false })
+                        .limit(20);
+                if (error) throw error;
+                res.json(data);
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message });
+        }
+});
+
+// Endpoint para verificar se as tabelas Supabase estão configuradas
+app.get("/api/setup-status", async (req, res) => {
+        try {
+                const { data, error } = await supabase
+                        .from('rco_estabelecimentos')
+                        .select('cod_estabelecimento')
+                        .limit(1);
+                if (error) {
+                        return res.json({
+                                configurado: false,
+                                mensagem: "Tabelas não encontradas no Supabase. Execute o SQL em backend/setup_rco_tables.sql no Supabase Studio.",
+                                supabase_url: process.env.SUPABASE_URL || '(não definida)',
+                                erro: error.message
+                        });
+                }
+                res.json({ configurado: true, mensagem: "Tabelas configuradas e acessíveis." });
+        } catch (erro) {
+                res.status(500).json({ configurado: false, erro: erro.message });
         }
 });
 
