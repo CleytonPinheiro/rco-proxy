@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCO Digital - Frequências</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="frequencias.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>RCO Digital</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="materiais.html">Materiais</a>
+                <a href="emprestimos.html">Empréstimos</a>
+                <a href="frequencias.html" class="active">Frequências</a>
+            </nav>
+            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando disciplinas...</p>
+        </div>
+
+        <div id="content" class="content" style="display: none;">
+            <div class="page-header-freq">
+                <h2>Frequências por Disciplina</h2>
+                <div class="freq-periodo-badge">1º Trimestre · 2026</div>
+            </div>
+
+            <!-- Accordion de disciplinas -->
+            <div id="listaDiscDisciplinas" class="disc-accordion"></div>
+        </div>
+
+        <div id="erro" class="freq-erro" style="display:none;">
+            <span id="erroMsg"></span>
+        </div>
+    </main>
+
+    <script src="frequencias.js"></script>
+</body>
+</html>

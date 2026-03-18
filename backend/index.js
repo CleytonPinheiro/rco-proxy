@@ -200,6 +200,65 @@ app.get("/api/debug/rco", async (req, res) => {
         }
 });
 
+// ==================== FREQUÊNCIAS ====================
+
+// GET /api/frequencias?codClasse=X&codPeriodoAvaliacao=Y&codPeriodoLetivo=Z
+// Retorna lista de alunos com frequência por aula (C=presente, F=falta)
+app.get("/api/frequencias", async (req, res) => {
+        const codClasse           = req.query.codClasse;
+        const codPeriodoAvaliacao = req.query.codPeriodoAvaliacao || 9;
+        const codPeriodoLetivo    = req.query.codPeriodoLetivo    || 261;
+
+        if (!codClasse) {
+                return res.status(400).json({ erro: "codClasse é obrigatório" });
+        }
+
+        try {
+                const authToken = await getValidToken();
+                const path = `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=${codPeriodoLetivo}&page=1&perPage=200`;
+                const response = await rcoGet(path, authToken);
+
+                if (response.status !== 200) {
+                        return res.status(response.status).json({ erro: `RCO retornou ${response.status}`, dados: response.data });
+                }
+
+                const raw = Array.isArray(response.data) ? response.data : [];
+
+                // Extrair codAulas únicos (todas as chaves numéricas dos objetos aluno)
+                const aulaSet = new Set();
+                raw.forEach(a => Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); }));
+                const codAulas = [...aulaSet].sort((a, b) => parseInt(a) - parseInt(b));
+
+                // Mapear alunos com suas frequências e totais
+                const alunos = raw.map(a => {
+                        const freq = {};
+                        codAulas.forEach(cod => { freq[cod] = a[cod] || null; });
+
+                        const presencas   = codAulas.filter(cod => a[cod] === 'C').length;
+                        const faltas      = codAulas.filter(cod => a[cod] && a[cod] !== 'C').length;
+                        const totalAulas  = codAulas.filter(cod => a[cod] !== undefined && a[cod] !== null).length;
+                        const pct = totalAulas > 0 ? Math.round((presencas / totalAulas) * 100) : null;
+
+                        return {
+                                codMatrizAluno: a.codMatrizAluno,
+                                numChamada:     a.numChamada,
+                                nome:           a.nome,
+                                situacao:       a.descrAbrevSituacaoMatricula || '',
+                                frequencias:    freq,
+                                presencas,
+                                faltas,
+                                totalAulas,
+                                percentual:     pct,
+                        };
+                });
+
+                res.json({ codAulas, alunos, codClasse: parseInt(codClasse), codPeriodoAvaliacao: parseInt(codPeriodoAvaliacao) });
+
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message });
+        }
+});
+
 // ==================== ENDPOINTS DE ALUNOS DO RCO ====================
 
 // Buscar lista de alunos do RCO por codClasse

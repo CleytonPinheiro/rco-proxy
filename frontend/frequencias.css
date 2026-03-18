@@ -1,0 +1,340 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FREQUÊNCIAS — Estilos
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Cabeçalho da página ─────────────────────────────────────────────────── */
+.page-header-freq {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.page-header-freq h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+.freq-periodo-badge {
+    font-size: 12px;
+    font-weight: 600;
+    background: #e8f0fe;
+    color: #1a73e8;
+    border-radius: 20px;
+    padding: 4px 14px;
+    letter-spacing: 0.3px;
+}
+
+/* ── Accordion de disciplinas ────────────────────────────────────────────── */
+.disc-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.disc-item {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    overflow: hidden;
+    border: 1px solid #e8ecf4;
+}
+
+.disc-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+.disc-header:hover { background: #f5f7ff; }
+.disc-header[aria-expanded="true"] {
+    background: #f0f4ff;
+    border-bottom: 1px solid #dce4f7;
+}
+
+.disc-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.disc-nome {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a2e;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.disc-turma-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.badge-turma-mini {
+    font-size: 11px;
+    font-weight: 600;
+    background: #eff2f7;
+    color: #555;
+    border-radius: 10px;
+    padding: 2px 8px;
+}
+
+.disc-chevron {
+    font-size: 18px;
+    color: #888;
+    transition: transform 0.25s;
+    flex-shrink: 0;
+}
+.disc-header[aria-expanded="true"] .disc-chevron { transform: rotate(180deg); }
+
+.disc-body {
+    padding: 0;
+}
+
+/* ── Bloco de turma dentro da disciplina ─────────────────────────────────── */
+.turma-freq-block { border-top: 1px solid #eef0f7; }
+
+.turma-freq-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px 8px;
+    background: #fafbff;
+}
+.turma-freq-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+}
+.turma-freq-serie {
+    font-size: 11px;
+    background: #e0e7ff;
+    color: #4f46e5;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-weight: 600;
+}
+
+.turma-freq-content { padding: 0 0 16px; }
+
+/* ── Loading mini ────────────────────────────────────────────────────────── */
+.freq-loading-mini {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 24px;
+    color: #888;
+    font-size: 13px;
+}
+.spinner-sm {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ddd;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Erro inline ─────────────────────────────────────────────────────────── */
+.freq-erro-inline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    font-size: 13px;
+    color: #c0392b;
+    background: #fff5f5;
+    border-left: 3px solid #e74c3c;
+    margin: 10px 20px;
+    border-radius: 6px;
+}
+.btn-retry {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: auto;
+}
+.btn-retry:hover { background: #c0392b; }
+
+/* ── Erro de página ──────────────────────────────────────────────────────── */
+.freq-erro {
+    text-align: center;
+    color: #c0392b;
+    padding: 40px;
+    font-size: 15px;
+}
+.freq-vazio {
+    padding: 16px 24px;
+    color: #999;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ── Legenda ─────────────────────────────────────────────────────────────── */
+.freq-legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 24px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.freq-legenda span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 5px;
+    padding: 3px 8px;
+}
+.leg-presente { background: #d4edda; color: #155724; }
+.leg-falta    { background: #f8d7da; color: #721c24; }
+.leg-pct-ok   { background: #d4edda; color: #155724; }
+.leg-pct-alerta  { background: #fff3cd; color: #856404; }
+.leg-pct-critico { background: #f8d7da; color: #721c24; }
+
+/* ── Wrapper com scroll horizontal ──────────────────────────────────────── */
+.freq-tabela-wrap { padding: 0 20px 0; }
+.freq-scroll {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e8ecf4;
+}
+
+/* ── Tabela ──────────────────────────────────────────────────────────────── */
+.freq-tabela {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 500px;
+    font-size: 12px;
+    background: white;
+}
+.freq-tabela thead th {
+    background: #f4f6fc;
+    color: #445;
+    font-weight: 700;
+    padding: 8px 6px;
+    text-align: center;
+    border-bottom: 2px solid #dce4f7;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.freq-tabela thead th.col-nome { text-align: left; }
+
+.freq-tabela tbody tr:hover { background: #f9faff; }
+.freq-tabela tbody tr:nth-child(even) { background: #fafbfc; }
+.freq-tabela tbody tr:nth-child(even):hover { background: #f4f6ff; }
+
+.freq-tabela td {
+    padding: 6px 5px;
+    text-align: center;
+    border-bottom: 1px solid #f0f2f8;
+    font-size: 12px;
+}
+
+/* Colunas fixas de aluno */
+.col-chamada {
+    width: 32px;
+    font-weight: 700;
+    color: #888;
+    text-align: right;
+    padding-right: 8px;
+}
+.col-nome {
+    text-align: left;
+    padding-left: 10px;
+    min-width: 150px;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    color: #1a1a2e;
+}
+
+/* Células de frequência */
+.col-aula { width: 28px; min-width: 28px; }
+.fc-presente {
+    background: #d4edda;
+    color: #155724;
+    font-weight: 700;
+    border-radius: 3px;
+}
+.fc-falta {
+    background: #f8d7da;
+    color: #721c24;
+    font-weight: 700;
+    border-radius: 3px;
+}
+.fc-vazio { color: #ccc; }
+
+/* Totais por aluno */
+.col-presenca { color: #155724; font-weight: 700; background: #f0faf3; width: 32px; }
+.col-falta    { color: #721c24; font-weight: 700; background: #fff5f5; width: 32px; }
+.col-pct      { font-weight: 700; width: 42px; }
+.pct-ok       { color: #155724; background: #d4edda; }
+.pct-alerta   { color: #856404; background: #fff3cd; }
+.pct-critico  { color: #721c24; background: #f8d7da; }
+
+/* Linha de totais de falta por aula */
+.linha-totais td {
+    background: #fafbfc;
+    font-size: 11px;
+    border-top: 2px solid #dce4f7;
+    font-weight: 700;
+    color: #c0392b;
+    padding: 5px 5px;
+}
+.totais-label {
+    text-align: left;
+    padding-left: 10px;
+    color: #888;
+    font-size: 11px;
+    font-weight: 600;
+}
+.col-aula-total { color: #c0392b; }
+
+/* ── Responsivo ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .page-header-freq { flex-direction: column; align-items: flex-start; }
+    .disc-header { padding: 12px 14px; gap: 8px; }
+    .disc-nome { font-size: 13px; }
+    .disc-icon { width: 32px; height: 32px; font-size: 13px; }
+    .freq-tabela-wrap { padding: 0 12px; }
+    .col-nome { max-width: 120px; }
+    .freq-legenda { padding: 8px 14px; }
+    .turma-freq-content { padding: 0 0 12px; }
+}
