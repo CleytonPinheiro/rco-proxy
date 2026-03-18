@@ -109,7 +109,12 @@ export async function loginWithPuppeteer(cpf, senha) {
     const page = await browser.newPage();
 
     try {
-        // Otimização 1: Bloquear recursos desnecessários
+        // Limpar cookies da sessão anterior para evitar redirecionamentos indevidos
+        const client = await page.createCDPSession();
+        await client.send('Network.clearBrowserCookies');
+        await client.send('Network.clearBrowserCache');
+
+        // Otimização: Bloquear recursos desnecessários
         await page.setRequestInterception(true);
         page.on("request", (req) => {
             const type = req.resourceType();
@@ -126,18 +131,36 @@ export async function loginWithPuppeteer(cpf, senha) {
 
         await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         await page.setExtraHTTPHeaders({ "Accept-Language": "pt-BR,pt;q=0.9" });
-
-        // Otimização 2: Viewport mínimo (menos memória de renderização)
         await page.setViewport({ width: 800, height: 600 });
 
         console.log("Navegando para página de login...");
-        await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await page.goto(loginUrl, { waitUntil: "networkidle2", timeout: 60000 });
 
         console.log("Aguardando formulário de login...");
-        await page.waitForSelector("#attribute", { timeout: 30000 });
+
+        // Tentar múltiplos seletores possíveis para o campo CPF
+        const seletoresCpf = ["#attribute", "input[name='attribute']", "input[type='text']", "#cpf", "input[name='cpf']"];
+        let seletorEncontrado = null;
+        for (const seletor of seletoresCpf) {
+            try {
+                await page.waitForSelector(seletor, { timeout: 8000 });
+                seletorEncontrado = seletor;
+                console.log(`Formulário encontrado com seletor: ${seletor}`);
+                break;
+            } catch {
+                console.log(`Seletor não encontrado: ${seletor}`);
+            }
+        }
+
+        if (!seletorEncontrado) {
+            // Capturar a URL atual para diagnóstico
+            const urlAtual = await page.evaluate(() => window.location.href);
+            console.error("Nenhum campo de CPF encontrado. URL atual:", urlAtual);
+            throw new Error("Formulário de login não encontrado na página");
+        }
 
         console.log("Preenchendo credenciais...");
-        await page.type("#attribute", cpf, { delay: 20 });
+        await page.type(seletorEncontrado, cpf, { delay: 20 });
         await page.type("#password", senha, { delay: 20 });
 
         console.log("Submetendo formulário...");
