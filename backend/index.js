@@ -271,7 +271,7 @@ app.get("/api/frequencias", async (req, res) => {
                         };
                 });
 
-                res.json({ codAulas, alunos, codClasse: parseInt(codClasse), codPeriodoAvaliacao: parseInt(codPeriodoAvaliacao) });
+                res.json({ codAulas, aulaDatas, alunos, codClasse: parseInt(codClasse), codPeriodoAvaliacao: parseInt(codPeriodoAvaliacao) });
 
         } catch (erro) {
                 res.status(500).json({ erro: erro.message });

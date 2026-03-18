@@ -193,7 +193,7 @@ function recarregarFreq(btn, codClasse, ti, di) {
 
 // ── Montar tabela de frequências ──────────────────────────────────────────────
 function renderTabelaFrequencias(data) {
-    const { codAulas, alunos } = data;
+    const { codAulas, aulaDatas = {}, alunos } = data;
 
     if (!alunos || alunos.length === 0) {
         return '<p class="freq-vazio">Nenhum aluno encontrado.</p>';
@@ -202,9 +202,12 @@ function renderTabelaFrequencias(data) {
         return '<p class="freq-vazio">Nenhuma aula registrada neste período.</p>';
     }
 
-    const headerCols = codAulas.map((_, i) =>
-        `<th class="col-aula" title="Aula ${i + 1}">${i + 1}</th>`
-    ).join('');
+    const headerCols = codAulas.map((cod, i) => {
+        const data = aulaDatas[cod];
+        const label = data || (i + 1);
+        const title = data ? `Aula ${i + 1} — ${data}` : `Aula ${i + 1}`;
+        return `<th class="col-aula" title="${title}">${label}</th>`;
+    }).join('');
 
     const linhas = alunos
         .slice()

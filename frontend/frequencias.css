@@ -299,7 +299,12 @@
     color: #1a1a2e;
 }
 
-.col-aula { width: 26px; min-width: 26px; }
+.col-aula {
+    width: 38px;
+    min-width: 38px;
+    font-size: 10px;
+    white-space: nowrap;
+}
 
 .fc-presente {
     background: #d4edda;
