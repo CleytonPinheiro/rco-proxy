@@ -231,6 +231,39 @@
     border-top: 1px solid #f3f4f6;
     padding: 8px 14px;
 }
+/* Observações RCO – badge no card */
+.obs-rco-badge {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    border-radius: 12px;
+    padding: 1px 7px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: default;
+    white-space: nowrap;
+}
+
+/* Linha de observação RCO no card */
+.card-obs-rco {
+    background: #fffbee;
+    border-left: 3px solid #ffc107;
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-size: 0.72rem;
+    line-height: 1.3;
+    color: #5c4a00;
+    margin-top: 4px;
+    display: block;
+    cursor: pointer;
+}
+
+/* Item de observação RCO no modal de histórico */
+.rco-obs-item {
+    background: #fffdf0 !important;
+    border-left: 4px solid #ffc107 !important;
+}
+
 .btn-card-registrar {
     width: 100%;
     background: #f8faff;

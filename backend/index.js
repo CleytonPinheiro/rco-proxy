@@ -1240,6 +1240,79 @@ app.get("/api/estatisticas/materiais", async (req, res) => {
         }
 });
 
+// ==================== OBSERVAÇÕES DE ALUNOS (chamada diária RCO) ====================
+
+// GET /api/observacoes?codClasse=X&codPeriodoAvaliacao=Y&codPeriodoLetivo=Z
+// Percorre todas as aulas da classe, coleta observações por aluno e salva no Supabase
+app.get('/api/observacoes', async (req, res) => {
+        const codClasse           = req.query.codClasse;
+        const codPeriodoAvaliacao = req.query.codPeriodoAvaliacao || 9;
+        const codPeriodoLetivo    = req.query.codPeriodoLetivo    || 261;
+        if (!codClasse) return res.status(400).json({ erro: 'codClasse é obrigatório' });
+
+        try {
+                const authToken = await getValidToken();
+
+                // 1. Buscar lista de aulas da classe via frequenciaAulas
+                const freqResp = await rcoGet(
+                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=${codPeriodoLetivo}&page=1&perPage=200`,
+                        authToken
+                );
+                const alunosFreq = Array.isArray(freqResp.data) ? freqResp.data : [];
+                const aulaSet = new Set();
+                alunosFreq.forEach(a => Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); }));
+                const codAulas = [...aulaSet].sort((a, b) => parseInt(a) - parseInt(b));
+
+                if (!codAulas.length) return res.json([]);
+
+                // 2. Buscar detalhes de cada aula em paralelo (max 10 simultâneos)
+                const BATCH = 10;
+                const todasObs = [];
+                for (let i = 0; i < codAulas.length; i += BATCH) {
+                        const lote = codAulas.slice(i, i + BATCH);
+                        const resultados = await Promise.all(lote.map(async (cod) => {
+                                try {
+                                        const r = await rcoGet(
+                                                `/educador/grade/aula/v2/${cod}?codPeriodoLetivo=${codPeriodoLetivo}`,
+                                                authToken
+                                        );
+                                        const aula    = r.data?.aula || {};
+                                        const alunos  = aula.alunos || [];
+                                        const dataAula = aula.dataAula ? aula.dataAula.substring(0, 10) : null;
+                                        return alunos
+                                                .filter(a => a.observacao && a.observacao.trim())
+                                                .map(a => ({
+                                                        cod_aula:         parseInt(cod),
+                                                        cod_classe:       parseInt(codClasse),
+                                                        cod_matriz_aluno: a.codMatrizAluno,
+                                                        nome_aluno:       a.nome || '',
+                                                        num_chamada:      a.numChamada || null,
+                                                        data_aula:        dataAula,
+                                                        observacao:       a.observacao.trim(),
+                                                }));
+                                } catch { return []; }
+                        }));
+                        resultados.forEach(r => todasObs.push(...r));
+                }
+
+                // 3. Upsert no Supabase (sobrescreve se já existir)
+                if (todasObs.length > 0) {
+                        await supabaseAdmin.from('rco_observacoes')
+                                .upsert(todasObs, { onConflict: 'cod_aula,cod_matriz_aluno' });
+                }
+
+                // 4. Retornar todas as observações da classe (do Supabase)
+                const { data: dbObs, error } = await supabaseAdmin
+                        .from('rco_observacoes')
+                        .select('*')
+                        .eq('cod_classe', parseInt(codClasse))
+                        .order('data_aula', { ascending: false });
+
+                if (error) return res.status(500).json({ erro: error.message });
+                res.json(dbObs || []);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 // ==================== COMPORTAMENTO & RECONHECIMENTO (Supabase) ====================
 
 // GET /api/comportamento?codTurma=X — todas as ocorrências da turma

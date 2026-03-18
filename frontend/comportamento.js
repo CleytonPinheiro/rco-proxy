@@ -1,11 +1,12 @@
 // ── Comportamento & Reconhecimento ────────────────────────────────────────────
 
 const API = '';
-let turmaAtual    = null;
-let todosAlunos   = [];
-let ocorrenciasMap = {};   // codMatrizAluno → [ocorrencias]
-let alunoFoco     = null;  // aluno selecionado no modal de histórico
-let tipoSelecionado = 'positivo';
+let turmaAtual       = null;
+let todosAlunos      = [];
+let ocorrenciasMap   = {};   // codMatrizAluno → [ocorrencias]
+let observacoesMap   = {};   // codMatrizAluno → [observacoes RCO]
+let alunoFoco        = null;
+let tipoSelecionado  = 'positivo';
 let categoriaSelecionada = null;
 
 // ── Categorias por tipo ────────────────────────────────────────────────────────
@@ -113,8 +114,12 @@ async function selecionarTurma(turma) {
     document.querySelectorAll('.turma-tab').forEach(b => {
         b.classList.toggle('active', String(b.dataset.cod) === String(turma.codTurma));
     });
-    document.getElementById('alunosGrid').innerHTML = '<div class="grid-loading">Carregando alunos...</div>';
-    await Promise.all([carregarAlunos(turma), carregarOcorrencias(turma.codTurma)]);
+    document.getElementById('alunosGrid').innerHTML = '<div class="grid-loading">Carregando alunos e observações do RCO...</div>';
+    await Promise.all([
+        carregarAlunos(turma),
+        carregarOcorrencias(turma.codTurma),
+        carregarObservacoes(turma.codClasse),
+    ]);
     renderGrid();
 }
 
@@ -139,6 +144,18 @@ async function carregarOcorrencias(codTurma) {
     } catch { ocorrenciasMap = {}; }
 }
 
+async function carregarObservacoes(codClasse) {
+    try {
+        const r = await fetch(`${API}/api/observacoes?codClasse=${codClasse}`);
+        const lista = await r.json();
+        observacoesMap = {};
+        for (const o of (Array.isArray(lista) ? lista : [])) {
+            if (!observacoesMap[o.cod_matriz_aluno]) observacoesMap[o.cod_matriz_aluno] = [];
+            observacoesMap[o.cod_matriz_aluno].push(o);
+        }
+    } catch { observacoesMap = {}; }
+}
+
 // ── Render grid ────────────────────────────────────────────────────────────────
 function renderGrid() {
     const grid = document.getElementById('alunosGrid');
@@ -153,7 +170,8 @@ function renderCardAluno(aluno) {
     const pts    = totalPontos(aluno.codMatrizAluno);
     const nivel  = calcularNivel(pts);
     const ocs    = ocorrenciasMap[aluno.codMatrizAluno] || [];
-    const ultima = ocs.sort((a, b) => b.criado_em?.localeCompare(a.criado_em))[0];
+    const obs    = observacoesMap[aluno.codMatrizAluno] || [];
+    const ultima = [...ocs].sort((a, b) => (b.criado_em || '').localeCompare(a.criado_em || ''))[0];
     const maxEstrelas = Math.min(nivel.stars, 10);
     const estrelasHtml = '⭐'.repeat(maxEstrelas) +
         (nivel.stars > 10 ? `<span class="estrelas-label">+${nivel.stars - 10}</span>` : '') +
@@ -166,17 +184,32 @@ function renderCardAluno(aluno) {
         ultimaHtml = `<span class="card-ultima ${tipoClass}">${icone} ${escHtml(ultima.categoria_label || ultima.categoria)}</span>`;
     }
 
+    // Badge de observações RCO
+    const obsBadge = obs.length
+        ? `<span class="obs-rco-badge" title="${obs.length} observação(ões) registrada(s) no RCO">📝 ${obs.length}</span>`
+        : '';
+
+    // Última observação RCO (mais recente)
+    const ultimaObs = obs.sort((a, b) => (b.data_aula || '').localeCompare(a.data_aula || ''))[0];
+    const obsHtml = ultimaObs
+        ? `<span class="card-ultima card-obs-rco" title="${escHtml(ultimaObs.observacao)}">📝 ${escHtml(ultimaObs.observacao.length > 55 ? ultimaObs.observacao.substring(0,52)+'…' : ultimaObs.observacao)}</span>`
+        : '';
+
     return `
         <div class="aluno-comp-card card-nivel-${nivel.num}" onclick="abrirHistorico(${aluno.codMatrizAluno})">
             <div class="card-nivel-header">
                 <span class="nivel-badge">${nivel.label}</span>
-                <span class="card-chamada">Nº ${aluno.numChamada || '?'}</span>
+                <div style="display:flex;align-items:center;gap:5px;">
+                    ${obsBadge}
+                    <span class="card-chamada">Nº ${aluno.numChamada || '?'}</span>
+                </div>
             </div>
             <div class="card-body">
                 <div class="card-nome" title="${escHtml(aluno.nome)}">${escHtml(aluno.nome)}</div>
                 <div class="card-estrelas">${estrelasHtml}</div>
                 <div class="card-pontos">${pts >= 0 ? '+' : ''}${pts} pontos acumulados</div>
                 ${ultimaHtml}
+                ${obsHtml}
             </div>
             <div class="card-footer">
                 <button class="btn-card-registrar" onclick="event.stopPropagation(); abrirModalOcorrencia(${aluno.codMatrizAluno})">
@@ -351,7 +384,22 @@ function renderHistoricoBody(aluno) {
           }).join('')
         : '<div class="hist-vazio">Nenhum registro ainda para este aluno.</div>';
 
-    document.getElementById('modalHistoricoBody').innerHTML = statsHtml + listaHtml;
+    // Observações do RCO (chamada diária)
+    const obsRco = (observacoesMap[aluno.codMatrizAluno] || [])
+        .sort((a, b) => (b.data_aula || '').localeCompare(a.data_aula || ''));
+    const obsRcoHtml = obsRco.length
+        ? `<div class="hist-section-title">📝 Observações registradas no RCO (${obsRco.length})</div>` +
+          obsRco.map(o => `
+            <div class="ocorrencia-item atencao rco-obs-item">
+                <span class="ocorrencia-icon">📝</span>
+                <div class="ocorrencia-info">
+                    <div class="ocorrencia-data">Aula de ${o.data_aula ? formatarData(o.data_aula) : '?'}</div>
+                    <div class="ocorrencia-desc">${escHtml(o.observacao)}</div>
+                </div>
+            </div>`).join('')
+        : '';
+
+    document.getElementById('modalHistoricoBody').innerHTML = statsHtml + listaHtml + obsRcoHtml;
 }
 
 function fecharModalHistorico(e) {
