@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGest — Quiosque</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link rel="stylesheet" href="quiosque.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="kiosk-header">
+        <div class="kiosk-brand">📚 <span>EduGest</span></div>
+        <div class="kiosk-clock" id="relogio">--:--</div>
+        <div class="kiosk-header-right">
+            <span id="autoRefreshDot" class="refresh-dot" title="Atualização automática"></span>
+            <button class="btn-kiosk-sm" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
+            <a href="emprestimos.html" class="btn-kiosk-sm" title="Sair do quiosque">✕ Sair</a>
+        </div>
+    </header>
+
+    <!-- STATS BAR -->
+    <div class="kiosk-stats">
+        <div class="stat-card stat-ativos">
+            <span class="stat-num" id="statAtivos">—</span>
+            <span class="stat-lab">Empréstimos ativos</span>
+        </div>
+        <div class="stat-card stat-atraso">
+            <span class="stat-num" id="statAtraso">—</span>
+            <span class="stat-lab">Em atraso</span>
+        </div>
+        <div class="stat-card stat-disponivel">
+            <span class="stat-num" id="statDisp">—</span>
+            <span class="stat-lab">Materiais disponíveis</span>
+        </div>
+        <div class="stat-card stat-total">
+            <span class="stat-num" id="statTotal">—</span>
+            <span class="stat-lab">Total de materiais</span>
+        </div>
+    </div>
+
+    <!-- MAIN LAYOUT -->
+    <div class="kiosk-main">
+
+        <!-- PAINEL ESQUERDO: ações -->
+        <aside class="kiosk-actions">
+            <button class="btn-action btn-emprestar" onclick="iniciarFluxo('emprestar')">
+                <span class="btn-action-icon">📤</span>
+                <span class="btn-action-label">Emprestar</span>
+                <span class="btn-action-sub">Escanear crachá do aluno</span>
+            </button>
+
+            <button class="btn-action btn-devolver" onclick="iniciarFluxo('devolver')">
+                <span class="btn-action-icon">📥</span>
+                <span class="btn-action-label">Devolver</span>
+                <span class="btn-action-sub">Escanear crachá do aluno</span>
+            </button>
+        </aside>
+
+        <!-- PAINEL DIREITO: lista de ativos -->
+        <section class="kiosk-monitor">
+            <div class="monitor-header">
+                <h2>Empréstimos Ativos</h2>
+                <span id="ultimaAtualizacao" class="ultima-atualizacao"></span>
+            </div>
+            <div id="listaAtivos" class="monitor-lista">
+                <div class="monitor-loading">Carregando...</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         MODAL: Câmera QR (scan do crachá)
+    ═══════════════════════════════════════════════ -->
+    <div id="modalScan" class="kiosk-modal" style="display:none;">
+        <div class="kiosk-modal-box">
+            <div class="kiosk-modal-header">
+                <h2 id="scanTitulo">Escanear QR do Aluno</h2>
+                <button class="btn-fechar" onclick="cancelarFluxo()">✕</button>
+            </div>
+            <div class="kiosk-modal-body">
+                <div class="qr-viewport">
+                    <video id="qrVideo" autoplay playsinline muted></video>
+                    <canvas id="qrCanvas" style="display:none;"></canvas>
+                    <div class="qr-frame">
+                        <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+                        <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+                        <div class="qr-line"></div>
+                    </div>
+                </div>
+                <p id="scanInstrucao" class="scan-instrucao">Aponte para o QR Code do crachá do aluno</p>
+                <button class="btn-kiosk-cancel" onclick="cancelarFluxo()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         MODAL: Confirmar Empréstimo
+    ═══════════════════════════════════════════════ -->
+    <div id="modalEmprestar" class="kiosk-modal" style="display:none;">
+        <div class="kiosk-modal-box">
+            <div class="kiosk-modal-header">
+                <h2>📤 Novo Empréstimo</h2>
+                <button class="btn-fechar" onclick="cancelarFluxo()">✕</button>
+            </div>
+            <div class="kiosk-modal-body">
+                <!-- Aluno -->
+                <div id="infoAlunoEmp" class="info-aluno-box"></div>
+
+                <!-- Seleção de material -->
+                <div class="form-section">
+                    <label class="form-label">Material a emprestar</label>
+                    <div id="listaMateriaisDisp" class="lista-materiais-grid"></div>
+                </div>
+
+                <!-- Seleção de período -->
+                <div class="form-section">
+                    <label class="form-label">Período de uso</label>
+                    <div class="periodo-grid-kiosk" id="periodoGrid">
+                        <button class="periodo-btn" data-aula="1" onclick="toggleAula(this)">1ª<small>07:30</small></button>
+                        <button class="periodo-btn" data-aula="2" onclick="toggleAula(this)">2ª<small>08:20</small></button>
+                        <button class="periodo-btn" data-aula="3" onclick="toggleAula(this)">3ª<small>09:30</small></button>
+                        <button class="periodo-btn" data-aula="4" onclick="toggleAula(this)">4ª<small>10:20</small></button>
+                        <button class="periodo-btn" data-aula="5" onclick="toggleAula(this)">5ª<small>11:10</small></button>
+                        <button class="periodo-btn" data-aula="6" onclick="toggleAula(this)">6ª<small>12:00</small></button>
+                    </div>
+                </div>
+
+                <div class="form-actions-kiosk">
+                    <button class="btn-kiosk-cancel" onclick="cancelarFluxo()">Cancelar</button>
+                    <button class="btn-kiosk-confirm" id="btnConfirmarEmp" onclick="confirmarEmprestimo()" disabled>
+                        ✅ Confirmar Empréstimo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         MODAL: Devolução
+    ═══════════════════════════════════════════════ -->
+    <div id="modalDevolver" class="kiosk-modal" style="display:none;">
+        <div class="kiosk-modal-box">
+            <div class="kiosk-modal-header">
+                <h2>📥 Devolução</h2>
+                <button class="btn-fechar" onclick="cancelarFluxo()">✕</button>
+            </div>
+            <div class="kiosk-modal-body">
+                <div id="infoAlunoDev" class="info-aluno-box"></div>
+                <div id="listaEmpAlunoDiv">
+                    <p class="scan-instrucao">Buscando empréstimos ativos...</p>
+                </div>
+                <div class="form-actions-kiosk" style="margin-top:16px;">
+                    <button class="btn-kiosk-cancel" onclick="cancelarFluxo()">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         MODAL: Sucesso / Feedback
+    ═══════════════════════════════════════════════ -->
+    <div id="modalFeedback" class="kiosk-modal" style="display:none;">
+        <div class="kiosk-modal-box feedback-box">
+            <div id="feedbackIcone" class="feedback-icone">✅</div>
+            <div id="feedbackMsg" class="feedback-msg"></div>
+            <div id="feedbackSub" class="feedback-sub"></div>
+        </div>
+    </div>
+
+    <script src="quiosque.js"></script>
+</body>
+</html>
