@@ -150,6 +150,17 @@ app.post("/api/configurar", async (req, res) => {
 });
 
 // ==================== DIAGNÓSTICO RCO ====================
+// Diagnóstico: chamar qualquer path do RCO e retornar raw
+app.get("/api/debug/raw-rco", async (req, res) => {
+        const { path: rcoPath } = req.query;
+        if (!rcoPath) return res.status(400).json({ erro: 'path é obrigatório' });
+        try {
+                const authToken = await getValidToken();
+                const r = await rcoGet(rcoPath, authToken);
+                res.json({ status: r.status, data: r.data });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 app.get("/api/debug/rco", async (req, res) => {
         try {
                 const authToken = await getValidToken();
