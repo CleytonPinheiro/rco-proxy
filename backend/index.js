@@ -1009,150 +1009,201 @@ app.put("/api/emprestimos/:id/devolver", async (req, res) => {
         }
 });
 
-// ==================== GRUPOS DE TRABALHO ====================
-
-const GRUPOS_FILE = path.join(__dirname, 'data', 'grupos.json');
-
-function lerGrupos() {
-        try {
-                const raw = fs.readFileSync(GRUPOS_FILE, 'utf8');
-                return JSON.parse(raw).grupos || [];
-        } catch { return []; }
-}
-
-function salvarGrupos(grupos) {
-        fs.writeFileSync(GRUPOS_FILE, JSON.stringify({ grupos }, null, 2), 'utf8');
-}
+// ==================== GRUPOS DE TRABALHO (Supabase) ====================
 
 function gerarId() {
         return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-// Listar grupos de uma turma
-app.get('/api/grupos', (req, res) => {
-        const { codTurma } = req.query;
-        const todos = lerGrupos();
-        const lista = codTurma ? todos.filter(g => String(g.codTurma) === String(codTurma)) : todos;
-        res.json(lista);
+// Monta o formato de resposta do frontend a partir das linhas do Supabase
+function montarGrupo(row) {
+        return {
+                id:          row.id,
+                codTurma:    row.cod_turma,
+                nome:        row.nome,
+                descricao:   row.descricao || '',
+                bloqueado:   row.bloqueado,
+                criadoEm:    row.criado_em,
+                alunos: (row.grupo_alunos || []).map(a => ({
+                        codMatrizAluno: a.cod_matriz_aluno,
+                        nome:           a.nome,
+                        numChamada:     a.num_chamada,
+                })),
+                atividades: (row.grupo_atividades || [])
+                        .sort((a, b) => b.data.localeCompare(a.data))
+                        .map(a => ({
+                                id:        a.id,
+                                data:      a.data,
+                                descricao: a.descricao,
+                                criadoEm:  a.criado_em,
+                        })),
+        };
+}
+
+// Buscar um grupo completo por id
+async function buscarGrupo(id) {
+        const { data, error } = await supabaseAdmin
+                .from('grupos')
+                .select('*, grupo_alunos(*), grupo_atividades(*)')
+                .eq('id', id)
+                .single();
+        if (error || !data) return null;
+        return montarGrupo(data);
+}
+
+// GET /api/grupos?codTurma=X
+app.get('/api/grupos', async (req, res) => {
+        try {
+                let query = supabaseAdmin
+                        .from('grupos')
+                        .select('*, grupo_alunos(*), grupo_atividades(*)')
+                        .order('criado_em', { ascending: true });
+                if (req.query.codTurma) query = query.eq('cod_turma', parseInt(req.query.codTurma));
+                const { data, error } = await query;
+                if (error) return res.status(500).json({ erro: error.message });
+                res.json((data || []).map(montarGrupo));
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Criar grupo
-app.post('/api/grupos', (req, res) => {
+// POST /api/grupos
+app.post('/api/grupos', async (req, res) => {
         const { codTurma, nome, descricao } = req.body;
         if (!codTurma || !nome) return res.status(400).json({ erro: 'codTurma e nome são obrigatórios' });
-        const grupos = lerGrupos();
-        const novo = {
-                id: gerarId(),
-                codTurma: parseInt(codTurma),
-                nome,
-                descricao: descricao || '',
-                bloqueado: false,
-                criadoEm: new Date().toISOString(),
-                alunos: [],
-                atividades: [],
-        };
-        grupos.push(novo);
-        salvarGrupos(grupos);
-        res.json(novo);
+        try {
+                const id = gerarId();
+                const { error } = await supabaseAdmin.from('grupos').insert({
+                        id, cod_turma: parseInt(codTurma), nome, descricao: descricao || '', bloqueado: false,
+                });
+                if (error) return res.status(500).json({ erro: error.message });
+                const grupo = await buscarGrupo(id);
+                res.json(grupo);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Atualizar grupo (nome, descricao, bloqueado)
-app.put('/api/grupos/:id', (req, res) => {
-        const grupos = lerGrupos();
-        const idx = grupos.findIndex(g => g.id === req.params.id);
-        if (idx === -1) return res.status(404).json({ erro: 'Grupo não encontrado' });
+// PUT /api/grupos/:id
+app.put('/api/grupos/:id', async (req, res) => {
         const { nome, descricao, bloqueado } = req.body;
-        if (nome !== undefined)      grupos[idx].nome      = nome;
-        if (descricao !== undefined) grupos[idx].descricao = descricao;
-        if (bloqueado !== undefined) grupos[idx].bloqueado = !!bloqueado;
-        salvarGrupos(grupos);
-        res.json(grupos[idx]);
+        const campos = {};
+        if (nome !== undefined)      campos.nome        = nome;
+        if (descricao !== undefined) campos.descricao   = descricao;
+        if (bloqueado !== undefined) campos.bloqueado   = !!bloqueado;
+        campos.atualizado_em = new Date().toISOString();
+        try {
+                const { error } = await supabaseAdmin.from('grupos').update(campos).eq('id', req.params.id);
+                if (error) return res.status(500).json({ erro: error.message });
+                const grupo = await buscarGrupo(req.params.id);
+                if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+                res.json(grupo);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Excluir grupo
-app.delete('/api/grupos/:id', (req, res) => {
-        const grupos = lerGrupos();
-        const idx = grupos.findIndex(g => g.id === req.params.id);
-        if (idx === -1) return res.status(404).json({ erro: 'Grupo não encontrado' });
-        if (grupos[idx].bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Desbloqueie antes de excluir.' });
-        grupos.splice(idx, 1);
-        salvarGrupos(grupos);
-        res.json({ ok: true });
+// DELETE /api/grupos/:id
+app.delete('/api/grupos/:id', async (req, res) => {
+        try {
+                const grupo = await buscarGrupo(req.params.id);
+                if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+                if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Desbloqueie antes de excluir.' });
+                const { error } = await supabaseAdmin.from('grupos').delete().eq('id', req.params.id);
+                if (error) return res.status(500).json({ erro: error.message });
+                res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Adicionar aluno ao grupo
-app.post('/api/grupos/:id/alunos', (req, res) => {
-        const grupos = lerGrupos();
-        const grupo = grupos.find(g => g.id === req.params.id);
-        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
-        if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado' });
+// POST /api/grupos/:id/alunos
+app.post('/api/grupos/:id/alunos', async (req, res) => {
         const { codMatrizAluno, nome, numChamada } = req.body;
         if (!codMatrizAluno) return res.status(400).json({ erro: 'codMatrizAluno é obrigatório' });
-        // Remover aluno de outros grupos da mesma turma antes de adicionar
-        grupos.forEach(g => {
-                if (g.codTurma === grupo.codTurma && g.id !== grupo.id && !g.bloqueado) {
-                        g.alunos = g.alunos.filter(a => a.codMatrizAluno !== codMatrizAluno);
+        try {
+                const grupo = await buscarGrupo(req.params.id);
+                if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+                if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado' });
+
+                // Remover aluno de outros grupos não bloqueados da mesma turma
+                const { data: outrosGrupos } = await supabaseAdmin
+                        .from('grupos')
+                        .select('id, bloqueado')
+                        .eq('cod_turma', grupo.codTurma)
+                        .neq('id', req.params.id);
+                for (const g of (outrosGrupos || [])) {
+                        if (!g.bloqueado) {
+                                await supabaseAdmin.from('grupo_alunos')
+                                        .delete()
+                                        .eq('grupo_id', g.id)
+                                        .eq('cod_matriz_aluno', codMatrizAluno);
+                        }
                 }
-        });
-        // Evitar duplicata no grupo atual
-        if (!grupo.alunos.find(a => a.codMatrizAluno === codMatrizAluno)) {
-                grupo.alunos.push({ codMatrizAluno, nome: nome || '', numChamada: numChamada || null });
-        }
-        salvarGrupos(grupos);
-        res.json(grupo);
+
+                // Upsert aluno no grupo atual
+                await supabaseAdmin.from('grupo_alunos').upsert({
+                        grupo_id: req.params.id,
+                        cod_matriz_aluno: codMatrizAluno,
+                        nome: nome || '',
+                        num_chamada: numChamada || null,
+                }, { onConflict: 'grupo_id,cod_matriz_aluno' });
+
+                res.json(await buscarGrupo(req.params.id));
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Remover aluno do grupo
-app.delete('/api/grupos/:id/alunos/:codMatrizAluno', (req, res) => {
-        const grupos = lerGrupos();
-        const grupo = grupos.find(g => g.id === req.params.id);
-        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
-        if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Desbloqueie primeiro.' });
-        grupo.alunos = grupo.alunos.filter(a => String(a.codMatrizAluno) !== String(req.params.codMatrizAluno));
-        salvarGrupos(grupos);
-        res.json(grupo);
+// DELETE /api/grupos/:id/alunos/:codMatrizAluno
+app.delete('/api/grupos/:id/alunos/:codMatrizAluno', async (req, res) => {
+        try {
+                const grupo = await buscarGrupo(req.params.id);
+                if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+                if (grupo.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Desbloqueie primeiro.' });
+                await supabaseAdmin.from('grupo_alunos')
+                        .delete()
+                        .eq('grupo_id', req.params.id)
+                        .eq('cod_matriz_aluno', parseInt(req.params.codMatrizAluno));
+                res.json(await buscarGrupo(req.params.id));
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Adicionar atividade ao grupo
-app.post('/api/grupos/:id/atividades', (req, res) => {
-        const grupos = lerGrupos();
-        const grupo = grupos.find(g => g.id === req.params.id);
-        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
+// POST /api/grupos/:id/atividades
+app.post('/api/grupos/:id/atividades', async (req, res) => {
         const { data, descricao } = req.body;
         if (!descricao) return res.status(400).json({ erro: 'Descrição é obrigatória' });
-        const ativ = {
-                id: gerarId(),
-                data: data || new Date().toISOString().split('T')[0],
-                descricao,
-                criadoEm: new Date().toISOString(),
-        };
-        grupo.atividades.push(ativ);
-        salvarGrupos(grupos);
-        res.json(ativ);
+        try {
+                const id = gerarId();
+                const { error } = await supabaseAdmin.from('grupo_atividades').insert({
+                        id,
+                        grupo_id:  req.params.id,
+                        data:      data || new Date().toISOString().split('T')[0],
+                        descricao,
+                });
+                if (error) return res.status(500).json({ erro: error.message });
+                const { data: ativ } = await supabaseAdmin.from('grupo_atividades').select('*').eq('id', id).single();
+                res.json({ id: ativ.id, data: ativ.data, descricao: ativ.descricao, criadoEm: ativ.criado_em });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Atualizar atividade
-app.put('/api/grupos/:id/atividades/:ativId', (req, res) => {
-        const grupos = lerGrupos();
-        const grupo = grupos.find(g => g.id === req.params.id);
-        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
-        const ativ = grupo.atividades.find(a => a.id === req.params.ativId);
-        if (!ativ) return res.status(404).json({ erro: 'Atividade não encontrada' });
+// PUT /api/grupos/:id/atividades/:ativId
+app.put('/api/grupos/:id/atividades/:ativId', async (req, res) => {
         const { data, descricao } = req.body;
-        if (data)      ativ.data      = data;
-        if (descricao) ativ.descricao = descricao;
-        salvarGrupos(grupos);
-        res.json(ativ);
+        const campos = {};
+        if (data)      campos.data      = data;
+        if (descricao) campos.descricao = descricao;
+        try {
+                const { error } = await supabaseAdmin.from('grupo_atividades')
+                        .update(campos)
+                        .eq('id', req.params.ativId)
+                        .eq('grupo_id', req.params.id);
+                if (error) return res.status(500).json({ erro: error.message });
+                const { data: ativ } = await supabaseAdmin.from('grupo_atividades').select('*').eq('id', req.params.ativId).single();
+                res.json({ id: ativ.id, data: ativ.data, descricao: ativ.descricao, criadoEm: ativ.criado_em });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
-// Excluir atividade
-app.delete('/api/grupos/:id/atividades/:ativId', (req, res) => {
-        const grupos = lerGrupos();
-        const grupo = grupos.find(g => g.id === req.params.id);
-        if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado' });
-        grupo.atividades = grupo.atividades.filter(a => a.id !== req.params.ativId);
-        salvarGrupos(grupos);
-        res.json({ ok: true });
+// DELETE /api/grupos/:id/atividades/:ativId
+app.delete('/api/grupos/:id/atividades/:ativId', async (req, res) => {
+        try {
+                const { error } = await supabaseAdmin.from('grupo_atividades')
+                        .delete()
+                        .eq('id', req.params.ativId)
+                        .eq('grupo_id', req.params.id);
+                if (error) return res.status(500).json({ erro: error.message });
+                res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
 // ==================== ESTATÍSTICAS ====================

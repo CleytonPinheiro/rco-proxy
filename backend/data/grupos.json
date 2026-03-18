@@ -1,3 +1,41 @@
 {
-  "grupos": []
+  "grupos": [
+    {
+      "id": "mmwfmyl9bwen8",
+      "codTurma": 2675307,
+      "nome": "Grupo 1",
+      "descricao": "",
+      "bloqueado": true,
+      "criadoEm": "2026-03-18T19:26:44.637Z",
+      "alunos": [
+        {
+          "codMatrizAluno": 236261441,
+          "nome": "ALICE CARTAXO PEREIRA",
+          "numChamada": 1
+        }
+      ],
+      "atividades": []
+    },
+    {
+      "id": "mmwfoyvr1kbcu",
+      "codTurma": 2675307,
+      "nome": "Grupo 2",
+      "descricao": "",
+      "bloqueado": false,
+      "criadoEm": "2026-03-18T19:28:18.327Z",
+      "alunos": [
+        {
+          "codMatrizAluno": 236298235,
+          "nome": "BRENO FERNANDES FELIX",
+          "numChamada": 7
+        },
+        {
+          "codMatrizAluno": 236237754,
+          "nome": "CAROLLINE ROCHA DA CRUZ",
+          "numChamada": 8
+        }
+      ],
+      "atividades": []
+    }
+  ]
 }
