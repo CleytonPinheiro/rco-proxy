@@ -57,19 +57,55 @@ function formatarData(dataISO) {
     return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
 }
 
+// Calcula dias de atraso (0 = hoje, 1 = ontem, etc.)
+function diasAtraso(emprestimo) {
+    if (!emprestimo.data_emprestimo) return 0;
+    const empData  = new Date(emprestimo.data_emprestimo);
+    const hoje     = new Date();
+    const empDia   = new Date(empData.getFullYear(), empData.getMonth(), empData.getDate());
+    const hojeDia  = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    return Math.floor((hojeDia - empDia) / 86400000);
+}
+
+function estaAtrasado(emprestimo) {
+    return emprestimo.status === 'ativo' && diasAtraso(emprestimo) > 0;
+}
+
 function renderizarEmprestimosAtivos() {
     const container = document.getElementById('listaEmprestimosAtivos');
-    const ativos = emprestimos.filter(e => e.status === 'ativo');
+    const ativos    = emprestimos.filter(e => e.status === 'ativo');
 
     if (!ativos.length) {
         container.innerHTML = '<div class="empty-message">Nenhum empréstimo ativo no momento</div>';
+        renderBannerAtraso([]);
         return;
     }
 
-    container.innerHTML = ativos.map(e => `
-        <div class="emprestimo-card ativo">
+    // Ordena: atrasados (mais antigos) primeiro, depois os de hoje
+    ativos.sort((a, b) => diasAtraso(b) - diasAtraso(a));
+    const atrasados = ativos.filter(estaAtrasado);
+
+    renderBannerAtraso(atrasados);
+
+    container.innerHTML = ativos.map(e => {
+        const dias      = diasAtraso(e);
+        const atrasado  = dias > 0;
+        const critico   = dias >= 3;
+        const cardClass = atrasado ? (critico ? 'emprestimo-card atrasado critico' : 'emprestimo-card atrasado') : 'emprestimo-card ativo';
+
+        const badgeAtraso = atrasado
+            ? `<span class="badge-atraso ${critico ? 'critico' : ''}" title="Em atraso há ${dias} dia(s)">
+                   ${critico ? '🚨' : '⚠️'} ${dias === 1 ? 'Ontem' : `${dias} dias`}
+               </span>`
+            : '';
+
+        return `
+        <div class="${cardClass}">
             <div class="emprestimo-aluno">
-                <h4>${e.aluno?.nome || 'Aluno'}</h4>
+                <div class="aluno-nome-linha">
+                    <h4>${e.aluno?.nome || 'Aluno'}</h4>
+                    ${badgeAtraso}
+                </div>
                 <p><strong>Registro:</strong> ${e.aluno?.registro || ''}</p>
                 <p><strong>Turma:</strong> ${e.aluno?.turma || ''}</p>
             </div>
@@ -83,10 +119,47 @@ function renderizarEmprestimosAtivos() {
                 </div>
             </div>
             <div class="emprestimo-acoes">
-                <button class="btn-devolver" onclick="abrirModalDevolucao(${e.id})">Devolver</button>
+                <button class="btn-devolver ${atrasado ? 'btn-devolver-urgente' : ''}"
+                        onclick="abrirModalDevolucao(${e.id})">Devolver</button>
                 <span class="emprestimo-hora">${formatarData(e.data_emprestimo)}</span>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
+}
+
+function renderBannerAtraso(atrasados) {
+    const existing = document.getElementById('bannerAtraso');
+    if (existing) existing.remove();
+
+    if (!atrasados.length) return;
+
+    const criticos = atrasados.filter(e => diasAtraso(e) >= 3);
+    const cor      = criticos.length ? '#dc2626' : '#d97706';
+    const icone    = criticos.length ? '🚨' : '⚠️';
+    const msg      = atrasados.length === 1
+        ? `1 empréstimo não devolvido de dia(s) anterior(es)`
+        : `${atrasados.length} empréstimos não devolvidos de dias anteriores`;
+
+    const nomes = atrasados.slice(0, 4).map(e => {
+        const nome = (e.aluno?.nome || '').split(' ')[0];
+        const dias = diasAtraso(e);
+        return `<strong>${nome}</strong> (${dias}d)`;
+    }).join(', ') + (atrasados.length > 4 ? ` e mais ${atrasados.length - 4}` : '');
+
+    const banner = document.createElement('div');
+    banner.id = 'bannerAtraso';
+    banner.className = 'banner-atraso';
+    banner.style.borderColor = cor;
+    banner.innerHTML = `
+        <div class="banner-atraso-icone">${icone}</div>
+        <div class="banner-atraso-texto">
+            <strong>${msg}</strong>
+            <span>${nomes}</span>
+        </div>
+        <button class="banner-atraso-fechar" onclick="this.parentElement.remove()" title="Fechar aviso">✕</button>`;
+
+    const tabAtivos = document.getElementById('tabAtivos');
+    tabAtivos.insertBefore(banner, tabAtivos.firstChild);
 }
 
 function renderizarHistorico() {

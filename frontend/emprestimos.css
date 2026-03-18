@@ -303,6 +303,81 @@ textarea:focus {
     color: #333;
 }
 
+/* ── Alertas de atraso ───────────────────────────────────────── */
+.banner-atraso {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff8f0;
+    border: 1.5px solid #d97706;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.banner-atraso-icone { font-size: 24px; flex-shrink: 0; }
+.banner-atraso-texto { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.banner-atraso-texto strong { font-size: 14px; color: #92400e; }
+.banner-atraso-texto span   { font-size: 12px; color: #b45309; }
+.banner-atraso-fechar {
+    background: none; border: none; color: #b45309;
+    font-size: 18px; cursor: pointer; padding: 2px 6px;
+    border-radius: 4px; flex-shrink: 0;
+}
+.banner-atraso-fechar:hover { background: #fde68a; }
+
+/* Card em atraso */
+.emprestimo-card.atrasado {
+    border-left: 4px solid #d97706;
+    background: #fffbf0;
+}
+.emprestimo-card.atrasado.critico {
+    border-left: 4px solid #dc2626;
+    background: #fff5f5;
+}
+
+/* Badge de atraso no nome do aluno */
+.aluno-nome-linha {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge-atraso {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    border-radius: 12px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.badge-atraso.critico {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+/* Botão devolver urgente */
+.btn-devolver-urgente {
+    background: #dc2626 !important;
+    animation: pulse 1.8s ease-in-out infinite;
+}
+.btn-devolver-urgente:hover { background: #b91c1c !important; }
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+    50%       { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+}
+
 /* ── QR Scanner ──────────────────────────────────────────────── */
 .qr-scanner-modal { max-width: 460px; }
 
