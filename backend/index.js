@@ -229,6 +229,25 @@ app.get("/api/frequencias", async (req, res) => {
                 raw.forEach(a => Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); }));
                 const codAulas = [...aulaSet].sort((a, b) => parseInt(a) - parseInt(b));
 
+                // Buscar data de cada aula em paralelo
+                const aulaDatas = {};
+                await Promise.all(codAulas.map(async (cod) => {
+                        try {
+                                const r = await rcoGet(
+                                        `/educador/grade/aula/v2/${cod}?codPeriodoLetivo=${codPeriodoLetivo}`,
+                                        authToken
+                                );
+                                const dataRaw = r?.data?.aula?.dataAula || r?.data?.dataAula || null;
+                                if (dataRaw) {
+                                        // "2026-03-05T00:00:00" → "05/03"
+                                        const d = new Date(dataRaw);
+                                        const dd = String(d.getUTCDate()).padStart(2, '0');
+                                        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                                        aulaDatas[cod] = `${dd}/${mm}`;
+                                }
+                        } catch (_) {}
+                }));
+
                 // Mapear alunos com suas frequências e totais
                 const alunos = raw.map(a => {
                         const freq = {};
