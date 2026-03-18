@@ -74,8 +74,7 @@ async function selecionarTurma(turma) {
         b.classList.toggle('active', String(b.dataset.cod) === String(turma.codTurma));
     });
 
-    document.getElementById('poolVazio').textContent = 'Carregando alunos...';
-    document.getElementById('poolAlunos').innerHTML = '<p class="pool-vazio">Carregando...</p>';
+    document.getElementById('poolAlunos').innerHTML = '<p class="pool-vazio">Carregando alunos...</p>';
     document.getElementById('listaGrupos').innerHTML = '';
 
     await Promise.all([carregarAlunos(turma), carregarGrupos(turma.codTurma)]);
