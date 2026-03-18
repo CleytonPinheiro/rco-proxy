@@ -1,7 +1,7 @@
-# RCO Digital Proxy
+# EduGest
 
 ## Visão Geral
-Servidor Express que consome a API do RCO Digital (Registro de Classe Online) do estado do Paraná com autenticação automática.
+Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, grupos, comportamento, materiais, empréstimos, presença diária e painel da cozinha.
 
 ## Estado Atual
 - **Data**: 16/01/2026

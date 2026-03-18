@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGest — Presença Diária</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="presenca.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>📚 EduGest</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="frequencias.html">Frequências</a>
+                <a href="grupos.html">Grupos</a>
+                <a href="comportamento.html">Comportamento</a>
+                <a href="materiais.html">Materiais</a>
+                <a href="emprestimos.html">Empréstimos</a>
+                <a href="presenca.html" class="active">Presença</a>
+                <a href="cozinha.html">🍽 Cozinha</a>
+            </nav>
+            <button class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- Barra de controle -->
+        <div class="presenca-toolbar">
+            <div class="toolbar-left">
+                <label for="inputData">📅 Data:</label>
+                <input type="date" id="inputData">
+                <button id="btnHoje" class="btn-sm">Hoje</button>
+            </div>
+            <div class="toolbar-right">
+                <button id="btnSyncRCO" class="btn-sync">
+                    <span class="sync-icon">🔄</span> Sincronizar com RCO
+                </button>
+                <button id="btnSeed" class="btn-seed">📋 Carregar Turmas</button>
+            </div>
+        </div>
+
+        <!-- Resumo por período -->
+        <div class="periodos-resumo" id="periodosResumo">
+            <div class="periodo-card periodo-manha" id="resumoManha">
+                <div class="periodo-icon">🌅</div>
+                <div class="periodo-label">Manhã</div>
+                <div class="periodo-num" id="numManha">–</div>
+                <div class="periodo-sub" id="subManha">aguardando dados</div>
+            </div>
+            <div class="periodo-card periodo-tarde" id="resumoTarde">
+                <div class="periodo-icon">☀️</div>
+                <div class="periodo-label">Tarde</div>
+                <div class="periodo-num" id="numTarde">–</div>
+                <div class="periodo-sub" id="subTarde">aguardando dados</div>
+            </div>
+            <div class="periodo-card periodo-noite" id="resumoNoite">
+                <div class="periodo-icon">🌙</div>
+                <div class="periodo-label">Noite</div>
+                <div class="periodo-num" id="numNoite">–</div>
+                <div class="periodo-sub" id="subNoite">aguardando dados</div>
+            </div>
+            <div class="periodo-card periodo-total" id="resumoTotal">
+                <div class="periodo-icon">👥</div>
+                <div class="periodo-label">Total do Dia</div>
+                <div class="periodo-num" id="numTotal">–</div>
+                <div class="periodo-sub" id="subTotal">em todos os turnos</div>
+            </div>
+        </div>
+
+        <!-- Abas por período -->
+        <div class="tab-bar">
+            <button class="tab active" data-periodo="todos">Todas as Turmas</button>
+            <button class="tab" data-periodo="manha">🌅 Manhã</button>
+            <button class="tab" data-periodo="tarde">☀️ Tarde</button>
+            <button class="tab" data-periodo="noite">🌙 Noite</button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando dados de presença...</p>
+        </div>
+
+        <!-- Mensagem vazia -->
+        <div id="vazio" class="empty-state" style="display:none">
+            <div class="empty-icon">📭</div>
+            <h3>Nenhum dado para esta data</h3>
+            <p>Clique em <strong>Carregar Turmas</strong> para criar os registros do dia, ou <strong>Sincronizar com RCO</strong> para buscar a presença automaticamente.</p>
+        </div>
+
+        <!-- Grid de turmas -->
+        <div id="turmasGrid" class="turmas-grid" style="display:none"></div>
+
+    </main>
+
+    <!-- Modal de confirmação -->
+    <div id="modalConfirmar" class="modal-overlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>✏️ Confirmar Presença</h3>
+                <button class="modal-close" onclick="fecharModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-turma" id="modalTurmaNome"></div>
+                <div class="modal-info">
+                    <span>Matriculados: <strong id="modalMatriculados">–</strong></span>
+                    <span>Fonte atual: <strong id="modalFonte">–</strong></span>
+                </div>
+                <div class="form-group">
+                    <label>Alunos presentes hoje:</label>
+                    <div class="counter-row">
+                        <button class="btn-counter" onclick="ajustarContador(-1)">–</button>
+                        <input type="number" id="inputPresentes" min="0" max="99">
+                        <button class="btn-counter" onclick="ajustarContador(1)">+</button>
+                    </div>
+                    <div class="counter-hint" id="counterHint"></div>
+                </div>
+                <div class="form-group">
+                    <label>Observação (opcional):</label>
+                    <textarea id="inputObs" rows="2" placeholder="Ex: 2 alunos em atividade externa..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                <button class="btn-confirmar" id="btnConfirmarModal">✅ Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="presenca.js"></script>
+</body>
+</html>

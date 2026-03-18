@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGest — Painel da Cozinha</title>
+    <link rel="stylesheet" href="cozinha.css">
+</head>
+<body>
+    <header class="cozinha-header">
+        <div class="header-left">
+            <a href="presenca.html" class="btn-voltar">← Voltar</a>
+            <span class="header-logo">🍽 Cozinha</span>
+        </div>
+        <div class="header-center">
+            <span id="dataLabel" class="data-label"></span>
+        </div>
+        <div class="header-right">
+            <span id="clockDisplay" class="clock"></span>
+            <span id="statusAutoRefresh" class="refresh-dot" title="Auto-atualização a cada 60s">●</span>
+        </div>
+    </header>
+
+    <!-- Seletor de data -->
+    <div class="data-bar">
+        <label>📅</label>
+        <input type="date" id="inputData">
+        <button id="btnHoje" class="btn-hoje">Hoje</button>
+        <button id="btnAtualizar" class="btn-atualizar">🔄 Atualizar</button>
+    </div>
+
+    <!-- Alerta de sincronização -->
+    <div id="alertSync" class="alert-sync" style="display:none">
+        ⚠️ Dados estimados. Para confirmar, os professores devem registrar a chamada no módulo de Presença.
+    </div>
+
+    <!-- Cards dos períodos -->
+    <div class="periodos-grid" id="periodosGrid">
+        <div class="periodo-card" id="cardManha">
+            <div class="periodo-header manha">
+                <span class="periodo-icon-big">🌅</span>
+                <span class="periodo-title">MANHÃ</span>
+                <span class="periodo-status" id="statusManha">aguardando</span>
+            </div>
+            <div class="periodo-body">
+                <div class="numero-principal" id="presentesManha">–</div>
+                <div class="numero-label">alunos presentes</div>
+                <div class="numeros-secundarios">
+                    <div class="num-sec">
+                        <div class="num-sec-val" id="matriculadosManha">–</div>
+                        <div class="num-sec-label">Matriculados</div>
+                    </div>
+                    <div class="num-sec">
+                        <div class="num-sec-val ausente" id="ausentesManha">–</div>
+                        <div class="num-sec-label">Ausentes</div>
+                    </div>
+                    <div class="num-sec">
+                        <div class="num-sec-val pct" id="pctManha">–</div>
+                        <div class="num-sec-label">% presença</div>
+                    </div>
+                </div>
+                <div class="historico-mini" id="histManha"></div>
+                <button class="btn-confirmar-cozinha" data-periodo="manha" onclick="abrirConfirmarCozinha('manha')">
+                    ✅ Confirmar para o Cardápio
+                </button>
+                <div class="confirmacao-info" id="confManha"></div>
+            </div>
+        </div>
+
+        <div class="periodo-card" id="cardTarde">
+            <div class="periodo-header tarde">
+                <span class="periodo-icon-big">☀️</span>
+                <span class="periodo-title">TARDE</span>
+                <span class="periodo-status" id="statusTarde">aguardando</span>
+            </div>
+            <div class="periodo-body">
+                <div class="numero-principal" id="presentesTarde">–</div>
+                <div class="numero-label">alunos presentes</div>
+                <div class="numeros-secundarios">
+                    <div class="num-sec">
+                        <div class="num-sec-val" id="matriculadosTarde">–</div>
+                        <div class="num-sec-label">Matriculados</div>
+                    </div>
+                    <div class="num-sec">
+                        <div class="num-sec-val ausente" id="ausentesTarde">–</div>
+                        <div class="num-sec-label">Ausentes</div>
+                    </div>
+                    <div class="num-sec">
+                        <div class="num-sec-val pct" id="pctTarde">–</div>
+                        <div class="num-sec-label">% presença</div>
+                    </div>
+                </div>
+                <div class="historico-mini" id="histTarde"></div>
+                <button class="btn-confirmar-cozinha" data-periodo="tarde" onclick="abrirConfirmarCozinha('tarde')">
+                    ✅ Confirmar para o Cardápio
+                </button>
+                <div class="confirmacao-info" id="confTarde"></div>
+            </div>
+        </div>
+
+        <div class="periodo-card" id="cardNoite">
+            <div class="periodo-header noite">
+                <span class="periodo-icon-big">🌙</span>
+                <span class="periodo-title">NOITE</span>
+                <span class="periodo-status" id="statusNoite">aguardando</span>
+            </div>
+            <div class="periodo-body">
+                <div class="numero-principal" id="presentesNoite">–</div>
+                <div class="numero-label">alunos presentes</div>
+                <div class="numeros-secundarios">
+                    <div class="num-sec">
+                        <div class="num-sec-val" id="matriculadosNoite">–</div>
+                        <div class="num-sec-label">Matriculados</div>
+                    </div>
+                    <div class="num-sec">
+                        <div class="num-sec-val ausente" id="ausentesNoite">–</div>
+                        <div class="num-sec-label">Ausentes</div>
+                    </div>
+                    <div class="num-sec">
+                        <div class="num-sec-val pct" id="pctNoite">–</div>
+                        <div class="num-sec-label">% presença</div>
+                    </div>
+                </div>
+                <div class="historico-mini" id="histNoite"></div>
+                <button class="btn-confirmar-cozinha" data-periodo="noite" onclick="abrirConfirmarCozinha('noite')">
+                    ✅ Confirmar para o Cardápio
+                </button>
+                <div class="confirmacao-info" id="confNoite"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal confirmar cozinha -->
+    <div id="modalCozinha" class="modal-overlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalCozinhaTitulo">Confirmar Cardápio</h3>
+                <button onclick="fecharModalCozinha()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Total de refeições a preparar para <strong id="modalCozinhaPeriodo"></strong>:</p>
+                <div class="counter-row">
+                    <button class="btn-counter" onclick="ajustarCozinha(-5)">–5</button>
+                    <button class="btn-counter" onclick="ajustarCozinha(-1)">–</button>
+                    <input type="number" id="inputCozinha" min="0">
+                    <button class="btn-counter" onclick="ajustarCozinha(1)">+</button>
+                    <button class="btn-counter" onclick="ajustarCozinha(5)">+5</button>
+                </div>
+                <div class="form-group" style="margin-top:12px">
+                    <label>Observação (opcional):</label>
+                    <textarea id="inputObsCozinha" rows="2" placeholder="Ex: evento especial, cardápio diferenciado..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalCozinha()">Cancelar</button>
+                <button class="btn-confirmar-action" onclick="confirmarCozinha()">✅ Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="cozinha.js"></script>
+</body>
+</html>

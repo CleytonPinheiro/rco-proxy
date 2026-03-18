@@ -1362,6 +1362,360 @@ app.delete('/api/comportamento/:id', async (req, res) => {
         } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
+// ==================== MÓDULO DE PRESENÇA DIÁRIA ====================
+
+function detectarPeriodo(descrTurma) {
+        const d = (descrTurma || '').toLowerCase();
+        if (d.includes('manh')) return 'manha';
+        if (d.includes('tarde')) return 'tarde';
+        if (d.includes('noite')) return 'noite';
+        return 'manha';
+}
+
+// Sincroniza presença do dia a partir do RCO (por turma/classe)
+async function syncPresencaDiariaRCO(targetDate = null) {
+        const hoje = targetDate || new Date().toISOString().split('T')[0];
+        console.log(`[PRESENÇA] Sincronizando presença de ${hoje} via RCO...`);
+
+        try {
+                const authToken = await getValidToken();
+                const codPeriodoLetivo = 261;
+                const codPeriodoAvaliacao = 9;
+
+                // Buscar turmas com seus classes (uma classe por turma é suficiente)
+                const { data: classes, error: errClasses } = await supabaseAdmin
+                        .from('rco_classes')
+                        .select('cod_classe, cod_turma')
+                        .order('cod_classe', { ascending: true });
+
+                if (errClasses || !classes?.length) {
+                        console.log('[PRESENÇA] Nenhuma classe encontrada no banco.');
+                        return { ok: false, motivo: 'Nenhuma classe no banco' };
+                }
+
+                // Uma classe representativa por turma
+                const turmaClaMap = new Map();
+                classes.forEach(c => {
+                        if (!turmaClaMap.has(c.cod_turma)) turmaClaMap.set(c.cod_turma, c.cod_classe);
+                });
+
+                // Buscar descrição das turmas
+                const { data: turmasDB } = await supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma');
+                const descrMap = {};
+                (turmasDB || []).forEach(t => { descrMap[t.cod_turma] = t.descr_turma; });
+
+                // Contar alunos por turma
+                const { data: alunosDB } = await supabaseAdmin.from('alunos').select('codturma');
+                const alunosCount = {};
+                (alunosDB || []).forEach(a => {
+                        if (a.codturma) alunosCount[a.codturma] = (alunosCount[a.codturma] || 0) + 1;
+                });
+
+                const resultados = [];
+
+                for (const [codTurma, codClasse] of turmaClaMap) {
+                        try {
+                                const path = `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=${codPeriodoLetivo}&page=1&perPage=200`;
+                                const response = await rcoGet(path, authToken);
+                                if (response.status !== 200) continue;
+
+                                const raw = Array.isArray(response.data) ? response.data : [];
+                                if (!raw.length) continue;
+
+                                // Coletar IDs das aulas
+                                const aulaSet = new Set();
+                                raw.forEach(a => Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); }));
+                                const codAulas = [...aulaSet];
+
+                                // Descobrir quais aulas são de hoje
+                                const aulaHoje = [];
+                                await Promise.all(codAulas.map(async (cod) => {
+                                        try {
+                                                const r = await rcoGet(`/educador/grade/aula/v2/${cod}?codPeriodoLetivo=${codPeriodoLetivo}`, authToken);
+                                                const dataRaw = r?.data?.aula?.dataAula || r?.data?.dataAula || null;
+                                                if (dataRaw) {
+                                                        const d = new Date(dataRaw).toISOString().split('T')[0];
+                                                        if (d === hoje) aulaHoje.push(cod);
+                                                }
+                                        } catch (_) {}
+                                }));
+
+                                const descrTurma = descrMap[codTurma] || '';
+                                const periodo = detectarPeriodo(descrTurma);
+                                const total_matriculados = alunosCount[codTurma] || raw.length;
+
+                                if (!aulaHoje.length) {
+                                        resultados.push({
+                                                data: hoje, periodo, cod_turma: codTurma, descr_turma: descrTurma,
+                                                total_matriculados, total_presentes: null, total_ausentes: null,
+                                                fonte: 'rco', confirmado: false, atualizado_em: new Date().toISOString(),
+                                        });
+                                        continue;
+                                }
+
+                                // Contar presentes nas aulas de hoje
+                                let totalPresentes = 0;
+                                let totalAusentes = 0;
+                                raw.forEach(a => {
+                                        const temAula = aulaHoje.some(cod => a[cod] !== undefined && a[cod] !== null);
+                                        if (!temAula) return;
+                                        const presente = aulaHoje.some(cod => a[cod] === 'C');
+                                        if (presente) totalPresentes++;
+                                        else totalAusentes++;
+                                });
+
+                                resultados.push({
+                                        data: hoje, periodo, cod_turma: codTurma, descr_turma: descrTurma,
+                                        total_matriculados, total_presentes: totalPresentes, total_ausentes: totalAusentes,
+                                        fonte: 'rco', confirmado: false, atualizado_em: new Date().toISOString(),
+                                });
+
+                        } catch (e) {
+                                console.error(`[PRESENÇA] Erro turma ${codTurma}:`, e.message);
+                        }
+                }
+
+                if (resultados.length) {
+                        await supabaseAdmin.from('presenca_diaria').upsert(resultados, { onConflict: 'data,cod_turma' });
+                }
+
+                console.log(`[PRESENÇA] Sync concluído: ${resultados.length} turmas processadas.`);
+                return { ok: true, turmas: resultados.length, data: hoje };
+
+        } catch (e) {
+                console.error('[PRESENÇA] Erro geral no sync:', e.message);
+                return { ok: false, motivo: e.message };
+        }
+}
+
+// Agendar sync de presença nos horários chave
+function agendarSyncPresenca() {
+        const horarios = [
+                { hora: 9,  minuto: 0 },
+                { hora: 13, minuto: 30 },
+                { hora: 20, minuto: 0 },
+        ];
+        setInterval(() => {
+                const agora = new Date();
+                const h = agora.getHours();
+                const m = agora.getMinutes();
+                if (horarios.some(t => t.hora === h && t.minuto === m)) {
+                        syncPresencaDiariaRCO().catch(console.error);
+                }
+        }, 60 * 1000); // checa a cada minuto
+}
+
+// Iniciar agendador junto com a app (chamado depois de initializeApp)
+setTimeout(agendarSyncPresenca, 5000);
+
+// GET /api/presenca-diaria?data=YYYY-MM-DD — lista presença do dia
+app.get('/api/presenca-diaria', async (req, res) => {
+        try {
+                const data = req.query.data || new Date().toISOString().split('T')[0];
+                const { data: rows, error } = await supabaseAdmin
+                        .from('presenca_diaria')
+                        .select('*')
+                        .eq('data', data)
+                        .order('periodo', { ascending: true })
+                        .order('descr_turma', { ascending: true });
+                if (error) throw error;
+                res.json(rows || []);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// POST /api/presenca-diaria/sync — dispara sync do RCO manualmente
+app.post('/api/presenca-diaria/sync', async (req, res) => {
+        try {
+                const data = req.body?.data || new Date().toISOString().split('T')[0];
+                // Roda em background para não dar timeout
+                syncPresencaDiariaRCO(data).catch(console.error);
+                res.json({ ok: true, msg: 'Sincronização iniciada. Aguarde alguns instantes e recarregue.' });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// POST /api/presenca-diaria/seed — preenche turmas do dia sem chamar RCO (apenas matriculados)
+app.post('/api/presenca-diaria/seed', async (req, res) => {
+        try {
+                const data = req.body?.data || new Date().toISOString().split('T')[0];
+                const { data: turmas } = await supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma');
+                const { data: alunosDB } = await supabaseAdmin.from('alunos').select('codturma');
+                const alunosCount = {};
+                (alunosDB || []).forEach(a => { if (a.codturma) alunosCount[a.codturma] = (alunosCount[a.codturma] || 0) + 1; });
+
+                const payload = (turmas || []).map(t => ({
+                        data, periodo: detectarPeriodo(t.descr_turma),
+                        cod_turma: t.cod_turma, descr_turma: t.descr_turma,
+                        total_matriculados: alunosCount[t.cod_turma] || 0,
+                        total_presentes: null, total_ausentes: null,
+                        fonte: 'estimado', confirmado: false, atualizado_em: new Date().toISOString(),
+                }));
+
+                if (!payload.length) return res.json({ ok: true, turmas: 0 });
+                const { error } = await supabaseAdmin.from('presenca_diaria').upsert(payload, { onConflict: 'data,cod_turma', ignoreDuplicates: true });
+                if (error) throw error;
+                res.json({ ok: true, turmas: payload.length });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// PUT /api/presenca-diaria/confirmar — professor confirma presença de uma turma
+app.put('/api/presenca-diaria/confirmar', async (req, res) => {
+        try {
+                const { data, cod_turma, total_presentes, observacao } = req.body;
+                if (!data || !cod_turma || total_presentes == null) {
+                        return res.status(400).json({ erro: 'data, cod_turma e total_presentes são obrigatórios' });
+                }
+
+                // Buscar matriculados para calcular ausentes
+                const { data: existing } = await supabaseAdmin
+                        .from('presenca_diaria').select('*').eq('data', data).eq('cod_turma', cod_turma).single();
+
+                const total_matriculados = existing?.total_matriculados || 0;
+                const total_ausentes = Math.max(0, total_matriculados - total_presentes);
+
+                const update = {
+                        total_presentes: parseInt(total_presentes),
+                        total_ausentes,
+                        fonte: 'professor',
+                        confirmado: true,
+                        confirmado_em: new Date().toISOString(),
+                        observacao: observacao || null,
+                        atualizado_em: new Date().toISOString(),
+                };
+
+                if (existing) {
+                        await supabaseAdmin.from('presenca_diaria').update(update).eq('data', data).eq('cod_turma', cod_turma);
+                } else {
+                        // Turma sem registro ainda — criar
+                        const { data: turma } = await supabaseAdmin.from('rco_turmas').select('descr_turma').eq('cod_turma', cod_turma).single();
+                        const descrTurma = turma?.descr_turma || '';
+                        await supabaseAdmin.from('presenca_diaria').insert({
+                                data, cod_turma, descr_turma: descrTurma,
+                                periodo: detectarPeriodo(descrTurma),
+                                total_matriculados: 0, ...update,
+                        });
+                }
+
+                const { data: row } = await supabaseAdmin.from('presenca_diaria').select('*').eq('data', data).eq('cod_turma', cod_turma).single();
+                res.json(row);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// GET /api/presenca-diaria/historico?dias=7 — histórico dos últimos N dias
+app.get('/api/presenca-diaria/historico', async (req, res) => {
+        try {
+                const dias = parseInt(req.query.dias) || 7;
+                const desde = new Date();
+                desde.setDate(desde.getDate() - dias);
+                const { data: rows, error } = await supabaseAdmin
+                        .from('presenca_diaria')
+                        .select('data, periodo, total_matriculados, total_presentes, confirmado')
+                        .gte('data', desde.toISOString().split('T')[0])
+                        .order('data', { ascending: false });
+                if (error) throw error;
+                res.json(rows || []);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// ==================== MÓDULO DA COZINHA ====================
+
+// GET /api/cozinha?data=YYYY-MM-DD — totais por período para a cozinha
+app.get('/api/cozinha', async (req, res) => {
+        try {
+                const data = req.query.data || new Date().toISOString().split('T')[0];
+
+                // Presença do dia agregada por período
+                const { data: rows } = await supabaseAdmin
+                        .from('presenca_diaria')
+                        .select('periodo, total_matriculados, total_presentes, total_ausentes, confirmado, fonte')
+                        .eq('data', data);
+
+                // Confirmações da cozinha
+                const { data: cardapio } = await supabaseAdmin
+                        .from('cozinha_cardapio')
+                        .select('*')
+                        .eq('data', data);
+
+                const periodos = ['manha', 'tarde', 'noite'];
+                const resultado = {};
+
+                periodos.forEach(p => {
+                        const turmasP = (rows || []).filter(r => r.periodo === p);
+                        const confirmacaoC = (cardapio || []).find(c => c.periodo === p);
+
+                        const matriculados = turmasP.reduce((s, r) => s + (r.total_matriculados || 0), 0);
+                        const presentes = turmasP.every(r => r.total_presentes != null)
+                                ? turmasP.reduce((s, r) => s + (r.total_presentes || 0), 0)
+                                : null;
+                        const turmasConfirmadas = turmasP.filter(r => r.confirmado).length;
+
+                        resultado[p] = {
+                                periodo: p,
+                                turmas: turmasP.length,
+                                turmasConfirmadas,
+                                matriculados,
+                                presentes,                          // null = ainda sem dado
+                                ausentes: presentes != null ? matriculados - presentes : null,
+                                percentualPresenca: (presentes != null && matriculados > 0)
+                                        ? Math.round(presentes / matriculados * 100)
+                                        : null,
+                                status: presentes == null ? 'aguardando' : (turmasConfirmadas === turmasP.length ? 'confirmado' : 'parcial'),
+                                confirmacaoCozinha: confirmacaoC || null,
+                        };
+                });
+
+                // Histórico (últimos 5 dias mesmo período dia da semana)
+                const historico = {};
+                periodos.forEach(p => { historico[p] = []; });
+                for (let i = 1; i <= 10; i++) {
+                        const d = new Date(data);
+                        d.setDate(d.getDate() - i);
+                        const ds = d.toISOString().split('T')[0];
+                        const { data: hRows } = await supabaseAdmin
+                                .from('presenca_diaria').select('periodo, total_presentes').eq('data', ds);
+                        periodos.forEach(p => {
+                                const turmasHist = (hRows || []).filter(r => r.periodo === p && r.total_presentes != null);
+                                if (turmasHist.length) {
+                                        const total = turmasHist.reduce((s, r) => s + r.total_presentes, 0);
+                                        historico[p].push({ data: ds, total });
+                                }
+                        });
+                }
+
+                res.json({ data, resultado, historico });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// POST /api/cozinha/confirmar — cozinha confirma refeições do turno
+app.post('/api/cozinha/confirmar', async (req, res) => {
+        try {
+                const { data, periodo, total_confirmado, observacao } = req.body;
+                if (!data || !periodo || total_confirmado == null) {
+                        return res.status(400).json({ erro: 'data, periodo e total_confirmado são obrigatórios' });
+                }
+                const { error } = await supabaseAdmin.from('cozinha_cardapio').upsert({
+                        data, periodo, total_confirmado: parseInt(total_confirmado),
+                        observacao: observacao || null, confirmado_em: new Date().toISOString(),
+                }, { onConflict: 'data,periodo' });
+                if (error) throw error;
+                res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// GET /api/cozinha/historico — resumo dos últimos 30 dias para gráfico
+app.get('/api/cozinha/historico', async (req, res) => {
+        try {
+                const desde = new Date();
+                desde.setDate(desde.getDate() - 30);
+                const { data: rows } = await supabaseAdmin
+                        .from('presenca_diaria')
+                        .select('data, periodo, total_presentes')
+                        .gte('data', desde.toISOString().split('T')[0])
+                        .not('total_presentes', 'is', null)
+                        .order('data', { ascending: true });
+                res.json(rows || []);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 app.get("*", (req, res) => {
         res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });

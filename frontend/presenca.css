@@ -1,0 +1,414 @@
+/* ── Toolbar ──────────────────────────────────────────────────── */
+.presenca-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 20px auto;
+    max-width: 1200px;
+    padding: 0 20px;
+    flex-wrap: wrap;
+}
+
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar-left label { font-weight: 600; font-size: 14px; color: #555; }
+
+#inputData {
+    padding: 8px 12px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-sm {
+    padding: 8px 14px;
+    background: #e9ecef;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+.btn-sm:hover { background: #dee2e6; }
+
+.btn-sync {
+    padding: 9px 18px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s;
+}
+.btn-sync:hover { opacity: 0.9; }
+.btn-sync.loading .sync-icon { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-seed {
+    padding: 9px 18px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-seed:hover { opacity: 0.85; }
+
+/* ── Resumo dos períodos ─────────────────────────────────────── */
+.periodos-resumo {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    padding: 0 20px;
+}
+
+.periodo-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    border-top: 4px solid #dee2e6;
+    transition: transform 0.2s;
+}
+
+.periodo-manha  { border-color: #f59e0b; }
+.periodo-tarde  { border-color: #3b82f6; }
+.periodo-noite  { border-color: #8b5cf6; }
+.periodo-total  { border-color: #10b981; }
+
+.periodo-icon { font-size: 28px; margin-bottom: 6px; }
+.periodo-label { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+.periodo-num { font-size: 36px; font-weight: 800; color: #1a1a2e; margin: 4px 0; }
+.periodo-sub { font-size: 12px; color: #aaa; }
+
+/* ── Abas ────────────────────────────────────────────────────── */
+.tab-bar {
+    display: flex;
+    gap: 8px;
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    padding: 0 20px;
+}
+
+.tab {
+    padding: 8px 20px;
+    border: 1.5px solid #dee2e6;
+    background: white;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.2s;
+}
+.tab.active {
+    background: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+/* ── Estados ────────────────────────────────────────────────── */
+.loading-state {
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e9ecef;
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+.empty-icon { font-size: 60px; margin-bottom: 16px; }
+.empty-state h3 { font-size: 20px; color: #333; margin-bottom: 8px; }
+.empty-state p { color: #888; font-size: 14px; line-height: 1.5; }
+
+/* ── Grid de turmas ────────────────────────────────────────── */
+.turmas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto 40px;
+    padding: 0 20px;
+}
+
+.turma-card {
+    background: white;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    border-left: 4px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: box-shadow 0.2s;
+}
+.turma-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+.turma-card.periodo-manha { border-color: #f59e0b; }
+.turma-card.periodo-tarde  { border-color: #3b82f6; }
+.turma-card.periodo-noite  { border-color: #8b5cf6; }
+
+.turma-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.turma-nome {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+    flex: 1;
+}
+
+.fonte-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.fonte-rco       { background: #d1fae5; color: #065f46; }
+.fonte-professor { background: #dbeafe; color: #1e3a8a; }
+.fonte-estimado  { background: #fef3c7; color: #92400e; }
+.fonte-pendente  { background: #f3f4f6; color: #6b7280; }
+
+.turma-card-nums {
+    display: flex;
+    gap: 16px;
+}
+
+.num-item { text-align: center; flex: 1; }
+.num-val {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1a1a2e;
+    line-height: 1;
+}
+.num-val.verde { color: #10b981; }
+.num-val.cinza { color: #9ca3af; }
+.num-val.vermelho { color: #ef4444; }
+.num-label { font-size: 11px; color: #aaa; margin-top: 2px; text-transform: uppercase; }
+
+.turma-pct {
+    font-size: 12px;
+    color: #888;
+}
+.pct-bar {
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+.pct-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #10b981;
+    transition: width 0.5s;
+}
+.pct-fill.amarelo { background: #f59e0b; }
+.pct-fill.vermelho { background: #ef4444; }
+
+.turma-obs {
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+    padding: 6px 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.btn-editar {
+    width: 100%;
+    padding: 9px;
+    background: #f0f2f5;
+    border: 1.5px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-editar:hover {
+    background: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+/* ── Modal ────────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+.modal-box {
+    background: white;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid #f0f2f5;
+}
+.modal-header h3 { font-size: 17px; font-weight: 700; }
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #888;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.modal-turma { font-size: 15px; font-weight: 700; color: #1a1a2e; line-height: 1.3; }
+.modal-info { display: flex; gap: 16px; font-size: 13px; color: #666; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13px; font-weight: 600; color: #444; }
+.form-group textarea {
+    padding: 10px;
+    border: 1.5px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 13px;
+    resize: none;
+    font-family: inherit;
+}
+
+.counter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-counter {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+    background: white;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    color: #333;
+}
+.btn-counter:hover { background: #007bff; border-color: #007bff; color: white; }
+#inputPresentes {
+    flex: 1;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    padding: 8px;
+    outline: none;
+}
+#inputPresentes:focus { border-color: #007bff; }
+.counter-hint { font-size: 12px; color: #888; text-align: center; }
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid #f0f2f5;
+}
+.btn-cancelar {
+    flex: 1;
+    padding: 11px;
+    border: 1.5px solid #dee2e6;
+    background: white;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #666;
+}
+.btn-confirmar {
+    flex: 2;
+    padding: 11px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-confirmar:hover { opacity: 0.9; }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1a1a2e;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Responsivo ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .periodos-resumo { grid-template-columns: repeat(2, 1fr); }
+    .presenca-toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-right { justify-content: flex-end; }
+}
+@media (max-width: 480px) {
+    .periodos-resumo { grid-template-columns: 1fr 1fr; }
+    .tab-bar { flex-wrap: wrap; }
+}
