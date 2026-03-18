@@ -393,5 +393,86 @@ function formatarData(iso) {
     return d && m && y ? `${d}/${m}/${y}` : iso;
 }
 
+// ── Impressão / PDF ───────────────────────────────────────────────────────────
+function imprimirGrupos() {
+    if (!turmaAtual) { alert('Selecione uma turma antes de imprimir.'); return; }
+    if (!todosGrupos.length) { alert('Não há grupos para imprimir nesta turma.'); return; }
+
+    const agora  = new Date();
+    const dataFmt = agora.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const horFmt  = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // Decide número de colunas baseado na quantidade de grupos e tamanho médio
+    const totalAlunos = todosGrupos.reduce((s, g) => s + g.alunos.length, 0);
+    const totalAtiv   = todosGrupos.reduce((s, g) => s + g.atividades.length, 0);
+    const grande      = totalAtiv > 0 || totalAlunos / todosGrupos.length > 12;
+    const cols = todosGrupos.length <= 2 ? 'cols-1'
+               : grande && todosGrupos.length <= 4 ? 'cols-2'
+               : 'cols-3';
+
+    // Gera os cards de cada grupo
+    const cardsHtml = todosGrupos.map(g => {
+        const alunosOrdenados = [...g.alunos].sort((a, b) => (a.numChamada || 0) - (b.numChamada || 0));
+
+        const alunosHtml = alunosOrdenados.length
+            ? alunosOrdenados.map(a => `
+                <div class="print-aluno-row">
+                    <div class="print-aluno-num">${a.numChamada || '?'}</div>
+                    <div class="print-aluno-nome">${escHtml(a.nome)}</div>
+                </div>`).join('')
+            : '<p class="print-sem-membros">Nenhum membro neste grupo.</p>';
+
+        const ativsHtml = g.atividades.length ? `
+            <div class="print-ativ-section">
+                <div class="print-section-title">Atividades registradas (${g.atividades.length})</div>
+                ${[...g.atividades].sort((a, b) => b.data.localeCompare(a.data)).map(a => `
+                    <div class="print-ativ-item">
+                        <span class="print-ativ-data">${formatarData(a.data)}</span>
+                        <span class="print-ativ-desc">${escHtml(a.descricao)}</span>
+                    </div>`).join('')}
+            </div>` : '';
+
+        return `
+            <div class="print-grupo-card">
+                <div class="print-grupo-header">
+                    <p class="print-grupo-nome">${escHtml(g.nome)}</p>
+                    ${g.descricao ? `<p class="print-grupo-desc">${escHtml(g.descricao)}</p>` : ''}
+                </div>
+                <div class="print-grupo-body">
+                    <div class="print-section-title">Membros (${alunosOrdenados.length})</div>
+                    ${alunosHtml}
+                    ${ativsHtml}
+                </div>
+            </div>`;
+    }).join('');
+
+    const html = `
+        <div class="print-header">
+            <div class="print-header-left">
+                <h1>Grupos de Trabalho</h1>
+                <p>${escHtml(turmaAtual.nomeTurma)} &nbsp;·&nbsp; ${todosGrupos.length} grupo${todosGrupos.length !== 1 ? 's' : ''}</p>
+            </div>
+            <div class="print-header-right">
+                <div>${dataFmt}</div>
+                <div>${horFmt}</div>
+            </div>
+        </div>
+        <div class="print-grupos-grid ${cols}">
+            ${cardsHtml}
+        </div>
+        <div class="print-footer">
+            RCO Digital &nbsp;·&nbsp; Impresso em ${dataFmt} às ${horFmt}
+        </div>`;
+
+    const area = document.getElementById('printArea');
+    area.innerHTML = html;
+    area.style.display = 'block';
+
+    window.print();
+
+    // Oculta novamente após o diálogo de impressão fechar
+    setTimeout(() => { area.style.display = 'none'; }, 500);
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 init();

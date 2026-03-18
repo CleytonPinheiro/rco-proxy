@@ -450,11 +450,215 @@
 .btn-ativ-edit:hover, .btn-ativ-del:hover { opacity: 1; }
 .ativ-desc { font-size: 13px; color: #374151; margin: 0; line-height: 1.5; }
 
+/* ── Botões do topo ──────────────────────────────────────────────────────── */
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.btn-imprimir {
+    background: white;
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+}
+.btn-imprimir:hover { background: #f3f4f6; border-color: #9ca3af; }
+
 /* ── Responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
     .workspace { grid-template-columns: 1fr; }
     .pool-col { position: static; }
     .pool-alunos { flex-direction: row; flex-wrap: wrap; max-height: none; }
     .grupos-top { flex-direction: column; align-items: flex-start; }
-    .btn-novo-grupo { width: 100%; }
+    .top-actions { width: 100%; }
+    .btn-novo-grupo, .btn-imprimir { flex: 1; text-align: center; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   IMPRESSÃO / PDF
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Esconde tudo em modo de impressão, exceto a área de impressão */
+@media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body { background: white !important; margin: 0; padding: 0; }
+
+    /* Esconde a interface normal */
+    .header,
+    main.container,
+    .modal-overlay { display: none !important; }
+
+    /* Mostra a área de impressão */
+    #printArea {
+        display: block !important;
+        padding: 0;
+        margin: 0;
+    }
+}
+
+/* ── Área de impressão (visível só ao imprimir) ──────────────────────────── */
+.print-area {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 12px;
+    color: #111;
+    background: white;
+}
+
+/* Cabeçalho do documento */
+.print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid #1a1a2e;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+}
+.print-header-left h1 {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1a1a2e;
+    margin: 0 0 3px;
+}
+.print-header-left p {
+    font-size: 11px;
+    color: #555;
+    margin: 0;
+}
+.print-header-right {
+    text-align: right;
+    font-size: 11px;
+    color: #555;
+}
+
+/* Grid de grupos */
+.print-grupos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+/* Um card por grupo */
+.print-grupo-card {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.print-grupo-header {
+    background: #1a1a2e;
+    color: white;
+    padding: 7px 10px 6px;
+}
+.print-grupo-nome {
+    font-size: 13px;
+    font-weight: 800;
+    margin: 0 0 2px;
+    letter-spacing: 0.2px;
+}
+.print-grupo-desc {
+    font-size: 10px;
+    color: #c7d2fe;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.print-grupo-body {
+    padding: 8px 10px;
+}
+
+/* Seção de alunos */
+.print-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 5px;
+}
+
+.print-aluno-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 11px;
+}
+.print-aluno-row:last-child { border-bottom: none; }
+
+.print-aluno-num {
+    width: 18px;
+    height: 18px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.print-aluno-nome {
+    flex: 1;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+/* Seção de atividades */
+.print-ativ-section {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px dashed #e2e8f0;
+}
+.print-ativ-item {
+    padding: 4px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 10px;
+}
+.print-ativ-item:last-child { border-bottom: none; }
+.print-ativ-data {
+    font-weight: 700;
+    color: #3730a3;
+    margin-right: 6px;
+}
+.print-ativ-desc { color: #374151; }
+
+/* Grupo sem alunos */
+.print-sem-membros {
+    font-size: 10px;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 4px 0;
+}
+
+/* Rodapé */
+.print-footer {
+    margin-top: 20px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 10px;
+    color: #9ca3af;
+    text-align: center;
+}
+
+/* Ajuste de colunas para turmas com muitos grupos */
+@media print {
+    .print-grupos-grid { gap: 8px; }
+
+    /* 2 colunas se tiver ≥ 7 grupos com atividades (maior conteúdo) */
+    .print-grupos-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+    /* 1 coluna para impressão de grupos grandes/detalhados */
+    .print-grupos-grid.cols-1 { grid-template-columns: 1fr; }
 }

@@ -35,7 +35,10 @@
                     <h2 class="grupos-titulo">Grupos de Trabalho</h2>
                     <div id="turmaTabs" class="turma-tabs"></div>
                 </div>
-                <button id="btnNovoGrupo" class="btn-novo-grupo" onclick="abrirModalNovoGrupo()">+ Novo Grupo</button>
+                <div class="top-actions">
+                    <button id="btnImprimir" class="btn-imprimir" onclick="imprimirGrupos()" title="Gerar PDF / Imprimir">🖨 Imprimir</button>
+                    <button id="btnNovoGrupo" class="btn-novo-grupo" onclick="abrirModalNovoGrupo()">+ Novo Grupo</button>
+                </div>
             </div>
 
             <!-- Área principal: pool de alunos + grupos -->
@@ -110,6 +113,9 @@
             <div class="modal-body" id="modalVerAtivBody"></div>
         </div>
     </div>
+
+    <!-- Área gerada dinamicamente para impressão/PDF -->
+    <div id="printArea" class="print-area" style="display:none;"></div>
 
     <script src="grupos.js"></script>
 </body>
