@@ -272,6 +272,9 @@ export async function loginWithPuppeteer(cpf, senha) {
     }
 }
 
+// ── Expor browser para uso externo (ex: intercepção de rede) ─────────────────
+export { getBrowser };
+
 // ── Decodificar expiração do JWT ──────────────────────────────────────────────
 export function decodeJwtExpiration(token) {
     try {

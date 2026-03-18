@@ -33,6 +33,7 @@ let supabase = null;
 let supabaseAdmin = null;
 let loginWithPuppeteer = null;
 let decodeJwtExpiration = null;
+let getBrowser = null;
 
 async function initializeApp() {
     try {
@@ -44,6 +45,7 @@ async function initializeApp() {
         const authModule = await import("./auth-puppeteer.js");
         loginWithPuppeteer = authModule.loginWithPuppeteer;
         decodeJwtExpiration = authModule.decodeJwtExpiration;
+        getBrowser = authModule.getBrowser;
         
         console.log("Dependências carregadas com sucesso!");
 
@@ -198,6 +200,179 @@ app.get("/api/debug/rco", async (req, res) => {
         }
 });
 
+// ==================== ENDPOINTS DE ALUNOS DO RCO ====================
+
+// Buscar lista de alunos do RCO por codClasse
+// Endpoint descoberto via análise do JS do RCO: /classe/v1/relatorios/avaliacaoAlunos
+app.get("/api/alunos-rco", async (req, res) => {
+        const codClasse           = req.query.codClasse;
+        const codPeriodoAvaliacao = req.query.codPeriodoAvaliacao || 9;
+
+        if (!codClasse) {
+                return res.status(400).json({ erro: "codClasse é obrigatório" });
+        }
+
+        try {
+                const authToken = await getValidToken();
+
+                // Primeiro tenta o endpoint de avaliação (mais rápido, sem dados de frequência)
+                let path = `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}`;
+                let response = await rcoGet(path, authToken);
+                let alunos = Array.isArray(response.data) ? response.data : [];
+
+                // Se vazio (turma sem avaliações lançadas), usa frequenciaAulas como fallback
+                if (alunos.length === 0) {
+                        path = `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=261&page=1&perPage=200`;
+                        response = await rcoGet(path, authToken);
+                        alunos = Array.isArray(response.data) ? response.data : [];
+                }
+
+                if (response.status !== 200 && alunos.length === 0) {
+                        return res.status(response.status).json({ erro: `RCO retornou ${response.status}`, dados: response.data });
+                }
+
+                res.json(alunos.map(a => ({
+                        codMatrizAluno: a.codMatrizAluno,
+                        numChamada:     a.numChamada,
+                        nome:           a.nome,
+                        situacao:       a.descrAbrevSituacaoMatricula || '',
+                })));
+
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message });
+        }
+});
+
+app.get("/api/debug/alunos-classe", async (req, res) => {
+        // Endpoints descobertos via análise do JS bundle do RCO:
+        // GET /classe/v1/relatorios/avaliacaoAlunos?codClasse=X&codPeriodoAvaliacao=Y
+        // GET /classe/v1/relatorios/avaliacaoParcialAlunos?codClasse=X&codPeriodoAvaliacao=Y
+        // GET /classe/v1/avaliacaoParcialClasses?codClasse=X&codPeriodoAvaliacao=Y&page=1&perPage=100
+        const codClasse          = req.query.codClasse          || 8682303;
+        const codPeriodoAvaliacao = req.query.codPeriodoAvaliacao || 9;
+
+        try {
+                const authToken = await getValidToken();
+                const candidatos = [
+                        `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}`,
+                        `/classe/v1/relatorios/avaliacaoParcialAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}`,
+                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=261`,
+                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=261&page=1&perPage=100`,
+                        `/classe/v1/acessos/contatos?codClasse=${codClasse}`,
+                        `/classe/v1/avaliacaoParcialClasses?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&page=1&perPage=100`,
+                        `/classe/v1/avaliacaoParecerAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}`,
+                        `/classe/v1/perguntas?codClasse=${codClasse}`,
+                        `/classe/v1/relatorios?codClasse=${codClasse}`,
+                        `/educador/grade/aula/v2/${codClasse}?codPeriodoLetivo=261`,
+                ];
+
+                const resultados = {};
+                for (const path of candidatos) {
+                        const r = await rcoGet(path, authToken);
+                        const bodyStr = JSON.stringify(r.data);
+                        resultados[path] = {
+                                status: r.status,
+                                bytes: bodyStr.length,
+                                preview: bodyStr.substring(0, 600),
+                        };
+                }
+
+                res.json(resultados);
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message });
+        }
+});
+
+// ==================== DESCOBERTA DE ALUNOS VIA PUPPETEER ====================
+
+app.get("/api/debug/alunos-rco", async (req, res) => {
+        const codClasse = Number(req.query.codClasse || 8682303);
+
+        if (!getBrowser) {
+                return res.status(503).json({ erro: "Browser não inicializado. Aguarde e tente novamente." });
+        }
+
+        const browser = await getBrowser();
+        const page = await browser.newPage();
+        const capturedRequests = [];
+
+        try {
+                // CDP para capturar respostas sem bloquear recursos
+                const client = await page.createCDPSession();
+                await client.send('Network.enable');
+
+                // Capturar TODA resposta da API (mesmo erros)
+                client.on('Network.responseReceived', async (event) => {
+                        const url = event.response.url;
+                        if (!url.includes('apigateway-educacao') && !url.includes('rcdig')) return;
+                        try {
+                                const bodyResp = await client.send('Network.getResponseBody', { requestId: event.requestId });
+                                capturedRequests.push({
+                                        url,
+                                        status: event.response.status,
+                                        bytes: bodyResp.body?.length || 0,
+                                        preview: (bodyResp.body || '').substring(0, 600),
+                                });
+                        } catch {}
+                });
+
+                const RCO = 'https://rco.paas.pr.gov.br';
+
+                // 1. Garantir que está logado - navegar para home
+                await page.goto(RCO, { waitUntil: 'networkidle2', timeout: 30000 });
+                const urlAtual = page.url();
+                const titulo = await page.title();
+                await new Promise(r => setTimeout(r, 3000));
+
+                // 2. Navegar para a seção de livro de classe / frequência
+                const rotasTentadas = [
+                        `${RCO}/#/frequencia`,
+                        `${RCO}/#/livro-classe`,
+                        `${RCO}/#/livro`,
+                        `${RCO}/#/diario`,
+                ];
+
+                for (const rota of rotasTentadas) {
+                        try {
+                                await page.evaluate((url) => { window.location.href = url; }, rota);
+                                await new Promise(r => setTimeout(r, 5000));
+                        } catch {}
+                }
+
+                // 3. Tentar clicar no primeiro card/botão disponível
+                try {
+                        const links = await page.$$('a, button, .card, [role="button"]');
+                        if (links.length > 0) {
+                                await links[0].click();
+                                await new Promise(r => setTimeout(r, 5000));
+                        }
+                } catch {}
+
+                await new Promise(r => setTimeout(r, 3000));
+
+                const temAlunos = capturedRequests.filter(r =>
+                        r.preview.toLowerCase().includes('nome') ||
+                        r.preview.toLowerCase().includes('aluno') ||
+                        r.preview.toLowerCase().includes('matricula') ||
+                        (r.bytes > 200 && r.status === 200)
+                );
+
+                res.json({
+                        paginaAtual: urlAtual,
+                        tituloPagina: titulo,
+                        totalCapturadas: capturedRequests.length,
+                        candidatasAlunos: temAlunos.length,
+                        todasRequisicoes: capturedRequests,
+                        candidatas: temAlunos,
+                });
+
+        } catch (erro) {
+                res.status(500).json({ erro: erro.message, capturadas: capturedRequests });
+        } finally {
+                try { await page.close(); } catch {}
+        }
+});
+
 // ==================== SYNC RCO → SUPABASE ====================
 
 async function sincronizarComSupabase() {
@@ -220,6 +395,9 @@ async function sincronizarComSupabase() {
                 const turmasPayload = [];
                 const disciplinasPayload = [];
                 const classesPayload = [];
+
+                // Mapa para sync de alunos: codTurma → { codClasse, descrTurma, codPeriodoAvaliacao, codPeriodoLetivo }
+                const turmaParaClasse = {};
 
                 estabs.forEach(estab => {
                         estabelecimentosPayload.push({
@@ -246,6 +424,17 @@ async function sincronizarComSupabase() {
                                                         periodo_letivo: periodo.descrPeriodoLetivo || null,
                                                         atualizado_em: agora,
                                                 });
+
+                                                // Mapear turma → um codClasse representativo para buscar alunos
+                                                if (!turmaParaClasse[turma.codTurma] && classe.codClasse) {
+                                                        const firstPeriodo = (livro.calendarioAvaliacaos || [])[0];
+                                                        turmaParaClasse[turma.codTurma] = {
+                                                                codClasse: classe.codClasse,
+                                                                descrTurma: turma.descrTurma || '',
+                                                                codPeriodoAvaliacao: firstPeriodo?.periodoAvaliacao?.codPeriodoAvaliacao || 9,
+                                                                codPeriodoLetivo: periodo.codPeriodoLetivo || 261,
+                                                        };
+                                                }
                                         }
 
                                         if (disc.codDisciplina) {
@@ -298,6 +487,55 @@ async function sincronizarComSupabase() {
                 const { error: e4 } = await supabaseAdmin.from('rco_classes').upsert(classesUnicas, { onConflict: 'cod_classe' });
                 if (e4) throw new Error(`Erro em rco_classes: ${e4.message}`);
 
+                // ---- Sync de alunos ----
+                let totalAlunos = 0;
+                for (const [codTurmaStr, info] of Object.entries(turmaParaClasse)) {
+                        const codTurma = parseInt(codTurmaStr);
+                        try {
+                                // 1º tenta via avaliações (mais leve)
+                                let alunosResp = await rcoGet(
+                                        `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${info.codClasse}&codPeriodoAvaliacao=${info.codPeriodoAvaliacao}`,
+                                        authToken
+                                );
+                                let alunos = Array.isArray(alunosResp.data) ? alunosResp.data : [];
+
+                                // Fallback: frequência (funciona mesmo sem avaliações)
+                                if (alunos.length === 0) {
+                                        alunosResp = await rcoGet(
+                                                `/classe/v3/relatorios/frequenciaAulas?codClasse=${info.codClasse}&codPeriodoAvaliacao=${info.codPeriodoAvaliacao}&codPeriodoLetivo=${info.codPeriodoLetivo}&page=1&perPage=200`,
+                                                authToken
+                                        );
+                                        alunos = Array.isArray(alunosResp.data) ? alunosResp.data : [];
+                                }
+
+                                if (alunos.length === 0) continue;
+
+                                const alunosPayload = alunos.map(a => ({
+                                        registro:       String(a.codMatrizAluno),
+                                        nome:           a.nome,
+                                        turma:          info.descrTurma,
+                                        status:         'Ativo',
+                                        codmatrizaluno: a.codMatrizAluno,
+                                        codturma:       codTurma,
+                                        numchamada:     a.numChamada,
+                                }));
+
+                                const { error: eA } = await supabaseAdmin
+                                        .from('alunos')
+                                        .upsert(alunosPayload, { onConflict: 'registro' });
+
+                                if (eA) {
+                                        // Ignorar erro de coluna inexistente (schema não migrado)
+                                        console.warn(`[SYNC] Aviso alunos turma ${codTurma}:`, eA.message);
+                                } else {
+                                        totalAlunos += alunosPayload.length;
+                                        console.log(`[SYNC] ${alunosPayload.length} alunos sincronizados (turma ${codTurma})`);
+                                }
+                        } catch (errAluno) {
+                                console.warn(`[SYNC] Erro ao buscar alunos da turma ${codTurma}:`, errAluno.message);
+                        }
+                }
+
                 // Log de sucesso
                 await supabaseAdmin.from('rco_sync_log').insert({
                         status: 'sucesso',
@@ -313,6 +551,7 @@ async function sincronizarComSupabase() {
                         turmas: turmasUnicas.length,
                         disciplinas: disciplinasUnicas.length,
                         classes: classesUnicas.length,
+                        alunos: totalAlunos,
                         executadoEm: agora,
                 };
                 console.log(`[SYNC] Concluído:`, resultado);
@@ -420,13 +659,17 @@ app.get("/api/acessos", async (req, res) => {
 
 app.get("/api/alunos", async (req, res) => {
         try {
-                const { turma, registro } = req.query;
+                const { turma, codturma, registro } = req.query;
                 let query = supabase.from('alunos').select('*');
 
-                if (turma)    query = query.eq('turma', turma);
+                if (codturma) query = query.eq('codturma', parseInt(codturma));
+                else if (turma) query = query.eq('turma', turma);
                 if (registro) query = query.eq('registro', registro);
 
-                const { data, error } = await query.order('nome');
+                // Ordenar por numchamada se disponível, senão por nome
+                const { data, error } = await query
+                        .order('numchamada', { ascending: true, nullsFirst: false })
+                        .order('nome', { ascending: true });
 
                 if (error) throw error;
                 res.json(data);
