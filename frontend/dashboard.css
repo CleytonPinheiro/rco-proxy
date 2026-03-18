@@ -304,15 +304,43 @@ body {
     background: #f8f9fb; border-radius: 10px; padding: 14px 18px;
     border-left: 4px solid #007bff;
     transition: transform 0.15s, box-shadow 0.15s;
+    gap: 16px;
 }
-.aluno-card:hover { transform: translateX(4px); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-.aluno-nome { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 6px; }
-.aluno-detalhe { font-size: 13px; color: #666; margin: 2px 0; }
+.aluno-card:hover { transform: translateX(2px); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.aluno-info { flex: 1; min-width: 0; }
+.aluno-nome { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 4px; }
+.aluno-detalhe { font-size: 12px; color: #666; margin: 2px 0; }
 .aluno-detalhe strong { color: #444; }
+.aluno-id { font-size: 11px; color: #555; background: #eff2f7; border-radius: 3px; padding: 0 4px; }
 .status-ativo { color: #28a745; font-weight: 600; }
+
+/* ── Área de códigos (QR + barras) ──────────────────────────────────────── */
+.aluno-codigos {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.aluno-qrcode,
 .aluno-codigo-barras {
-    margin-left: 16px; padding: 8px; background: white;
-    border-radius: 6px; border: 1px solid #e5e7eb; flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+.aluno-qrcode svg { display: block; border-radius: 2px; }
+.aluno-codigo-barras svg { display: block; }
+.aluno-codigo-label {
+    font-size: 9px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
 }
 
 /* ── Número de chamada no modal de alunos ────────────────────────────────── */
@@ -346,6 +374,7 @@ body {
     .nav-menu { order: 3; width: 100%; justify-content: center; }
     .cards-grid { grid-template-columns: 1fr; }
     .aluno-card { flex-direction: column; align-items: flex-start; }
-    .aluno-codigo-barras { margin-left: 0; margin-top: 12px; }
+    .aluno-codigos { flex-direction: row; width: 100%; justify-content: center; margin-top: 10px; }
+    .aluno-codigo-barras { margin-left: 0; }
     .colegio-tab { font-size: 13px; padding: 7px 12px; }
 }

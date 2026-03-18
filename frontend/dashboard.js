@@ -447,16 +447,26 @@ async function abrirModalAlunos(ctx) {
         lista.innerHTML = '';
         alunos.forEach(aluno => {
             const chamada  = aluno.numchamada || aluno.numChamada || '';
-            const registro = aluno.codmatrizaluno || aluno.registro || '';
+            const registro = String(aluno.codmatrizaluno || aluno.registro || '');
             const div = document.createElement('div');
             div.className = 'aluno-card';
             div.innerHTML = `
                 <div class="aluno-info">
                     ${chamada ? `<div class="aluno-chamada">#${chamada}</div>` : ''}
                     <div class="aluno-nome">${aluno.nome}</div>
+                    <div class="aluno-detalhe"><strong>ID:</strong> <code class="aluno-id">${registro}</code></div>
                     <div class="aluno-detalhe"><strong>Status:</strong> <span class="status-ativo">${aluno.status || 'Ativo'}</span></div>
                 </div>
-                <div class="aluno-codigo-barras">${gerarCodigoBarrasSVG(String(registro))}</div>
+                <div class="aluno-codigos">
+                    <div class="aluno-qrcode" title="QR Code — ${registro}">
+                        ${gerarQRCodeSVG(registro)}
+                        <div class="aluno-codigo-label">QR Code</div>
+                    </div>
+                    <div class="aluno-codigo-barras" title="Código de Barras — ${registro}">
+                        ${gerarCodigoBarrasSVG(registro)}
+                        <div class="aluno-codigo-label">Cód. Barras</div>
+                    </div>
+                </div>
             `;
             lista.appendChild(div);
         });
@@ -470,6 +480,23 @@ function fecharModal() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+// ── QR Code SVG (via qrcode-generator CDN) ───────────────────────────────────
+function gerarQRCodeSVG(codigo) {
+    try {
+        const qr = qrcode(0, 'M');
+        qr.addData(String(codigo));
+        qr.make();
+        // cellSize=3, margin=1 → SVG compacto ~75×75px
+        return qr.createSvgTag({ cellSize: 3, margin: 1 });
+    } catch (e) {
+        // Fallback silencioso se a lib não carregar
+        return `<svg width="75" height="75" xmlns="http://www.w3.org/2000/svg">
+            <rect width="75" height="75" fill="#f0f0f0" rx="4"/>
+            <text x="37" y="42" text-anchor="middle" font-size="9" fill="#999">QR indisponível</text>
+        </svg>`;
+    }
+}
 
 // ── Código de barras SVG ──────────────────────────────────────────────────────
 function gerarCodigoBarrasSVG(codigo) {
