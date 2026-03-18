@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RCO Digital - Painel</title>
     <link rel="stylesheet" href="dashboard.css">
-    <link rel="stylesheet" href="materiais.css">
 </head>
 <body>
     <header class="header">
@@ -27,24 +26,43 @@
         </div>
 
         <div id="content" class="content" style="display: none;">
+
+            <!-- Seletor de Colégio -->
+            <div id="seletorColegio" class="colegio-selector" style="display: none;">
+                <div class="colegio-selector-label">Colégio:</div>
+                <div id="colegioTabs" class="colegio-tabs"></div>
+            </div>
+
+            <!-- Nome do Colégio Ativo -->
+            <div id="colegioAtivo" class="colegio-ativo-header" style="display: none;">
+                <span id="colegioAtivoNome"></span>
+            </div>
+
+            <!-- Turmas -->
             <section class="section">
-                <h2>Turmas</h2>
+                <div class="section-header">
+                    <h2>Turmas</h2>
+                    <span id="totalTurmas" class="section-count"></span>
+                </div>
                 <div id="turmas" class="cards-grid"></div>
             </section>
 
+            <!-- Disciplinas -->
             <section class="section">
-                <h2>Disciplinas</h2>
+                <div class="section-header">
+                    <h2>Disciplinas</h2>
+                    <span id="totalDisciplinas" class="section-count"></span>
+                </div>
                 <div id="disciplinas" class="cards-grid"></div>
             </section>
 
+            <!-- Livros de Classe -->
             <section class="section">
-                <h2>Livros de Classe</h2>
+                <div class="section-header">
+                    <h2>Livros de Classe</h2>
+                    <span id="totalLivros" class="section-count"></span>
+                </div>
                 <div id="livros" class="cards-grid"></div>
-            </section>
-
-            <section class="section">
-                <h2>Dados Completos (JSON)</h2>
-                <div id="dadosCompletos" class="dados-json"></div>
             </section>
         </div>
 
@@ -54,6 +72,7 @@
         </div>
     </main>
 
+    <!-- Modal Alunos -->
     <div id="modalAlunos" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
