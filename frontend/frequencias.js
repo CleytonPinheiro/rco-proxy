@@ -8,7 +8,7 @@ async function checkAuth() {
     try {
         const r = await fetch(`${API}/api/status`);
         const d = await r.json();
-        if (!d.loggedIn) { window.location.href = '/'; return false; }
+        if (!d.credenciaisConfiguradas) { window.location.href = '/'; return false; }
         return true;
     } catch { window.location.href = '/'; return false; }
 }
