@@ -212,8 +212,8 @@ function renderTabelaFrequencias(data) {
         .map(a => {
             const pct      = a.percentual !== null ? a.percentual : '-';
             const pctClass = a.percentual === null ? '' :
-                             a.percentual >= 75 ? 'pct-ok' :
-                             a.percentual >= 50 ? 'pct-alerta' : 'pct-critico';
+                             a.percentual >= 80 ? 'pct-ok' :
+                             a.percentual >= 60 ? 'pct-alerta' : 'pct-critico';
 
             const cellsFreq = codAulas.map(cod => {
                 const val = a.frequencias[cod];
@@ -244,9 +244,9 @@ function renderTabelaFrequencias(data) {
             <div class="freq-legenda">
                 <span class="leg-presente">P = Presente</span>
                 <span class="leg-falta">F = Falta</span>
-                <span class="leg-pct-ok">≥75% OK</span>
-                <span class="leg-pct-alerta">50–74% Atenção</span>
-                <span class="leg-pct-critico">&lt;50% Crítico</span>
+                <span class="leg-pct-ok">≥80% Pé-de-Meia OK</span>
+                <span class="leg-pct-alerta">60–79% Em risco</span>
+                <span class="leg-pct-critico">&lt;60% Sem direito</span>
             </div>
             <div class="freq-scroll">
                 <table class="freq-tabela">
