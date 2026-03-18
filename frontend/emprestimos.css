@@ -303,6 +303,123 @@ textarea:focus {
     color: #333;
 }
 
+/* ── QR Scanner ──────────────────────────────────────────────── */
+.qr-scanner-modal { max-width: 460px; }
+
+.qr-body { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+.qr-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+}
+
+.qr-viewport video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Targeting frame */
+.qr-frame {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.qr-corner {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-color: #4f46e5;
+    border-style: solid;
+}
+.qr-corner.tl { top: 16px; left: 16px; border-width: 4px 0 0 4px; border-radius: 4px 0 0 0; }
+.qr-corner.tr { top: 16px; right: 16px; border-width: 4px 4px 0 0; border-radius: 0 4px 0 0; }
+.qr-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 4px 4px; border-radius: 0 0 0 4px; }
+.qr-corner.br { bottom: 16px; right: 16px; border-width: 0 4px 4px 0; border-radius: 0 0 4px 0; }
+
+/* Scanning line animation */
+.qr-line {
+    position: absolute;
+    left: 16px; right: 16px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #4f46e5, transparent);
+    animation: scanLine 2s ease-in-out infinite;
+    top: 50%;
+}
+@keyframes scanLine {
+    0%   { top: 16%; opacity: 1; }
+    50%  { top: 84%; opacity: 1; }
+    100% { top: 16%; opacity: 1; }
+}
+
+.qr-status {
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+}
+
+.qr-resultado {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    width: 100%;
+}
+
+/* Devolução rápida por QR */
+.dqr-aluno-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e40af;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dqr-emprestimo-card {
+    background: #fff;
+    border-radius: 10px;
+    border-left: 4px solid #f59e0b;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+
+.dqr-material { flex: 1; }
+.dqr-material strong { display: block; font-size: 15px; color: #111; }
+.dqr-material span { font-size: 12px; color: #666; }
+
+.btn-devolver-qr {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+.btn-devolver-qr:hover { background: #15803d; }
+
+/* ── responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .emprestimo-card {
         grid-template-columns: 1fr;
