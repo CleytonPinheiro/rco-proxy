@@ -15,7 +15,7 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-    res.status(200).send("OK");
+    res.redirect("/app");
 });
 
 // Start server IMMEDIATELY - before loading heavy dependencies
