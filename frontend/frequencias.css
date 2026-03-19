@@ -354,3 +354,54 @@
     .col-nome          { max-width: 120px; }
     .freq-legenda      { padding: 8px 14px; }
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .page-header-freq h2 { color: var(--text-primary); }
+[data-theme="dark"] .freq-periodo-badge { background: var(--bg-tertiary); color: var(--text-link); }
+
+[data-theme="dark"] .turma-card { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .turma-card-header {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border);
+}
+[data-theme="dark"] .turma-nome-freq { color: var(--text-primary) !important; }
+[data-theme="dark"] .turma-info-freq { color: var(--text-secondary) !important; }
+
+[data-theme="dark"] .disc-btn {
+    background: var(--bg-card) !important;
+    border-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .disc-btn:hover { background: var(--bg-hover) !important; }
+[data-theme="dark"] .disc-btn.expandido {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border) !important;
+}
+[data-theme="dark"] .disc-nome { color: var(--text-primary) !important; }
+[data-theme="dark"] .disc-stats span { color: var(--text-secondary) !important; }
+[data-theme="dark"] .disc-periodo { color: var(--text-muted) !important; }
+
+[data-theme="dark"] .freq-tabela-wrapper { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela thead { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela th { color: var(--text-muted); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela tbody tr:hover { background: var(--bg-hover) !important; }
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even) { background: var(--bg-secondary) !important; }
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even):hover { background: var(--bg-hover) !important; }
+[data-theme="dark"] .freq-tabela td { border-color: var(--border); color: var(--text-primary); }
+
+[data-theme="dark"] .col-presenca { background: #0d3320; color: #4ade80; }
+[data-theme="dark"] .col-falta    { background: #2a0d0d; color: #f87171; }
+[data-theme="dark"] .pct-alerta   { background: #2a1e00; color: #fbbf24; }
+[data-theme="dark"] .pct-critico  { background: #2a0d0d; color: #f87171; }
+
+[data-theme="dark"] .freq-aluno-modal .modal-content { background: var(--bg-card); }
+[data-theme="dark"] .freq-aluno-topo { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .freq-aluno-nome { color: var(--text-primary); }
+[data-theme="dark"] .freq-aluno-sub  { color: var(--text-secondary); }
+
+[data-theme="dark"] .leg-falta { background: #2a0d0d; color: #f87171; }
+[data-theme="dark"] .leg-pct-alerta { background: #2a1e00; color: #fbbf24; }
+[data-theme="dark"] .leg-pct-critico { background: #2a0d0d; color: #f87171; }
+
+[data-theme="dark"] .aluno-row-critico { background: var(--bg-secondary) !important; border-color: #dc2626 !important; }
+[data-theme="dark"] .freq-footer { background: var(--bg-secondary); border-color: var(--border); }

@@ -662,3 +662,42 @@
     /* 1 coluna para impressão de grupos grandes/detalhados */
     .print-grupos-grid.cols-1 { grid-template-columns: 1fr; }
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .grupos-titulo { color: var(--text-primary); }
+[data-theme="dark"] .turma-tab { background: var(--tab-bg); color: var(--tab-color); }
+[data-theme="dark"] .turma-tab:hover { background: var(--tab-hover-bg); color: var(--tab-hover-color); }
+
+[data-theme="dark"] .grupo-card,
+[data-theme="dark"] .grupo-vazio,
+[data-theme="dark"] .atividade-card { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .grupo-card:hover { border-color: #4338ca; }
+
+[data-theme="dark"] .grupo-nome-input { background: transparent; color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .grupo-header { border-color: var(--border); }
+[data-theme="dark"] .grupo-sub { color: var(--text-muted); }
+
+[data-theme="dark"] .aluno-item {
+    background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary);
+}
+[data-theme="dark"] .aluno-item:hover { background: var(--bg-hover); }
+[data-theme="dark"] .aluno-chamada-badge { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+[data-theme="dark"] .drop-zone {
+    background: var(--bg-secondary); border-color: var(--border);
+}
+[data-theme="dark"] .drop-zone.dragover { background: var(--bg-hover); border-color: #4338ca; }
+
+[data-theme="dark"] .atividades-panel { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .atividade-nome { color: var(--text-primary); }
+[data-theme="dark"] .atividade-meta { color: var(--text-muted); }
+
+[data-theme="dark"] .modal-grupos { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .modal-grupos-header { border-color: var(--border); }
+[data-theme="dark"] .modal-grupos-titulo { color: var(--text-primary); }
+[data-theme="dark"] .form-grupo label { color: var(--text-secondary); }
+[data-theme="dark"] .form-grupo input,
+[data-theme="dark"] .form-grupo textarea,
+[data-theme="dark"] .form-grupo select {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}

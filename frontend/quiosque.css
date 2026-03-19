@@ -503,3 +503,48 @@ html, body {
 .feedback-icone { font-size: 72px; line-height: 1; }
 .feedback-msg   { font-size: 22px; font-weight: 700; }
 .feedback-sub   { font-size: 15px; color: var(--muted); }
+
+/* ── Botão de tema para o quiosque ──────────────────────────── */
+.btn-kiosk-theme {
+    background: rgba(255,255,255,0.15) !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+    color: white !important;
+    font-size: 14px;
+    width: 34px; height: 30px;
+    padding: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.btn-kiosk-theme.animating { transform: rotate(180deg); }
+
+/* ── Tema Claro para Quiosque ────────────────────────────────── */
+[data-theme="light"] body { background: #f0f2f5; color: #1a1a2e; }
+[data-theme="light"] .kiosk-header { background: linear-gradient(135deg, #007bff, #0056b3); border-color: #0056b3; }
+
+[data-theme="light"] .kiosk-stats-bar { background: #ffffff; border-color: #dee2e6; }
+[data-theme="light"] .stats-bar-item { border-color: #dee2e6; }
+[data-theme="light"] .stats-bar-val { color: #1a1a2e; }
+[data-theme="light"] .stats-bar-label { color: #888; }
+[data-theme="light"] .stats-bar-val.atrasado { color: #dc2626; }
+
+[data-theme="light"] .kiosk-layout { background: transparent; }
+[data-theme="light"] .kiosk-actions-panel { background: #ffffff; border-color: #dee2e6; }
+
+[data-theme="light"] .kiosk-btn.emprestar { background: linear-gradient(135deg, #6d28d9, #4c1d95); }
+[data-theme="light"] .kiosk-btn.devolver  { background: linear-gradient(135deg, #059669, #065f46); }
+
+[data-theme="light"] .kiosk-monitor-panel { background: #ffffff; border-color: #dee2e6; }
+[data-theme="light"] .monitor-header { border-color: #dee2e6; }
+[data-theme="light"] .monitor-title { color: #1a1a2e; }
+[data-theme="light"] .monitor-update { color: #888; }
+
+[data-theme="light"] .loan-card { background: #f8f9fb; border-color: #dee2e6; }
+[data-theme="light"] .loan-card:hover { background: #f0f4ff; }
+[data-theme="light"] .loan-aluno { color: #1a1a2e; }
+[data-theme="light"] .loan-material { color: #555; }
+[data-theme="light"] .loan-data { color: #888; }
+
+[data-theme="light"] .kiosk-modal-overlay { background: rgba(0,0,0,0.5); }
+[data-theme="light"] .kiosk-modal { background: #ffffff; border-color: #dee2e6; }
+[data-theme="light"] .kiosk-modal-header { border-color: #dee2e6; }
+[data-theme="light"] .kiosk-modal-title { color: #1a1a2e; }
+[data-theme="light"] .kiosk-input { background: #f0f2f5; color: #1a1a2e; border-color: #dee2e6; }

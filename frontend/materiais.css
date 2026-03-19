@@ -274,3 +274,36 @@
         min-width: 100%;
     }
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .page-header h2 { color: var(--text-primary); }
+
+[data-theme="dark"] .filtros input,
+[data-theme="dark"] .filtros select {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}
+
+[data-theme="dark"] .stats-card,
+[data-theme="dark"] .material-card,
+[data-theme="dark"] .material-form-section { background: var(--bg-card); border-color: var(--border); }
+
+[data-theme="dark"] .stats-number { color: var(--text-primary); }
+[data-theme="dark"] .stats-label { color: var(--text-muted); }
+
+[data-theme="dark"] .material-nome { color: var(--text-primary); }
+[data-theme="dark"] .material-info { color: var(--text-secondary); }
+[data-theme="dark"] .material-tag { background: var(--bg-secondary); color: var(--text-secondary); }
+
+[data-theme="dark"] .modal-material { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .modal-material h3 { color: var(--text-primary); }
+[data-theme="dark"] .form-group label { color: var(--text-secondary); }
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus { border-color: var(--input-focus); }
+
+[data-theme="dark"] .btn-editar-mat { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .btn-editar-mat:hover { background: var(--bg-hover); }

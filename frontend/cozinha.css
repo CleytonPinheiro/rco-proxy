@@ -377,3 +377,64 @@ body {
     .periodos-grid { grid-template-columns: 1fr; }
     .numero-principal { font-size: 60px; }
 }
+
+/* ── Botão de tema na cozinha ────────────────────────────────── */
+.btn-theme {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 34px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, transform 0.3s;
+}
+.btn-theme:hover { background: rgba(255,255,255,0.28); }
+.btn-theme.animating { transform: rotate(180deg); }
+
+/* ── Tema Claro ─────────────────────────────────────────────── */
+[data-theme="light"] body { background: #f0f2f5; color: #1a1a2e; }
+[data-theme="light"] .cozinha-header { background: linear-gradient(135deg, #007bff, #0056b3); border-color: #0056b3; }
+[data-theme="light"] .data-bar { background: #ffffff; border-color: #dee2e6; }
+[data-theme="light"] #inputData { background: #f0f2f5; border-color: #dee2e6; color: #1a1a2e; }
+[data-theme="light"] .btn-hoje { background: #e9ecef; color: #333; }
+[data-theme="light"] .alert-sync { background: rgba(245,158,11,0.1); color: #92400e; }
+
+[data-theme="light"] .periodo-card { background: #ffffff; border-color: #e0e4ef; }
+[data-theme="light"] .numero-principal { color: #1a1a2e; }
+[data-theme="light"] .numero-label { color: #aaa; }
+
+[data-theme="light"] .numeros-secundarios { background: #f8f9fb; }
+[data-theme="light"] .num-sec-val { color: #1a1a2e; }
+[data-theme="light"] .num-sec-val.ausente { color: #dc2626; }
+[data-theme="light"] .num-sec-val.pct { color: #10b981; }
+[data-theme="light"] .num-sec-label { color: #888; }
+
+[data-theme="light"] .hist-bar { background: #e9ecef; }
+[data-theme="light"] .hist-fill { background: #3b82f6; }
+
+[data-theme="light"] .periodo-header.manha { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+[data-theme="light"] .periodo-header.tarde { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); }
+[data-theme="light"] .periodo-header.noite { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.2); }
+[data-theme="light"] .periodo-title { color: #1a1a2e; }
+
+[data-theme="light"] .modal-box { background: #ffffff; border-color: #dee2e6; }
+[data-theme="light"] .modal-header h3 { color: #1a1a2e; }
+[data-theme="light"] .modal-body p { color: #555; }
+[data-theme="light"] .modal-body strong { color: #1a1a2e; }
+[data-theme="light"] .btn-counter { background: #f0f2f5; border-color: #dee2e6; color: #333; }
+[data-theme="light"] #inputCozinha { background: #ffffff; border-color: #dee2e6; color: #1a1a2e; }
+[data-theme="light"] #inputObsCozinha { background: #ffffff; border-color: #dee2e6; color: #1a1a2e; }
+[data-theme="light"] .modal-footer { border-color: #dee2e6; }
+[data-theme="light"] .btn-cancelar { color: #555; border-color: #dee2e6; }
+
+[data-theme="light"] .status-aguardando { background: rgba(156,163,175,0.15); color: #555; }
+[data-theme="light"] .status-parcial { background: rgba(245,158,11,0.15); color: #92400e; }
+[data-theme="light"] .status-confirmado { background: rgba(16,185,129,0.15); color: #065f46; }
+
+[data-theme="light"] .confirmacao-info { color: #aaa; }
+[data-theme="light"] .confirmacao-info.confirmado { color: #059669; }
+
+[data-theme="light"] .toast { background: #1a1a2e; color: #f0f0f0; }

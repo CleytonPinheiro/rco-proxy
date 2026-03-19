@@ -412,3 +412,49 @@
     .periodos-resumo { grid-template-columns: 1fr 1fr; }
     .tab-bar { flex-wrap: wrap; }
 }
+
+/* ── Tema Escuro suplementar ─────────────────────────────────── */
+[data-theme="dark"] .periodo-card {
+    background: var(--bg-card); border-color: var(--border);
+}
+[data-theme="dark"] .periodo-num { color: var(--text-primary); }
+[data-theme="dark"] .periodo-label { color: var(--text-muted); }
+[data-theme="dark"] .periodo-sub { color: var(--text-faint); }
+
+[data-theme="dark"] .tab { background: var(--bg-card); border-color: var(--border); color: var(--text-muted); }
+[data-theme="dark"] .tab.active { background: #007bff; border-color: #007bff; color: white; }
+
+[data-theme="dark"] .turma-card { background: var(--bg-card); border-left-color: inherit; }
+[data-theme="dark"] .turma-nome { color: var(--text-primary); }
+[data-theme="dark"] .num-val { color: var(--text-primary); }
+[data-theme="dark"] .num-val.cinza { color: var(--text-muted); }
+[data-theme="dark"] .turma-obs { background: var(--bg-secondary); color: var(--text-secondary); }
+
+[data-theme="dark"] .btn-editar {
+    background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary);
+}
+[data-theme="dark"] .btn-editar:hover { background: #007bff; border-color: #007bff; color: white; }
+
+[data-theme="dark"] #inputData {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}
+[data-theme="dark"] .btn-sm { background: var(--bg-secondary); color: var(--text-primary); }
+[data-theme="dark"] .btn-sm:hover { background: var(--border); }
+
+[data-theme="dark"] .modal-box { background: var(--bg-card); border: 1px solid var(--border); }
+[data-theme="dark"] .modal-header { border-color: var(--border); }
+[data-theme="dark"] .modal-header h3 { color: var(--text-primary); }
+[data-theme="dark"] .modal-turma { color: var(--text-primary); }
+[data-theme="dark"] .modal-info { color: var(--text-secondary); }
+[data-theme="dark"] .form-group label { color: var(--text-secondary); }
+[data-theme="dark"] #inputPresentes {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}
+[data-theme="dark"] #inputObs {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}
+[data-theme="dark"] .modal-footer { border-color: var(--border); }
+[data-theme="dark"] .btn-cancelar { color: var(--text-muted); border-color: var(--border); }
+[data-theme="dark"] .counter-hint { color: var(--text-muted); }
+[data-theme="dark"] .empty-state h3 { color: var(--text-primary); }
+[data-theme="dark"] .empty-state p { color: var(--text-secondary); }

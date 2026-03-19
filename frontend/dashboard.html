@@ -2,7 +2,9 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <script src="theme.js"></script>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="theme.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduGest — Turmas</title>
     <link rel="stylesheet" href="dashboard.css">
@@ -21,7 +23,10 @@
                 <a href="presenca.html">Presença</a>
                 <a href="cozinha.html">🍽 Cozinha</a>
             </nav>
-            <button id="btnLogout" class="btn-logout">Sair</button>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
         </div>
     </header>
 

@@ -157,3 +157,16 @@ button:disabled {
     white-space: pre-wrap;
     word-break: break-all;
 }
+
+/* ── Tema Escuro — Login ─────────────────────────────────────── */
+[data-theme="dark"] body { background: #0f1117; color: #e8e8f0; }
+[data-theme="dark"] .container { max-width: 420px; margin: 0 auto; }
+[data-theme="dark"] .card,
+[data-theme="dark"] form,
+[data-theme="dark"] .status-card { background: #1a1d27; border: 1px solid #2d2f3d; color: #e8e8f0; }
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color: #e8e8f0; }
+[data-theme="dark"] label { color: #9da0b3; }
+[data-theme="dark"] input, [data-theme="dark"] select {
+    background: #1e2130; color: #e8e8f0; border-color: #3a3d52;
+}
+[data-theme="dark"] p, [data-theme="dark"] span { color: #9da0b3; }

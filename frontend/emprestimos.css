@@ -508,3 +508,52 @@ textarea:focus {
         flex-direction: column;
     }
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .tabs { border-color: var(--border); }
+[data-theme="dark"] .tab { color: var(--text-muted); }
+[data-theme="dark"] .tab:hover { color: var(--text-primary); }
+[data-theme="dark"] .tab.active { color: #60a5fa; }
+[data-theme="dark"] .tab.active::after { background: #60a5fa; }
+
+[data-theme="dark"] .emprestimo-card,
+[data-theme="dark"] .formulario-emprestimo,
+[data-theme="dark"] .lista-formulario { background: var(--bg-card); border-color: var(--border); }
+
+[data-theme="dark"] .emp-aluno-nome,
+[data-theme="dark"] .emp-material-nome,
+[data-theme="dark"] .form-label-main { color: var(--text-primary); }
+[data-theme="dark"] .emp-info,
+[data-theme="dark"] .emp-sub,
+[data-theme="dark"] .dqr-material span { color: var(--text-secondary); }
+
+[data-theme="dark"] .emp-status { color: var(--text-muted); }
+
+[data-theme="dark"] .filtro-secao { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .filtro-secao label { color: var(--text-secondary); }
+
+[data-theme="dark"] .btn-devolucao-parcial { background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary); }
+
+[data-theme="dark"] .scanner-area { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .scanner-label { color: var(--text-secondary); }
+
+[data-theme="dark"] .banner-atraso {
+    background: #2a1e00; border-color: #d97706; color: #fbbf24;
+}
+[data-theme="dark"] .banner-atraso-fechar { background: transparent; color: #fbbf24; }
+[data-theme="dark"] .banner-atraso-fechar:hover { background: rgba(217,119,6,0.2); }
+
+[data-theme="dark"] .card-atrasado-leve {
+    background: var(--bg-card) !important; border-color: #d97706 !important;
+}
+[data-theme="dark"] .card-atrasado-grave {
+    background: var(--bg-card) !important; border-color: #dc2626 !important;
+}
+
+[data-theme="dark"] .emprestimo-card.atraso-badge { background: #2a1e00; }
+[data-theme="dark"] .emprestimo-card.atraso-grave-bg { background: #2a0d0d; }
+
+[data-theme="dark"] select.form-control,
+[data-theme="dark"] input.form-control {
+    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+}

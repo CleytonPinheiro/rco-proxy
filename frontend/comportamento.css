@@ -498,3 +498,72 @@
     .tipo-btns { flex-direction: column; }
     .categorias-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .comp-titulo,
+[data-theme="dark"] .grupos-titulo { color: var(--text-primary); }
+
+[data-theme="dark"] .turma-tab { background: var(--tab-bg); color: var(--tab-color); }
+[data-theme="dark"] .turma-tab:hover { background: var(--tab-hover-bg); color: var(--tab-hover-color); }
+
+[data-theme="dark"] .btn-ranking {
+    background: var(--bg-card); color: var(--text-primary); border-color: var(--border);
+}
+[data-theme="dark"] .btn-ranking:hover { background: var(--bg-secondary); }
+
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .aluno-card,
+[data-theme="dark"] .obs-card,
+[data-theme="dark"] .ocorrencias-panel,
+[data-theme="dark"] .hist-wrapper,
+[data-theme="dark"] .ranking-item {
+    background: var(--bg-card); border-color: var(--border);
+}
+[data-theme="dark"] .ranking-item:hover { background: var(--bg-secondary); }
+
+[data-theme="dark"] .aluno-card:hover { border-color: var(--border); }
+[data-theme="dark"] .aluno-nome,
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .ranking-nome { color: var(--text-primary); }
+[data-theme="dark"] .aluno-turma,
+[data-theme="dark"] .stat-sub,
+[data-theme="dark"] .ranking-nivel { color: var(--text-muted); }
+
+[data-theme="dark"] .card-aluno {
+    background: var(--bg-card); border-color: var(--border);
+}
+[data-theme="dark"] .card-aluno:hover { border-color: #4338ca; }
+[data-theme="dark"] .card-nome { color: var(--text-primary); }
+[data-theme="dark"] .card-sub { color: var(--text-secondary); }
+
+[data-theme="dark"] .card-nivel-header { filter: brightness(0.4) saturate(0.6); }
+
+[data-theme="dark"] .nivel-0 { background: var(--bg-secondary); color: var(--text-secondary); }
+
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-body-comp { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .modal-header h3 { color: var(--text-primary); }
+[data-theme="dark"] .modal-tabs { border-color: var(--border); }
+[data-theme="dark"] .modal-tab { color: var(--text-muted); }
+[data-theme="dark"] .modal-tab:hover { color: var(--text-primary); }
+
+[data-theme="dark"] .tipo-btn { background: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary); }
+[data-theme="dark"] .tipo-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+[data-theme="dark"] .tipo-positivo.active { background: #0d3320; border-color: #166534; color: #4ade80; }
+[data-theme="dark"] .tipo-atencao.active  { background: #2a1e00; border-color: #d97706; color: #fbbf24; }
+[data-theme="dark"] .tipo-grave.active    { background: #2a0d0d; border-color: #dc2626; color: #f87171; }
+
+[data-theme="dark"] .cat-btn {
+    background: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary);
+}
+[data-theme="dark"] .cat-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+[data-theme="dark"] .cat-btn.selected { background: #1e1e3f; border-color: #4338ca; color: #a5b4fc; }
+
+[data-theme="dark"] .ocorrencia-item { border-color: var(--border); }
+[data-theme="dark"] .ocorrencia-data { color: var(--text-muted); }
+[data-theme="dark"] .ocorrencia-desc { color: var(--text-secondary); }
+
+[data-theme="dark"] .hist-stat-val { color: var(--text-primary); }
+[data-theme="dark"] .hist-bar-bg { background: var(--border); }
+
+[data-theme="dark"] .ranking-pos { background: var(--bg-secondary); color: var(--text-secondary); }
