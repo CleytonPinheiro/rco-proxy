@@ -64,6 +64,7 @@ async function getBrowser() {
     browserInstance = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
+        timeout: 60000,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -79,9 +80,7 @@ async function getBrowser() {
             "--mute-audio",
             "--hide-scrollbars",
             "--disable-notifications",
-            "--single-process",
-            "--memory-pressure-off",
-            "--js-flags=--max-old-space-size=256"
+            "--js-flags=--max-old-space-size=512"
         ]
     });
 
