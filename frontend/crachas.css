@@ -1,0 +1,379 @@
+/* ── Crachás — Estilos ─────────────────────────────────────────────────────── */
+
+/* ── Cabeçalho do módulo ─────────────────────────────────────── */
+.crachas-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.crachas-titulo {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+.crachas-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+.crachas-actions-top {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.btn-imprimir-todos,
+.btn-imprimir-sel {
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, opacity 0.15s;
+}
+.btn-imprimir-todos {
+    background: #1d4ed8;
+    color: white;
+}
+.btn-imprimir-todos:hover { background: #1e40af; }
+.btn-imprimir-sel {
+    background: #059669;
+    color: white;
+}
+.btn-imprimir-sel:hover:not(:disabled) { background: #047857; }
+.btn-imprimir-sel:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Filtros ─────────────────────────────────────────────────── */
+.crachas-filtros {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stats-crachas {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.stat-cracha {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    text-align: center;
+    min-width: 72px;
+    cursor: default;
+    transition: border-color 0.15s;
+}
+.stat-cracha.pendente { border-color: #f59e0b; }
+.stat-cracha.impresso { border-color: #10b981; }
+.stat-cracha.entregue { border-color: #6366f1; }
+.stat-n {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.stat-cracha.pendente .stat-n { color: #d97706; }
+.stat-cracha.impresso .stat-n { color: #059669; }
+.stat-cracha.entregue .stat-n { color: #4f46e5; }
+.stat-l {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.filtros-direita {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.filtros-direita input,
+.filtros-direita select {
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--input-color);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.filtros-direita input:focus,
+.filtros-direita select:focus { border-color: #1d4ed8; }
+.filtros-direita input { min-width: 200px; }
+
+/* ── Abas de turma ───────────────────────────────────────────── */
+.turma-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.turma-tab {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--tab-bg);
+    color: var(--tab-color);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.turma-tab:hover { background: var(--tab-hover-bg); color: var(--tab-hover-color); }
+.turma-tab.active { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+.tab-count {
+    background: rgba(255,255,255,0.25);
+    color: inherit;
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: 11px;
+}
+.turma-tab:not(.active) .tab-count { background: var(--border); color: var(--text-muted); }
+
+/* ── Seções de turma ─────────────────────────────────────────── */
+.turma-secao {
+    margin-bottom: 28px;
+}
+.turma-secao-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-left: 4px solid var(--cor-turma, #1d4ed8);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.turma-secao-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.chk-turma {
+    width: 16px; height: 16px;
+    cursor: pointer;
+    accent-color: var(--cor-turma, #1d4ed8);
+}
+.turma-secao-nome {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.turma-secao-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+.turma-secao-acoes {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.btn-marcar-grupo {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.13s;
+}
+.btn-marcar-grupo:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+
+/* ── Grid de cards ───────────────────────────────────────────── */
+.alunos-grid-crachas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+/* ── Card de aluno ───────────────────────────────────────────── */
+.aluno-cracha-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: default;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    position: relative;
+}
+.aluno-cracha-card:hover { border-color: #1d4ed8; box-shadow: 0 2px 8px var(--shadow-sm); }
+.aluno-cracha-card.selecionado {
+    border-color: #1d4ed8;
+    background: var(--bg-tertiary);
+    box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
+}
+.aluno-cracha-card.status-impresso { border-left: 3px solid #10b981; }
+.aluno-cracha-card.status-entregue { border-left: 3px solid #6366f1; }
+.aluno-cracha-card.status-pendente { border-left: 3px solid #f59e0b; }
+
+.card-check-area {
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.chk-aluno { width: 16px; height: 16px; cursor: pointer; accent-color: #1d4ed8; }
+
+.card-chamada {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 50%;
+    font-size: 13px; font-weight: 800;
+    color: var(--text-primary);
+    border: 1.5px solid var(--border);
+}
+
+.card-info {
+    flex: 1;
+    min-width: 0;
+}
+.card-nome {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+.card-turma-mini {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+.card-status-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+.badge-pendente { background: #fef3c7; color: #92400e; }
+.badge-impresso { background: #d1fae5; color: #065f46; }
+.badge-entregue { background: #ede9fe; color: #4c1d95; }
+
+.card-data-info {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.card-acoes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.btn-status-mini {
+    width: 28px; height: 28px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.13s;
+    background: var(--bg-secondary);
+}
+.btn-status-mini:hover { background: var(--bg-hover); }
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty-crachas {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-crachas p { font-size: 15px; }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1a1d27;
+    color: #f0f0f0;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    max-width: 320px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.toast-erro  { background: #dc2626; }
+.toast.toast-aviso { background: #d97706; }
+
+/* ── Responsivo ──────────────────────────────────────────────── */
+@media (max-width: 700px) {
+    .crachas-top { flex-direction: column; }
+    .crachas-filtros { flex-direction: column; align-items: stretch; }
+    .filtros-direita { flex-direction: column; }
+    .filtros-direita input { min-width: unset; width: 100%; }
+    .alunos-grid-crachas { grid-template-columns: 1fr; }
+    .stats-crachas { gap: 8px; }
+    .stat-cracha { min-width: 60px; padding: 8px 12px; }
+}
+
+/* ── Tema Escuro ─────────────────────────────────────────────── */
+[data-theme="dark"] .crachas-titulo { color: var(--text-primary); }
+[data-theme="dark"] .stat-cracha { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .stat-cracha.pendente { border-color: #d97706; }
+[data-theme="dark"] .stat-cracha.impresso { border-color: #059669; }
+[data-theme="dark"] .stat-cracha.entregue { border-color: #6366f1; }
+[data-theme="dark"] .aluno-cracha-card { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .aluno-cracha-card.selecionado { background: var(--bg-tertiary); }
+[data-theme="dark"] .badge-pendente { background: #2a1e00; color: #fbbf24; }
+[data-theme="dark"] .badge-impresso { background: #0d3320; color: #4ade80; }
+[data-theme="dark"] .badge-entregue { background: #1e1b4b; color: #a5b4fc; }
+[data-theme="dark"] .turma-secao-header { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .btn-marcar-grupo { background: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary); }
+[data-theme="dark"] .btn-marcar-grupo:hover { background: var(--bg-hover); color: var(--text-primary); }
+[data-theme="dark"] .card-chamada { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .btn-status-mini { background: var(--bg-secondary); }
+[data-theme="dark"] .btn-status-mini:hover { background: var(--bg-hover); }
+
+/* ── Área de impressão (oculta na tela) ──────────────────────── */
+.print-area { display: none; }
+@media print { .print-area { display: block; } }

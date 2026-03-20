@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGest — Crachás</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="crachas.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>📚 EduGest</h1>
+            <nav class="nav-menu">
+                <a href="dashboard.html">Turmas</a>
+                <a href="frequencias.html">Frequências</a>
+                <a href="crachas.html" class="active">Crachás</a>
+                <a href="grupos.html">Grupos</a>
+                <a href="comportamento.html">Comportamento</a>
+                <a href="materiais.html">Materiais</a>
+                <a href="emprestimos.html">Empréstimos</a>
+                <a href="presenca.html">Presença</a>
+                <a href="cozinha.html">🍽 Cozinha</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando alunos...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+
+            <!-- Cabeçalho do módulo -->
+            <div class="crachas-top">
+                <div class="crachas-titulo-area">
+                    <h2 class="crachas-titulo">🪪 Gerenciar Crachás</h2>
+                    <p class="crachas-sub">Imprima e controle a entrega dos crachás dos alunos</p>
+                </div>
+                <div class="crachas-actions-top">
+                    <button class="btn-imprimir-sel" id="btnImprimirSel" onclick="imprimirSelecionados()" disabled>
+                        🖨️ Imprimir selecionados (<span id="countSel">0</span>)
+                    </button>
+                    <button class="btn-imprimir-todos" onclick="imprimirTodos()">
+                        🖨️ Imprimir todos
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros e stats -->
+            <div class="crachas-filtros">
+                <div class="stats-crachas">
+                    <div class="stat-cracha" id="statTotal">
+                        <span class="stat-n" id="numTotal">0</span>
+                        <span class="stat-l">Total</span>
+                    </div>
+                    <div class="stat-cracha pendente" id="statPendente">
+                        <span class="stat-n" id="numPendente">0</span>
+                        <span class="stat-l">Pendentes</span>
+                    </div>
+                    <div class="stat-cracha impresso" id="statImpresso">
+                        <span class="stat-n" id="numImpresso">0</span>
+                        <span class="stat-l">Impressos</span>
+                    </div>
+                    <div class="stat-cracha entregue" id="statEntregue">
+                        <span class="stat-n" id="numEntregue">0</span>
+                        <span class="stat-l">Entregues</span>
+                    </div>
+                </div>
+                <div class="filtros-direita">
+                    <input type="search" id="inputBusca" placeholder="🔍 Buscar aluno..." oninput="filtrar()">
+                    <select id="filtroStatus" onchange="filtrar()">
+                        <option value="">Todos os status</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="impresso">Impressos</option>
+                        <option value="entregue">Entregues</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Abas de turma -->
+            <div class="turma-tabs" id="turmaTabs"></div>
+
+            <!-- Lista de alunos -->
+            <div id="listaAlunos"></div>
+
+        </div>
+    </main>
+
+    <!-- Área de impressão (invisível na tela, visível no print) -->
+    <div id="printArea" class="print-area"></div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="crachas.js"></script>
+</body>
+</html>

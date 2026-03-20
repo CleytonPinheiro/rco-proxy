@@ -1,7 +1,7 @@
 # EduGest
 
 ## Visão Geral
-Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, grupos, comportamento, materiais, empréstimos, presença diária e painel da cozinha.
+Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária e painel da cozinha.
 
 ## Estado Atual
 - **Data**: 16/01/2026
