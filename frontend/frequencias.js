@@ -303,7 +303,7 @@ function renderTabelaFrequencias(data, codClasse) {
 // Drawer Direito — Detalhes do Aluno
 // ══════════════════════════════════════════════════════════════════════════════
 
-function abrirDrawerAluno(nome, numChamada) {
+async function abrirDrawerAluno(nome, numChamada) {
     alunoSelecionado = { nome, numChamada };
 
     // Cabeçalho
@@ -319,7 +319,61 @@ function abrirDrawerAluno(nome, numChamada) {
         r.classList.toggle('freq-aluno-ativo', r.dataset.nome === nome);
     });
 
+    // Mostrar loading enquanto busca todas as disciplinas
+    document.getElementById('drawerBody').innerHTML = `
+        <div class="drawer-placeholder" style="padding-top:40px">
+            <div class="spinner-sm" style="width:28px;height:28px;border-width:3px;margin:0 auto 14px"></div>
+            <p style="font-size:12px">Buscando dados em<br>todas as disciplinas...</p>
+        </div>`;
+
+    // Buscar todas as disciplinas não carregadas antes de exibir
+    await carregarTodasDisciplinas();
+
+    // Exibir drawer completo
     popularDrawer(nome, numChamada);
+}
+
+// ── Busca todas as disciplinas do acessosCache em paralelo ───────────────────
+async function carregarTodasDisciplinas() {
+    if (!acessosCache) return;
+    const root = Array.isArray(acessosCache) ? acessosCache[0] : acessosCache;
+    const pendentes = [];
+
+    for (const periodo of (root.periodoLetivos || [])) {
+        for (const livro of (periodo.livros || [])) {
+            const classe = livro.classe;
+            if (!classe) continue;
+            const codClasse = classe.codClasse;
+            if (disciplinaCache[codClasse]) continue; // já carregado
+
+            pendentes.push({
+                codClasse,
+                nomeDisciplina: classe.disciplina?.nomeDisciplina || 'Disciplina',
+                cor:            classe.disciplina?.corFundo       || '#667eea',
+            });
+        }
+    }
+
+    if (pendentes.length === 0) return;
+
+    // Buscar em paralelo — ignora falhas individuais
+    await Promise.allSettled(pendentes.map(async ({ codClasse, nomeDisciplina, cor }) => {
+        try {
+            const r = await fetch(`${API}/api/frequencias?codClasse=${codClasse}`);
+            if (!r.ok) return;
+            const data = await r.json();
+            disciplinaCache[codClasse] = {
+                codClasse, nomeDisciplina, cor,
+                alunos:    data.alunos    || [],
+                codAulas:  data.codAulas  || [],
+                aulaDatas: data.aulaDatas || {},
+            };
+            // Sincroniza o accordion se o painel já estava aberto
+            const panel = document.querySelector(`.disc-freq-panel[data-codclasse="${codClasse}"]`);
+            if (panel && panel.dataset.loaded === 'true') return;
+            if (panel) panel.dataset.loaded = 'true';
+        } catch { /* silencioso */ }
+    }));
 }
 
 function fecharDrawerAluno() {
@@ -352,12 +406,12 @@ function popularDrawer(nome, numChamada) {
     }
 
     // ── Calcular por disciplina ──────────────────────────────────────────────
-    let totalP = 0, totalF = 0, discNaoEncontrada = 0;
+    let totalP = 0, totalF = 0;
     const cards = disciplinas
         .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina))
         .map(disc => {
             const aluno = disc.alunos.find(a => a.nome === nome);
-            if (!aluno) { discNaoEncontrada++; return null; }
+            if (!aluno) return null;
 
             totalP += aluno.presencas || 0;
             totalF += aluno.faltas    || 0;
@@ -425,16 +479,14 @@ function popularDrawer(nome, numChamada) {
             </div>
         </div>`;
 
-    const naoCarregadoHTML = discNaoEncontrada > 0
-        ? `<div class="drawer-nao-carregado">+ ${discNaoEncontrada} disciplina${discNaoEncontrada !== 1 ? 's' : ''} ainda não carregada${discNaoEncontrada !== 1 ? 's' : ''}</div>`
-        : '';
-
     body.innerHTML = resumoHTML
-        + `<div class="drawer-disc-label">Por Disciplina</div>`
+        + `<div class="drawer-disc-label">Por Disciplina (${cards.length})</div>`
         + (cards.length > 0
             ? cards.join('')
-            : `<p class="drawer-placeholder" style="padding:20px 14px;font-size:12px;color:#9ca3af">Aluno não encontrado nas disciplinas carregadas.</p>`)
-        + naoCarregadoHTML;
+            : `<div class="drawer-placeholder" style="padding:20px 14px">
+                   <div class="drawer-placeholder-icon" style="font-size:22px">🔍</div>
+                   <p>Aluno não encontrado<br>nas disciplinas.</p>
+               </div>`);
 }
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
