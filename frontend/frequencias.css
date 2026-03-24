@@ -245,16 +245,24 @@
     overflow-x: auto;
     border-radius: 8px;
     border: 1px solid #e8ecf4;
+    /* Remove scrollbar width visual on WebKit */
+    scrollbar-width: thin;
+    scrollbar-color: #dce4f7 transparent;
 }
+.freq-scroll::-webkit-scrollbar { height: 5px; }
+.freq-scroll::-webkit-scrollbar-track { background: transparent; }
+.freq-scroll::-webkit-scrollbar-thumb { background: #dce4f7; border-radius: 10px; }
+.freq-scroll::-webkit-scrollbar-thumb:hover { background: #b8c4e0; }
 
 .freq-tabela {
     border-collapse: collapse;
     width: 100%;
-    min-width: 460px;
+    min-width: 480px;
     font-size: 12px;
     background: white;
 }
 
+/* ── Cabeçalho: sticky vertical (top) ───────────────────────────────────── */
 .freq-tabela thead th {
     background: #f4f6fc;
     color: #445;
@@ -269,6 +277,7 @@
 }
 .freq-tabela thead th.col-nome { text-align: left; }
 
+/* ── Linhas do corpo ─────────────────────────────────────────────────────── */
 .freq-tabela tbody tr:hover { background: #f9faff; }
 .freq-tabela tbody tr:nth-child(even) { background: #fafbfc; }
 .freq-tabela tbody tr:nth-child(even):hover { background: #f4f6ff; }
@@ -280,24 +289,54 @@
     font-size: 12px;
 }
 
+/* ── Coluna # (chamada) — sticky left ────────────────────────────────────── */
 .col-chamada {
     width: 28px;
     font-weight: 700;
     color: #9ca3af;
     text-align: right;
     padding-right: 6px;
+    /* sticky */
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: white;
 }
+.freq-tabela thead th.col-chamada {
+    background: #f4f6fc;
+    z-index: 4;
+}
+.freq-tabela tbody tr:nth-child(even) td.col-chamada { background: #fafbfc; }
+.freq-tabela tbody tr:hover td.col-chamada            { background: #f9faff; }
+.freq-tabela tbody tr:nth-child(even):hover td.col-chamada { background: #f4f6ff; }
+
+/* ── Coluna Nome — sticky left (depois de #) ─────────────────────────────── */
 .col-nome {
     text-align: left;
     padding-left: 10px;
-    min-width: 140px;
-    max-width: 200px;
+    min-width: 130px;
+    max-width: 180px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 500;
     color: #1a1a2e;
+    /* sticky */
+    position: sticky;
+    left: 28px;
+    z-index: 1;
+    background: white;
+    /* Sombra direita para indicar scroll */
+    box-shadow: 3px 0 6px -2px rgba(0,0,0,0.08);
 }
+.freq-tabela thead th.col-nome {
+    background: #f4f6fc;
+    z-index: 4;
+    box-shadow: 3px 0 6px -2px rgba(0,0,0,0.10);
+}
+.freq-tabela tbody tr:nth-child(even) td.col-nome { background: #fafbfc; }
+.freq-tabela tbody tr:hover td.col-nome            { background: #f9faff; }
+.freq-tabela tbody tr:nth-child(even):hover td.col-nome { background: #f4f6ff; }
 
 .col-aula {
     width: 38px;
@@ -345,14 +384,18 @@
 .col-aula-total { color: #c0392b; }
 
 /* ── Responsivo ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .col-nome { min-width: 110px; max-width: 140px; }
+}
 @media (max-width: 640px) {
     .page-header-freq  { flex-direction: column; align-items: flex-start; }
     .turma-card-header { padding: 14px 16px 12px; }
     .turma-card-serie  { font-size: 16px; }
     .disc-btn          { padding: 11px 16px; }
-    .freq-tabela-wrap  { padding: 0 10px 12px; }
-    .col-nome          { max-width: 120px; }
-    .freq-legenda      { padding: 8px 14px; }
+    .freq-tabela-wrap  { padding: 0 8px 12px; }
+    .col-nome          { min-width: 100px; max-width: 120px; font-size: 11px; }
+    .freq-legenda      { padding: 8px 12px; font-size: 10px; }
+    .col-aula          { width: 32px; min-width: 32px; font-size: 10px; }
 }
 
 /* ── Tema Escuro ─────────────────────────────────────────────────────────── */
@@ -388,6 +431,18 @@
 [data-theme="dark"] .freq-tabela tbody tr:nth-child(even) { background: var(--bg-secondary) !important; }
 [data-theme="dark"] .freq-tabela tbody tr:nth-child(even):hover { background: var(--bg-hover) !important; }
 [data-theme="dark"] .freq-tabela td { border-color: var(--border); color: var(--text-primary); }
+
+/* Sticky columns — dark mode */
+[data-theme="dark"] .freq-tabela td.col-chamada,
+[data-theme="dark"] .freq-tabela td.col-nome { background: var(--bg-card); }
+[data-theme="dark"] .freq-tabela thead th.col-chamada,
+[data-theme="dark"] .freq-tabela thead th.col-nome { background: var(--bg-secondary); }
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even) td.col-chamada,
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even) td.col-nome { background: var(--bg-secondary); }
+[data-theme="dark"] .freq-tabela tbody tr:hover td.col-chamada,
+[data-theme="dark"] .freq-tabela tbody tr:hover td.col-nome { background: var(--bg-hover); }
+[data-theme="dark"] .col-nome { box-shadow: 3px 0 6px -2px rgba(0,0,0,0.35); }
+[data-theme="dark"] .freq-scroll { scrollbar-color: var(--border) transparent; }
 
 [data-theme="dark"] .col-presenca { background: #0d3320; color: #4ade80; }
 [data-theme="dark"] .col-falta    { background: #2a0d0d; color: #f87171; }

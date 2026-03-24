@@ -416,12 +416,26 @@ body {
 }
 
 /* ── Responsivo ──────────────────────────────────────────────────────────── */
-@media (max-width: 768px) {
-    .header-content { flex-wrap: wrap; gap: 10px; }
-    .nav-menu { order: 3; width: 100%; justify-content: center; }
-    .header-actions { order: 2; }
+@media (max-width: 880px) {
+    /* Nav rola horizontalmente em vez de quebrar linha */
+    .header-content { flex-wrap: nowrap; gap: 8px; }
+    .nav-menu {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .nav-menu::-webkit-scrollbar { display: none; }
+    .logo-edu, .logo-sync { font-size: 18px; }
 }
 @media (max-width: 640px) {
+    .header { padding: 10px 14px; }
+    .header-left { gap: 7px; }
+    .logo-edu, .logo-sync { font-size: 16px; }
+    .logo-icon { font-size: 17px; }
+    .header-divider { display: none; }
+    .btn-logout { font-size: 13px; padding: 6px 10px; }
+    /* Cards de turma */
     .cards-grid { grid-template-columns: 1fr; }
     .aluno-card { flex-direction: column; align-items: flex-start; }
     .aluno-codigos { flex-direction: row; width: 100%; justify-content: center; margin-top: 10px; }
