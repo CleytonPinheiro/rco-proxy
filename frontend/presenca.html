@@ -18,14 +18,13 @@
                 <a href="dashboard.html">Turmas</a>
                 <a href="frequencias.html">Frequências</a>
                 <a href="crachas.html">Crachás</a>
-                <a href="grupos.html">Grupos</a>
                 <a href="comportamento.html">Comportamento</a>
-                <a href="materiais.html">Materiais</a>
-                <a href="emprestimos.html">Empréstimos</a>
                 <a href="presenca.html" class="active">Presença</a>
-                <a href="cozinha.html">🍽 Cozinha</a>
-            </nav>
+                </nav>
             <div class="header-actions">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Abrir ferramentas">
+                    ☰ <span class="btn-side-menu-label">Ferramentas</span>
+                </button>
                 <button class="btn-theme" onclick="toggleTheme()">🌙</button>
                 <button class="btn-logout" onclick="window.location.href='/'">Sair</button>
             </div>
@@ -141,5 +140,57 @@
     <div id="toast" class="toast"></div>
 
     <script src="presenca.js"></script>
+
+    <!-- ── Painel Lateral ───────────────────────────────────────────────── -->
+    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">📚 EduGest</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
+        </div>
+        <div class="side-panel-section-label">Ferramentas</div>
+        <div class="side-panel-nav">
+            <a href="grupos.html" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="materiais.html" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                </div>
+            </a>
+            <a href="emprestimos.html" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Controle de empréstimos</span>
+                </div>
+            </a>
+            <a href="cozinha.html" class="side-nav-item">
+                <span class="side-nav-icon">🍽️</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Cozinha</span>
+                    <span class="side-nav-desc">Cardápio e presença por refeição</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduGest © 2026</div>
+    </nav>
+    <script>
+    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+    (function(){
+        var p = location.pathname.split('/').pop() || 'index.html';
+        document.querySelectorAll('.side-nav-item').forEach(function(a){
+            if(a.getAttribute('href') === p) a.classList.add('active');
+        });
+    })();
+    </script>
 </body>
 </html>

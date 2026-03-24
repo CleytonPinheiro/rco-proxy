@@ -386,3 +386,203 @@ body {
     .aluno-codigos { flex-direction: row; width: 100%; justify-content: center; margin-top: 10px; }
     .colegio-tab { font-size: 13px; padding: 7px 12px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Painel Lateral (Side Panel)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Botão ☰ no header */
+.btn-side-menu {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 7px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.btn-side-menu:hover { background: rgba(255,255,255,0.28); }
+.btn-side-menu-label {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+/* Overlay escuro atrás do painel */
+.side-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    backdrop-filter: blur(2px);
+}
+body[data-side="open"] .side-overlay {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Painel deslizante */
+.side-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 88vw;
+    background: var(--bg-card);
+    z-index: 501;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.22);
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+body[data-side="open"] .side-panel {
+    transform: translateX(0);
+}
+
+/* Cabeçalho do painel */
+.side-panel-header {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    padding: 20px 18px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.side-panel-logo {
+    font-size: 18px;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.3px;
+}
+.side-close-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    line-height: 1;
+}
+.side-close-btn:hover { background: rgba(255,255,255,0.3); }
+
+/* Rótulo de seção */
+.side-panel-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 16px 18px 6px;
+}
+
+/* Container dos itens de nav */
+.side-panel-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px 16px;
+}
+
+/* Item de navegação lateral */
+.side-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: background 0.15s, transform 0.1s;
+    margin-bottom: 4px;
+    border: 1.5px solid transparent;
+}
+.side-nav-item:hover {
+    background: var(--bg-secondary);
+    transform: translateX(3px);
+}
+.side-nav-item.active {
+    background: var(--bg-tertiary);
+    border-color: #007bff;
+}
+.side-nav-item.active .side-nav-nome { color: #007bff; font-weight: 700; }
+
+.side-nav-icon {
+    font-size: 26px;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+}
+.side-nav-item.active .side-nav-icon {
+    background: #e0f0ff;
+    border-color: #007bff;
+}
+.side-nav-item:hover .side-nav-icon { background: var(--bg-hover); }
+
+.side-nav-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.side-nav-nome {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.side-nav-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Rodapé do painel */
+.side-panel-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* ── Tema escuro ──────────────────────────────────────── */
+[data-theme="dark"] .side-panel { background: var(--bg-card); }
+[data-theme="dark"] .side-nav-item:hover { background: var(--bg-secondary); }
+[data-theme="dark"] .side-nav-item.active { background: var(--bg-tertiary); border-color: #60a5fa; }
+[data-theme="dark"] .side-nav-item.active .side-nav-nome { color: #60a5fa; }
+[data-theme="dark"] .side-nav-item.active .side-nav-icon { background: #1e2d4a; border-color: #60a5fa; }
+[data-theme="dark"] .side-nav-icon { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .side-panel-footer { border-color: var(--border); }
+
+/* ── Responsivo ───────────────────────────────────────── */
+@media (max-width: 640px) {
+    .btn-side-menu-label { display: none; }
+    .side-panel { width: 280px; }
+}
