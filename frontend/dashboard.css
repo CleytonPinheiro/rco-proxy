@@ -19,15 +19,56 @@ body {
 }
 
 .header-content {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
-.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+/* ── Grupo esquerdo: ☰ + Logo ─────────────────────────── */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Logo clicável */
+.logo-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+.logo-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+.logo-edu {
+    font-size: 21px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+.logo-sync {
+    font-size: 21px;
+    font-weight: 800;
+    color: #7dd3fc;
+    letter-spacing: -0.5px;
+}
+.logo-link:hover .logo-edu,
+.logo-link:hover .logo-sync { opacity: 0.88; }
+
+/* Separador visual entre logo e nav */
+.header-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(255,255,255,0.25);
+    flex-shrink: 0;
+}
 
 .nav-menu { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -391,29 +432,30 @@ body {
    Painel Lateral (Side Panel)
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Botão ☰ no header */
+/* Botão ☰ no header (esquerdo) */
 .btn-side-menu {
     background: rgba(255,255,255,0.15);
     color: white;
     border: 1px solid rgba(255,255,255,0.25);
-    padding: 7px 12px;
-    border-radius: 20px;
+    padding: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.15s;
     display: flex;
     align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    font-weight: 600;
+    justify-content: center;
     flex-shrink: 0;
 }
-.btn-side-menu:hover { background: rgba(255,255,255,0.28); }
-.btn-side-menu-label {
-    font-size: 12px;
-    font-weight: 600;
-    opacity: 0.9;
+.btn-side-menu:hover {
+    background: rgba(255,255,255,0.28);
+    transform: scale(1.05);
+}
+body[data-side="open"] .btn-side-menu {
+    background: rgba(255,255,255,0.28);
 }
 
 /* Overlay escuro atrás do painel */

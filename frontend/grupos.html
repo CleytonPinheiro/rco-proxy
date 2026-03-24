@@ -6,24 +6,28 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="theme.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduGest — Grupos</title>
+    <title>EduSync — Grupos</title>
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="grupos.css">
 </head>
 <body>
     <header class="header">
         <div class="header-content">
-            <h1>📚 EduGest</h1>
-            <nav class="nav-menu">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="dashboard.html" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+<nav class="nav-menu">
                 <a href="dashboard.html">Turmas</a>
                 <a href="frequencias.html">Frequências</a>
                 <a href="comportamento.html">Comportamento</a>
                 <a href="presenca.html">Presença</a>
                 </nav>
             <div class="header-actions">
-                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Abrir ferramentas">
-                    ☰ <span class="btn-side-menu-label">Ferramentas</span>
-                </button>
                 <button class="btn-theme" onclick="toggleTheme()">🌙</button>
                 <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
             </div>
@@ -131,7 +135,7 @@
     <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
     <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
         <div class="side-panel-header">
-            <span class="side-panel-logo">📚 EduGest</span>
+            <span class="side-panel-logo">⚡ EduSync</span>
             <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
         </div>
         <div class="side-panel-section-label">Ferramentas</div>
@@ -165,7 +169,7 @@
                 </div>
             </a>
         </div>
-        <div class="side-panel-footer">EduGest © 2026</div>
+        <div class="side-panel-footer">EduSync © 2026</div>
     </nav>
     <script>
     function abrirSidePanel() { document.body.setAttribute('data-side','open'); }

@@ -1,4 +1,4 @@
-# EduGest
+# EduSync
 
 ## Visão Geral
 Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária e painel da cozinha.
