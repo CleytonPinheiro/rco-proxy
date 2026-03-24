@@ -42,13 +42,36 @@
         </div>
 
         <div id="content" class="content" style="display: none;">
-            <div class="page-header-freq">
-                <h2>Frequências por Disciplina</h2>
-                <div class="freq-periodo-badge">1º Trimestre · 2026</div>
-            </div>
+            <div class="freq-layout" id="freqLayout">
 
-            <!-- Accordion de disciplinas -->
-            <div id="listaDiscDisciplinas" class="disc-accordion"></div>
+                <!-- ── Conteúdo principal ─────────────────────────────── -->
+                <div class="freq-main-content">
+                    <div class="page-header-freq">
+                        <h2>Frequências por Disciplina</h2>
+                        <div class="freq-periodo-badge">1º Trimestre · 2026</div>
+                    </div>
+                    <div id="listaDiscDisciplinas" class="disc-accordion"></div>
+                </div>
+
+                <!-- ── Drawer direito: Detalhes do Aluno ─────────────── -->
+                <aside class="aluno-drawer" id="alunoDrawer" aria-label="Detalhes do aluno">
+                    <div class="drawer-header">
+                        <div class="drawer-avatar" id="drawerAvatar">?</div>
+                        <div class="drawer-info">
+                            <div class="drawer-nome" id="drawerNome">Nenhum aluno</div>
+                            <div class="drawer-chamada" id="drawerChamada">selecionado</div>
+                        </div>
+                        <button class="drawer-close-btn" onclick="fecharDrawerAluno()" title="Fechar painel">✕</button>
+                    </div>
+                    <div class="drawer-body" id="drawerBody">
+                        <div class="drawer-placeholder">
+                            <div class="drawer-placeholder-icon">👆</div>
+                            <p>Clique em um aluno<br>na tabela para ver<br>seu resumo</p>
+                        </div>
+                    </div>
+                </aside>
+
+            </div>
         </div>
 
         <div id="erro" class="freq-erro" style="display:none;">

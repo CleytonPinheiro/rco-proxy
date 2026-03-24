@@ -1,7 +1,9 @@
 // ── Frequências — agrupadas por Turma ────────────────────────────────────────
 
 const API = '';
-let acessosCache = null;
+let acessosCache   = null;
+const disciplinaCache = {};   // { codClasse: { nomeDisciplina, cor, codClasse, alunos, codAulas, aulaDatas } }
+let alunoSelecionado = null;  // { nome, numChamada }
 
 // ── Auth guard ───────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -37,10 +39,15 @@ async function init() {
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
+
+    // Delegação global: clique em linha de aluno abre drawer
+    document.getElementById('content').addEventListener('click', e => {
+        const row = e.target.closest('tr.freq-aluno-row');
+        if (row) abrirDrawerAluno(row.dataset.nome, row.dataset.chamada);
+    });
 }
 
 // ── Coletar turmas com suas disciplinas ──────────────────────────────────────
-// Estrutura real: root.periodoLetivos[].livros[].classe.{codClasse, turma, disciplina}
 function coletarTurmas(acessos) {
     const mapa = {};
     const root = Array.isArray(acessos) ? acessos[0] : acessos;
@@ -55,7 +62,6 @@ function coletarTurmas(acessos) {
             const codTurma  = turma.codTurma || 0;
             const nomeTurma = turma.descrTurma || '';
 
-            // Extrair série da descrição (ex: "... - 3ª Série - Manhã - C")
             const serieMatch = nomeTurma.match(/(\d+[ªa]?\s*[sS]érie)/i);
             const serie      = serieMatch ? serieMatch[1] : nomeTurma;
 
@@ -71,7 +77,6 @@ function coletarTurmas(acessos) {
         }
     }
 
-    // Ordenar turmas por série (1ª, 2ª, 3ª)
     return Object.values(mapa).sort((a, b) => {
         const na = parseInt(a.serie) || 99;
         const nb = parseInt(b.serie) || 99;
@@ -104,7 +109,10 @@ function renderCards(turmas) {
                         <span class="disc-btn-chevron">▾</span>
                     </button>
                     <div class="disc-freq-panel" id="freq-panel-${ti}-${di}"
-                         data-codclasse="${disc.codClasse}" data-loaded="false" style="display:none;">
+                         data-codclasse="${disc.codClasse}"
+                         data-nome="${disc.nome}"
+                         data-cor="${disc.cor}"
+                         data-loaded="false" style="display:none;">
                         <div class="freq-loading-mini">
                             <div class="spinner-sm"></div>
                             <span>Carregando lista de chamada...</span>
@@ -126,21 +134,19 @@ function renderCards(turmas) {
 
         container.appendChild(card);
 
-        // Bind cliques nos botões de disciplina
         card.querySelectorAll('.disc-btn').forEach(btn => {
             btn.addEventListener('click', () => toggleDisc(btn, ti));
         });
     });
 }
 
-// ── Toggle disciplina (accordion dentro do card) ──────────────────────────────
+// ── Toggle disciplina (accordion) ─────────────────────────────────────────────
 function toggleDisc(btn, ti) {
     const di        = btn.dataset.di;
     const codClasse = btn.dataset.codclasse;
     const panel     = document.getElementById(`freq-panel-${ti}-${di}`);
     const open      = btn.getAttribute('aria-expanded') === 'true';
 
-    // Fechar qualquer outra disciplina do mesmo card que esteja aberta
     const card = btn.closest('.turma-card');
     card.querySelectorAll('.disc-btn[aria-expanded="true"]').forEach(b => {
         if (b !== btn) {
@@ -153,7 +159,6 @@ function toggleDisc(btn, ti) {
     if (!open) {
         btn.setAttribute('aria-expanded', 'true');
         panel.style.display = 'block';
-
         if (panel.dataset.loaded === 'false') {
             carregarFrequencias(panel, codClasse, ti, di);
         }
@@ -174,7 +179,22 @@ async function carregarFrequencias(panel, codClasse, ti, di) {
         }
         const data = await r.json();
         panel.dataset.loaded = 'true';
-        panel.innerHTML = renderTabelaFrequencias(data);
+
+        // ── Armazenar no cache da disciplina ──────────────────────────────
+        disciplinaCache[codClasse] = {
+            codClasse,
+            nomeDisciplina: panel.dataset.nome || 'Disciplina',
+            cor:            panel.dataset.cor  || '#667eea',
+            alunos:         data.alunos        || [],
+            codAulas:       data.codAulas      || [],
+            aulaDatas:      data.aulaDatas     || {},
+        };
+
+        panel.innerHTML = renderTabelaFrequencias(data, codClasse);
+
+        // Atualizar drawer se já há aluno selecionado
+        if (alunoSelecionado) popularDrawer(alunoSelecionado.nome, alunoSelecionado.numChamada);
+
     } catch (e) {
         panel.dataset.loaded = 'false';
         panel.innerHTML = `
@@ -192,7 +212,7 @@ function recarregarFreq(btn, codClasse, ti, di) {
 }
 
 // ── Montar tabela de frequências ──────────────────────────────────────────────
-function renderTabelaFrequencias(data) {
+function renderTabelaFrequencias(data, codClasse) {
     const { codAulas, aulaDatas = {}, alunos } = data;
 
     if (!alunos || alunos.length === 0) {
@@ -225,9 +245,12 @@ function renderTabelaFrequencias(data) {
                 return `<td class="fc-falta" title="Falta">${val === 'F' ? 'F' : val}</td>`;
             }).join('');
 
+            const nomeEsc  = (a.nome || '').replace(/"/g, '&quot;');
+            const chamada  = a.numChamada || '';
+
             return `
-                <tr>
-                    <td class="col-chamada">${a.numChamada || '-'}</td>
+                <tr class="freq-aluno-row" data-nome="${nomeEsc}" data-chamada="${chamada}">
+                    <td class="col-chamada">${chamada || '-'}</td>
                     <td class="col-nome">${a.nome}</td>
                     ${cellsFreq}
                     <td class="col-presenca">${a.presencas}</td>
@@ -274,6 +297,144 @@ function renderTabelaFrequencias(data) {
                 </table>
             </div>
         </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Drawer Direito — Detalhes do Aluno
+// ══════════════════════════════════════════════════════════════════════════════
+
+function abrirDrawerAluno(nome, numChamada) {
+    alunoSelecionado = { nome, numChamada };
+
+    // Cabeçalho
+    document.getElementById('drawerAvatar').textContent  = nome.charAt(0).toUpperCase();
+    document.getElementById('drawerNome').textContent    = nome;
+    document.getElementById('drawerChamada').textContent = numChamada ? `Chamada nº ${numChamada}` : '';
+
+    // Abrir layout
+    document.getElementById('freqLayout').classList.add('drawer-aberto');
+
+    // Highlight na linha selecionada
+    document.querySelectorAll('.freq-aluno-row').forEach(r => {
+        r.classList.toggle('freq-aluno-ativo', r.dataset.nome === nome);
+    });
+
+    popularDrawer(nome, numChamada);
+}
+
+function fecharDrawerAluno() {
+    alunoSelecionado = null;
+    document.getElementById('freqLayout').classList.remove('drawer-aberto');
+    document.getElementById('drawerNome').textContent    = 'Nenhum aluno';
+    document.getElementById('drawerChamada').textContent = 'selecionado';
+    document.getElementById('drawerAvatar').textContent  = '?';
+    document.getElementById('drawerBody').innerHTML = `
+        <div class="drawer-placeholder">
+            <div class="drawer-placeholder-icon">👆</div>
+            <p>Clique em um aluno<br>na tabela para ver<br>seu resumo</p>
+        </div>`;
+    document.querySelectorAll('.freq-aluno-row.freq-aluno-ativo').forEach(r => {
+        r.classList.remove('freq-aluno-ativo');
+    });
+}
+
+function popularDrawer(nome, numChamada) {
+    const body = document.getElementById('drawerBody');
+    const disciplinas = Object.values(disciplinaCache);
+
+    if (disciplinas.length === 0) {
+        body.innerHTML = `
+            <div class="drawer-placeholder">
+                <div class="drawer-placeholder-icon">📂</div>
+                <p>Abra uma disciplina<br>na tabela para<br>carregar os dados</p>
+            </div>`;
+        return;
+    }
+
+    // ── Calcular por disciplina ──────────────────────────────────────────────
+    let totalP = 0, totalF = 0, discNaoEncontrada = 0;
+    const cards = disciplinas
+        .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina))
+        .map(disc => {
+            const aluno = disc.alunos.find(a => a.nome === nome);
+            if (!aluno) { discNaoEncontrada++; return null; }
+
+            totalP += aluno.presencas || 0;
+            totalF += aluno.faltas    || 0;
+
+            const pct      = aluno.percentual;
+            const pctStr   = pct !== null ? `${pct}%` : '—';
+            const pctClass = pct === null ? '' : pct >= 80 ? 'pct-ok' : pct >= 60 ? 'pct-alerta' : 'pct-critico';
+            const stClass  = pct === null ? '' : pct >= 80 ? 'ok'     : pct >= 60 ? 'alerta'     : 'critico';
+            const stLabel  = pct === null ? '' : pct >= 80 ? '✓ Pé-de-Meia OK' : pct >= 60 ? '⚠ Em risco' : '✗ Sem direito';
+            const barColor = pct === null ? '#e5e7eb'
+                           : pct >= 80 ? '#22c55e'
+                           : pct >= 60 ? '#f59e0b'
+                           : '#ef4444';
+            const barWidth = pct !== null ? Math.min(100, pct) : 0;
+
+            return `
+                <div class="drawer-disc-card">
+                    <div class="drawer-disc-header">
+                        <div class="drawer-disc-icon" style="background:${disc.cor}">${disc.nomeDisciplina.charAt(0)}</div>
+                        <span class="drawer-disc-nome" title="${disc.nomeDisciplina}">${disc.nomeDisciplina}</span>
+                    </div>
+                    <div class="drawer-disc-bar-wrap">
+                        <div class="drawer-disc-bar" style="width:${barWidth}%;background:${barColor}"></div>
+                    </div>
+                    <div class="drawer-disc-stats">
+                        <span class="dstat-pct ${pctClass}">${pctStr}</span>
+                        <span class="dstat-sep">·</span>
+                        <span class="dstat-p">${aluno.presencas}P</span>
+                        <span class="dstat-sep">·</span>
+                        <span class="dstat-f">${aluno.faltas}F</span>
+                    </div>
+                    ${stLabel ? `<div class="drawer-disc-status ${stClass}">${stLabel}</div>` : ''}
+                </div>`;
+        })
+        .filter(Boolean);
+
+    // ── Resumo geral (somente disciplinas carregadas) ────────────────────────
+    const totalGeral   = totalP + totalF;
+    const pctGeral     = totalGeral > 0 ? Math.round((totalP / totalGeral) * 100) : null;
+    const pctGeralCls  = pctGeral === null ? '' : pctGeral >= 80 ? 'pct-ok' : pctGeral >= 60 ? 'pct-alerta' : 'pct-critico';
+    const barGeralColor = pctGeral === null ? '#e5e7eb'
+                        : pctGeral >= 80 ? '#22c55e'
+                        : pctGeral >= 60 ? '#f59e0b'
+                        : '#ef4444';
+
+    const resumoHTML = `
+        <div class="drawer-resumo">
+            <div class="drawer-resumo-titulo">Resumo Geral (${cards.length} disciplina${cards.length !== 1 ? 's' : ''})</div>
+            <div class="drawer-resumo-bar-wrap">
+                <div class="drawer-resumo-bar" style="width:${pctGeral || 0}%;background:${barGeralColor}"></div>
+            </div>
+            <div class="drawer-resumo-stats">
+                <div class="drawer-resumo-stat">
+                    <span class="rstat-val ${pctGeralCls}">${pctGeral !== null ? pctGeral + '%' : '—'}</span>
+                    <span class="rstat-label">Geral</span>
+                </div>
+                <div class="drawer-resumo-stat">
+                    <span class="rstat-val" style="color:#15803d">${totalP}</span>
+                    <span class="rstat-label">Presenças</span>
+                </div>
+                <div class="drawer-resumo-stat">
+                    <span class="rstat-val" style="color:#dc2626">${totalF}</span>
+                    <span class="rstat-label">Faltas</span>
+                </div>
+            </div>
+        </div>`;
+
+    const naoCarregadoHTML = discNaoEncontrada > 0
+        ? `<div class="drawer-nao-carregado">+ ${discNaoEncontrada} disciplina${discNaoEncontrada !== 1 ? 's' : ''} ainda não carregada${discNaoEncontrada !== 1 ? 's' : ''}</div>`
+        : '';
+
+    body.innerHTML = resumoHTML
+        + `<div class="drawer-disc-label">Por Disciplina</div>`
+        + (cards.length > 0
+            ? cards.join('')
+            : `<p class="drawer-placeholder" style="padding:20px 14px;font-size:12px;color:#9ca3af">Aluno não encontrado nas disciplinas carregadas.</p>`)
+        + naoCarregadoHTML;
 }
 
 // ── Utilitários ───────────────────────────────────────────────────────────────

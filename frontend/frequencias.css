@@ -398,6 +398,304 @@
     .col-aula          { width: 32px; min-width: 32px; font-size: 10px; }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   Drawer Direito — Detalhes do Aluno
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Layout split (tabela + drawer) ──────────────────────────────────────── */
+.freq-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+}
+.freq-main-content {
+    flex: 1;
+    min-width: 0;
+    transition: flex 0.28s ease;
+}
+
+/* ── Drawer container ────────────────────────────────────────────────────── */
+.aluno-drawer {
+    width: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: width 0.28s ease;
+    background: #fff;
+    border-left: 1px solid #e8ecf4;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.07);
+    position: sticky;
+    top: 58px;
+    max-height: calc(100vh - 58px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 12px 0;
+}
+.freq-layout.drawer-aberto .aluno-drawer {
+    width: 290px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #dce4f7 transparent;
+}
+.freq-layout.drawer-aberto .aluno-drawer::-webkit-scrollbar { width: 4px; }
+.freq-layout.drawer-aberto .aluno-drawer::-webkit-scrollbar-thumb { background: #dce4f7; border-radius: 4px; }
+
+/* ── Cabeçalho do drawer ─────────────────────────────────────────────────── */
+.drawer-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 14px 12px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-shrink: 0;
+    min-width: 290px;
+}
+.drawer-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    color: white;
+    font-size: 17px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    border: 2px solid rgba(255,255,255,0.35);
+}
+.drawer-info { flex: 1; min-width: 0; }
+.drawer-nome {
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+.drawer-chamada {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    margin-top: 1px;
+}
+.drawer-close-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.drawer-close-btn:hover { background: rgba(255,255,255,0.3); }
+
+/* ── Corpo do drawer ─────────────────────────────────────────────────────── */
+.drawer-body {
+    flex: 1;
+    padding: 0;
+    min-width: 290px;
+}
+
+/* Placeholder inicial */
+.drawer-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: #9ca3af;
+}
+.drawer-placeholder-icon { font-size: 32px; margin-bottom: 12px; }
+.drawer-placeholder p { font-size: 13px; line-height: 1.6; }
+
+/* ── Resumo Geral ─────────────────────────────────────────────────────────── */
+.drawer-resumo {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid #eef1f8;
+    background: #f8f9ff;
+}
+.drawer-resumo-titulo {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 10px;
+}
+.drawer-resumo-bar-wrap {
+    height: 7px;
+    background: #e8ecf4;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.drawer-resumo-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+.drawer-resumo-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 6px;
+}
+.drawer-resumo-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    background: white;
+    border-radius: 8px;
+    padding: 7px 4px;
+    border: 1px solid #eef1f8;
+}
+.rstat-val {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+}
+.rstat-label {
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* ── Seção de disciplinas ─────────────────────────────────────────────────── */
+.drawer-disc-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 12px 14px 6px;
+}
+
+/* ── Card de disciplina no drawer ────────────────────────────────────────── */
+.drawer-disc-card {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f0f2f8;
+    transition: background 0.15s;
+}
+.drawer-disc-card:last-child { border-bottom: none; }
+.drawer-disc-card:hover { background: #f8f9ff; }
+
+.drawer-disc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+}
+.drawer-disc-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    color: white;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+.drawer-disc-nome {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+.drawer-disc-bar-wrap {
+    height: 5px;
+    background: #e8ecf4;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.drawer-disc-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+.drawer-disc-stats {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+}
+.dstat-pct { font-weight: 800; }
+.dstat-sep { color: #d1d5db; }
+.dstat-p   { color: #155724; font-weight: 600; }
+.dstat-f   { color: #721c24; font-weight: 600; }
+.drawer-disc-status {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    display: inline-block;
+}
+.drawer-disc-status.ok      { background: #d4edda; color: #155724; }
+.drawer-disc-status.alerta  { background: #fff3cd; color: #856404; }
+.drawer-disc-status.critico { background: #f8d7da; color: #721c24; }
+
+/* ── Aluno selecionado na tabela — highlight ─────────────────────────────── */
+.freq-aluno-row { cursor: pointer; }
+.freq-aluno-row:hover td { background: #eef4ff !important; }
+.freq-aluno-row.freq-aluno-ativo td {
+    background: #dbeafe !important;
+}
+.freq-aluno-row.freq-aluno-ativo td.col-chamada,
+.freq-aluno-row.freq-aluno-ativo td.col-nome {
+    background: #bfdbfe !important;
+}
+
+/* Aviso de disciplinas não carregadas */
+.drawer-nao-carregado {
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+    border-top: 1px dashed #e8ecf4;
+}
+
+/* ── Responsivo do drawer ─────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+    .freq-layout { flex-direction: column; }
+    .aluno-drawer {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        max-height: 100vh;
+        width: 0 !important;
+        z-index: 200;
+        border-radius: 0;
+        border-left: none;
+        box-shadow: -6px 0 30px rgba(0,0,0,0.18);
+    }
+    .freq-layout.drawer-aberto .aluno-drawer {
+        width: 280px !important;
+        overflow-y: auto;
+    }
+}
+
 /* ── Tema Escuro ─────────────────────────────────────────────────────────── */
 [data-theme="dark"] .page-header-freq h2 { color: var(--text-primary); }
 [data-theme="dark"] .freq-periodo-badge { background: var(--bg-tertiary); color: var(--text-link); }
@@ -460,3 +758,24 @@
 
 [data-theme="dark"] .aluno-row-critico { background: var(--bg-secondary) !important; border-color: #dc2626 !important; }
 [data-theme="dark"] .freq-footer { background: var(--bg-secondary); border-color: var(--border); }
+
+/* ── Drawer — Tema Escuro ────────────────────────────────────────────────── */
+[data-theme="dark"] .aluno-drawer        { background: var(--bg-card); border-color: var(--border); box-shadow: -4px 0 20px rgba(0,0,0,0.3); }
+[data-theme="dark"] .drawer-resumo       { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .drawer-resumo-stat  { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .drawer-resumo-bar-wrap  { background: var(--bg-tertiary); }
+[data-theme="dark"] .drawer-disc-label   { color: var(--text-muted); }
+[data-theme="dark"] .drawer-disc-card    { border-color: var(--border); }
+[data-theme="dark"] .drawer-disc-card:hover { background: var(--bg-hover); }
+[data-theme="dark"] .drawer-disc-nome    { color: var(--text-primary); }
+[data-theme="dark"] .drawer-disc-bar-wrap { background: var(--bg-tertiary); }
+[data-theme="dark"] .drawer-placeholder  { color: var(--text-muted); }
+[data-theme="dark"] .drawer-nao-carregado { color: var(--text-muted); border-color: var(--border); }
+[data-theme="dark"] .rstat-label         { color: var(--text-muted); }
+[data-theme="dark"] .dstat-sep           { color: var(--border); }
+
+/* Highlight escuro */
+[data-theme="dark"] .freq-aluno-row:hover td    { background: var(--bg-hover) !important; }
+[data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td { background: #1e3a5f !important; }
+[data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td.col-chamada,
+[data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td.col-nome { background: #1a3554 !important; }
