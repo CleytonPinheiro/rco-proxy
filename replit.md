@@ -4,8 +4,8 @@
 Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária e painel da cozinha.
 
 ## Estado Atual
-- **Data**: 16/01/2026
-- **Status**: Funcional com login via navegador automatizado + módulo de empréstimos + Supabase
+- **Data**: 24/03/2026
+- **Status**: Funcional com login via navegador automatizado + arquitetura OOP refatorada
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
 - **Banco de Dados**: Supabase (PostgreSQL)
@@ -14,69 +14,120 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 ## Arquitetura do Projeto
 
 ### Estrutura de Pastas
+
 ```
 .
 ├── backend/
-│   ├── index.js          # Servidor Express (API + arquivos estáticos)
-│   ├── auth-puppeteer.js # Módulo de autenticação via navegador
-│   ├── supabase.js       # Cliente Supabase
-│   ├── package.json      # Dependências do backend
+│   ├── index.js                          # Entry point enxuto (~60 linhas)
+│   ├── auth-puppeteer.js                 # Autenticação Puppeteer/Chromium
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── supabase.js               # Clientes Supabase (anon + admin)
+│   │   ├── services/                     # Camada de serviços (OOP)
+│   │   │   ├── TokenService.js           # Singleton: cache e renovação de JWT
+│   │   │   ├── RcoApiService.js          # Singleton: chamadas à API RCO
+│   │   │   ├── SyncService.js            # Singleton: sincronização Supabase
+│   │   │   └── PresencaService.js        # Singleton: sync e agendamento de presença
+│   │   └── routes/                       # Rotas separadas por domínio
+│   │       ├── index.js                  # Agregador de rotas
+│   │       ├── auth.routes.js            # /api/status, /api/configurar
+│   │       ├── rco.routes.js             # /api/acessos, /api/frequencias, /api/alunos-rco, /api/observacoes
+│   │       ├── alunos.routes.js          # /api/alunos
+│   │       ├── materiais.routes.js       # /api/materiais, /api/emprestimos, /api/estatisticas
+│   │       ├── grupos.routes.js          # /api/grupos
+│   │       ├── crachas.routes.js         # /api/crachas
+│   │       ├── comportamento.routes.js   # /api/comportamento
+│   │       ├── presenca.routes.js        # /api/presenca-diaria
+│   │       ├── cozinha.routes.js         # /api/cozinha
+│   │       ├── sync.routes.js            # /api/sync, /api/sync/log, /api/setup-status
+│   │       └── debug.routes.js           # /api/debug/*
+│   ├── database/
+│   │   ├── migrations/                   # SQL para configurar tabelas no Supabase Studio
+│   │   │   ├── 001_rco_tables.sql
+│   │   │   ├── 002_app_tables.sql
+│   │   │   ├── 003_grupos.sql
+│   │   │   ├── 004_comportamento.sql
+│   │   │   ├── 005_observacoes.sql
+│   │   │   ├── 006_crachas.sql
+│   │   │   ├── 007_presenca.sql
+│   │   │   └── 008_update_alunos_schema.sql
+│   │   └── seeds/                        # Dados iniciais
+│   │       ├── insert_alunos.sql
+│   │       └── insert_alunos_gerado.sql
+│   ├── package.json
 │   └── node_modules/
-├── frontend/
-│   ├── index.html        # Página de login
-│   ├── style.css         # Estilos do login
-│   ├── app.js            # Lógica do login
-│   ├── dashboard.html    # Painel com turmas e alunos
-│   ├── dashboard.css     # Estilos do painel
-│   ├── dashboard.js      # Lógica do painel
-│   ├── materiais.html    # Gerenciamento de materiais
-│   ├── materiais.css     # Estilos de materiais
-│   ├── materiais.js      # Lógica de materiais
-│   ├── emprestimos.html  # Registro de empréstimos
-│   ├── emprestimos.css   # Estilos de empréstimos
-│   └── emprestimos.js    # Lógica de empréstimos
-├── replit.md             # Este arquivo
-└── README.md             # Documentação
+├── frontend/                             # Arquivos estáticos (flat structure)
+│   ├── index.html / app.js               # Login
+│   ├── dashboard.html/css/js
+│   ├── frequencias.html/css/js           # Com drawer de detalhes do aluno
+│   ├── crachas.html/css/js
+│   ├── comportamento.html/css/js
+│   ├── grupos.html/css/js
+│   ├── materiais.html/css/js
+│   ├── emprestimos.html/css/js
+│   ├── presenca.html/css/js
+│   ├── quiosque.html/css/js              # Quiosque da cozinha
+│   ├── cozinha.html/css/js
+│   ├── theme.css / theme.js              # Modo escuro/claro
+│   └── style.css
+├── replit.md
+└── README.md
 ```
+
+### Padrão de Injeção de Dependências
+
+Cada módulo de rota exporta uma factory function que recebe suas dependências:
+```javascript
+export function createXRouter({ supabase, supabaseAdmin, tokenService, rcoApiService }) {
+    const router = Router();
+    // ... rotas
+    return router;
+}
+```
+
+Os serviços são singletons inicializados em `initializeApp()` no `index.js`.
 
 ### Endpoints da API
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| GET | `/` | Página de configuração (frontend) |
-| GET | `/api/status` | Retorna status das credenciais e token |
-| POST | `/api/configurar` | Salva CPF/senha e testa conexão |
-| GET | `/api/acessos` | Retorna dados do RCO Digital |
+| GET | `/api/status` | Status das credenciais e token |
+| POST | `/api/configurar` | Salva CPF/senha e gera token |
+| GET | `/api/acessos` | Estabelecimentos/turmas/disciplinas RCO |
+| GET | `/api/frequencias` | Frequência por aula de uma classe |
+| GET | `/api/alunos-rco` | Alunos do RCO por codClasse |
+| GET | `/api/observacoes` | Observações de aula RCO → Supabase |
+| GET | `/api/alunos` | Alunos do Supabase |
+| GET/POST/PUT/DELETE | `/api/materiais` | CRUD de materiais |
+| GET/POST | `/api/emprestimos` | Empréstimos |
+| PUT | `/api/emprestimos/:id/devolver` | Devolução |
+| GET/POST/PUT/DELETE | `/api/grupos` | Grupos de trabalho |
+| GET/POST | `/api/crachas` | Status dos crachás |
+| GET/POST/DELETE | `/api/comportamento` | Ocorrências de comportamento |
+| GET/POST/PUT | `/api/presenca-diaria` | Presença diária |
+| GET | `/api/cozinha` | Painel da cozinha |
+| POST | `/api/sync` | Sync manual RCO → Supabase |
+| GET | `/api/sync/log` | Logs de sincronização |
 
 ## Funcionalidades
 
 ### Login Automático (Puppeteer)
-O sistema utiliza navegador automatizado (Chromium via Puppeteer) para autenticação:
-1. Abre navegador headless e navega até a página de login da Central de Segurança
-2. Preenche formulário com CPF e senha automaticamente
-3. Aguarda redirecionamento e captura token JWT da URL
-4. Armazena token em memória e renova automaticamente antes de expirar
-5. Em caso de erro 403, tenta renovar o token automaticamente
+- Chromium headless navega até a Central de Segurança PR
+- Preenche CPF/senha automaticamente
+- Captura token JWT do localStorage
+- Token é cacheado e renovado automaticamente antes de expirar (5min de antecedência)
+- Semáforo (`refreshPromise`) evita renovações simultâneas
+- `TokenService` é um singleton com campos privados (`#cachedToken`, etc.)
 
-**Nota**: Esta abordagem foi necessária porque a Central de Segurança PR gera cookies dinamicamente via JavaScript, impossibilitando autenticação via requisições HTTP simples.
+### Sincronização com Supabase (SyncService)
+- Sync automático na inicialização e a cada 6 horas
+- Upsert de estabelecimentos → turmas → disciplinas → classes → alunos
+- Registro de log em `rco_sync_log`
 
-### Interface Web
-- **Página de Login** (`/`): Formulário para inserir CPF e senha
-- **Dashboard** (`/dashboard.html`): Painel com dados do usuário
-  - Cards de Turmas (clicáveis para ver alunos)
-  - Cards de Disciplinas
-  - Cards de Livros de Classe
-  - Modal com lista de alunos e código de barras
-- **Materiais** (`/materiais.html`): Gerenciamento de materiais
-  - Cadastro de materiais (tablets, notebooks, calculadoras, etc.)
-  - Filtros por tipo e status
-  - Código de barras para cada material
-- **Empréstimos** (`/emprestimos.html`): Controle de empréstimos
-  - Registro de empréstimo por aluno/material
-  - Seleção de aulas/período de uso
-  - Registro de devolução
-  - Histórico de empréstimos
-- Redirecionamento automático após login bem-sucedido
+### Presença Diária (PresencaService)
+- Sync agendado nos horários 09:00, 13:30 e 20:00
+- Conta presenças por turma via frequenciaAulas RCO
+- Integração com painel da cozinha
 
 ## Configuração
 
@@ -85,38 +136,36 @@ O sistema utiliza navegador automatizado (Chromium via Puppeteer) para autentica
 - **Comando**: `cd backend && node index.js`
 - **Porta**: 5000 (webview)
 
-### Variáveis de Ambiente (opcionais)
-- `RCO_CPF`: CPF para login (alternativa ao formulário)
-- `RCO_SENHA`: Senha para login (alternativa ao formulário)
+### Secrets
+- `RCO_CPF`: CPF para login no RCO
+- `RCO_SENHA`: Senha para login no RCO
+- `SUPABASE_URL`: URL do projeto Supabase
+- `SUPABASE_ANON_KEY`: Chave anon do Supabase
+- `SUPABASE_SERVICE_ROLE_KEY`: Chave service role (bypass de RLS)
 
 ## Decisões Técnicas
 
-1. **Frontend integrado ao backend**: O Express serve os arquivos estáticos do frontend, evitando problemas de CORS
-2. **Token em memória**: Mais seguro que salvar em arquivo, renova automaticamente
-3. **Retry automático**: Se receber 403, tenta renovar token antes de retornar erro
+1. **Servidor sobe antes das dependências**: Health check funciona imediatamente; módulos pesados (Puppeteer, Supabase) carregam em background via `initializeApp()`
+2. **OOP com classes ES2022**: Campos privados (`#field`) nos serviços para encapsulamento real
+3. **Injeção de dependências**: Route factories recebem serviços como parâmetro, sem globals
+4. **Frontend estático flat**: Arquivos HTML/CSS/JS na raiz do `frontend/` para simplicidade; reorganização hierárquica foi avaliada mas descartada pelo alto risco de quebra de paths relativos
+5. **codPeriodoLetivo=261** (2026-1), **codPeriodoAvaliacao=9** (1º Trimestre)
+
+## Notas de Segurança
+- Token JWT nunca enviado ao frontend
+- Supabase admin client usa service role key separada
+- Credenciais RCO armazenadas apenas em memória (environment secrets)
 
 ## Mudanças Recentes
 
-- **16/01/2026**: Autenticação via Navegador Automatizado
-  - Substituído método HTTP direto por Puppeteer com Chromium
-  - Resolve problema "Nenhum cookie retornado" da Central de Segurança PR
-  - Detecta erros de credenciais inválidas e retorna mensagens claras
-  - Validação do caminho do Chromium com suporte a PUPPETEER_EXECUTABLE_PATH
+- **24/03/2026**: Refatoração OOP completa do backend
+  - `backend/index.js` de 1783 linhas → 60 linhas (entry point)
+  - Criados 4 services (TokenService, RcoApiService, SyncService, PresencaService)
+  - Criados 11 arquivos de rotas separados por domínio
+  - SQL movidos para `backend/database/migrations/` e `backend/database/seeds/`
+  - Pattern de injeção de dependências em todas as rotas
 
-- **14/01/2026**: Módulo de Empréstimos de Materiais
-  - Cadastro e gerenciamento de materiais do colégio
-  - Sistema de empréstimo com seleção de aulas
-  - Registro de devolução com verificação de estado
-  - Histórico completo de empréstimos
-  - Código de barras para materiais e alunos
-  - Navegação entre páginas do sistema
-
-- **13/01/2026**: Dashboard com dados do usuário
-  - Criada página dashboard.html com cards de turmas, disciplinas e livros
-  - Redirecionamento automático após login bem-sucedido
-  - Extração inteligente de dados do JSON da API
-
-- **13/01/2026**: Separação em frontend e backend
-  - Criada interface web para configurar credenciais
-  - Implementado login automático via Central de Segurança PR
-  - Token renovado automaticamente antes de expirar
+- **24/03/2026**: Drawer de detalhes do aluno em Frequências
+  - Busca paralela de todas as disciplinas ao clicar no aluno
+  - Cache `disciplinaCache` por codClasse
+  - Exibe % geral + cards por disciplina com status Pé-de-Meia

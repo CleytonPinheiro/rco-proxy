@@ -13,11 +13,8 @@ if (!supabaseUrl || !supabaseKey) {
     console.error('ERRO: SUPABASE_URL e SUPABASE_ANON_KEY são obrigatórios');
 }
 
-// Cliente público — leitura, resposta RLS normal
 export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// Cliente admin — usado para sync/escrita, bypassa RLS via service role
-// Se service role key não estiver definida, usa anon key (requer políticas INSERT/UPDATE abertas)
 export const supabaseAdmin = createClient(
     supabaseUrl || '',
     supabaseServiceKey || supabaseKey || '',
