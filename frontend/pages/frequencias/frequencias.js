@@ -124,6 +124,8 @@ function renderCards(turmas) {
                          data-codclasse="${disc.codClasse}"
                          data-nome="${disc.nome}"
                          data-cor="${disc.cor}"
+                         data-codturma="${turma.codTurma}"
+                         data-nometurma="${turma.nomeTurma}"
                          data-loaded="false" style="display:none;">
                         <div class="freq-loading-mini">
                             <div class="spinner-sm"></div>
@@ -195,11 +197,13 @@ async function carregarFrequencias(panel, codClasse, ti, di) {
         // ── Armazenar no cache da disciplina ──────────────────────────────
         disciplinaCache[codClasse] = {
             codClasse,
-            nomeDisciplina: panel.dataset.nome || 'Disciplina',
-            cor:            panel.dataset.cor  || '#667eea',
-            alunos:         data.alunos        || [],
-            codAulas:       data.codAulas      || [],
-            aulaDatas:      data.aulaDatas     || {},
+            nomeDisciplina: panel.dataset.nome      || 'Disciplina',
+            cor:            panel.dataset.cor       || '#667eea',
+            codTurma:       parseInt(panel.dataset.codturma)  || 0,
+            nomeTurma:      panel.dataset.nometurma || '',
+            alunos:         data.alunos             || [],
+            codAulas:       data.codAulas            || [],
+            aulaDatas:      data.aulaDatas           || {},
         };
 
         panel.innerHTML = renderTabelaFrequencias(data, codClasse);
@@ -362,6 +366,8 @@ async function carregarTodasDisciplinas() {
                 codClasse,
                 nomeDisciplina: classe.disciplina?.nomeDisciplina || 'Disciplina',
                 cor:            classe.disciplina?.corFundo       || '#667eea',
+                codTurma:       classe.turma?.codTurma            || 0,
+                nomeTurma:      classe.turma?.descrTurma          || '',
             });
         }
     }
@@ -369,13 +375,13 @@ async function carregarTodasDisciplinas() {
     if (pendentes.length === 0) return;
 
     // Buscar em paralelo — ignora falhas individuais
-    await Promise.allSettled(pendentes.map(async ({ codClasse, nomeDisciplina, cor }) => {
+    await Promise.allSettled(pendentes.map(async ({ codClasse, nomeDisciplina, cor, codTurma, nomeTurma }) => {
         try {
             const r = await fetch(`${API}/api/frequencias?codClasse=${codClasse}`);
             if (!r.ok) return;
             const data = await r.json();
             disciplinaCache[codClasse] = {
-                codClasse, nomeDisciplina, cor,
+                codClasse, nomeDisciplina, cor, codTurma, nomeTurma,
                 alunos:    data.alunos    || [],
                 codAulas:  data.codAulas  || [],
                 aulaDatas: data.aulaDatas || {},
@@ -418,15 +424,16 @@ function popularDrawer(nome, numChamada) {
     }
 
     // ── Calcular por disciplina ──────────────────────────────────────────────
-    let totalP = 0, totalF = 0;
+    let totalP = 0, totalF = 0, totalAulas = 0;
     const cards = disciplinas
         .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina))
         .map(disc => {
             const aluno = disc.alunos.find(a => a.nome === nome);
             if (!aluno) return null;
 
-            totalP += aluno.presencas || 0;
-            totalF += aluno.faltas    || 0;
+            totalP     += aluno.presencas  || 0;
+            totalF     += aluno.faltas     || 0;
+            totalAulas += aluno.totalAulas || 0;
 
             const pct      = aluno.percentual;
             const pctStr   = pct !== null ? `${pct}%` : '—';
@@ -461,7 +468,7 @@ function popularDrawer(nome, numChamada) {
         .filter(Boolean);
 
     // ── Resumo geral (somente disciplinas carregadas) ────────────────────────
-    const totalGeral   = totalP + totalF;
+    const totalGeral   = totalAulas;
     const pctGeral     = totalGeral > 0 ? Math.round((totalP / totalGeral) * 100) : null;
     const pctGeralCls  = pctGeral === null ? '' : pctGeral >= 80 ? 'pct-ok' : pctGeral >= 60 ? 'pct-alerta' : 'pct-critico';
     const barGeralColor = pctGeral === null ? '#e5e7eb'
@@ -715,20 +722,34 @@ function calcularFreqGeral() {
     const mapa = {};
 
     disciplinas.forEach(disc => {
+        const codTurma  = disc.codTurma  || 0;
+        const nomeTurma = disc.nomeTurma || '';
+
         (disc.alunos || []).forEach(aluno => {
-            const key = aluno.codMatrizAluno || aluno.nome;
+            // Chave inclui turma para não misturar alunos de turmas diferentes.
+            // codMatrizAluno pode ser 0/null — usamos String() para garantir
+            // que 0 gere uma chave real e não caia para o nome.
+            const codAluno = aluno.codMatrizAluno != null ? String(aluno.codMatrizAluno) : aluno.nome;
+            const key      = `${codTurma}_${codAluno}`;
+
             if (!mapa[key]) {
                 mapa[key] = {
                     key,
-                    nome:      aluno.nome,
+                    nome:       aluno.nome,
                     numChamada: aluno.numChamada,
-                    totalP:    0,
-                    totalF:    0,
+                    codTurma,
+                    nomeTurma,
+                    totalP:     0,
+                    totalF:     0,
+                    totalAulas: 0,
+                    ndiscs:     0,
                     disciplinas: [],
                 };
             }
-            mapa[key].totalP += aluno.presencas || 0;
-            mapa[key].totalF += aluno.faltas    || 0;
+            mapa[key].totalP     += aluno.presencas  || 0;
+            mapa[key].totalF     += aluno.faltas     || 0;
+            mapa[key].totalAulas += aluno.totalAulas || 0;
+            mapa[key].ndiscs     += 1;
             if ((aluno.presencas || 0) + (aluno.faltas || 0) > 0) {
                 mapa[key].disciplinas.push({
                     nome: disc.nomeDisciplina,
@@ -740,9 +761,10 @@ function calcularFreqGeral() {
     });
 
     return Object.values(mapa).map(a => {
-        const total  = a.totalP + a.totalF;
-        const pct    = total > 0 ? Math.round((a.totalP / total) * 100) : null;
-        return { ...a, total, pct };
+        // Usa totalAulas (soma real de cada disciplina) como denominador.
+        // Isso garante alinhamento com o percentual individual por disciplina.
+        const pct = a.totalAulas > 0 ? Math.round((a.totalP / a.totalAulas) * 100) : null;
+        return { ...a, pct };
     });
 }
 
@@ -835,8 +857,9 @@ function renderAlunoGeralCard(a) {
     const badgeClass = pct === null ? '' :
                        pct >= 80 ? 'badge-ok' : pct >= 60 ? 'badge-alerta' : 'badge-critico';
 
-    const nomeEsc = (a.nome || '').replace(/"/g, '&quot;');
-    const ndiscs  = Object.keys(disciplinaCache).length; // total de disciplinas carregadas
+    const nomeEsc   = (a.nome || '').replace(/"/g, '&quot;');
+    const ndiscs    = a.ndiscs || 0;
+    const turmaTag  = a.nomeTurma ? `<span class="aluno-turma-tag">${a.nomeTurma}</span>` : '';
 
     return `
         <div class="aluno-geral-card" data-nome="${nomeEsc}" data-chamada="${a.numChamada || ''}">
@@ -848,6 +871,7 @@ function renderAlunoGeralCard(a) {
                     <div class="aluno-geral-sub">
                         ${a.numChamada ? `<span class="aluno-chamada-num">#${a.numChamada}</span>` : ''}
                         <span class="aluno-ndiscs">${ndiscs} disciplina${ndiscs !== 1 ? 's' : ''}</span>
+                        ${turmaTag}
                     </div>
                 </div>
                 <div class="aluno-geral-pct-wrap">
@@ -872,7 +896,7 @@ function renderAlunoGeralCard(a) {
                 </div>
                 <div class="ags-sep"></div>
                 <div class="ags-stat ags-total">
-                    <span class="ags-val">${a.total}</span>
+                    <span class="ags-val">${a.totalAulas}</span>
                     <span class="ags-label">Total aulas</span>
                 </div>
                 ${badgeLabel ? `
