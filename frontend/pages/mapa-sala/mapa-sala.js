@@ -36,6 +36,17 @@ async function carregarTurmas() {
 async function onTurmaChange() {
     const sel = document.getElementById('selTurma');
     const opt = sel.options[sel.selectedIndex];
+
+    // Guardar valor anterior para poder reverter se usuário cancelar
+    if (modificado) {
+        const ok = confirm('Há alterações não salvas no mapa atual.\nTrocar de turma irá descartar essas alterações.\n\nDeseja continuar sem salvar?');
+        if (!ok) {
+            // Reverter seleção para a turma anterior
+            sel.value = turmaAtual?.codturma || '';
+            return;
+        }
+    }
+
     if (!sel.value) {
         turmaAtual = null;
         limparWorkspace();
@@ -342,12 +353,15 @@ function imprimirMapa() {
 function marcarModificado() {
     modificado = true;
     const btn = document.getElementById('btnSalvar');
-    btn.textContent = '💾 Salvar Mapa *';
+    btn.textContent = '💾 Salvar Mapa';
     btn.disabled = false;
+    btn.classList.add('pendente');
 }
 function marcarSalvo() {
     modificado = false;
-    document.getElementById('btnSalvar').textContent = '💾 Salvar Mapa';
+    const btn = document.getElementById('btnSalvar');
+    btn.textContent = '💾 Salvar Mapa';
+    btn.classList.remove('pendente');
 }
 
 function iniciais2(nome) {
@@ -385,10 +399,25 @@ document.getElementById('btnLogout').addEventListener('click', async () => {
     window.location.href = '/';
 });
 
-// Avisar sobre alterações não salvas ao sair da página
+// Avisar sobre alterações não salvas ao sair da página (F5, fechar aba, URL manual)
 window.addEventListener('beforeunload', e => {
     if (modificado) { e.preventDefault(); e.returnValue = ''; }
 });
+
+// Interceptar cliques em links de navegação (sidebar, header) para avisar sobre pendências
+document.addEventListener('click', e => {
+    if (!modificado) return;
+    const link = e.target.closest('a[href]');
+    if (!link) return;
+    const href = link.getAttribute('href');
+    if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('#')) return;
+    e.preventDefault();
+    const ok = confirm('Há alterações não salvas no mapa.\nDeseja sair sem salvar?');
+    if (ok) {
+        modificado = false;
+        window.location.href = href;
+    }
+}, true);
 
 // Impressão A4: expandir grade para largura total da folha
 window.addEventListener('beforeprint', () => {

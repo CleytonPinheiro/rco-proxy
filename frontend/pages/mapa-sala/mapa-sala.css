@@ -46,10 +46,27 @@
     white-space: nowrap;
 }
 .ms-btn-salvar {
-    background: var(--primary);
-    color: #fff;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border);
 }
-.ms-btn-salvar:disabled { opacity: .45; cursor: not-allowed; }
+.ms-btn-salvar:disabled { opacity: .38; cursor: not-allowed; }
+
+/* Estado com alterações pendentes: verde chamativo + pulso */
+.ms-btn-salvar.pendente {
+    background: #16a34a;
+    color: #fff;
+    border-color: #15803d;
+    animation: ms-pulso-salvar 1.8s ease-in-out infinite;
+}
+.ms-btn-salvar.pendente:hover { background: #15803d; animation: none; }
+
+@keyframes ms-pulso-salvar {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    50%       { box-shadow: 0 0 0 7px rgba(22, 163, 74, .28); }
+}
+
+[data-theme="dark"] .ms-btn-salvar.pendente { background: #16a34a; border-color: #22c55e; }
 .ms-btn-imprimir {
     background: var(--bg-card);
     color: var(--text);
