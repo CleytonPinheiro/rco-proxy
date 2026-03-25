@@ -1,7 +1,19 @@
 import { Router } from 'express';
 
-export function createDebugRouter({ tokenService, rcoApiService }) {
+export function createDebugRouter({ tokenService, rcoApiService, supabaseAdmin }) {
     const router = Router();
+
+    // Limpa alunos de seed (sem codmatrizaluno real)
+    router.delete('/admin/seeds', async (req, res) => {
+        try {
+            const { data: antes } = await supabaseAdmin
+                .from('alunos').select('id', { count: 'exact' }).is('codmatrizaluno', null);
+            const { error } = await supabaseAdmin
+                .from('alunos').delete().is('codmatrizaluno', null);
+            if (error) return res.status(500).json({ erro: error.message });
+            res.json({ ok: true, deletados: antes?.length ?? 0 });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
 
     router.get('/debug/raw-rco', async (req, res) => {
         const { path: rcoPath } = req.query;

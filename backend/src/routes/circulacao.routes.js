@@ -151,7 +151,7 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
         try {
             let query = supabaseAdmin
                 .from('registros_circulacao')
-                .select('*, alunos(nome, num_chamada, descr_turma)')
+                .select('id, cod_matriz_aluno, ambiente_id, entrada_em, saida_em')
                 .is('saida_em', null)
                 .order('entrada_em', { ascending: true });
             if (ambiente_id) query = query.eq('ambiente_id', parseInt(ambiente_id));
@@ -159,15 +159,9 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
             const { data, error } = await query;
             if (error) {
                 if (error.code === '42P01') return res.json([]);
-                // FK join pode não existir — retornar sem join
-                const { data: semJoin } = await supabaseAdmin
-                    .from('registros_circulacao')
-                    .select('*')
-                    .is('saida_em', null)
-                    .order('entrada_em', { ascending: true });
-                return res.json(semJoin || []);
+                return res.status(500).json({ erro: error.message });
             }
-            res.json(data || []);
+            res.json(await enriquecerRegistros(data || []));
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
@@ -179,7 +173,7 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
         try {
             let query = supabaseAdmin
                 .from('registros_circulacao')
-                .select('*, alunos(nome, num_chamada, descr_turma)')
+                .select('id, cod_matriz_aluno, ambiente_id, entrada_em, saida_em')
                 .gte('entrada_em', `${dia}T00:00:00`)
                 .lte('entrada_em', `${dia}T23:59:59`)
                 .order('entrada_em', { ascending: false });
@@ -188,15 +182,9 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
             const { data, error } = await query;
             if (error) {
                 if (error.code === '42P01') return res.json([]);
-                const { data: semJoin } = await supabaseAdmin
-                    .from('registros_circulacao')
-                    .select('*')
-                    .gte('entrada_em', `${dia}T00:00:00`)
-                    .lte('entrada_em', `${dia}T23:59:59`)
-                    .order('entrada_em', { ascending: false });
-                return res.json(semJoin || []);
+                return res.status(500).json({ erro: error.message });
             }
-            res.json(data || []);
+            res.json(await enriquecerRegistros(data || []));
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
