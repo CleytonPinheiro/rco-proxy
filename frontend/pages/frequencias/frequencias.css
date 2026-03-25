@@ -903,10 +903,20 @@
     flex-direction: column;
     gap: 4px;
 }
+.filtro-turma {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
 .filtro-sort {
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.turma-select {
+    min-width: 200px;
+    max-width: 340px;
 }
 
 .range-label {
@@ -1343,7 +1353,8 @@
 [data-theme="dark"] .chip-btn                    { background: var(--bg-secondary); color: var(--text-secondary); }
 [data-theme="dark"] .chip-btn:hover              { background: var(--bg-hover); color: #818cf8; }
 [data-theme="dark"] .range-num,
-[data-theme="dark"] .sort-select                 { background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary); }
+[data-theme="dark"] .sort-select,
+[data-theme="dark"] .turma-select                { background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary); }
 [data-theme="dark"] .geral-loading,
 [data-theme="dark"] .geral-vazio                 { background: var(--bg-card); border-color: var(--border); color: var(--text-muted); }
 [data-theme="dark"] .geral-resumo-stat           { background: var(--bg-card); border-color: var(--border); }

@@ -132,6 +132,12 @@
                                 <button class="chip-btn chip-alerta"  data-min="60" data-max="79"  onclick="selecionarChip(this)">60–79% Em risco</button>
                                 <button class="chip-btn chip-critico" data-min="0"  data-max="59"  onclick="selecionarChip(this)">Abaixo 60%</button>
                             </div>
+                            <div class="filtro-turma">
+                                <label class="range-label">Turma:</label>
+                                <select id="selectTurma" class="sort-select turma-select" onchange="filtrarPorTurma(this.value)">
+                                    <option value="">Todas as turmas</option>
+                                </select>
+                            </div>
                             <div class="filtro-range">
                                 <label class="range-label">Faixa personalizada:</label>
                                 <div class="range-inputs">

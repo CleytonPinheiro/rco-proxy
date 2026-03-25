@@ -675,6 +675,7 @@ async function abrirModalRcoFreq() {
 let modoGeralAtivo    = false;
 let modoGeralCarregado = false;
 let filtroMin = 0, filtroMax = 100;
+let filtroTurma = '';
 
 async function alternarModoGeral() {
     modoGeralAtivo = !modoGeralAtivo;
@@ -699,9 +700,8 @@ async function alternarModoGeral() {
         titulo.textContent = 'Frequências por Disciplina';
         painel.style.display = 'none';
         normal.style.display = 'block';
-        // Reseta o flag para que, ao voltar à Visão Geral,
-        // os dados sejam recarregados — incluindo disciplinas abertas no accordion.
         modoGeralCarregado = false;
+        filtroTurma = '';
     }
 }
 
@@ -717,6 +717,35 @@ async function ativarModoGeral() {
 
     loading.style.display = 'none';
     modoGeralCarregado = true;
+    popularSelectTurma();
+    renderModoGeral();
+}
+
+function popularSelectTurma() {
+    const sel = document.getElementById('selectTurma');
+    if (!sel) return;
+
+    const todos = calcularFreqGeral();
+    const turmasMap = {};
+    todos.forEach(a => {
+        if (a.codTurma && a.nomeTurma) turmasMap[a.codTurma] = a.nomeTurma;
+    });
+
+    const opcoes = Object.entries(turmasMap).sort((a, b) => a[1].localeCompare(b[1]));
+
+    sel.innerHTML = `<option value="">Todas as turmas (${todos.length})</option>`;
+    opcoes.forEach(([cod, nome]) => {
+        const n = todos.filter(a => a.codTurma === parseInt(cod)).length;
+        const opt = document.createElement('option');
+        opt.value = cod;
+        opt.textContent = `${nome} (${n})`;
+        if (String(cod) === String(filtroTurma)) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function filtrarPorTurma(val) {
+    filtroTurma = val;
     renderModoGeral();
 }
 
@@ -787,8 +816,11 @@ function renderModoGeral() {
     const resumo  = document.getElementById('geralResumo');
 
     const todos = calcularFreqGeral();
+    const porTurma = filtroTurma
+        ? todos.filter(a => String(a.codTurma) === String(filtroTurma))
+        : todos;
 
-    const filtrados = todos.filter(a => {
+    const filtrados = porTurma.filter(a => {
         if (a.pct === null) return min === 0;
         return a.pct >= min && a.pct <= max;
     });
@@ -799,8 +831,8 @@ function renderModoGeral() {
         return a.nome.localeCompare(b.nome);
     });
 
-    // Resumo estatístico
-    const comDado = todos.filter(a => a.pct !== null);
+    // Resumo estatístico (usa porTurma como base quando há filtro de turma)
+    const comDado = porTurma.filter(a => a.pct !== null);
     const nOk      = comDado.filter(a => a.pct >= 80).length;
     const nAlerta  = comDado.filter(a => a.pct >= 60 && a.pct < 80).length;
     const nCritico = comDado.filter(a => a.pct < 60).length;
@@ -808,7 +840,7 @@ function renderModoGeral() {
     resumo.style.display = 'flex';
     resumo.innerHTML = `
         <div class="geral-resumo-stat">
-            <span class="gres-val">${todos.length}</span>
+            <span class="gres-val">${porTurma.length}</span>
             <span class="gres-label">Alunos</span>
         </div>
         <div class="geral-resumo-stat gres-ok">
@@ -829,7 +861,7 @@ function renderModoGeral() {
         </div>
     `;
 
-    if (todos.length === 0) {
+    if (porTurma.length === 0) {
         lista.innerHTML = `<div class="geral-vazio">Nenhuma disciplina carregada. Abra uma disciplina primeiro ou aguarde.</div>`;
         return;
     }
@@ -839,8 +871,12 @@ function renderModoGeral() {
         return;
     }
 
+    const labelTurma = filtroTurma
+        ? ` · ${document.getElementById('selectTurma')?.options[document.getElementById('selectTurma')?.selectedIndex]?.text || ''}`
+        : '';
+
     lista.innerHTML = `
-        <div class="geral-count">${filtrados.length} aluno${filtrados.length !== 1 ? 's' : ''} na faixa ${min}%–${max}%</div>
+        <div class="geral-count">${filtrados.length} aluno${filtrados.length !== 1 ? 's' : ''} na faixa ${min}%–${max}%${labelTurma}</div>
         ${ordenados.map(a => renderAlunoGeralCard(a)).join('')}
     `;
 
@@ -946,8 +982,11 @@ function imprimirGeralFreq() {
     const min     = filtroMin;
     const max     = filtroMax;
     const todos   = calcularFreqGeral();
+    const porTurma = filtroTurma
+        ? todos.filter(a => String(a.codTurma) === String(filtroTurma))
+        : todos;
 
-    const filtrados = todos.filter(a => {
+    const filtrados = porTurma.filter(a => {
         if (a.pct === null) return min === 0;
         return a.pct >= min && a.pct <= max;
     });
@@ -967,7 +1006,7 @@ function imprimirGeralFreq() {
         .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina));
 
     // ── Estatísticas do resumo ───────────────────────────────────────────────
-    const comDado  = todos.filter(a => a.pct !== null);
+    const comDado  = porTurma.filter(a => a.pct !== null);
     const nOk      = comDado.filter(a => a.pct >= 80).length;
     const nAlerta  = comDado.filter(a => a.pct >= 60 && a.pct < 80).length;
     const nCritico = comDado.filter(a => a.pct < 60).length;
@@ -975,6 +1014,10 @@ function imprimirGeralFreq() {
     // ── Labels ───────────────────────────────────────────────────────────────
     const sortLabel = { asc: 'Menor % primeiro', desc: 'Maior % primeiro', az: 'Nome A–Z' }[sort] || sort;
     const faixaLabel = (min === 0 && max === 100) ? 'Todos' : `${min}%–${max}%`;
+    const sel = document.getElementById('selectTurma');
+    const turmaLabel = filtroTurma && sel
+        ? sel.options[sel.selectedIndex]?.text.replace(/\s*\(\d+\)$/, '') || ''
+        : '';
     const agora = new Date().toLocaleString('pt-BR', {
         timeZone: 'America/Sao_Paulo',
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -1118,6 +1161,7 @@ function imprimirGeralFreq() {
   <div class="print-titulo">📋 Frequências — Visão Geral por Aluno</div>
   <div class="print-meta">
     <span>Período: 1º Trimestre 2026</span>
+    ${turmaLabel ? `<span>Turma: ${turmaLabel}</span>` : ''}
     <span>Faixa exibida: ${faixaLabel}</span>
     <span>Ordenação: ${sortLabel}</span>
     <span>Disciplinas: ${discs.length}</span>
@@ -1127,7 +1171,7 @@ function imprimirGeralFreq() {
 
 <div class="print-resumo">
   <div class="res-item">
-    <div class="res-n">${todos.length}</div>
+    <div class="res-n">${porTurma.length}</div>
     <div class="res-l">Total alunos</div>
   </div>
   <div class="res-item res-ok">
@@ -1173,7 +1217,7 @@ function imprimirGeralFreq() {
 
 <div class="print-footer">
   EduSync · Frequências Escolares · ${agora} · ${filtrados.length} aluno${filtrados.length !== 1 ? 's' : ''} listado${filtrados.length !== 1 ? 's' : ''}
-  ${(min !== 0 || max !== 100) ? ` · Filtro ativo: ${faixaLabel}` : ''}
+  ${turmaLabel ? ` · Turma: ${turmaLabel}` : ''}${(min !== 0 || max !== 100) ? ` · Faixa: ${faixaLabel}` : ''}
 </div>
 
 <script>
