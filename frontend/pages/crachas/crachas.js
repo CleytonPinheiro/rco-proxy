@@ -312,157 +312,236 @@ function abrirJanelaImpressao(alunos) {
         coresMap[t] = paleta[i % paleta.length];
     });
 
-    const badges = alunos.map(a => {
-        const cor    = coresMap[a.descrTurma] || '#1d4ed8';
-        const serie  = a.serie || '';
-        const turmaAbrev = a.descrTurma.length > 28 ? a.descrTurma.substring(0, 26) + '…' : a.descrTurma;
+    const badges = alunos.map((a, idx) => {
+        const cor         = coresMap[a.descrTurma] || '#1d4ed8';
+        const serie       = a.serie || '';
+        const turmaAbrev  = a.descrTurma.length > 30 ? a.descrTurma.substring(0, 28) + '…' : a.descrTurma;
         const periodoMatch = a.descrTurma.match(/Manhã|Tarde|Noite/i);
-        const periodo = periodoMatch ? periodoMatch[0] : '';
+        const periodo     = periodoMatch ? periodoMatch[0] : '';
+        const codigo      = String(a.codMatrizAluno);
+        const nomePartes  = a.nome.split(' ');
+        const nomeAbrev   = nomePartes.length > 2
+            ? `${nomePartes[0]} ${nomePartes[nomePartes.length - 1]}`
+            : a.nome;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(codigo)}&size=64x64&margin=2`;
+
         return `
         <div class="badge-card">
+
+            <!-- Topo colorido -->
             <div class="badge-topo" style="background:${cor}">
-                <div class="badge-logo">📚 EduGest</div>
-                <div class="badge-ano">2026</div>
+                <div class="badge-topo-serie">${serie}</div>
+                <div class="badge-topo-periodo">${periodo || '2026'}</div>
             </div>
-            <div class="badge-foto">
-                <div class="badge-foto-circle">${a.nome.charAt(0).toUpperCase()}</div>
+
+            <!-- Área principal: foto 3×4 + dados -->
+            <div class="badge-main">
+                <div class="badge-foto-3x4">
+                    <div class="foto-placeholder">
+                        <div class="foto-icone">👤</div>
+                        <div class="foto-label">3×4</div>
+                    </div>
+                </div>
+                <div class="badge-dados">
+                    <div class="badge-nome">${a.nome}</div>
+                    <div class="badge-serie-txt">${serie}</div>
+                    <div class="badge-turma-txt">${turmaAbrev}</div>
+                    ${periodo ? `<div class="badge-periodo-txt" style="color:${cor}">${periodo}</div>` : ''}
+                    <div class="badge-chamada-row" style="border-color:${cor}20">
+                        <span class="badge-chamada-lbl">Nº Chamada</span>
+                        <span class="badge-chamada-num" style="color:${cor}">${a.numChamada || '—'}</span>
+                    </div>
+                </div>
             </div>
-            <div class="badge-corpo">
-                <div class="badge-nome">${a.nome}</div>
-                <div class="badge-serie">${serie}</div>
-                <div class="badge-turma">${turmaAbrev}</div>
-                ${periodo ? `<div class="badge-periodo" style="color:${cor}">${periodo}</div>` : ''}
+
+            <!-- Código de barras -->
+            <div class="badge-barcode-area">
+                <svg class="barcode" id="bc-${idx}"></svg>
+                <div class="badge-barcode-label">${nomeAbrev} · ${codigo}</div>
             </div>
-            <div class="badge-rodape" style="background:${cor}20; border-top: 2px solid ${cor}">
-                <div class="badge-chamada-label">Nº Chamada</div>
-                <div class="badge-chamada" style="color:${cor}">${a.numChamada || '—'}</div>
-                <div class="badge-cod">ID: ${a.codMatrizAluno}</div>
+
+            <!-- Rodapé: QR + nome + código -->
+            <div class="badge-rodape" style="border-top:2px solid ${cor}40">
+                <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}" width="44" height="44">
+                <div class="badge-qr-info">
+                    <div class="badge-qr-nome">${nomeAbrev}</div>
+                    <div class="badge-qr-cod">ID: ${codigo}</div>
+                </div>
             </div>
+
         </div>`;
     }).join('');
+
+    // Dados para inicializar barcodes via JS
+    const barcodeData = alunos.map((a, idx) => ({
+        id: `bc-${idx}`,
+        value: String(a.codMatrizAluno)
+    }));
 
     const html = `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Crachás — EduGest</title>
+<title>Crachás</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-@page { size: A4; margin: 10mm; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; }
+@page { size: A4 portrait; margin: 8mm; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
+/* ── Grid de crachás ── */
 .badges-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8mm;
-    padding: 4mm;
+    gap: 6mm;
+    padding: 2mm;
 }
 
+/* ── Card do crachá ── */
 .badge-card {
-    width: 60mm;
-    min-height: 90mm;
-    border: 1.5px solid #ddd;
-    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     break-inside: avoid;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.10);
 }
 
+/* ── Topo colorido ── */
 .badge-topo {
-    padding: 6px 8px 4px;
+    padding: 5px 8px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
-}
-.badge-logo { font-size: 10px; color: white; font-weight: 700; }
-.badge-ano  { font-size: 9px;  color: rgba(255,255,255,0.85); }
-
-.badge-foto {
-    display: flex;
-    justify-content: center;
-    padding: 8px 0 4px;
-}
-.badge-foto-circle {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #e5e7eb;
-    display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 800;
-    color: #374151;
-    border: 2px solid #d1d5db;
+    min-height: 14px;
+}
+.badge-topo-serie  { font-size: 9px; color: white; font-weight: 800; letter-spacing: 0.3px; }
+.badge-topo-periodo { font-size: 8px; color: rgba(255,255,255,0.85); font-weight: 600; }
+
+/* ── Área principal: foto + dados ── */
+.badge-main {
+    display: flex;
+    gap: 6px;
+    padding: 7px 7px 5px;
+    align-items: flex-start;
 }
 
-.badge-corpo {
-    flex: 1;
-    padding: 4px 8px 6px;
-    text-align: center;
-}
-.badge-nome {
-    font-size: 10.5px;
-    font-weight: 800;
-    color: #111;
-    line-height: 1.25;
-    margin-bottom: 3px;
-    word-break: break-word;
-}
-.badge-serie {
-    font-size: 9px;
-    color: #555;
-    margin-bottom: 2px;
-    font-weight: 600;
-}
-.badge-turma {
-    font-size: 8px;
-    color: #777;
-    margin-bottom: 2px;
-}
-.badge-periodo {
-    font-size: 8.5px;
-    font-weight: 700;
-    margin-top: 2px;
-}
-
-.badge-rodape {
-    padding: 5px 8px 6px;
-    text-align: center;
+/* ── Foto 3×4 ── */
+.badge-foto-3x4 {
+    flex-shrink: 0;
+    width: 22mm;
+    height: 29mm;
+    border: 1.5px dashed #aaa;
+    border-radius: 4px;
+    background: #f9fafb;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1px;
+    justify-content: center;
+    gap: 2px;
 }
-.badge-chamada-label { font-size: 7px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
-.badge-chamada { font-size: 18px; font-weight: 900; line-height: 1.1; }
-.badge-cod { font-size: 6.5px; color: #bbb; margin-top: 2px; }
+.foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.foto-icone  { font-size: 20px; line-height: 1; opacity: 0.35; }
+.foto-label  { font-size: 7px; color: #aaa; font-weight: 700; letter-spacing: 0.5px; }
 
-.print-header {
-    text-align: center;
-    margin-bottom: 6mm;
-    padding-bottom: 4mm;
-    border-bottom: 1px solid #eee;
+/* ── Dados do aluno ── */
+.badge-dados {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
-.print-header h1 { font-size: 16px; color: #333; }
-.print-header p  { font-size: 11px; color: #888; margin-top: 2px; }
+.badge-nome {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #111;
+    line-height: 1.25;
+    word-break: break-word;
+}
+.badge-serie-txt  { font-size: 8px;  color: #444; font-weight: 700; margin-top: 1px; }
+.badge-turma-txt  { font-size: 7px;  color: #777; line-height: 1.3; }
+.badge-periodo-txt { font-size: 7.5px; font-weight: 700; margin-top: 1px; }
+.badge-chamada-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 4px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 3px;
+}
+.badge-chamada-lbl { font-size: 6.5px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
+.badge-chamada-num { font-size: 16px; font-weight: 900; line-height: 1.1; }
+
+/* ── Código de barras ── */
+.badge-barcode-area {
+    padding: 3px 6px 1px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.barcode {
+    width: 100%;
+    height: 28px;
+}
+.badge-barcode-label {
+    font-size: 6px;
+    color: #9ca3af;
+    margin-top: 1px;
+    letter-spacing: 0.2px;
+    text-align: center;
+}
+
+/* ── Rodapé QR ── */
+.badge-rodape {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 7px 6px;
+    background: #f9fafb;
+}
+.badge-qr {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: white;
+}
+.badge-qr-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.badge-qr-nome { font-size: 8px;  font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge-qr-cod  { font-size: 7px;  color: #6b7280; font-weight: 600; }
 
 .page-break { break-before: page; }
 </style>
 </head>
 <body>
-<div class="print-header">
-    <h1>📚 EduGest — Crachás dos Alunos</h1>
-    <p>Gerado em ${new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })} — ${alunos.length} crachá(s)</p>
-</div>
 <div class="badges-grid">${badges}</div>
-<script>window.onload = () => { window.print(); }<\/script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+<script>
+window.onload = function() {
+    var data = ${JSON.stringify(barcodeData)};
+    data.forEach(function(item) {
+        var el = document.getElementById(item.id);
+        if (!el) return;
+        try {
+            JsBarcode(el, item.value, {
+                format: 'CODE128',
+                width: 1.2,
+                height: 28,
+                displayValue: false,
+                margin: 0,
+            });
+        } catch(e) {}
+    });
+    setTimeout(function() { window.print(); }, 600);
+};
+<\/script>
 </body></html>`;
 
-    const win = window.open('', '_blank', 'width=900,height=700');
+    const win = window.open('', '_blank', 'width=900,height=750');
     win.document.write(html);
     win.document.close();
 
