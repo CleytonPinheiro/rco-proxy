@@ -40,3 +40,8 @@ outputType = "webview"
 task = "shell.exec"
 args = "cd backend && node index.js"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cm5uZGxtdWx0bmxwbXloaGVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTA1MzUsImV4cCI6MjA4MzkyNjUzNX0.deIayTxJwbtvWZLJwBxi-5YkLlWaQMRPFP1Q61elC1I"

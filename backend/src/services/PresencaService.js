@@ -62,13 +62,18 @@ export class PresencaService {
                     await Promise.all(codAulas.map(async (cod) => {
                         try {
                             const r = await this.#rcoApiService.get(`/educador/grade/aula/v2/${cod}?codPeriodoLetivo=${codPeriodoLetivo}`);
-                            const dataRaw = r?.data?.aula?.dataAula || r?.data?.dataAula || null;
+                            const dataRaw = r?.data?.aula?.dataAula
+                                         || r?.data?.dataAula
+                                         || r?.data?.data
+                                         || null;
                             if (dataRaw) {
-                                const d = new Date(dataRaw).toISOString().split('T')[0];
+                                // Comparar como string de data Brasil, sem converter para UTC
+                                const d = String(dataRaw).split('T')[0];
                                 if (d === hoje) aulaHoje.push(cod);
                             }
                         } catch (_) {}
                     }));
+                    console.log(`[PRESENÇA] Turma ${codTurma}: ${codAulas.length} aulas analisadas → ${aulaHoje.length} aulas hoje (${hoje})`);
 
                     const descrTurma        = descrMap[codTurma] || '';
                     const periodo           = this.detectarPeriodo(descrTurma);
@@ -118,16 +123,19 @@ export class PresencaService {
     }
 
     agendarSyncPresenca() {
-        const horarios = [
-            { hora: 9,  minuto: 0 },
-            { hora: 13, minuto: 30 },
-            { hora: 20, minuto: 0 },
+        // Horários em BRT (horário de Brasília) — o servidor roda em UTC
+        const horariosBRT = [
+            { hora: 9,  minuto: 0  },   // 09:00 BRT = 12:00 UTC
+            { hora: 13, minuto: 30 },   // 13:30 BRT = 16:30 UTC
+            { hora: 20, minuto: 0  },   // 20:00 BRT = 23:00 UTC
         ];
-        setInterval(() => {
-            const agora = new Date();
-            const h = agora.getHours();
-            const m = agora.getMinutes();
-            if (horarios.some(t => t.hora === h && t.minuto === m)) {
+        setInterval(async () => {
+            const { agoraBrasilia } = await import('../config/dateUtils.js');
+            const brt = agoraBrasilia();
+            const h = brt.getHours();
+            const m = brt.getMinutes();
+            if (horariosBRT.some(t => t.hora === h && t.minuto === m)) {
+                console.log(`[PRESENÇA] Sync agendado ativado às ${h}:${String(m).padStart(2,'0')} BRT`);
                 this.syncPresencaDiariaRCO().catch(console.error);
             }
         }, 60 * 1000);
