@@ -323,7 +323,7 @@ async function abrirDrawerAluno(nome, numChamada) {
     alunoSelecionado = { nome, numChamada };
 
     // Cabeçalho
-    document.getElementById('drawerAvatar').textContent  = nome.charAt(0).toUpperCase();
+    document.getElementById('drawerAvatar').textContent  = iniciais2(nome);
     document.getElementById('drawerNome').textContent    = nome;
     document.getElementById('drawerChamada').textContent = numChamada ? `Chamada nº ${numChamada}` : '';
 
@@ -943,7 +943,7 @@ function renderAlunoGeralCard(a) {
         <div class="aluno-geral-card" data-nome="${nomeEsc}" data-chamada="${a.numChamada || ''}">
 
             <div class="aluno-geral-topo">
-                <div class="aluno-geral-avatar">${(a.nome || '?').charAt(0).toUpperCase()}</div>
+                <div class="aluno-geral-avatar">${iniciais2(a.nome || '?')}</div>
                 <div class="aluno-geral-info">
                     <div class="aluno-geral-nome">${a.nome}</div>
                     <div class="aluno-geral-sub">
@@ -1377,6 +1377,11 @@ function mostrarNotificacaoSync(msg, erro = false) {
     notif.textContent = msg;
     clearTimeout(notif._t);
     notif._t = setTimeout(() => { notif.style.opacity = '0'; }, 3500);
+}
+
+function iniciais2(nome) {
+    const p = String(nome).trim().split(/\s+/);
+    return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
 init();

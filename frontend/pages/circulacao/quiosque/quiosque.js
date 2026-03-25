@@ -154,7 +154,7 @@ function renderAtivos() {
         const turma  = r.alunos?.turma || '';
         const ambNome = r.ambientes?.nome || `Amb. ${r.ambiente_id}`;
         const min    = minutosDesde(r.entrada_em);
-        const inicial = (nome || '?').charAt(0).toUpperCase();
+        const inicial = iniciais2(nome || '?');
         return `<div class="kq-ativo-card" id="ativo-${r.id}">
             <div class="ka-avatar">${inicial}</div>
             <div class="ka-info">
@@ -365,4 +365,9 @@ function formatarHora(iso) {
     if (!iso) return '';
     return new Date(iso).toLocaleTimeString('pt-BR',
         { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+}
+
+function iniciais2(nome) {
+    const p = String(nome).trim().split(/\s+/);
+    return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
