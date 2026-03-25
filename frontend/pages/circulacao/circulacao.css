@@ -1,5 +1,9 @@
 /* ── Circulação ────────────────────────────────────────────────────────── */
 
+/* Variável de cor principal (não existe no tema global) */
+:root              { --accent: #007bff; --accent-hover: #0056b3; }
+[data-theme="dark"] { --accent: #3b82f6; --accent-hover: #2563eb; }
+
 /* ── Barra superior ─────────────────────────────────────────────────── */
 .circ-topbar {
     display: flex;
