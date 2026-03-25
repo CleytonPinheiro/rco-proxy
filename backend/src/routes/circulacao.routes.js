@@ -102,7 +102,9 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
                 const durMin = Math.round(
                     (new Date(agora) - new Date(aberto.entrada_em)) / 60000
                 );
-                return res.json({ acao: 'saida', registro: atualizado, duracao_min: durMin });
+                const { data: aluSaida } = await supabaseAdmin
+                    .from('alunos').select('nome, turma').eq('codmatrizaluno', codAluno).maybeSingle();
+                return res.json({ acao: 'saida', registro: atualizado, duracao_min: durMin, aluno: aluSaida || null });
             }
 
             // Registrar entrada
@@ -113,7 +115,9 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
                 .single();
             if (error) return res.status(500).json({ erro: error.message });
 
-            return res.json({ acao: 'entrada', registro: novo });
+            const { data: aluEntrada } = await supabaseAdmin
+                .from('alunos').select('nome, turma').eq('codmatrizaluno', codAluno).maybeSingle();
+            return res.json({ acao: 'entrada', registro: novo, aluno: aluEntrada || null });
 
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });

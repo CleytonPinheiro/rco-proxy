@@ -144,32 +144,37 @@ function extrairCod(raw) {
 }
 
 function exibirFeedback(data, cod) {
-    const fb   = document.getElementById('feedbackScan');
-    const icon = document.getElementById('feedbackIcon');
-    const nome = document.getElementById('feedbackNome');
-    const acao = document.getElementById('feedbackAcao');
+    const fb    = document.getElementById('feedbackScan');
+    const icon  = document.getElementById('feedbackIcon');
+    const nomeEl  = document.getElementById('feedbackNome');
+    const turmaEl = document.getElementById('feedbackTurma');
+    const acao  = document.getElementById('feedbackAcao');
 
-    const nomeAluno = buscarNome(cod);
+    // Prioriza o aluno retornado diretamente pelo endpoint
+    const nomeAluno  = data.aluno?.nome  || buscarNomeCache(cod);
+    const turmaAluno = data.aluno?.turma || '';
 
     fb.className = `feedback-scan ${data.acao}`;
+    nomeEl.textContent  = nomeAluno;
+    turmaEl.textContent = turmaAluno;
+
     if (data.acao === 'entrada') {
         icon.textContent = '✅';
-        nome.textContent = nomeAluno;
         acao.textContent = `Entrada — ${formatHora(data.registro.entrada_em)}`;
     } else {
         icon.textContent = '🔴';
-        nome.textContent = nomeAluno;
         const dur = data.duracao_min != null ? ` — ${data.duracao_min} min` : '';
         acao.textContent = `Saída — ${formatHora(data.registro.saida_em)}${dur}`;
     }
 }
 
-function buscarNome(cod) {
+// Fallback: tenta achar o nome no cache local (caso o endpoint não retorne)
+function buscarNomeCache(cod) {
     const a = ativosGlobal.find(x => x.cod_matriz_aluno == cod);
     if (a?.alunos?.nome) return a.alunos.nome;
     const h = historicoGlobal.find(x => x.cod_matriz_aluno == cod);
     if (h?.alunos?.nome) return h.alunos.nome;
-    return `#${cod}`;
+    return `Aluno #${cod}`;
 }
 
 // ── Saída manual ──────────────────────────────────────────────────────
@@ -220,13 +225,17 @@ function renderCardAmbiente(amb) {
     const agora    = Date.now();
     const dentroHTML = dentroAmb.length
         ? dentroAmb.map(reg => {
-            const nome   = reg.alunos?.nome || `#${reg.cod_matriz_aluno}`;
+            const nome   = reg.alunos?.nome  || `Aluno #${reg.cod_matriz_aluno}`;
+            const turma  = reg.alunos?.turma || '';
             const ini    = iniciais2(nome);
             const min    = Math.round((agora - new Date(reg.entrada_em)) / 60000);
             const tc     = min >= 15 ? 'danger' : min >= 8 ? 'warn' : '';
             return `<div class="amb-dentro-item">
                 <div class="amb-dentro-avatar">${ini}</div>
-                <span class="amb-dentro-nome">${nome}</span>
+                <div class="amb-dentro-info">
+                    <span class="amb-dentro-nome">${nome}</span>
+                    ${turma ? `<span class="amb-dentro-turma">${turma}</span>` : ''}
+                </div>
                 <span class="amb-dentro-timer ${tc}" data-entrada="${reg.entrada_em}">${formatDuracao(min)}</span>
                 <button class="btn-saida-rapida" onclick="registrarSaida(${reg.id}, this)" title="Registrar saída">↩</button>
             </div>`;
@@ -237,7 +246,7 @@ function renderCardAmbiente(amb) {
     const histComSaida = histAmb.filter(r => r.saida_em).slice(0, 5);
     const histHTML = histComSaida.length
         ? histComSaida.map(reg => {
-            const nome   = reg.alunos?.nome || `#${reg.cod_matriz_aluno}`;
+            const nome   = reg.alunos?.nome  || `Aluno #${reg.cod_matriz_aluno}`;
             const durMin = Math.round((new Date(reg.saida_em) - new Date(reg.entrada_em)) / 60000);
             const bClass = durMin >= 15 ? 'alerta' : 'saiu';
             return `<div class="amb-hist-item">
@@ -306,8 +315,8 @@ function renderHistoricoGlobal() {
     }
 
     tbody.innerHTML = lista.map(reg => {
-        const nome   = reg.alunos?.nome || `#${reg.cod_matriz_aluno}`;
-        const turma  = reg.alunos?.descr_turma || '—';
+        const nome   = reg.alunos?.nome || `Aluno #${reg.cod_matriz_aluno}`;
+        const turma  = reg.alunos?.turma || '—';
         const ambNome = ambientes.find(a => a.id === reg.ambiente_id)?.nome || `#${reg.ambiente_id}`;
         const entrada = formatHora(reg.entrada_em);
         const saida   = reg.saida_em ? formatHora(reg.saida_em) : '—';

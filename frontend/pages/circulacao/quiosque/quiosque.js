@@ -150,15 +150,16 @@ function renderAtivos() {
     }
 
     el.innerHTML = ativos.map(r => {
-        const nome   = r.alunos?.nome || `Código ${r.cod_matriz_aluno}`;
+        const nome   = r.alunos?.nome  || `Aluno #${r.cod_matriz_aluno}`;
+        const turma  = r.alunos?.turma || '';
         const ambNome = r.ambientes?.nome || `Amb. ${r.ambiente_id}`;
         const min    = minutosDesde(r.entrada_em);
         const inicial = (nome || '?').charAt(0).toUpperCase();
         return `<div class="kq-ativo-card" id="ativo-${r.id}">
             <div class="ka-avatar">${inicial}</div>
-            <div>
+            <div class="ka-info">
                 <div class="ka-nome">${primeiroNome(nome)}</div>
-                <div class="ka-amb">${ambNome}</div>
+                <div class="ka-turma">${turma || ambNome}</div>
             </div>
             <div class="ka-tempo" id="tempo-${r.id}">${formatMin(min)}</div>
         </div>`;
@@ -180,7 +181,8 @@ function renderHistorico() {
     }
 
     el.innerHTML = historico.map(r => {
-        const nome    = r.alunos?.nome    || `Código ${r.cod_matriz_aluno}`;
+        const nome    = r.alunos?.nome    || `Aluno #${r.cod_matriz_aluno}`;
+        const turma   = r.alunos?.turma   || '';
         const ambNome = r.ambientes?.nome || `Amb. ${r.ambiente_id}`;
         const hora    = formatarHora(r.entrada_em);
         const temSaida = !!r.saida_em;
@@ -238,15 +240,17 @@ async function processarScan() {
             return;
         }
 
-        const nome   = data.aluno?.nome  || `Código ${qr_raw}`;
+        const nome    = data.aluno?.nome  || `Aluno não identificado`;
+        const turma   = data.aluno?.turma || '';
         const ambNome = data.ambiente?.nome || ambienteSel.nome;
+        const subTurma = turma ? `${turma} · ` : '';
 
         if (data.acao === 'entrada') {
             const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            mostrarFeedback('entrada', '✅', 'ENTROU', primeiroNome(nome), `${ambNome} · ${hora}`);
+            mostrarFeedback('entrada', '✅', 'ENTROU', primeiroNome(nome), `${subTurma}${ambNome} · ${hora}`);
         } else {
             const dur = data.duracao_min !== undefined ? formatMin(data.duracao_min) : '';
-            mostrarFeedback('saida', '🔙', 'SAIU', primeiroNome(nome), `${ambNome} · ${dur}`);
+            mostrarFeedback('saida', '🔙', 'SAIU', primeiroNome(nome), `${subTurma}${ambNome} · ${dur}`);
         }
 
         await carregarMonitor();

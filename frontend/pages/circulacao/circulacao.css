@@ -166,8 +166,9 @@
 .feedback-scan.entrada { border-color: #16a34a; background: color-mix(in srgb, #16a34a 10%, var(--bg)); }
 .feedback-scan.saida   { border-color: #dc2626; background: color-mix(in srgb, #dc2626 10%, var(--bg)); }
 .feedback-icon { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
-.feedback-nome { font-weight: 600; font-size: .92rem; }
-.feedback-acao { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
+.feedback-nome  { font-weight: 700; font-size: .95rem; }
+.feedback-turma { font-size: .75rem; color: var(--text-muted); margin-top: 1px; }
+.feedback-acao  { font-size: .8rem; color: var(--text-muted); margin-top: 3px; }
 
 /* Câmera QR — leitura ao vivo */
 .cam-wrap {
@@ -427,10 +428,18 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
-.amb-dentro-nome {
+.amb-dentro-info {
     flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+}
+.amb-dentro-nome {
     font-size: .83rem;
-    font-weight: 500;
+    font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.amb-dentro-turma {
+    font-size: .7rem;
+    color: var(--text-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .amb-dentro-timer {
