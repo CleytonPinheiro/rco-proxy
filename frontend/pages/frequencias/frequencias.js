@@ -1032,8 +1032,9 @@ function imprimirGeralFreq() {
         return;
     }
 
-    // ── Disciplinas carregadas (em ordem alfabética) ─────────────────────────
+    // ── Disciplinas carregadas — filtradas pela turma selecionada ────────────
     const discs = Object.values(disciplinaCache)
+        .filter(disc => !filtroTurma || String(disc.codTurma) === String(filtroTurma))
         .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina));
 
     // ── Estatísticas do resumo ───────────────────────────────────────────────
