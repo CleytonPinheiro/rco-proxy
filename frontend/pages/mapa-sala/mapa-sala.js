@@ -48,7 +48,7 @@ async function onTurmaChange() {
 
 async function carregarAlunos() {
     try {
-        const r = await fetch(`${API}/alunos?codTurma=${turmaAtual.codturma}`);
+        const r = await fetch(`${API}/alunos?codturma=${turmaAtual.codturma}`);
         const data = await r.json();
         todosAlunos = (data || []).sort((a, b) => (a.numchamada || 999) - (b.numchamada || 999));
     } catch (e) { todosAlunos = []; }
