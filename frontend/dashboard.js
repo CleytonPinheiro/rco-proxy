@@ -11,46 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Dados de exemplo (fallback) ───────────────────────────────────────────────
-const DADOS_EXEMPLO = {
-    turmas: [
-        { nmTurma: "9º Ano A", serie: "9º Ano", turno: "Manhã", escola: "Colégio Estadual do Paraná", anoLetivo: "2026" },
-        { nmTurma: "9º Ano B", serie: "9º Ano", turno: "Manhã", escola: "Colégio Estadual do Paraná", anoLetivo: "2026" },
-        { nmTurma: "8º Ano C", serie: "8º Ano", turno: "Tarde",  escola: "Colégio Estadual do Paraná", anoLetivo: "2026" },
-        { nmTurma: "7º Ano A", serie: "7º Ano", turno: "Manhã", escola: "Colégio Estadual Paulo Leminski", anoLetivo: "2026" }
-    ],
-    disciplinas: [
-        { nmDisciplina: "Matemática", nmTurma: "9º Ano A", cargaHoraria: 160, status: "Ativa", escola: "Colégio Estadual do Paraná" },
-        { nmDisciplina: "Matemática", nmTurma: "9º Ano B", cargaHoraria: 160, status: "Ativa", escola: "Colégio Estadual do Paraná" },
-        { nmDisciplina: "Física",     nmTurma: "9º Ano A", cargaHoraria: 80,  status: "Ativa", escola: "Colégio Estadual do Paraná" },
-        { nmDisciplina: "Física",     nmTurma: "9º Ano B", cargaHoraria: 80,  status: "Ativa", escola: "Colégio Estadual do Paraná" },
-        { nmDisciplina: "Ciências",   nmTurma: "8º Ano C", cargaHoraria: 120, status: "Ativa", escola: "Colégio Estadual do Paraná" },
-        { nmDisciplina: "Matemática", nmTurma: "7º Ano A", cargaHoraria: 160, status: "Ativa", escola: "Colégio Estadual Paulo Leminski" }
-    ],
-    livros: [
-        { nmLivro: "Livro de Classe - Matemática", nmTurma: "9º Ano A", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Aberto",      escola: "Colégio Estadual do Paraná" },
-        { nmLivro: "Livro de Classe - Matemática", nmTurma: "9º Ano B", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Aberto",      escola: "Colégio Estadual do Paraná" },
-        { nmLivro: "Livro de Classe - Física",     nmTurma: "9º Ano A", nmDisciplina: "Física",     periodo: "1º Bimestre", statusLivro: "Aberto",      escola: "Colégio Estadual do Paraná" },
-        { nmLivro: "Livro de Classe - Ciências",   nmTurma: "8º Ano C", nmDisciplina: "Ciências",   periodo: "1º Bimestre", statusLivro: "Em andamento", escola: "Colégio Estadual do Paraná" },
-        { nmLivro: "Livro de Classe - Matemática", nmTurma: "7º Ano A", nmDisciplina: "Matemática", periodo: "1º Bimestre", statusLivro: "Fechado",     escola: "Colégio Estadual Paulo Leminski" }
-    ],
-    alunos: [
-        { nome: "Ana Clara Silva",        registro: "2026090101", turma: "9º Ano A", dataNascimento: "15/03/2011", status: "Ativo" },
-        { nome: "Bruno Oliveira Santos",  registro: "2026090102", turma: "9º Ano A", dataNascimento: "22/07/2011", status: "Ativo" },
-        { nome: "Carla Fernanda Costa",   registro: "2026090103", turma: "9º Ano A", dataNascimento: "10/01/2011", status: "Ativo" },
-        { nome: "Felipe Rodrigues",       registro: "2026090201", turma: "9º Ano B", dataNascimento: "03/04/2011", status: "Ativo" },
-        { nome: "Gabriela Santos",        registro: "2026090202", turma: "9º Ano B", dataNascimento: "27/06/2011", status: "Ativo" },
-        { nome: "Larissa Mendes",         registro: "2026080301", turma: "8º Ano C", dataNascimento: "12/05/2012", status: "Ativo" },
-        { nome: "Lucas Pereira",          registro: "2026080302", turma: "8º Ano C", dataNascimento: "25/10/2012", status: "Ativo" },
-        { nome: "Pedro Henrique Castro",  registro: "2026070101", turma: "7º Ano A", dataNascimento: "16/06/2013", status: "Ativo" },
-        { nome: "Rafaela Borges Lima",    registro: "2026070102", turma: "7º Ano A", dataNascimento: "28/01/2013", status: "Ativo" }
-    ]
-};
-
 // ── Carregar dados da API ─────────────────────────────────────────────────────
 async function carregarDados() {
-    const loading  = document.getElementById('loading');
-    const content  = document.getElementById('content');
+    const loading    = document.getElementById('loading');
+    const content    = document.getElementById('content');
+    const emptyState = document.getElementById('emptyState');
+
+    // Inicializa dot do rodapé
+    iniciarStatusFooter();
 
     try {
         const response = await fetch(`${API_URL}/api/acessos`);
@@ -59,10 +27,21 @@ async function carregarDados() {
         const vazio = !data || data === "" ||
             (Array.isArray(data) && data.length === 0) ||
             (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0);
-        dadosGlobais = (vazio || data.erro) ? DADOS_EXEMPLO : normalizarDados(data);
 
-    } catch {
-        dadosGlobais = DADOS_EXEMPLO;
+        if (vazio || data.erro) {
+            loading.style.display = 'none';
+            await preencherEmptyState();
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        dadosGlobais = normalizarDados(data);
+
+    } catch (e) {
+        loading.style.display = 'none';
+        await preencherEmptyState(`Não foi possível conectar ao servidor: ${e.message}`);
+        emptyState.style.display = 'block';
+        return;
     }
 
     loading.style.display = 'none';
@@ -73,6 +52,267 @@ async function carregarDados() {
 
     configurarSeletorColegio(colegios);
     renderizarTudo();
+}
+
+// ── Preencher empty state com info do último sync ─────────────────────────────
+async function preencherEmptyState(msgErro) {
+    const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    if (msgErro) {
+        document.getElementById('emptyDesc').textContent = msgErro;
+    } else {
+        document.getElementById('emptyDesc').innerHTML =
+            `O RCO Digital não retornou turmas para <strong>${hoje}</strong>. ` +
+            `Isso acontece em fins de semana, feriados ou recesso escolar.`;
+    }
+
+    try {
+        const r = await fetch(`${API_URL}/api/sync/log`);
+        if (r.ok) {
+            const logs = await r.json();
+            const ultimo = logs.find(l => l.estabelecimentos > 0) || logs[0];
+            if (ultimo) {
+                const dt = new Date(ultimo.executado_em);
+                const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('emptySyncInfo').innerHTML = `
+                    <div class="sync-info-item">
+                        <span class="sync-info-label">Último sync com dados</span>
+                        <span class="sync-info-value">${dtStr}</span>
+                    </div>
+                    <div class="sync-info-item">
+                        <span class="sync-info-label">Turmas</span>
+                        <span class="sync-info-value">${ultimo.turmas || 0}</span>
+                    </div>
+                    <div class="sync-info-item">
+                        <span class="sync-info-label">Disciplinas</span>
+                        <span class="sync-info-value">${ultimo.disciplinas || 0}</span>
+                    </div>
+                    <div class="sync-info-item">
+                        <span class="sync-info-label">Status</span>
+                        <span class="sync-info-value" style="color:#28a745">${ultimo.status === 'sucesso' ? '✓ OK' : '⚠ ' + ultimo.status}</span>
+                    </div>
+                `;
+            }
+        }
+    } catch {}
+}
+
+// ── Forçar sincronização ──────────────────────────────────────────────────────
+async function forcarSync() {
+    const btn = document.getElementById('btnSyncNow');
+    btn.disabled = true;
+    btn.textContent = '⏳ Sincronizando...';
+    try {
+        const r = await fetch(`${API_URL}/api/sync`, { method: 'POST' });
+        const d = await r.json();
+        if (d.turmas > 0 || d.estabelecimentos > 0) {
+            btn.textContent = '✓ Dados encontrados! Recarregando...';
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            btn.textContent = '📅 Sem dados no RCO agora';
+            setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Sincronizar agora'; }, 3000);
+        }
+    } catch {
+        btn.textContent = '❌ Erro na sincronização';
+        setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Sincronizar agora'; }, 3000);
+    }
+}
+
+// ── Status do rodapé ──────────────────────────────────────────────────────────
+async function iniciarStatusFooter() {
+    try {
+        const r = await fetch(`${API_URL}/api/status`);
+        const d = await r.json();
+        const dot = document.getElementById('footerDot');
+        if (!dot) return;
+        if (!d.credenciaisConfiguradas) {
+            dot.classList.add('offline');
+        } else if (!d.tokenEmCache) {
+            dot.classList.add('warning');
+        }
+    } catch {
+        const dot = document.getElementById('footerDot');
+        if (dot) dot.classList.add('offline');
+    }
+}
+
+// ── Modal: Status do Serviço ──────────────────────────────────────────────────
+async function abrirModalStatus() {
+    document.getElementById('modalStatus').classList.add('open');
+    const body = document.getElementById('statusModalBody');
+    body.innerHTML = '<div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Verificando...</p></div>';
+
+    try {
+        const [statusR, syncR] = await Promise.all([
+            fetch(`${API_URL}/api/status`),
+            fetch(`${API_URL}/api/sync/log`)
+        ]);
+        const status = await statusR.json();
+        const syncLog = syncR.ok ? await syncR.json() : [];
+
+        const exp = status.tokenExpiracao ? new Date(status.tokenExpiracao) : null;
+        const agora = new Date();
+        const tokenOk = exp && exp > agora;
+        const expStr = exp ? exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + exp.toLocaleDateString('pt-BR') : '—';
+        const minutosRestantes = exp ? Math.round((exp - agora) / 60000) : 0;
+
+        const logsHtml = syncLog.slice(0, 5).map(l => {
+            const dt = new Date(l.executado_em);
+            const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const stats = l.estabelecimentos > 0
+                ? `${l.turmas}T · ${l.disciplinas}D · ${l.classes}C`
+                : 'sem dados';
+            return `
+                <div class="status-sync-row">
+                    <span class="sync-dot ${l.status === 'sucesso' ? 'ok' : 'error'}"></span>
+                    <span>${l.status === 'sucesso' ? 'Sucesso' : 'Erro'}</span>
+                    <span class="sync-row-time">${dtStr}</span>
+                    <span class="sync-row-stats">${stats}</span>
+                </div>`;
+        }).join('');
+
+        body.innerHTML = `
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-card-label">Credenciais</div>
+                    <div class="status-card-value">
+                        <span class="status-badge ${status.credenciaisConfiguradas ? 'ok' : 'error'}">
+                            ${status.credenciaisConfiguradas ? '✓ Configuradas' : '✗ Ausentes'}
+                        </span>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-card-label">Token RCO</div>
+                    <div class="status-card-value">
+                        <span class="status-badge ${tokenOk ? 'ok' : status.tokenEmCache ? 'warn' : 'error'}">
+                            ${tokenOk ? '✓ Válido' : status.tokenEmCache ? '⚠ Expirando' : '✗ Sem token'}
+                        </span>
+                    </div>
+                    <div class="status-card-sub">
+                        ${exp ? `Expira: ${expStr}${tokenOk ? ` (em ${minutosRestantes} min)` : ''}` : 'Token não obtido'}
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-card-label" style="margin-bottom:10px">Histórico de Sincronizações</div>
+            <div class="status-sync-log">
+                ${logsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum registro encontrado</div>'}
+            </div>
+
+            <button class="btn-sync-now" id="btnSyncModal" onclick="forcarSyncModal()">
+                🔄 Forçar sincronização agora
+            </button>
+        `;
+    } catch (e) {
+        body.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center">Erro ao verificar status: ${e.message}</div>`;
+    }
+}
+
+async function forcarSyncModal() {
+    const btn = document.getElementById('btnSyncModal');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '⏳ Sincronizando...';
+    try {
+        const r = await fetch(`${API_URL}/api/sync`, { method: 'POST' });
+        const d = await r.json();
+        btn.textContent = d.turmas > 0
+            ? `✓ ${d.turmas} turma(s) encontradas — recarregando...`
+            : '📅 Sem dados no RCO para hoje';
+        if (d.turmas > 0) setTimeout(() => window.location.reload(), 1400);
+        else setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Forçar sincronização agora'; }, 3500);
+    } catch {
+        btn.textContent = '❌ Erro na sincronização';
+        setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Forçar sincronização agora'; }, 3000);
+    }
+}
+
+function fecharModalStatus(e) {
+    if (e && e.target !== document.getElementById('modalStatus')) return;
+    document.getElementById('modalStatus').classList.remove('open');
+}
+
+// ── Modal: Dados do RCO ───────────────────────────────────────────────────────
+let rcoDataCache = null;
+
+async function abrirModalRco() {
+    document.getElementById('modalRco').classList.add('open');
+    const body = document.getElementById('rcoModalBody');
+    body.innerHTML = '<div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Consultando RCO...</p></div>';
+    await carregarDadosRco(body);
+}
+
+async function carregarDadosRco(body, filtro) {
+    try {
+        if (!rcoDataCache) {
+            const r = await fetch(`${API_URL}/api/acessos`);
+            rcoDataCache = await r.json();
+        }
+
+        const data = rcoDataCache;
+        const vazio = !data || (Array.isArray(data) && data.length === 0);
+
+        // Estatísticas
+        let turmaCount = 0, discCount = 0, livroCount = 0;
+        if (!vazio && Array.isArray(data)) {
+            data.forEach(estab => {
+                (estab.periodoLetivos || []).forEach(p => {
+                    (p.livros || []).forEach(l => {
+                        livroCount++;
+                        if (l.classe?.turma) turmaCount++;
+                        if (l.classe?.disciplina) discCount++;
+                    });
+                });
+            });
+        }
+
+        const jsonStr = JSON.stringify(data, null, 2);
+        const jsonFiltrado = filtro
+            ? jsonStr.split('\n').filter(l => l.toLowerCase().includes(filtro.toLowerCase())).join('\n') || '(nenhum resultado)'
+            : jsonStr;
+
+        const colorido = colorirJson(jsonFiltrado);
+
+        body.innerHTML = `
+            <div class="rco-search-bar">
+                <input class="rco-search-input" id="rcoSearchInput" placeholder="Filtrar por chave ou valor..." value="${filtro || ''}"
+                    oninput="filtrarJsonRco(this.value)">
+                <button class="rco-btn-refresh" onclick="rcoDataCache=null;carregarDadosRco(document.getElementById('rcoModalBody'))">↺ Atualizar</button>
+            </div>
+            <div class="rco-data-stats">
+                <div class="rco-stat-chip">Resposta: <strong>${vazio ? 'vazia' : 'com dados'}</strong></div>
+                ${!vazio ? `
+                    <div class="rco-stat-chip">Turmas: <strong>${turmaCount}</strong></div>
+                    <div class="rco-stat-chip">Disciplinas: <strong>${discCount}</strong></div>
+                    <div class="rco-stat-chip">Livros: <strong>${livroCount}</strong></div>
+                ` : ''}
+                <div class="rco-stat-chip">Bytes: <strong>${new Blob([jsonStr]).size}</strong></div>
+            </div>
+            <div class="rco-json-viewer">${colorido}</div>
+        `;
+    } catch (e) {
+        body.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center">Erro ao carregar: ${e.message}</div>`;
+    }
+}
+
+function filtrarJsonRco(valor) {
+    const body = document.getElementById('rcoModalBody');
+    carregarDadosRco(body, valor || undefined);
+}
+
+function fecharModalRco(e) {
+    if (e && e.target !== document.getElementById('modalRco')) return;
+    document.getElementById('modalRco').classList.remove('open');
+}
+
+// ── Colorir JSON ──────────────────────────────────────────────────────────────
+function colorirJson(str) {
+    return str
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"([^"]+)"(\s*:)/g, '<span class="json-key">"$1"</span>$2')
+        .replace(/:\s*"([^"]*)"/g, ': <span class="json-str">"$1"</span>')
+        .replace(/:\s*(-?\d+\.?\d*)/g, ': <span class="json-num">$1</span>')
+        .replace(/:\s*(true|false)/g, ': <span class="json-bool">$1</span>')
+        .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
 }
 
 // ── Normalizar dados da API real para o formato esperado ──────────────────────

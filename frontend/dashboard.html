@@ -34,10 +34,71 @@
         </div>
     </header>
 
+    <!-- ── Rodapé de Status ─────────────────────────────────────────────────── -->
+    <footer class="status-footer">
+        <button class="footer-btn" id="footerBtnStatus" onclick="abrirModalStatus()">
+            <span class="footer-status-dot" id="footerDot"></span>
+            Status do Serviço
+        </button>
+        <button class="footer-btn" onclick="abrirModalRco()">
+            <span class="footer-btn-icon">📡</span>
+            Dados do RCO
+        </button>
+        <span class="footer-version">EduSync 2026</span>
+    </footer>
+
+    <!-- ── Modal: Status do Serviço ──────────────────────────────────────────── -->
+    <div class="modal-overlay" id="modalStatus" onclick="fecharModalStatus(event)">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="modal-sheet-handle"></div>
+            <div class="modal-sheet-header">
+                <div class="modal-sheet-title">🔧 Status do Serviço</div>
+                <button class="modal-sheet-close" onclick="fecharModalStatus()">✕</button>
+            </div>
+            <div class="modal-sheet-body" id="statusModalBody">
+                <div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Verificando...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Dados do RCO ───────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="modalRco" onclick="fecharModalRco(event)">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="modal-sheet-handle"></div>
+            <div class="modal-sheet-header">
+                <div class="modal-sheet-title">📡 Dados Recebidos do RCO</div>
+                <button class="modal-sheet-close" onclick="fecharModalRco()">✕</button>
+            </div>
+            <div class="modal-sheet-body" id="rcoModalBody">
+                <div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Consultando RCO...</p></div>
+            </div>
+        </div>
+    </div>
+
     <main class="container">
         <div id="loading" class="loading">
             <div class="spinner"></div>
             <p>Carregando seus dados...</p>
+        </div>
+
+        <!-- ── Empty State ──────────────────────────────────────────────────── -->
+        <div id="emptyState" style="display:none;">
+            <div class="empty-state">
+                <div class="empty-state-icon">📅</div>
+                <div class="empty-state-title">Sem aulas hoje</div>
+                <div class="empty-state-desc" id="emptyDesc">
+                    O RCO Digital não retornou turmas para a data de hoje. Isso acontece em fins de semana, feriados ou períodos sem aulas.
+                </div>
+                <div class="empty-state-actions">
+                    <button class="empty-state-btn-primary" id="btnSyncNow" onclick="forcarSync()">
+                        🔄 Sincronizar agora
+                    </button>
+                    <button class="empty-state-btn-secondary" onclick="abrirModalRco()">
+                        📡 Ver dados do RCO
+                    </button>
+                </div>
+                <div class="empty-state-sync-info" id="emptySyncInfo"></div>
+            </div>
         </div>
 
         <div id="content" class="content" style="display: none;">

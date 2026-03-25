@@ -35,10 +35,71 @@
         </div>
     </header>
 
+    <!-- ── Rodapé de Status ─────────────────────────────────────────────────── -->
+    <footer class="status-footer">
+        <button class="footer-btn" onclick="abrirModalStatusFreq()">
+            <span class="footer-status-dot" id="footerDotFreq"></span>
+            Status do Serviço
+        </button>
+        <button class="footer-btn" onclick="abrirModalRcoFreq()">
+            <span class="footer-btn-icon">📡</span>
+            Dados do RCO
+        </button>
+        <span class="footer-version">EduSync 2026</span>
+    </footer>
+
+    <!-- ── Modal: Status do Serviço ──────────────────────────────────────────── -->
+    <div class="modal-overlay" id="modalStatusFreq" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="modal-sheet-handle"></div>
+            <div class="modal-sheet-header">
+                <div class="modal-sheet-title">🔧 Status do Serviço</div>
+                <button class="modal-sheet-close" onclick="document.getElementById('modalStatusFreq').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-sheet-body" id="statusBodyFreq">
+                <div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Verificando...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Dados do RCO ───────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="modalRcoFreq" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="modal-sheet-handle"></div>
+            <div class="modal-sheet-header">
+                <div class="modal-sheet-title">📡 Dados Recebidos do RCO</div>
+                <button class="modal-sheet-close" onclick="document.getElementById('modalRcoFreq').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-sheet-body" id="rcoBodyFreq">
+                <div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Consultando RCO...</p></div>
+            </div>
+        </div>
+    </div>
+
     <main class="container">
         <div id="loading" class="loading">
             <div class="spinner"></div>
             <p>Carregando disciplinas...</p>
+        </div>
+
+        <!-- ── Empty State ──────────────────────────────────────────────────── -->
+        <div id="emptyStateFreq" style="display:none;">
+            <div class="empty-state">
+                <div class="empty-state-icon">📅</div>
+                <div class="empty-state-title">Sem aulas hoje</div>
+                <div class="empty-state-desc" id="emptyDescFreq">
+                    O RCO Digital não retornou turmas para a data de hoje. Isso acontece em fins de semana, feriados ou períodos sem aulas.
+                </div>
+                <div class="empty-state-actions">
+                    <button class="empty-state-btn-primary" id="btnSyncFreq" onclick="forcarSyncFreq()">
+                        🔄 Sincronizar agora
+                    </button>
+                    <button class="empty-state-btn-secondary" onclick="abrirModalRcoFreq()">
+                        📡 Ver dados do RCO
+                    </button>
+                </div>
+                <div class="empty-state-sync-info" id="emptySyncInfoFreq"></div>
+            </div>
         </div>
 
         <div id="content" class="content" style="display: none;">

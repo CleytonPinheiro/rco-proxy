@@ -34,6 +34,18 @@ async function init() {
         return;
     }
 
+    // Verifica se há dados
+    const vazio = !acessosCache ||
+        (Array.isArray(acessosCache) && acessosCache.length === 0) ||
+        (typeof acessosCache === 'object' && !Array.isArray(acessosCache) && Object.keys(acessosCache).length === 0);
+
+    if (vazio) {
+        document.getElementById('loading').style.display = 'none';
+        await preencherEmptyStateFreq();
+        document.getElementById('emptyStateFreq').style.display = 'block';
+        return;
+    }
+
     const turmas = coletarTurmas(acessosCache);
     renderCards(turmas);
 
@@ -495,6 +507,158 @@ function mostrarErro(msg) {
     const el = document.getElementById('erro');
     el.style.display = 'block';
     document.getElementById('erroMsg').textContent = msg;
+}
+
+// ── Empty State de Frequências ────────────────────────────────────────────────
+async function preencherEmptyStateFreq() {
+    const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('emptyDescFreq').innerHTML =
+        `O RCO Digital não retornou turmas para <strong>${hoje}</strong>. ` +
+        `Isso acontece em fins de semana, feriados ou recesso escolar.`;
+    try {
+        const r = await fetch(`${API}/api/sync/log`);
+        if (!r.ok) return;
+        const logs = await r.json();
+        const ultimo = logs.find(l => l.estabelecimentos > 0) || logs[0];
+        if (!ultimo) return;
+        const dt = new Date(ultimo.executado_em);
+        const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('emptySyncInfoFreq').innerHTML = `
+            <div class="sync-info-item">
+                <span class="sync-info-label">Último sync com dados</span>
+                <span class="sync-info-value">${dtStr}</span>
+            </div>
+            <div class="sync-info-item">
+                <span class="sync-info-label">Turmas</span>
+                <span class="sync-info-value">${ultimo.turmas || 0}</span>
+            </div>
+            <div class="sync-info-item">
+                <span class="sync-info-label">Disciplinas</span>
+                <span class="sync-info-value">${ultimo.disciplinas || 0}</span>
+            </div>
+            <div class="sync-info-item">
+                <span class="sync-info-label">Status</span>
+                <span class="sync-info-value" style="color:#28a745">${ultimo.status === 'sucesso' ? '✓ OK' : '⚠ ' + ultimo.status}</span>
+            </div>
+        `;
+    } catch {}
+}
+
+async function forcarSyncFreq() {
+    const btn = document.getElementById('btnSyncFreq');
+    btn.disabled = true;
+    btn.textContent = '⏳ Sincronizando...';
+    try {
+        const r = await fetch(`${API}/api/sync`, { method: 'POST' });
+        const d = await r.json();
+        if (d.turmas > 0 || d.estabelecimentos > 0) {
+            btn.textContent = '✓ Dados encontrados! Recarregando...';
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            btn.textContent = '📅 Sem dados no RCO agora';
+            setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Sincronizar agora'; }, 3000);
+        }
+    } catch {
+        btn.textContent = '❌ Erro na sincronização';
+        setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Sincronizar agora'; }, 3000);
+    }
+}
+
+// ── Rodapé: Status do Serviço ─────────────────────────────────────────────────
+async function abrirModalStatusFreq() {
+    const modal = document.getElementById('modalStatusFreq');
+    modal.classList.add('open');
+    const body = document.getElementById('statusBodyFreq');
+    try {
+        const [statusR, syncR] = await Promise.all([
+            fetch(`${API}/api/status`),
+            fetch(`${API}/api/sync/log`)
+        ]);
+        const status = await statusR.json();
+        const syncLog = syncR.ok ? await syncR.json() : [];
+        const exp = status.tokenExpiracao ? new Date(status.tokenExpiracao) : null;
+        const agora = new Date();
+        const tokenOk = exp && exp > agora;
+        const expStr = exp ? exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + exp.toLocaleDateString('pt-BR') : '—';
+        const minutos = exp ? Math.round((exp - agora) / 60000) : 0;
+        const logsHtml = syncLog.slice(0, 5).map(l => {
+            const dt = new Date(l.executado_em);
+            const dtStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const stats = l.estabelecimentos > 0 ? `${l.turmas}T · ${l.disciplinas}D · ${l.classes}C` : 'sem dados';
+            return `<div class="status-sync-row">
+                <span class="sync-dot ${l.status === 'sucesso' ? 'ok' : 'error'}"></span>
+                <span>${l.status === 'sucesso' ? 'Sucesso' : 'Erro'}</span>
+                <span class="sync-row-time">${dtStr}</span>
+                <span class="sync-row-stats">${stats}</span>
+            </div>`;
+        }).join('');
+        body.innerHTML = `
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-card-label">Credenciais</div>
+                    <div class="status-card-value">
+                        <span class="status-badge ${status.credenciaisConfiguradas ? 'ok' : 'error'}">
+                            ${status.credenciaisConfiguradas ? '✓ Configuradas' : '✗ Ausentes'}
+                        </span>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-card-label">Token RCO</div>
+                    <div class="status-card-value">
+                        <span class="status-badge ${tokenOk ? 'ok' : status.tokenEmCache ? 'warn' : 'error'}">
+                            ${tokenOk ? '✓ Válido' : status.tokenEmCache ? '⚠ Expirando' : '✗ Sem token'}
+                        </span>
+                    </div>
+                    <div class="status-card-sub">${exp ? `Expira: ${expStr}${tokenOk ? ` (em ${minutos} min)` : ''}` : 'Token não obtido'}</div>
+                </div>
+            </div>
+            <div class="status-card-label" style="margin-bottom:10px">Histórico de Sincronizações</div>
+            <div class="status-sync-log">${logsHtml || '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nenhum registro</div>'}</div>
+        `;
+        const dot = document.getElementById('footerDotFreq');
+        if (dot) {
+            if (!status.credenciaisConfiguradas) dot.classList.add('offline');
+            else if (!tokenOk && !status.tokenEmCache) dot.classList.add('warning');
+        }
+    } catch (e) {
+        body.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center">Erro: ${e.message}</div>`;
+    }
+}
+
+// ── Rodapé: Dados do RCO ─────────────────────────────────────────────────────
+let rcoRawCache = null;
+
+async function abrirModalRcoFreq() {
+    const modal = document.getElementById('modalRcoFreq');
+    modal.classList.add('open');
+    const body = document.getElementById('rcoBodyFreq');
+    body.innerHTML = '<div class="loading" style="padding:40px 20px"><div class="spinner"></div><p>Consultando RCO...</p></div>';
+    try {
+        if (!rcoRawCache) {
+            const r = await fetch(`${API}/api/acessos`);
+            rcoRawCache = await r.json();
+        }
+        const data = rcoRawCache;
+        const jsonStr = JSON.stringify(data, null, 2);
+        const colorido = jsonStr
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"([^"]+)"(\s*:)/g,'<span class="json-key">"$1"</span>$2')
+            .replace(/:\s*"([^"]*)"/g,': <span class="json-str">"$1"</span>')
+            .replace(/:\s*(-?\d+\.?\d*)/g,': <span class="json-num">$1</span>')
+            .replace(/:\s*(true|false)/g,': <span class="json-bool">$1</span>')
+            .replace(/:\s*(null)/g,': <span class="json-null">$1</span>');
+        const vazio = !data || (Array.isArray(data) && data.length === 0);
+        body.innerHTML = `
+            <div class="rco-data-stats" style="margin-bottom:14px">
+                <div class="rco-stat-chip">Resposta: <strong>${vazio ? 'vazia' : 'com dados'}</strong></div>
+                <div class="rco-stat-chip">Bytes: <strong>${new Blob([jsonStr]).size}</strong></div>
+                <button class="rco-btn-refresh" onclick="rcoRawCache=null;abrirModalRcoFreq()">↺ Atualizar</button>
+            </div>
+            <div class="rco-json-viewer">${colorido}</div>
+        `;
+    } catch (e) {
+        body.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center">Erro: ${e.message}</div>`;
+    }
 }
 
 init();
