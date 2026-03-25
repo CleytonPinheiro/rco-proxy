@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Grupos</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./grupos.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/comportamento/">Comportamento</a>
+            <a href="/pages/presenca/">Presença</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando turmas...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+            <!-- Seletor de turma -->
+            <div class="grupos-top">
+                <div class="grupos-title-row">
+                    <h2 class="grupos-titulo">Grupos de Trabalho</h2>
+                    <div id="turmaTabs" class="turma-tabs"></div>
+                </div>
+                <div class="top-actions">
+                    <button id="btnImprimir" class="btn-imprimir" onclick="imprimirGrupos()" title="Gerar PDF / Imprimir">🖨 Imprimir</button>
+                    <button id="btnNovoGrupo" class="btn-novo-grupo" onclick="abrirModalNovoGrupo()">+ Novo Grupo</button>
+                </div>
+            </div>
+
+            <!-- Área principal: pool de alunos + grupos -->
+            <div id="workspace" class="workspace">
+                <!-- Pool de alunos sem grupo -->
+                <div class="pool-col">
+                    <div class="pool-header">
+                        <span class="pool-titulo">Alunos disponíveis</span>
+                        <span id="poolCount" class="pool-count">0</span>
+                    </div>
+                    <div id="poolAlunos" class="pool-alunos"
+                         ondragover="event.preventDefault()" ondrop="dropNoPool(event)">
+                        <p class="pool-vazio" id="poolVazio">Selecione uma turma para carregar os alunos.</p>
+                    </div>
+                </div>
+
+                <!-- Grupos -->
+                <div class="grupos-col">
+                    <div id="listaGrupos" class="lista-grupos"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Novo Grupo -->
+    <div id="modalNovoGrupo" class="modal-overlay" style="display:none;" onclick="fecharModalNovoGrupo(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Novo Grupo de Trabalho</h3>
+                <button class="modal-close" onclick="fecharModalNovoGrupo()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Nome do grupo *</label>
+                <input id="novoGrupoNome" class="form-input" type="text" placeholder="Ex: Grupo A" maxlength="60">
+                <label class="form-label" style="margin-top:14px;">Descrição / Objetivo da atividade</label>
+                <textarea id="novoGrupoDesc" class="form-textarea" placeholder="Descreva a proposta, tema ou objetivo do grupo..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalNovoGrupo()">Cancelar</button>
+                <button class="btn-salvar" onclick="criarGrupo()">Criar Grupo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Registrar Atividade -->
+    <div id="modalAtividade" class="modal-overlay" style="display:none;" onclick="fecharModalAtividade(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalAtivTitulo">Registrar Atividade</h3>
+                <button class="modal-close" onclick="fecharModalAtividade()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Data</label>
+                <input id="ativData" class="form-input" type="date">
+                <label class="form-label" style="margin-top:14px;">Descrição da atividade *</label>
+                <textarea id="ativDescricao" class="form-textarea" placeholder="Descreva a atividade realizada hoje..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalAtividade()">Cancelar</button>
+                <button class="btn-salvar" id="btnSalvarAtiv" onclick="salvarAtividade()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Atividades -->
+    <div id="modalVerAtiv" class="modal-overlay" style="display:none;" onclick="fecharModalVerAtiv(event)">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3 id="modalVerAtivTitulo">Atividades do Grupo</h3>
+                <button class="modal-close" onclick="fecharModalVerAtiv()">✕</button>
+            </div>
+            <div class="modal-body" id="modalVerAtivBody"></div>
+        </div>
+    </div>
+
+    <!-- Área gerada dinamicamente para impressão/PDF -->
+    <div id="printArea" class="print-area" style="display:none;"></div>
+
+    <script src="./grupos.js"></script>
+
+    <!-- ── Painel Lateral ───────────────────────────────────────────────── -->
+    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">⚡ EduSync</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
+        </div>
+        <div class="side-panel-section-label">Ferramentas</div>
+        <div class="side-panel-nav">
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/materiais/" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                </div>
+            </a>
+            <a href="/pages/emprestimos/" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Controle de empréstimos</span>
+                </div>
+            </a>
+            <a href="/pages/cozinha/" class="side-nav-item">
+                <span class="side-nav-icon">🍽️</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Cozinha</span>
+                    <span class="side-nav-desc">Cardápio e presença por refeição</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+    <script>
+    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+    (function(){
+        var p = location.pathname;
+        document.querySelectorAll('.side-nav-item').forEach(function(a){
+            var href = a.getAttribute('href');
+            if(href && p.startsWith(href)) a.classList.add('active');
+        });
+    })();
+    </script>
+</body>
+</html>

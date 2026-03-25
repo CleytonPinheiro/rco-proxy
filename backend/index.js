@@ -45,6 +45,16 @@ async function initializeApp() {
 
         app.use(cors());
         app.use(express.json());
+
+        // Redirecionar URLs antigas (.html) para nova estrutura de pastas
+        const paginasRedirect = [
+            'dashboard', 'frequencias', 'crachas', 'comportamento',
+            'presenca', 'grupos', 'materiais', 'emprestimos', 'cozinha', 'quiosque'
+        ];
+        paginasRedirect.forEach(p => {
+            app.get(`/${p}.html`, (req, res) => res.redirect(301, `/pages/${p}/`));
+        });
+
         app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
         app.use(express.static(path.join(__dirname, '../frontend')));
         app.use('/api', createApiRouter(deps));

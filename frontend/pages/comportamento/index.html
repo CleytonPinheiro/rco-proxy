@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Comportamento</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./comportamento.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/crachas/">Crachás</a>
+            <a href="/pages/comportamento/" class="active">Comportamento</a>
+            <a href="/pages/presenca/">Presença</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando turmas...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+            <!-- Cabeçalho -->
+            <div class="comp-top">
+                <div class="comp-title-row">
+                    <h2 class="comp-titulo">Comportamento & Reconhecimento</h2>
+                    <div id="turmaTabs" class="turma-tabs"></div>
+                </div>
+                <div class="comp-top-actions">
+                    <button class="btn-ranking" onclick="abrirRanking()" title="Ranking da turma">🏆 Ranking</button>
+                    <button class="btn-nova-ocorrencia" onclick="abrirModalOcorrencia(null)">+ Registrar</button>
+                </div>
+            </div>
+
+            <!-- Legenda de níveis -->
+            <div class="niveis-legenda">
+                <span class="nivel-chip nivel-0">🌱 Iniciante</span>
+                <span class="nivel-chip nivel-1">📗 Aprendiz</span>
+                <span class="nivel-chip nivel-2">📘 Dedicado</span>
+                <span class="nivel-chip nivel-3">⭐ Destaque</span>
+                <span class="nivel-chip nivel-4">🌟 Excelência</span>
+                <span class="nivel-chip nivel-5">🏆 Mestre</span>
+                <span class="legenda-hint">10 pontos = 1 estrela</span>
+            </div>
+
+            <!-- Grid de alunos -->
+            <div id="alunosGrid" class="alunos-grid">
+                <div class="grid-loading">Selecione uma turma para carregar os alunos...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Registrar Ocorrência -->
+    <div id="modalOcorrencia" class="modal-overlay" style="display:none;" onclick="fecharModalOcorrencia(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modalOcorrenciaTitulo">Registrar Ocorrência</h3>
+                <button class="modal-close" onclick="fecharModalOcorrencia()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Aluno</label>
+                <select id="ocorrAluno" class="form-select"></select>
+
+                <label class="form-label" style="margin-top:14px;">Data</label>
+                <input id="ocorrData" class="form-input" type="date">
+
+                <label class="form-label" style="margin-top:14px;">Tipo de registro</label>
+                <div class="tipo-btns">
+                    <button class="tipo-btn tipo-positivo active" data-tipo="positivo" onclick="selecionarTipo('positivo')">✅ Positivo</button>
+                    <button class="tipo-btn tipo-atencao" data-tipo="atencao" onclick="selecionarTipo('atencao')">⚠️ Atenção</button>
+                    <button class="tipo-btn tipo-grave" data-tipo="grave" onclick="selecionarTipo('grave')">❌ Grave</button>
+                </div>
+
+                <label class="form-label" style="margin-top:14px;">Categoria</label>
+                <div id="categoriasGrid" class="categorias-grid"></div>
+
+                <div class="pontos-preview" id="pontosPreview">
+                    <span id="pontosValor">+3 pontos</span>
+                </div>
+
+                <label class="form-label" style="margin-top:14px;">Observação <span style="font-weight:400;font-size:11px;">(opcional)</span></label>
+                <textarea id="ocorrDescricao" class="form-textarea" placeholder="Detalhe a situação se necessário..." rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalOcorrencia()">Cancelar</button>
+                <button class="btn-salvar" onclick="salvarOcorrencia()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico do Aluno -->
+    <div id="modalHistorico" class="modal-overlay" style="display:none;" onclick="fecharModalHistorico(event)">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalHistoricoNome">Histórico do Aluno</h3>
+                    <p id="modalHistoricoResumo" style="margin:4px 0 0;font-size:12px;color:#6b7280;"></p>
+                </div>
+                <button class="modal-close" onclick="fecharModalHistorico()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalHistoricoBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModalHistorico()">Fechar</button>
+                <button class="btn-salvar" id="btnRegistrarParaAluno" onclick="registrarParaAluno()">+ Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ranking -->
+    <div id="modalRanking" class="modal-overlay" style="display:none;" onclick="fecharRanking(event)">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3>🏆 Ranking da Turma</h3>
+                <button class="modal-close" onclick="fecharRanking()">✕</button>
+            </div>
+            <div class="modal-body" id="rankingBody"></div>
+        </div>
+    </div>
+
+    <script src="./comportamento.js"></script>
+
+    <!-- ── Painel Lateral ───────────────────────────────────────────────── -->
+    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">⚡ EduSync</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
+        </div>
+        <div class="side-panel-section-label">Ferramentas</div>
+        <div class="side-panel-nav">
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/materiais/" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                </div>
+            </a>
+            <a href="/pages/emprestimos/" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Controle de empréstimos</span>
+                </div>
+            </a>
+            <a href="/pages/cozinha/" class="side-nav-item">
+                <span class="side-nav-icon">🍽️</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Cozinha</span>
+                    <span class="side-nav-desc">Cardápio e presença por refeição</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+    <script>
+    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+    (function(){
+        var p = location.pathname;
+        document.querySelectorAll('.side-nav-item').forEach(function(a){
+            var href = a.getAttribute('href');
+            if(href && p.startsWith(href)) a.classList.add('active');
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FREQUÊNCIAS — layout: Cards por Turma → Disciplinas accordion
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Cabeçalho da página ─────────────────────────────────────────────────── */
+.page-header-freq {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.page-header-freq h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+.freq-periodo-badge {
+    font-size: 12px;
+    font-weight: 600;
+    background: #e8f0fe;
+    color: #1a73e8;
+    border-radius: 20px;
+    padding: 4px 14px;
+    letter-spacing: 0.3px;
+}
+
+/* ── Grid de cards de turma ──────────────────────────────────────────────── */
+#listaDiscDisciplinas {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* ── Card de turma ───────────────────────────────────────────────────────── */
+.turma-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    border: 1px solid #e8ecf4;
+    overflow: hidden;
+}
+
+.turma-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid #eef1f8;
+    background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%);
+    gap: 12px;
+}
+
+.turma-card-title {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.turma-card-serie {
+    font-size: 18px;
+    font-weight: 800;
+    color: #3730a3;
+    line-height: 1;
+}
+
+.turma-card-nome {
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 450px;
+    font-weight: 500;
+}
+
+.turma-card-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    background: #e0e7ff;
+    color: #4338ca;
+    border-radius: 20px;
+    padding: 4px 12px;
+    white-space: nowrap;
+}
+
+/* ── Lista de disciplinas dentro do card ─────────────────────────────────── */
+.disc-list {
+    padding: 8px 0 0;
+}
+
+.disc-row {
+    border-bottom: 1px solid #f3f4f8;
+}
+.disc-row:last-child { border-bottom: none; }
+
+/* Botão da disciplina */
+.disc-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.13s;
+}
+.disc-btn:hover { background: #f7f8ff; }
+.disc-btn[aria-expanded="true"] {
+    background: #f0f4ff;
+    border-bottom: 1px solid #dce4f7;
+}
+
+.disc-btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    color: white;
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.disc-btn-nome {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.disc-btn-chevron {
+    font-size: 16px;
+    color: #9ca3af;
+    transition: transform 0.22s;
+    flex-shrink: 0;
+}
+.disc-btn[aria-expanded="true"] .disc-btn-chevron {
+    transform: rotate(180deg);
+}
+
+/* ── Painel de frequência da disciplina ──────────────────────────────────── */
+.disc-freq-panel {
+    background: #fafbff;
+    border-top: 1px solid #e8ecf4;
+}
+
+/* ── Loading mini ────────────────────────────────────────────────────────── */
+.freq-loading-mini {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 24px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+.spinner-sm {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Erro inline ─────────────────────────────────────────────────────────── */
+.freq-erro-inline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    font-size: 13px;
+    color: #c0392b;
+    background: #fff5f5;
+    border-left: 3px solid #e74c3c;
+    margin: 10px 20px;
+    border-radius: 6px;
+}
+.btn-retry {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: auto;
+    white-space: nowrap;
+}
+.btn-retry:hover { background: #c0392b; }
+
+/* ── Erro de página ──────────────────────────────────────────────────────── */
+.freq-erro {
+    text-align: center;
+    color: #c0392b;
+    padding: 40px;
+    font-size: 15px;
+}
+.freq-vazio {
+    padding: 16px 24px;
+    color: #9ca3af;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ── Legenda ─────────────────────────────────────────────────────────────── */
+.freq-legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 22px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.freq-legenda span {
+    border-radius: 5px;
+    padding: 3px 9px;
+}
+.leg-presente    { background: #d4edda; color: #155724; }
+.leg-falta       { background: #f8d7da; color: #721c24; }
+.leg-pct-ok      { background: #d4edda; color: #155724; }
+.leg-pct-alerta  { background: #fff3cd; color: #856404; }
+.leg-pct-critico { background: #f8d7da; color: #721c24; }
+
+/* ── Tabela de frequência ────────────────────────────────────────────────── */
+.freq-tabela-wrap { padding: 0 18px 16px; }
+
+.freq-scroll {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e8ecf4;
+    /* Remove scrollbar width visual on WebKit */
+    scrollbar-width: thin;
+    scrollbar-color: #dce4f7 transparent;
+}
+.freq-scroll::-webkit-scrollbar { height: 5px; }
+.freq-scroll::-webkit-scrollbar-track { background: transparent; }
+.freq-scroll::-webkit-scrollbar-thumb { background: #dce4f7; border-radius: 10px; }
+.freq-scroll::-webkit-scrollbar-thumb:hover { background: #b8c4e0; }
+
+.freq-tabela {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+    font-size: 12px;
+    background: white;
+}
+
+/* ── Cabeçalho: sticky vertical (top) ───────────────────────────────────── */
+.freq-tabela thead th {
+    background: #f4f6fc;
+    color: #445;
+    font-weight: 700;
+    padding: 8px 5px;
+    text-align: center;
+    border-bottom: 2px solid #dce4f7;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.freq-tabela thead th.col-nome { text-align: left; }
+
+/* ── Linhas do corpo ─────────────────────────────────────────────────────── */
+.freq-tabela tbody tr:hover { background: #f9faff; }
+.freq-tabela tbody tr:nth-child(even) { background: #fafbfc; }
+.freq-tabela tbody tr:nth-child(even):hover { background: #f4f6ff; }
+
+.freq-tabela td {
+    padding: 6px 4px;
+    text-align: center;
+    border-bottom: 1px solid #f0f2f8;
+    font-size: 12px;
+}
+
+/* ── Coluna # (chamada) — sticky left ────────────────────────────────────── */
+.col-chamada {
+    width: 28px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-align: right;
+    padding-right: 6px;
+    /* sticky */
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: white;
+}
+.freq-tabela thead th.col-chamada {
+    background: #f4f6fc;
+    z-index: 4;
+}
+.freq-tabela tbody tr:nth-child(even) td.col-chamada { background: #fafbfc; }
+.freq-tabela tbody tr:hover td.col-chamada            { background: #f9faff; }
+.freq-tabela tbody tr:nth-child(even):hover td.col-chamada { background: #f4f6ff; }
+
+/* ── Coluna Nome — sticky left (depois de #) ─────────────────────────────── */
+.col-nome {
+    text-align: left;
+    padding-left: 10px;
+    min-width: 130px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    color: #1a1a2e;
+    /* sticky */
+    position: sticky;
+    left: 28px;
+    z-index: 1;
+    background: white;
+    /* Sombra direita para indicar scroll */
+    box-shadow: 3px 0 6px -2px rgba(0,0,0,0.08);
+}
+.freq-tabela thead th.col-nome {
+    background: #f4f6fc;
+    z-index: 4;
+    box-shadow: 3px 0 6px -2px rgba(0,0,0,0.10);
+}
+.freq-tabela tbody tr:nth-child(even) td.col-nome { background: #fafbfc; }
+.freq-tabela tbody tr:hover td.col-nome            { background: #f9faff; }
+.freq-tabela tbody tr:nth-child(even):hover td.col-nome { background: #f4f6ff; }
+
+.col-aula {
+    width: 38px;
+    min-width: 38px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.fc-presente {
+    background: #d4edda;
+    color: #155724;
+    font-weight: 700;
+    border-radius: 3px;
+}
+.fc-falta {
+    background: #f8d7da;
+    color: #721c24;
+    font-weight: 700;
+    border-radius: 3px;
+}
+.fc-vazio { color: #d1d5db; }
+
+.col-presenca { color: #155724; font-weight: 700; background: #f0faf3; width: 28px; }
+.col-falta    { color: #721c24; font-weight: 700; background: #fff5f5; width: 28px; }
+.col-pct      { font-weight: 700; width: 40px; }
+.pct-ok       { color: #155724; background: #d4edda; }
+.pct-alerta   { color: #856404; background: #fff3cd; }
+.pct-critico  { color: #721c24; background: #f8d7da; }
+
+.linha-totais td {
+    background: #fafbfc;
+    font-size: 11px;
+    border-top: 2px solid #dce4f7;
+    font-weight: 700;
+    color: #c0392b;
+    padding: 5px 4px;
+}
+.totais-label {
+    text-align: left;
+    padding-left: 10px;
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 600;
+}
+.col-aula-total { color: #c0392b; }
+
+/* ── Responsivo ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .col-nome { min-width: 110px; max-width: 140px; }
+}
+@media (max-width: 640px) {
+    .page-header-freq  { flex-direction: column; align-items: flex-start; }
+    .turma-card-header { padding: 14px 16px 12px; }
+    .turma-card-serie  { font-size: 16px; }
+    .disc-btn          { padding: 11px 16px; }
+    .freq-tabela-wrap  { padding: 0 8px 12px; }
+    .col-nome          { min-width: 100px; max-width: 120px; font-size: 11px; }
+    .freq-legenda      { padding: 8px 12px; font-size: 10px; }
+    .col-aula          { width: 32px; min-width: 32px; font-size: 10px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Drawer Direito — Detalhes do Aluno
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Layout split (tabela + drawer) ──────────────────────────────────────── */
+.freq-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+}
+.freq-main-content {
+    flex: 1;
+    min-width: 0;
+    transition: flex 0.28s ease;
+}
+
+/* ── Drawer container ────────────────────────────────────────────────────── */
+.aluno-drawer {
+    width: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: width 0.28s ease;
+    background: #fff;
+    border-left: 1px solid #e8ecf4;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.07);
+    position: sticky;
+    top: 58px;
+    max-height: calc(100vh - 58px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 12px 0;
+}
+.freq-layout.drawer-aberto .aluno-drawer {
+    width: 290px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #dce4f7 transparent;
+}
+.freq-layout.drawer-aberto .aluno-drawer::-webkit-scrollbar { width: 4px; }
+.freq-layout.drawer-aberto .aluno-drawer::-webkit-scrollbar-thumb { background: #dce4f7; border-radius: 4px; }
+
+/* ── Cabeçalho do drawer ─────────────────────────────────────────────────── */
+.drawer-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 14px 12px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-shrink: 0;
+    min-width: 290px;
+}
+.drawer-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    color: white;
+    font-size: 17px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    border: 2px solid rgba(255,255,255,0.35);
+}
+.drawer-info { flex: 1; min-width: 0; }
+.drawer-nome {
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+.drawer-chamada {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    margin-top: 1px;
+}
+.drawer-close-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.drawer-close-btn:hover { background: rgba(255,255,255,0.3); }
+
+/* ── Corpo do drawer ─────────────────────────────────────────────────────── */
+.drawer-body {
+    flex: 1;
+    padding: 0;
+    min-width: 290px;
+}
+
+/* Placeholder inicial */
+.drawer-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: #9ca3af;
+}
+.drawer-placeholder-icon { font-size: 32px; margin-bottom: 12px; }
+.drawer-placeholder p { font-size: 13px; line-height: 1.6; }
+
+/* ── Resumo Geral ─────────────────────────────────────────────────────────── */
+.drawer-resumo {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid #eef1f8;
+    background: #f8f9ff;
+}
+.drawer-resumo-titulo {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 10px;
+}
+.drawer-resumo-bar-wrap {
+    height: 7px;
+    background: #e8ecf4;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.drawer-resumo-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+.drawer-resumo-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 6px;
+}
+.drawer-resumo-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    background: white;
+    border-radius: 8px;
+    padding: 7px 4px;
+    border: 1px solid #eef1f8;
+}
+.rstat-val {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+}
+.rstat-label {
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* ── Seção de disciplinas ─────────────────────────────────────────────────── */
+.drawer-disc-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 12px 14px 6px;
+}
+
+/* ── Card de disciplina no drawer ────────────────────────────────────────── */
+.drawer-disc-card {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f0f2f8;
+    transition: background 0.15s;
+}
+.drawer-disc-card:last-child { border-bottom: none; }
+.drawer-disc-card:hover { background: #f8f9ff; }
+
+.drawer-disc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+}
+.drawer-disc-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    color: white;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+.drawer-disc-nome {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+.drawer-disc-bar-wrap {
+    height: 5px;
+    background: #e8ecf4;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.drawer-disc-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+.drawer-disc-stats {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+}
+.dstat-pct { font-weight: 800; }
+.dstat-sep { color: #d1d5db; }
+.dstat-p   { color: #155724; font-weight: 600; }
+.dstat-f   { color: #721c24; font-weight: 600; }
+.drawer-disc-status {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    display: inline-block;
+}
+.drawer-disc-status.ok      { background: #d4edda; color: #155724; }
+.drawer-disc-status.alerta  { background: #fff3cd; color: #856404; }
+.drawer-disc-status.critico { background: #f8d7da; color: #721c24; }
+
+/* ── Aluno selecionado na tabela — highlight ─────────────────────────────── */
+.freq-aluno-row { cursor: pointer; }
+.freq-aluno-row:hover td { background: #eef4ff !important; }
+.freq-aluno-row.freq-aluno-ativo td {
+    background: #dbeafe !important;
+}
+.freq-aluno-row.freq-aluno-ativo td.col-chamada,
+.freq-aluno-row.freq-aluno-ativo td.col-nome {
+    background: #bfdbfe !important;
+}
+
+/* Aviso de disciplinas não carregadas */
+.drawer-nao-carregado {
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+    border-top: 1px dashed #e8ecf4;
+}
+
+/* ── Responsivo do drawer ─────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+    .freq-layout { flex-direction: column; }
+    .aluno-drawer {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        max-height: 100vh;
+        width: 0 !important;
+        z-index: 200;
+        border-radius: 0;
+        border-left: none;
+        box-shadow: -6px 0 30px rgba(0,0,0,0.18);
+    }
+    .freq-layout.drawer-aberto .aluno-drawer {
+        width: 280px !important;
+        overflow-y: auto;
+    }
+}
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .page-header-freq h2 { color: var(--text-primary); }
+[data-theme="dark"] .freq-periodo-badge { background: var(--bg-tertiary); color: var(--text-link); }
+
+[data-theme="dark"] .turma-card { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .turma-card-header {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border);
+}
+[data-theme="dark"] .turma-nome-freq { color: var(--text-primary) !important; }
+[data-theme="dark"] .turma-info-freq { color: var(--text-secondary) !important; }
+
+[data-theme="dark"] .disc-btn {
+    background: var(--bg-card) !important;
+    border-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .disc-btn:hover { background: var(--bg-hover) !important; }
+[data-theme="dark"] .disc-btn.expandido {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border) !important;
+}
+[data-theme="dark"] .disc-nome { color: var(--text-primary) !important; }
+[data-theme="dark"] .disc-stats span { color: var(--text-secondary) !important; }
+[data-theme="dark"] .disc-periodo { color: var(--text-muted) !important; }
+
+[data-theme="dark"] .freq-tabela-wrapper { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela thead { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela th { color: var(--text-muted); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela tbody tr:hover { background: var(--bg-hover) !important; }
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even) { background: var(--bg-secondary) !important; }
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even):hover { background: var(--bg-hover) !important; }
+[data-theme="dark"] .freq-tabela td { border-color: var(--border); color: var(--text-primary); }
+
+/* Sticky columns — dark mode */
+[data-theme="dark"] .freq-tabela td.col-chamada,
+[data-theme="dark"] .freq-tabela td.col-nome { background: var(--bg-card); }
+[data-theme="dark"] .freq-tabela thead th.col-chamada,
+[data-theme="dark"] .freq-tabela thead th.col-nome { background: var(--bg-secondary); }
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even) td.col-chamada,
+[data-theme="dark"] .freq-tabela tbody tr:nth-child(even) td.col-nome { background: var(--bg-secondary); }
+[data-theme="dark"] .freq-tabela tbody tr:hover td.col-chamada,
+[data-theme="dark"] .freq-tabela tbody tr:hover td.col-nome { background: var(--bg-hover); }
+[data-theme="dark"] .col-nome { box-shadow: 3px 0 6px -2px rgba(0,0,0,0.35); }
+[data-theme="dark"] .freq-scroll { scrollbar-color: var(--border) transparent; }
+
+[data-theme="dark"] .col-presenca { background: #0d3320; color: #4ade80; }
+[data-theme="dark"] .col-falta    { background: #2a0d0d; color: #f87171; }
+[data-theme="dark"] .pct-alerta   { background: #2a1e00; color: #fbbf24; }
+[data-theme="dark"] .pct-critico  { background: #2a0d0d; color: #f87171; }
+
+[data-theme="dark"] .freq-aluno-modal .modal-content { background: var(--bg-card); }
+[data-theme="dark"] .freq-aluno-topo { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .freq-aluno-nome { color: var(--text-primary); }
+[data-theme="dark"] .freq-aluno-sub  { color: var(--text-secondary); }
+
+[data-theme="dark"] .leg-falta { background: #2a0d0d; color: #f87171; }
+[data-theme="dark"] .leg-pct-alerta { background: #2a1e00; color: #fbbf24; }
+[data-theme="dark"] .leg-pct-critico { background: #2a0d0d; color: #f87171; }
+
+[data-theme="dark"] .aluno-row-critico { background: var(--bg-secondary) !important; border-color: #dc2626 !important; }
+[data-theme="dark"] .freq-footer { background: var(--bg-secondary); border-color: var(--border); }
+
+/* ── Drawer — Tema Escuro ────────────────────────────────────────────────── */
+[data-theme="dark"] .aluno-drawer        { background: var(--bg-card); border-color: var(--border); box-shadow: -4px 0 20px rgba(0,0,0,0.3); }
+[data-theme="dark"] .drawer-resumo       { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .drawer-resumo-stat  { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .drawer-resumo-bar-wrap  { background: var(--bg-tertiary); }
+[data-theme="dark"] .drawer-disc-label   { color: var(--text-muted); }
+[data-theme="dark"] .drawer-disc-card    { border-color: var(--border); }
+[data-theme="dark"] .drawer-disc-card:hover { background: var(--bg-hover); }
+[data-theme="dark"] .drawer-disc-nome    { color: var(--text-primary); }
+[data-theme="dark"] .drawer-disc-bar-wrap { background: var(--bg-tertiary); }
+[data-theme="dark"] .drawer-placeholder  { color: var(--text-muted); }
+[data-theme="dark"] .drawer-nao-carregado { color: var(--text-muted); border-color: var(--border); }
+[data-theme="dark"] .rstat-label         { color: var(--text-muted); }
+[data-theme="dark"] .dstat-sep           { color: var(--border); }
+
+/* Highlight escuro */
+[data-theme="dark"] .freq-aluno-row:hover td    { background: var(--bg-hover) !important; }
+[data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td { background: #1e3a5f !important; }
+[data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td.col-chamada,
+[data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td.col-nome { background: #1a3554 !important; }
