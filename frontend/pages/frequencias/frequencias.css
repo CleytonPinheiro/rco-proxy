@@ -807,6 +807,29 @@
 }
 .btn-modo-geral.btn-modo-ativo:hover { background: #3730a3; }
 
+/* ── Botão Sincronizar RCO ──────────────────────────────────────── */
+.btn-sync-rco {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 16px; border-radius: 20px;
+    border: 2px solid #0ea5e9; background: white;
+    color: #0369a1; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.btn-sync-rco:hover:not(:disabled) { background: #e0f2fe; }
+.btn-sync-rco:disabled {
+    opacity: .65; cursor: not-allowed;
+}
+.btn-sync-rco.sincronizando .sync-spin {
+    display: inline-block;
+    animation: sync-rotate 0.8s linear infinite;
+}
+@keyframes sync-rotate { to { transform: rotate(360deg); } }
+
+[data-theme="dark"] .btn-sync-rco {
+    background: var(--bg-card); border-color: #38bdf8; color: #38bdf8;
+}
+[data-theme="dark"] .btn-sync-rco:hover:not(:disabled) { background: var(--bg-hover); }
+
 /* Painel geral wrapper */
 .painel-geral-wrap {
     display: flex;

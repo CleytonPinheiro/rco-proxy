@@ -904,4 +904,112 @@ function aplicarRangeCustom() {
     renderModoGeral();
 }
 
+// ── Sincronizar frequências com o RCO ─────────────────────────────────────────
+async function sincronizarFrequencias() {
+    const btn = document.getElementById('btnSyncRco');
+    if (!btn || btn.disabled) return;
+
+    // Estado: carregando
+    btn.disabled = true;
+    btn.classList.add('sincronizando');
+    btn.innerHTML = '<span class="sync-spin">🔄</span> Buscando no RCO...';
+
+    // Limpa caches para forçar nova busca
+    acessosCache = null;
+    rcoRawCache  = null;
+    Object.keys(disciplinaCache).forEach(k => delete disciplinaCache[k]);
+    alunoSelecionado = null;
+
+    // Oculta conteúdo e mostra loading
+    const contentEl = document.getElementById('content');
+    const loadingEl = document.getElementById('loading');
+    const emptyEl   = document.getElementById('emptyStateFreq');
+    contentEl.style.display = 'none';
+    emptyEl.style.display   = 'none';
+    loadingEl.style.display = 'block';
+    loadingEl.innerHTML     = '<div class="spinner"></div><p>Buscando dados atualizados no RCO…</p>';
+
+    try {
+        // 1. Busca dados atualizados do RCO
+        const r = await fetch(`${API}/api/acessos`);
+        if (!r.ok) throw new Error(`RCO retornou HTTP ${r.status}`);
+        acessosCache = await r.json();
+
+        const vazio = !acessosCache ||
+            (Array.isArray(acessosCache) && acessosCache.length === 0) ||
+            (typeof acessosCache === 'object' && !Array.isArray(acessosCache) && Object.keys(acessosCache).length === 0);
+
+        if (vazio) {
+            loadingEl.style.display = 'none';
+            await preencherEmptyStateFreq();
+            emptyEl.style.display = 'block';
+            btn.innerHTML = '📅 Sem dados agora';
+            setTimeout(() => {
+                btn.innerHTML  = '🔄 Sincronizar RCO';
+                btn.disabled   = false;
+                btn.classList.remove('sincronizando');
+            }, 4000);
+            return;
+        }
+
+        // 2. Re-renderiza os cards com os dados novos
+        const turmas = coletarTurmas(acessosCache);
+        renderCards(turmas);
+
+        // Conta turmas e disciplinas
+        const nTurmas = turmas.length;
+        const nDisc   = turmas.reduce((s, t) => s + (t.disciplinas?.length || 0), 0);
+
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+        // 3. Atualiza Supabase em segundo plano (não bloqueia UI)
+        fetch(`${API}/api/sync`, { method: 'POST' }).catch(() => {});
+
+        // Mostra feedback no botão
+        btn.classList.remove('sincronizando');
+        btn.innerHTML = `✓ ${nTurmas}T · ${nDisc}D atualizados`;
+        mostrarNotificacaoSync(`Dados atualizados: ${nTurmas} turma${nTurmas !== 1 ? 's' : ''}, ${nDisc} disciplina${nDisc !== 1 ? 's' : ''}`);
+
+        setTimeout(() => {
+            btn.innerHTML = '🔄 Sincronizar RCO';
+            btn.disabled  = false;
+        }, 4000);
+
+    } catch (e) {
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+        btn.classList.remove('sincronizando');
+        btn.innerHTML = '❌ Erro no RCO';
+        console.error('[Sync]', e.message);
+        mostrarNotificacaoSync('Erro ao buscar dados: ' + e.message, true);
+        setTimeout(() => {
+            btn.innerHTML = '🔄 Sincronizar RCO';
+            btn.disabled  = false;
+        }, 4000);
+    }
+}
+
+function mostrarNotificacaoSync(msg, erro = false) {
+    let notif = document.getElementById('syncNotif');
+    if (!notif) {
+        notif = document.createElement('div');
+        notif.id = 'syncNotif';
+        notif.style.cssText = [
+            'position:fixed', 'bottom:72px', 'left:50%',
+            'transform:translateX(-50%)', 'padding:10px 22px',
+            'border-radius:10px', 'font-size:13px', 'font-weight:600',
+            'box-shadow:0 4px 16px rgba(0,0,0,.18)', 'z-index:9999',
+            'transition:opacity .3s', 'white-space:nowrap'
+        ].join(';');
+        document.body.appendChild(notif);
+    }
+    notif.style.background = erro ? '#dc2626' : '#16a34a';
+    notif.style.color = '#fff';
+    notif.style.opacity = '1';
+    notif.textContent = msg;
+    clearTimeout(notif._t);
+    notif._t = setTimeout(() => { notif.style.opacity = '0'; }, 3500);
+}
+
 init();
