@@ -55,21 +55,21 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
             }));
 
             const alunos = raw.map(a => {
-                const freq = {};
-                codAulas.forEach(cod => { freq[cod] = a[cod] || null; });
+                const frequencias = {};
+                codAulas.forEach(cod => { frequencias[cod] = a[cod] || null; });
                 const presencas  = codAulas.filter(cod => a[cod] === 'C').length;
                 const faltas     = codAulas.filter(cod => a[cod] && a[cod] !== 'C').length;
                 const totalAulas = codAulas.filter(cod => a[cod] !== undefined && a[cod] !== null).length;
-                const pct = totalAulas > 0 ? Math.round((presencas / totalAulas) * 100) : null;
+                const percentual = totalAulas > 0 ? Math.round((presencas / totalAulas) * 100) : null;
                 return {
                     codMatrizAluno: a.codMatrizAluno,
                     numChamada:     a.numChamada,
                     nome:           a.nome,
-                    freq,
+                    frequencias,
                     presencas,
                     faltas,
                     totalAulas,
-                    percentualPresenca: pct,
+                    percentual,
                 };
             });
 
