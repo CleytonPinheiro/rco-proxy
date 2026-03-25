@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <h2 class="atv-titulo">Atividades de Sala</h2>
-                    <p class="atv-subtitulo">Registre as atividades realizadas pelos alunos no dia</p>
+                    <p class="atv-subtitulo">Registre as atividades realizadas pelos alunos por aula</p>
                 </div>
             </div>
             <div class="atv-controls">
@@ -57,46 +57,53 @@
                     <option value="">— selecione a turma —</option>
                 </select>
                 <input id="selData" class="atv-input-date" type="date" onchange="carregarPagina()">
+                <button id="btnImprimir" class="atv-btn-imprimir" onclick="imprimir()" disabled>🖨️ Imprimir</button>
                 <button id="btnSalvar" class="atv-btn-salvar" onclick="salvar()" disabled>Salvar</button>
             </div>
         </div>
 
-        <!-- Legenda de atividades -->
-        <div class="atv-legenda" id="atv-legenda" style="display:none;">
-            <span class="atv-leg-item" title="Trouxe e realizou a tarefa de casa">📝 Tarefa de casa</span>
-            <span class="atv-leg-item" title="Participou das atividades em sala">✏️ Atividade em sala</span>
-            <span class="atv-leg-item" title="Participou oralmente da aula">🙋 Participação oral</span>
-            <span class="atv-leg-item" title="Caderno com anotações em dia">📓 Caderno em dia</span>
-            <span class="atv-leg-item" title="Trouxe todo o material necessário">📦 Material completo</span>
+        <!-- Cabeçalho de impressão (visível só no print) -->
+        <div class="print-header" id="printHeader" style="display:none;">
+            <div class="print-title">Atividades de Sala</div>
+            <div class="print-meta">
+                <span id="printTurma"></span>
+                <span id="printData"></span>
+            </div>
+            <p class="print-instrucao">Marque a célula correspondente caso o aluno tenha realizado a atividade na aula indicada.</p>
         </div>
 
         <!-- Tabela principal -->
         <div id="tabelaWrap" class="atv-tabela-wrap" style="display:none;">
             <table class="atv-table">
                 <thead>
-                    <tr>
+                    <tr class="tr-header-aulas">
                         <th class="col-num">Nº</th>
                         <th class="col-nome">Aluno</th>
-                        <th class="col-check" title="Tarefa de casa">📝</th>
-                        <th class="col-check" title="Atividade em sala">✏️</th>
-                        <th class="col-check" title="Participação oral">🙋</th>
-                        <th class="col-check" title="Caderno em dia">📓</th>
-                        <th class="col-check" title="Material completo">📦</th>
+                        <th class="col-check">Aula 1</th>
+                        <th class="col-check">Aula 2</th>
+                        <th class="col-check">Aula 3</th>
+                        <th class="col-check">Aula 4</th>
+                        <th class="col-check">Aula 5</th>
+                        <th class="col-check">Aula 6</th>
+                        <th class="col-check">Aula 7</th>
+                        <th class="col-check">Aula 8</th>
                         <th class="col-obs">Observação</th>
                     </tr>
-                    <!-- Linha de marcar todos -->
-                    <tr class="tr-marcar-todos">
+                    <!-- Linha de marcar todos — oculta na impressão -->
+                    <tr class="tr-marcar-todos no-print">
                         <td colspan="2" class="td-marcar-label">Marcar todos</td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="tarefa" onchange="marcarTodos('tarefa', this.checked)" title="Marcar todos — Tarefa"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="atividade" onchange="marcarTodos('atividade', this.checked)" title="Marcar todos — Atividade"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="participacao" onchange="marcarTodos('participacao', this.checked)" title="Marcar todos — Participação"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="caderno" onchange="marcarTodos('caderno', this.checked)" title="Marcar todos — Caderno"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="material" onchange="marcarTodos('material', this.checked)" title="Marcar todos — Material"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula1" onchange="marcarTodos('aula1', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula2" onchange="marcarTodos('aula2', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula3" onchange="marcarTodos('aula3', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula4" onchange="marcarTodos('aula4', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula5" onchange="marcarTodos('aula5', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula6" onchange="marcarTodos('aula6', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula7" onchange="marcarTodos('aula7', this.checked)"></td>
+                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula8" onchange="marcarTodos('aula8', this.checked)"></td>
                         <td></td>
                     </tr>
                 </thead>
                 <tbody id="tabelaBody"></tbody>
-                <tfoot id="tabelaFoot"></tfoot>
             </table>
         </div>
 

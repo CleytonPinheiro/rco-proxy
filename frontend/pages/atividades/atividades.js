@@ -1,11 +1,11 @@
 // ── Atividades de Sala ─────────────────────────────────────────────────────
 const API = '';
-const COLS = ['tarefa', 'atividade', 'participacao', 'caderno', 'material'];
+const COLS = ['aula1','aula2','aula3','aula4','aula5','aula6','aula7','aula8'];
 
-let turmas      = [];
-let alunos      = [];
-let registros   = {};   // codmatrizaluno → { atividades:{}, observacao:'' }
-let modificado  = false;
+let turmas    = [];
+let alunos    = [];
+let registros = {};   // codmatrizaluno → { atividades:{}, observacao:'' }
+let modificado = false;
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await checkAuth();
     await carregarTurmas();
 
-    // Data padrão = hoje
     const hoje = new Date().toISOString().split('T')[0];
     document.getElementById('selData').value = hoje;
 });
@@ -44,9 +43,8 @@ async function carregarTurmas() {
 function onTurmaChange() {
     if (modificado) {
         if (!confirm('Há alterações não salvas. Deseja trocar de turma sem salvar?')) {
-            const sel = document.getElementById('selTurma');
-            const turmaAtual = alunos.length ? alunos[0].codturma : '';
-            sel.value = turmaAtual;
+            const turmaAtual = alunos.length ? String(alunos[0].codturma) : '';
+            document.getElementById('selTurma').value = turmaAtual;
             return;
         }
     }
@@ -54,15 +52,12 @@ function onTurmaChange() {
     carregarPagina();
 }
 
-// ── Carregar dados (alunos + registros do dia) ────────────────────────────
+// ── Carregar dados ────────────────────────────────────────────────────────
 async function carregarPagina() {
     const codturma = document.getElementById('selTurma').value;
     const data     = document.getElementById('selData').value;
 
-    if (!codturma || !data) {
-        mostrarPlaceholder();
-        return;
-    }
+    if (!codturma || !data) { mostrarPlaceholder(); return; }
 
     mostrarLoading();
 
@@ -75,7 +70,6 @@ async function carregarPagina() {
         alunos = await resAlunos.json();
         const regArr = await resReg.json();
 
-        // Indexa registros por codmatrizaluno
         registros = {};
         regArr.forEach(r => {
             registros[r.codmatrizaluno] = {
@@ -91,20 +85,19 @@ async function carregarPagina() {
     }
 }
 
-// ── Renderização da tabela ────────────────────────────────────────────────
+// ── Renderização ──────────────────────────────────────────────────────────
 function renderTabela() {
     if (!alunos.length) { mostrarPlaceholder(); return; }
 
     document.getElementById('atv-placeholder').style.display = 'none';
     document.getElementById('atv-loading').style.display     = 'none';
-    document.getElementById('atv-legenda').style.display     = 'flex';
     document.getElementById('tabelaWrap').style.display      = 'block';
-    document.getElementById('btnSalvar').disabled = false;
+    document.getElementById('btnSalvar').disabled  = false;
+    document.getElementById('btnImprimir').disabled = false;
 
     const tbody = document.getElementById('tabelaBody');
     tbody.innerHTML = '';
 
-    // Ordena por num_chamada depois nome
     const ordenados = [...alunos].sort((a, b) => {
         const na = a.numchamada || 9999;
         const nb = b.numchamada || 9999;
@@ -129,38 +122,18 @@ function renderTabela() {
                     onchange="onCheck(this)">
             </td>`).join('')}
             <td class="col-obs">
-                <input type="text" class="atv-obs-input" placeholder="Observação..."
+                <input type="text" class="atv-obs-input no-print" placeholder="Observação..."
                     value="${(reg.observacao || '').replace(/"/g, '&quot;')}"
                     data-cod="${al.codmatrizaluno}"
                     oninput="onObs(this)">
+                <span class="obs-print">${(reg.observacao || '').replace(/</g,'&lt;')}</span>
             </td>
         `;
         tbody.appendChild(tr);
     });
 
-    renderRodape(ordenados);
     atualizarChkTodos();
     marcarSalvo();
-}
-
-function renderRodape(ordenados) {
-    const tfoot = document.getElementById('tabelaFoot');
-    tfoot.innerHTML = '';
-    const tr = document.createElement('tr');
-
-    const totais = {};
-    COLS.forEach(c => { totais[c] = 0; });
-    ordenados.forEach(al => {
-        const reg = registros[al.codmatrizaluno] || { atividades: {} };
-        COLS.forEach(c => { if (reg.atividades[c]) totais[c]++; });
-    });
-
-    tr.innerHTML = `
-        <td colspan="2" class="td-label">Totais por atividade</td>
-        ${COLS.map(c => `<td><span class="total-chip">${totais[c]}/${ordenados.length}</span></td>`).join('')}
-        <td></td>
-    `;
-    tfoot.appendChild(tr);
 }
 
 // ── Eventos de interação ──────────────────────────────────────────────────
@@ -171,7 +144,6 @@ function onCheck(chk) {
     if (!registros[cod]) registros[cod] = { atividades: {}, observacao: '' };
     registros[cod].atividades[col] = chk.checked;
 
-    // Atualiza classe da linha
     const tr = chk.closest('tr');
     const todasMarcadas = COLS.every(c => {
         const inp = tr.parentElement.querySelector(`input[data-cod="${cod}"][data-col="${c}"]`);
@@ -179,8 +151,6 @@ function onCheck(chk) {
     });
     tr.classList.toggle('linha-ok', todasMarcadas);
 
-    // Atualiza rodapé e checkbox de "todos"
-    atualizarRodape();
     atualizarChkTodos();
     marcarModificado();
 }
@@ -189,6 +159,9 @@ function onObs(inp) {
     const cod = inp.dataset.cod;
     if (!registros[cod]) registros[cod] = { atividades: {}, observacao: '' };
     registros[cod].observacao = inp.value;
+    // Atualiza o span de impressão em tempo real
+    const span = inp.closest('td').querySelector('.obs-print');
+    if (span) span.textContent = inp.value;
     marcarModificado();
 }
 
@@ -206,30 +179,38 @@ function marcarTodos(col, checked) {
         });
         tr.classList.toggle('linha-ok', todasMarcadas);
     });
-    atualizarRodape();
+    atualizarChkTodos();
     marcarModificado();
-}
-
-function atualizarRodape() {
-    const tfoot = document.getElementById('tabelaFoot');
-    if (!tfoot.children.length) return;
-    const total = alunos.length;
-    const chips = tfoot.querySelectorAll('.total-chip');
-    COLS.forEach((col, i) => {
-        const marcados = document.querySelectorAll(`.atv-chk[data-col="${col}"]:checked`).length;
-        chips[i].textContent = `${marcados}/${total}`;
-    });
 }
 
 function atualizarChkTodos() {
     COLS.forEach(col => {
-        const todos     = document.querySelectorAll(`.atv-chk[data-col="${col}"]`);
-        const marcados  = document.querySelectorAll(`.atv-chk[data-col="${col}"]:checked`);
-        const chkTodos  = document.querySelector(`.chk-todos[data-col="${col}"]`);
+        const todos    = document.querySelectorAll(`.atv-chk[data-col="${col}"]`);
+        const marcados = document.querySelectorAll(`.atv-chk[data-col="${col}"]:checked`);
+        const chkTodos = document.querySelector(`.chk-todos[data-col="${col}"]`);
         if (!chkTodos) return;
         chkTodos.checked       = todos.length > 0 && marcados.length === todos.length;
         chkTodos.indeterminate = marcados.length > 0 && marcados.length < todos.length;
     });
+}
+
+// ── Imprimir ──────────────────────────────────────────────────────────────
+function imprimir() {
+    const selTurma = document.getElementById('selTurma');
+    const data     = document.getElementById('selData').value;
+
+    const nomeTurma = selTurma.options[selTurma.selectedIndex]?.text || '';
+    const dataFmt   = data
+        ? new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' })
+        : '';
+
+    document.getElementById('printTurma').textContent = nomeTurma;
+    document.getElementById('printData').textContent  = dataFmt;
+    document.getElementById('printHeader').style.display = 'block';
+
+    window.print();
+
+    document.getElementById('printHeader').style.display = 'none';
 }
 
 // ── Salvar ────────────────────────────────────────────────────────────────
@@ -281,23 +262,21 @@ function marcarModificado() {
 
 function marcarSalvo() {
     modificado = false;
-    const btn = document.getElementById('btnSalvar');
-    btn.classList.remove('pendente');
+    document.getElementById('btnSalvar').classList.remove('pendente');
 }
 
 // ── Estados visuais ───────────────────────────────────────────────────────
 function mostrarPlaceholder() {
     document.getElementById('atv-placeholder').style.display = 'block';
     document.getElementById('atv-loading').style.display     = 'none';
-    document.getElementById('atv-legenda').style.display     = 'none';
     document.getElementById('tabelaWrap').style.display      = 'none';
-    document.getElementById('btnSalvar').disabled = true;
+    document.getElementById('btnSalvar').disabled   = true;
+    document.getElementById('btnImprimir').disabled = true;
 }
 
 function mostrarLoading() {
     document.getElementById('atv-loading').style.display     = 'block';
     document.getElementById('atv-placeholder').style.display = 'none';
-    document.getElementById('atv-legenda').style.display     = 'none';
     document.getElementById('tabelaWrap').style.display      = 'none';
 }
 
