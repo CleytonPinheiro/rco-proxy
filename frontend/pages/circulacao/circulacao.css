@@ -169,11 +169,11 @@
 .feedback-nome { font-weight: 600; font-size: .92rem; }
 .feedback-acao { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
 
-/* Câmera */
+/* Câmera QR — leitura ao vivo */
 .cam-wrap {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 14px;
     display: flex;
     flex-direction: column;
@@ -182,11 +182,85 @@
     margin-bottom: 16px;
 }
 .cam-wrap.oculto { display: none; }
-.cam-video { width: 100%; max-width: 400px; border-radius: 8px; background: #000; max-height: 280px; object-fit: cover; }
+
+.cam-inner {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 4/3;
+}
+
+.cam-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.cam-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.cam-frame {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+/* Cantos do frame QR */
+.qr-corner {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-color: #38bdf8;
+    border-style: solid;
+}
+.qr-corner.tl { top: 0;    left: 0;    border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.qr-corner.tr { top: 0;    right: 0;   border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.qr-corner.bl { bottom: 0; left: 0;    border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.qr-corner.br { bottom: 0; right: 0;   border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+/* Linha de scan animada */
+.qr-scan-line {
+    position: absolute;
+    left: 4px; right: 4px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+    animation: scanline 1.8s ease-in-out infinite;
+    top: 0;
+}
+@keyframes scanline {
+    0%   { top: 4px;        opacity: 0.9; }
+    50%  { top: calc(100% - 4px); opacity: 0.9; }
+    100% { top: 4px;        opacity: 0.9; }
+}
+
+.cam-instrucao {
+    margin-top: 12px;
+    color: #fff;
+    font-size: .8rem;
+    background: rgba(0,0,0,.5);
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8);
+    text-align: center;
+}
+
 .btn-cam-fechar {
     background: none; border: 1px solid var(--border); border-radius: 8px;
-    padding: 7px 14px; color: var(--text-muted); cursor: pointer; font-size: .85rem;
+    padding: 7px 16px; color: var(--text-muted); cursor: pointer; font-size: .85rem;
+    transition: all .15s;
 }
+.btn-cam-fechar:hover { border-color: #ef4444; color: #ef4444; }
 
 /* ── Grid de Ambientes ───────────────────────────────────────────────── */
 .grid-ambientes {

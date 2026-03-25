@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../../shared/css/theme.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Circulação</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <link rel="stylesheet" href="../../shared/css/layout.css">
     <link rel="stylesheet" href="./circulacao.css">
 </head>
@@ -96,8 +97,18 @@
 
         <!-- Câmera QR -->
         <div id="camWrap" class="cam-wrap oculto">
-            <video id="camVideo" class="cam-video" playsinline></video>
-            <canvas id="camCanvas" class="oculto"></canvas>
+            <div class="cam-inner">
+                <video id="camVideo" class="cam-video" autoplay playsinline muted></video>
+                <canvas id="camCanvas" style="display:none;"></canvas>
+                <div class="cam-overlay">
+                    <div class="cam-frame">
+                        <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+                        <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+                        <div class="qr-scan-line"></div>
+                    </div>
+                    <p class="cam-instrucao">Aponte para o QR Code do crachá</p>
+                </div>
+            </div>
             <button class="btn-cam-fechar" onclick="fecharCamera()">✕ Fechar câmera</button>
         </div>
 

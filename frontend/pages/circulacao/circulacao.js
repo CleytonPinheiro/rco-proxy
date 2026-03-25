@@ -429,47 +429,66 @@ async function reativarAmbiente(id) {
     await recarregarTudo();
 }
 
-// ── Câmera QR ─────────────────────────────────────────────────────────
+// ── Câmera QR (leitura ao vivo com jsQR) ──────────────────────────────
 
 async function abrirCamera() {
     const wrap  = document.getElementById('camWrap');
     const video = document.getElementById('camVideo');
+
+    if (!wrap.classList.contains('oculto')) {
+        fecharCamera();
+        return;
+    }
+
     wrap.classList.remove('oculto');
+
     try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
         video.srcObject = cameraStream;
         await video.play();
-        iniciarLoopQR();
-    } catch {
-        mostrarToast('⚠️ Câmera não disponível', 'warn');
+        loopQR();
+    } catch (err) {
+        mostrarToast('⚠️ Câmera não disponível: ' + err.message, 'warn');
         wrap.classList.add('oculto');
     }
 }
+
 function fecharCamera() {
-    clearInterval(cameraLoop);
-    if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+    if (cameraLoop) { cancelAnimationFrame(cameraLoop); cameraLoop = null; }
+    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
     document.getElementById('camWrap').classList.add('oculto');
+    focarInput();
 }
-function iniciarLoopQR() {
+
+function loopQR() {
     const video  = document.getElementById('camVideo');
     const canvas = document.getElementById('camCanvas');
-    const ctx    = canvas.getContext('2d');
-    cameraLoop = setInterval(() => {
-        if (video.readyState < 2) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        if ('BarcodeDetector' in window) {
-            new BarcodeDetector({ formats: ['qr_code'] }).detect(canvas)
-                .then(codes => {
-                    if (codes.length) {
-                        document.getElementById('inputScan').value = codes[0].rawValue;
-                        fecharCamera();
-                        processarScan();
-                    }
-                }).catch(() => {});
-        }
-    }, 500);
+
+    if (!video || video.readyState < video.HAVE_ENOUGH_DATA) {
+        cameraLoop = requestAnimationFrame(loopQR);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code    = jsQR(imgData.data, imgData.width, imgData.height, {
+        inversionAttempts: 'dontInvert'
+    });
+
+    if (code?.data) {
+        fecharCamera();
+        document.getElementById('inputScan').value = code.data;
+        processarScan();
+        return;
+    }
+
+    cameraLoop = requestAnimationFrame(loopQR);
 }
 
 // ── Utilitários ───────────────────────────────────────────────────────
