@@ -108,10 +108,57 @@
                 <!-- ── Conteúdo principal ─────────────────────────────── -->
                 <div class="freq-main-content">
                     <div class="page-header-freq">
-                        <h2>Frequências por Disciplina</h2>
-                        <div class="freq-periodo-badge">1º Trimestre · 2026</div>
+                        <h2 id="tituloModoPagina">Frequências por Disciplina</h2>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <div class="freq-periodo-badge">1º Trimestre · 2026</div>
+                            <button class="btn-modo-geral" id="btnModoGeral" onclick="alternarModoGeral()">
+                                📊 Visão Geral por Aluno
+                            </button>
+                        </div>
                     </div>
-                    <div id="listaDiscDisciplinas" class="disc-accordion"></div>
+
+                    <!-- ── Painel Modo Geral ───────────────────────────────── -->
+                    <div id="painelGeral" class="painel-geral-wrap" style="display:none;">
+
+                        <div class="filtro-bar">
+                            <div class="filtro-chips">
+                                <button class="chip-btn chip-ativo" data-min="0" data-max="100" onclick="selecionarChip(this)">Todos</button>
+                                <button class="chip-btn chip-ok"      data-min="80" data-max="100" onclick="selecionarChip(this)">≥80% Pé-de-Meia</button>
+                                <button class="chip-btn chip-alerta"  data-min="60" data-max="79"  onclick="selecionarChip(this)">60–79% Em risco</button>
+                                <button class="chip-btn chip-critico" data-min="0"  data-max="59"  onclick="selecionarChip(this)">Abaixo 60%</button>
+                            </div>
+                            <div class="filtro-range">
+                                <label class="range-label">Faixa personalizada:</label>
+                                <div class="range-inputs">
+                                    <input type="number" id="rangeMin" class="range-num" min="0" max="100" value="0" oninput="aplicarRangeCustom()">
+                                    <span class="range-sep">%  até</span>
+                                    <input type="number" id="rangeMax" class="range-num" min="0" max="100" value="100" oninput="aplicarRangeCustom()">
+                                    <span class="range-sep">%</span>
+                                </div>
+                            </div>
+                            <div class="filtro-sort">
+                                <label class="range-label">Ordenar:</label>
+                                <select id="selectSort" class="sort-select" onchange="renderModoGeral()">
+                                    <option value="asc">Menor % primeiro</option>
+                                    <option value="desc">Maior % primeiro</option>
+                                    <option value="az">Nome A–Z</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="geralLoading" class="geral-loading" style="display:none;">
+                            <div class="spinner-sm"></div>
+                            <span>Carregando todas as disciplinas...</span>
+                        </div>
+
+                        <div id="geralResumo" class="geral-resumo" style="display:none;"></div>
+                        <div id="geralLista" class="geral-lista"></div>
+                    </div>
+
+                    <!-- ── Modo Normal: Accordion ─────────────────────────── -->
+                    <div id="modoNormal">
+                        <div id="listaDiscDisciplinas" class="disc-accordion"></div>
+                    </div>
                 </div>
 
                 <!-- ── Drawer direito: Detalhes do Aluno ─────────────── -->

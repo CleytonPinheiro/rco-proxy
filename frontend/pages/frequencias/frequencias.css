@@ -779,3 +779,365 @@
 [data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td { background: #1e3a5f !important; }
 [data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td.col-chamada,
 [data-theme="dark"] .freq-aluno-row.freq-aluno-ativo td.col-nome { background: #1a3554 !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MODO GERAL — Filtro por Faixa de Frequência
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Botão de alternância de modo */
+.btn-modo-geral {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: 2px solid #4f46e5;
+    background: white;
+    color: #4f46e5;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.btn-modo-geral:hover { background: #eef2ff; }
+.btn-modo-geral.btn-modo-ativo {
+    background: #4f46e5;
+    color: white;
+}
+.btn-modo-geral.btn-modo-ativo:hover { background: #3730a3; }
+
+/* Painel geral wrapper */
+.painel-geral-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── Barra de filtros ──────────────────────────────────────────────────── */
+.filtro-bar {
+    background: white;
+    border: 1px solid #e8ecf4;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.filtro-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.chip-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 2px solid transparent;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+    background: #f3f4f8;
+    color: #6b7280;
+}
+.chip-btn:hover { border-color: #d1d5db; background: #eef2ff; color: #4f46e5; }
+
+.chip-btn.chip-ativo {
+    background: #4f46e5;
+    color: white;
+    border-color: #4f46e5;
+}
+.chip-btn.chip-ok       { border-color: #bbf7d0; }
+.chip-btn.chip-ok.chip-ativo       { background: #16a34a; border-color: #16a34a; }
+.chip-btn.chip-alerta   { border-color: #fde68a; }
+.chip-btn.chip-alerta.chip-ativo   { background: #d97706; border-color: #d97706; }
+.chip-btn.chip-critico  { border-color: #fecaca; }
+.chip-btn.chip-critico.chip-ativo  { background: #dc2626; border-color: #dc2626; }
+
+.filtro-range {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.filtro-sort {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.range-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.range-num {
+    width: 56px;
+    padding: 5px 8px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.range-num:focus { border-color: #4f46e5; }
+
+.range-sep {
+    font-size: 12px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.sort-select {
+    padding: 5px 10px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    background: white;
+    color: #374151;
+    outline: none;
+    cursor: pointer;
+}
+.sort-select:focus { border-color: #4f46e5; }
+
+/* ── Loading geral ──────────────────────────────────────────────────────── */
+.geral-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    color: #6b7280;
+    font-size: 13px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e8ecf4;
+}
+
+/* ── Resumo estatístico ─────────────────────────────────────────────────── */
+.geral-resumo {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.geral-resumo-stat {
+    flex: 1;
+    min-width: 80px;
+    background: white;
+    border: 1px solid #e8ecf4;
+    border-radius: 12px;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.gres-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1a1a2e;
+    line-height: 1;
+}
+.gres-label {
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-align: center;
+}
+.gres-ok      .gres-val { color: #16a34a; }
+.gres-alerta  .gres-val { color: #d97706; }
+.gres-critico .gres-val { color: #dc2626; }
+.gres-filtrado { border-color: #c7d2fe; background: #eef2ff; }
+.gres-filtrado .gres-val   { color: #4f46e5; }
+.gres-filtrado .gres-label { color: #6366f1; }
+
+/* ── Contador da lista ──────────────────────────────────────────────────── */
+.geral-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    padding: 0 4px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* ── Lista de alunos ────────────────────────────────────────────────────── */
+.geral-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.geral-vazio {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 14px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e8ecf4;
+}
+
+/* ── Card de aluno ──────────────────────────────────────────────────────── */
+.aluno-geral-card {
+    background: white;
+    border: 1px solid #e8ecf4;
+    border-radius: 12px;
+    padding: 12px 16px 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.aluno-geral-card:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 3px 12px rgba(79,70,229,0.10);
+    transform: translateY(-1px);
+}
+
+.aluno-geral-topo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.aluno-geral-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.aluno-geral-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.aluno-geral-nome {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.aluno-geral-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: #9ca3af;
+    flex-wrap: wrap;
+}
+
+.aluno-chamada-num {
+    background: #f3f4f8;
+    color: #6b7280;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 700;
+    font-size: 10px;
+}
+
+.disc-mini-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.aluno-geral-pct {
+    font-size: 22px;
+    font-weight: 900;
+    min-width: 56px;
+    text-align: right;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* ── Barra de progresso ─────────────────────────────────────────────────── */
+.aluno-geral-bar-wrap {
+    height: 6px;
+    background: #f0f2f8;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.aluno-geral-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+/* ── Badge de status ────────────────────────────────────────────────────── */
+.aluno-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 2px 9px;
+}
+.badge-ok      { background: #d4edda; color: #155724; }
+.badge-alerta  { background: #fff3cd; color: #856404; }
+.badge-critico { background: #f8d7da; color: #721c24; }
+
+/* ── Responsivo ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .filtro-bar     { padding: 12px 14px; gap: 12px; }
+    .geral-resumo-stat { min-width: 60px; padding: 10px 6px; }
+    .gres-val       { font-size: 18px; }
+    .aluno-geral-pct { font-size: 18px; min-width: 46px; }
+    .aluno-geral-avatar { width: 30px; height: 30px; font-size: 12px; }
+    .btn-modo-geral { font-size: 11px; padding: 5px 12px; }
+}
+
+/* ── Tema Escuro — Modo Geral ───────────────────────────────────────────── */
+[data-theme="dark"] .btn-modo-geral              { background: var(--bg-card); border-color: #6366f1; color: #818cf8; }
+[data-theme="dark"] .btn-modo-geral:hover        { background: var(--bg-hover); }
+[data-theme="dark"] .btn-modo-geral.btn-modo-ativo { background: #4f46e5; color: white; }
+[data-theme="dark"] .filtro-bar                  { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .chip-btn                    { background: var(--bg-secondary); color: var(--text-secondary); }
+[data-theme="dark"] .chip-btn:hover              { background: var(--bg-hover); color: #818cf8; }
+[data-theme="dark"] .range-num,
+[data-theme="dark"] .sort-select                 { background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary); }
+[data-theme="dark"] .geral-loading,
+[data-theme="dark"] .geral-vazio                 { background: var(--bg-card); border-color: var(--border); color: var(--text-muted); }
+[data-theme="dark"] .geral-resumo-stat           { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .gres-val                    { color: var(--text-primary); }
+[data-theme="dark"] .gres-label                  { color: var(--text-muted); }
+[data-theme="dark"] .gres-filtrado               { background: #1e1b4b; border-color: #4338ca; }
+[data-theme="dark"] .aluno-geral-card            { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .aluno-geral-card:hover      { border-color: #6366f1; }
+[data-theme="dark"] .aluno-geral-nome            { color: var(--text-primary); }
+[data-theme="dark"] .aluno-geral-meta            { color: var(--text-muted); }
+[data-theme="dark"] .aluno-chamada-num           { background: var(--bg-secondary); color: var(--text-secondary); }
+[data-theme="dark"] .aluno-geral-bar-wrap        { background: var(--bg-tertiary); }

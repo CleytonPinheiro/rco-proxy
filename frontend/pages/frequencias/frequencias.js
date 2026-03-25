@@ -661,4 +661,223 @@ async function abrirModalRcoFreq() {
     }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MODO GERAL — Filtro por Faixa de Frequência Total
+// ══════════════════════════════════════════════════════════════════════════════
+
+let modoGeralAtivo    = false;
+let modoGeralCarregado = false;
+let filtroMin = 0, filtroMax = 100;
+
+async function alternarModoGeral() {
+    modoGeralAtivo = !modoGeralAtivo;
+    const btn    = document.getElementById('btnModoGeral');
+    const painel = document.getElementById('painelGeral');
+    const normal = document.getElementById('modoNormal');
+    const titulo = document.getElementById('tituloModoPagina');
+    const drawer = document.getElementById('freqLayout');
+
+    if (modoGeralAtivo) {
+        btn.classList.add('btn-modo-ativo');
+        btn.textContent = '← Voltar por Disciplina';
+        titulo.textContent = 'Visão Geral de Frequência';
+        painel.style.display = 'block';
+        normal.style.display = 'none';
+        drawer.classList.remove('drawer-aberto');
+        fecharDrawerAluno();
+        await ativarModoGeral();
+    } else {
+        btn.classList.remove('btn-modo-ativo');
+        btn.textContent = '📊 Visão Geral por Aluno';
+        titulo.textContent = 'Frequências por Disciplina';
+        painel.style.display = 'none';
+        normal.style.display = 'block';
+    }
+}
+
+async function ativarModoGeral() {
+    if (modoGeralCarregado) { renderModoGeral(); return; }
+
+    const loading = document.getElementById('geralLoading');
+    const lista   = document.getElementById('geralLista');
+    loading.style.display = 'flex';
+    lista.innerHTML = '';
+
+    await carregarTodasDisciplinas();
+
+    loading.style.display = 'none';
+    modoGeralCarregado = true;
+    renderModoGeral();
+}
+
+function calcularFreqGeral() {
+    const disciplinas = Object.values(disciplinaCache);
+    const mapa = {};
+
+    disciplinas.forEach(disc => {
+        (disc.alunos || []).forEach(aluno => {
+            const key = aluno.codMatrizAluno || aluno.nome;
+            if (!mapa[key]) {
+                mapa[key] = {
+                    key,
+                    nome:      aluno.nome,
+                    numChamada: aluno.numChamada,
+                    totalP:    0,
+                    totalF:    0,
+                    disciplinas: [],
+                };
+            }
+            mapa[key].totalP += aluno.presencas || 0;
+            mapa[key].totalF += aluno.faltas    || 0;
+            if ((aluno.presencas || 0) + (aluno.faltas || 0) > 0) {
+                mapa[key].disciplinas.push({
+                    nome: disc.nomeDisciplina,
+                    cor:  disc.cor,
+                    pct:  aluno.percentual,
+                });
+            }
+        });
+    });
+
+    return Object.values(mapa).map(a => {
+        const total  = a.totalP + a.totalF;
+        const pct    = total > 0 ? Math.round((a.totalP / total) * 100) : null;
+        return { ...a, total, pct };
+    });
+}
+
+function renderModoGeral() {
+    const min     = filtroMin;
+    const max     = filtroMax;
+    const sort    = document.getElementById('selectSort')?.value || 'asc';
+    const lista   = document.getElementById('geralLista');
+    const resumo  = document.getElementById('geralResumo');
+
+    const todos = calcularFreqGeral();
+
+    const filtrados = todos.filter(a => {
+        if (a.pct === null) return min === 0;
+        return a.pct >= min && a.pct <= max;
+    });
+
+    const ordenados = [...filtrados].sort((a, b) => {
+        if (sort === 'asc')  return (a.pct ?? -1) - (b.pct ?? -1);
+        if (sort === 'desc') return (b.pct ?? -1) - (a.pct ?? -1);
+        return a.nome.localeCompare(b.nome);
+    });
+
+    // Resumo estatístico
+    const comDado = todos.filter(a => a.pct !== null);
+    const nOk      = comDado.filter(a => a.pct >= 80).length;
+    const nAlerta  = comDado.filter(a => a.pct >= 60 && a.pct < 80).length;
+    const nCritico = comDado.filter(a => a.pct < 60).length;
+
+    resumo.style.display = 'flex';
+    resumo.innerHTML = `
+        <div class="geral-resumo-stat">
+            <span class="gres-val">${todos.length}</span>
+            <span class="gres-label">Alunos</span>
+        </div>
+        <div class="geral-resumo-stat gres-ok">
+            <span class="gres-val">${nOk}</span>
+            <span class="gres-label">≥80% OK</span>
+        </div>
+        <div class="geral-resumo-stat gres-alerta">
+            <span class="gres-val">${nAlerta}</span>
+            <span class="gres-label">60–79%</span>
+        </div>
+        <div class="geral-resumo-stat gres-critico">
+            <span class="gres-val">${nCritico}</span>
+            <span class="gres-label">&lt;60%</span>
+        </div>
+        <div class="geral-resumo-stat gres-filtrado">
+            <span class="gres-val">${filtrados.length}</span>
+            <span class="gres-label">Nesta faixa</span>
+        </div>
+    `;
+
+    if (todos.length === 0) {
+        lista.innerHTML = `<div class="geral-vazio">Nenhuma disciplina carregada. Abra uma disciplina primeiro ou aguarde.</div>`;
+        return;
+    }
+
+    if (filtrados.length === 0) {
+        lista.innerHTML = `<div class="geral-vazio">Nenhum aluno na faixa ${min}%–${max}%.</div>`;
+        return;
+    }
+
+    lista.innerHTML = `
+        <div class="geral-count">${filtrados.length} aluno${filtrados.length !== 1 ? 's' : ''} na faixa ${min}%–${max}%</div>
+        ${ordenados.map(a => renderAlunoGeralCard(a)).join('')}
+    `;
+
+    lista.querySelectorAll('.aluno-geral-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const nome     = card.dataset.nome;
+            const chamada  = card.dataset.chamada;
+            // Volta ao modo disciplina temporariamente para o drawer funcionar?
+            // Não: apenas abre o drawer (o layout suporta)
+            document.getElementById('freqLayout').classList.add('drawer-aberto');
+            abrirDrawerAluno(nome, chamada);
+        });
+    });
+}
+
+function renderAlunoGeralCard(a) {
+    const pct      = a.pct;
+    const pctStr   = pct !== null ? `${pct}%` : '—';
+    const pctClass = pct === null ? '' : pct >= 80 ? 'pct-ok' : pct >= 60 ? 'pct-alerta' : 'pct-critico';
+    const barColor = pct === null ? '#e5e7eb' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+    const barW     = pct !== null ? Math.min(100, pct) : 0;
+    const badge    = pct === null ? '' :
+                     pct >= 80 ? '<span class="aluno-badge badge-ok">Pé-de-Meia OK</span>' :
+                     pct >= 60 ? '<span class="aluno-badge badge-alerta">Em risco</span>' :
+                                 '<span class="aluno-badge badge-critico">Crítico</span>';
+
+    const discMini = (a.disciplinas || []).slice(0, 6).map(d =>
+        `<span class="disc-mini-dot" style="background:${d.cor}" title="${d.nome}: ${d.pct !== null ? d.pct + '%' : '—'}"></span>`
+    ).join('');
+
+    const nomeEsc = (a.nome || '').replace(/"/g, '&quot;');
+
+    return `
+        <div class="aluno-geral-card" data-nome="${nomeEsc}" data-chamada="${a.numChamada || ''}">
+            <div class="aluno-geral-topo">
+                <div class="aluno-geral-avatar">${(a.nome || '?').charAt(0).toUpperCase()}</div>
+                <div class="aluno-geral-info">
+                    <div class="aluno-geral-nome">${a.nome}</div>
+                    <div class="aluno-geral-meta">
+                        ${a.numChamada ? `<span class="aluno-chamada-num">#${a.numChamada}</span>` : ''}
+                        <span>${a.totalP}P · ${a.totalF}F · ${a.disciplinas.length} disc.</span>
+                        ${discMini}
+                    </div>
+                </div>
+                <div class="aluno-geral-pct ${pctClass}">${pctStr}</div>
+            </div>
+            <div class="aluno-geral-bar-wrap">
+                <div class="aluno-geral-bar" style="width:${barW}%;background:${barColor}"></div>
+            </div>
+            ${badge}
+        </div>`;
+}
+
+function selecionarChip(chip) {
+    document.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('chip-ativo'));
+    chip.classList.add('chip-ativo');
+    filtroMin = parseInt(chip.dataset.min);
+    filtroMax = parseInt(chip.dataset.max);
+    document.getElementById('rangeMin').value = filtroMin;
+    document.getElementById('rangeMax').value = filtroMax;
+    renderModoGeral();
+}
+
+function aplicarRangeCustom() {
+    const min = parseInt(document.getElementById('rangeMin').value) || 0;
+    const max = parseInt(document.getElementById('rangeMax').value) || 100;
+    filtroMin = Math.max(0, Math.min(100, min));
+    filtroMax = Math.max(0, Math.min(100, max));
+    document.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('chip-ativo'));
+    renderModoGeral();
+}
+
 init();
