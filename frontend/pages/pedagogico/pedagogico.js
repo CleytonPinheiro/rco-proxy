@@ -393,8 +393,46 @@ selStatus.addEventListener('change', () => {
     renderGrid();
 });
 
+/* ── Sincronização automática com RCO ────────────────────────────── */
+const elSyncBar     = document.getElementById('pedSyncBar');
+const elSyncSpinner = document.getElementById('pedSyncSpinner');
+const elSyncMsg     = document.getElementById('pedSyncMsg');
+
+function setSyncStatus(estado, msg) {
+    elSyncBar.style.display = 'flex';
+    elSyncBar.className = 'ped-sync-bar' + (estado ? ` ped-sync-bar--${estado}` : '');
+    elSyncSpinner.style.display = estado === 'sincronizando' ? 'inline-block' : 'none';
+    elSyncMsg.textContent = msg;
+}
+
+async function sincronizarRco() {
+    setSyncStatus('sincronizando', 'Sincronizando observações RCO com dados mais recentes…');
+    try {
+        const res = await fetch('/api/pedagogico/sincronizar-rco', { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (data.status === 'sem_classes') {
+            setSyncStatus('ok', '✔ Nenhuma turma encontrada — faça uma sincronização completa primeiro.');
+        } else {
+            setSyncStatus('ok', `✔ Sincronizado com RCO — ${data.totalObs} observação(ões) atualizadas em ${data.classes} turma(s).`);
+        }
+
+        // Recarrega os cards com os dados atualizados do banco
+        await carregarTudo();
+
+        setTimeout(() => { elSyncBar.style.display = 'none'; }, 5000);
+    } catch (e) {
+        setSyncStatus('erro', `⚠ Falha na sincronização com RCO: ${e.message}. Exibindo dados em cache.`);
+        setTimeout(() => { elSyncBar.style.display = 'none'; }, 8000);
+    }
+}
+
 /* ── Inicialização ──────────────────────────────────────────────── */
 (async () => {
     await carregarTurmas();
+    // Exibe dados em cache imediatamente (rápido)
     await carregarTudo();
+    // Sincroniza com RCO em seguida e recarrega com dados frescos
+    sincronizarRco();
 })();

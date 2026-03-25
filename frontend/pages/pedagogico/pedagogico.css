@@ -480,6 +480,42 @@
     text-align: right;
 }
 
+/* ── Barra de sincronização ──────────────────────────────────────── */
+.ped-sync-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    background: color-mix(in srgb, #0ea5e9 10%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, #0ea5e9 30%, transparent);
+    border-radius: var(--ped-radius);
+    margin-bottom: 12px;
+    font-size: .875rem;
+    color: #0ea5e9;
+    font-weight: 500;
+}
+.ped-sync-bar--ok {
+    background: color-mix(in srgb, #22c55e 10%, var(--bg-card));
+    border-color: color-mix(in srgb, #22c55e 30%, transparent);
+    color: #16a34a;
+}
+.ped-sync-bar--erro {
+    background: color-mix(in srgb, #ef4444 10%, var(--bg-card));
+    border-color: color-mix(in srgb, #ef4444 30%, transparent);
+    color: #dc2626;
+}
+.ped-sync-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ── Responsivo ──────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
     .ped-stats { grid-template-columns: repeat(3, 1fr); }
