@@ -46,6 +46,13 @@ async function initializeApp() {
         app.use(cors());
         app.use(express.json());
 
+        // Impedir cache de respostas da API no navegador
+        app.use('/api', (req, res, next) => {
+            res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            res.set('Pragma', 'no-cache');
+            next();
+        });
+
         // Redirecionar URLs antigas (.html) para nova estrutura de pastas
         const paginasRedirect = [
             'dashboard', 'frequencias', 'crachas', 'comportamento',
