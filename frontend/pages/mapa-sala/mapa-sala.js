@@ -367,6 +367,12 @@ function mostrarToast(msg, tipo) {
     t._timer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+// Logout
+document.getElementById('btnLogout').addEventListener('click', async () => {
+    await fetch(`${API}/logout`, { method: 'POST' }).catch(() => {});
+    window.location.href = '/';
+});
+
 // Avisar sobre alterações não salvas ao sair da página
 window.addEventListener('beforeunload', e => {
     if (modificado) { e.preventDefault(); e.returnValue = ''; }
