@@ -55,18 +55,53 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
                 } catch (_) {}
             }));
 
-            const alunos = raw.map(a => {
-                const frequencias = {};
-                codAulas.forEach(cod => { frequencias[cod] = a[cod] || null; });
-                const presencas  = codAulas.filter(cod => a[cod] === 'C').length;
-                const faltas     = codAulas.filter(cod => a[cod] && a[cod] !== 'C').length;
-                const totalAulas = codAulas.filter(cod => a[cod] !== undefined && a[cod] !== null).length;
+            // ── Construir mapa por codMatrizAluno para deduplicar ────────────
+            // O RCO pode retornar o mesmo aluno em mais de uma linha
+            // (rematrícula, registros duplicados, etc.).
+            // Mesclamos as frequências: para cada aula, preferimos 'C' a qualquer
+            // outro valor; se ainda não há registro, mantemos o que vier.
+            const mapaAlunos = new Map();
+
+            for (const a of raw) {
+                const chave = a.codMatrizAluno != null ? String(a.codMatrizAluno) : a.nome;
+
+                if (!mapaAlunos.has(chave)) {
+                    const frequencias = {};
+                    codAulas.forEach(cod => { frequencias[cod] = a[cod] || null; });
+                    mapaAlunos.set(chave, {
+                        codMatrizAluno: a.codMatrizAluno,
+                        numChamada:     a.numChamada,
+                        nome:           a.nome,
+                        frequencias,
+                    });
+                } else {
+                    // Mescla frequências: se a linha nova tiver 'C' numa aula
+                    // onde o registro anterior era diferente, prevalece 'C'.
+                    const entrada = mapaAlunos.get(chave);
+                    codAulas.forEach(cod => {
+                        const existente = entrada.frequencias[cod];
+                        const novo      = a[cod] || null;
+                        if (!existente && novo)          entrada.frequencias[cod] = novo;
+                        else if (novo === 'C')           entrada.frequencias[cod] = 'C';
+                    });
+                    // Mantém o numChamada menor (ordem original da chamada)
+                    if (a.numChamada && (!entrada.numChamada || a.numChamada < entrada.numChamada)) {
+                        entrada.numChamada = a.numChamada;
+                    }
+                }
+            }
+
+            // ── Calcular totais após deduplicação ────────────────────────────
+            const alunos = Array.from(mapaAlunos.values()).map(a => {
+                const presencas  = codAulas.filter(cod => a.frequencias[cod] === 'C').length;
+                const faltas     = codAulas.filter(cod => a.frequencias[cod] && a.frequencias[cod] !== 'C').length;
+                const totalAulas = codAulas.filter(cod => a.frequencias[cod] != null).length;
                 const percentual = totalAulas > 0 ? Math.round((presencas / totalAulas) * 100) : null;
                 return {
                     codMatrizAluno: a.codMatrizAluno,
                     numChamada:     a.numChamada,
                     nome:           a.nome,
-                    frequencias,
+                    frequencias:    a.frequencias,
                     presencas,
                     faltas,
                     totalAulas,
