@@ -835,11 +835,41 @@ function renderAlunoGeralCard(a) {
     const badgeClass = pct === null ? '' :
                        pct >= 80 ? 'badge-ok' : pct >= 60 ? 'badge-alerta' : 'badge-critico';
 
-    const discMini = (a.disciplinas || []).slice(0, 8).map(d =>
-        `<span class="disc-mini-dot" style="background:${d.cor}" title="${d.nome}: ${d.pct !== null ? d.pct + '%' : '—'}"></span>`
-    ).join('');
-
     const nomeEsc = (a.nome || '').replace(/"/g, '&quot;');
+
+    // ── Detalhamento por disciplina ─────────────────────────────────────────
+    const discRows = (a.disciplinas || [])
+        .sort((x, y) => x.nome.localeCompare(y.nome))
+        .map(d => {
+            const dp      = d.pct;
+            const dpStr   = dp !== null ? `${dp}%` : '—';
+            const dpClass = dp === null ? '' : dp >= 80 ? 'pct-ok' : dp >= 60 ? 'pct-alerta' : 'pct-critico';
+            const dBar    = dp === null ? '#e5e7eb' : dp >= 80 ? '#22c55e' : dp >= 60 ? '#f59e0b' : '#ef4444';
+            const dW      = dp !== null ? Math.min(100, dp) : 0;
+
+            // Buscar P/F individuais da disciplina
+            const discData = Object.values(disciplinaCache).find(c => c.nomeDisciplina === d.nome);
+            const alunoDisc = discData ? discData.alunos.find(al => al.nome === a.nome) : null;
+            const dp_p = alunoDisc ? alunoDisc.presencas : '—';
+            const dp_f = alunoDisc ? alunoDisc.faltas    : '—';
+
+            return `
+                <div class="disc-detalhe-row">
+                    <div class="disc-detalhe-icon" style="background:${d.cor}">${d.nome.charAt(0)}</div>
+                    <div class="disc-detalhe-corpo">
+                        <div class="disc-detalhe-nome">${d.nome}</div>
+                        <div class="disc-detalhe-bar-wrap">
+                            <div class="disc-detalhe-bar" style="width:${dW}%;background:${dBar}"></div>
+                        </div>
+                    </div>
+                    <div class="disc-detalhe-nums">
+                        <span class="ddn-p">${dp_p}P</span>
+                        <span class="ddn-sep">·</span>
+                        <span class="ddn-f">${dp_f}F</span>
+                    </div>
+                    <div class="disc-detalhe-pct ${dpClass}">${dpStr}</div>
+                </div>`;
+        }).join('');
 
     return `
         <div class="aluno-geral-card" data-nome="${nomeEsc}" data-chamada="${a.numChamada || ''}">
@@ -851,7 +881,6 @@ function renderAlunoGeralCard(a) {
                     <div class="aluno-geral-sub">
                         ${a.numChamada ? `<span class="aluno-chamada-num">#${a.numChamada}</span>` : ''}
                         <span class="aluno-ndiscs">${a.disciplinas.length} disciplina${a.disciplinas.length !== 1 ? 's' : ''}</span>
-                        ${discMini}
                     </div>
                 </div>
                 <div class="aluno-geral-pct-wrap">
@@ -885,6 +914,12 @@ function renderAlunoGeralCard(a) {
                     <span class="aluno-badge ${badgeClass}">${badgeLabel}</span>
                 </div>` : ''}
             </div>
+
+            ${discRows ? `
+            <div class="disc-detalhe-lista">
+                <div class="disc-detalhe-titulo">Por Disciplina</div>
+                ${discRows}
+            </div>` : ''}
 
         </div>`;
 }

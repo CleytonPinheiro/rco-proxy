@@ -1159,6 +1159,92 @@
     flex-shrink: 0;
 }
 
+/* ── Detalhamento por disciplina dentro do card ─────────────────────────── */
+.disc-detalhe-lista {
+    margin-top: 10px;
+    border-top: 1px solid #eef1f8;
+    padding-top: 8px;
+}
+
+.disc-detalhe-titulo {
+    font-size: 9px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 0 6px;
+}
+
+.disc-detalhe-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid #f3f4f8;
+}
+.disc-detalhe-row:last-child { border-bottom: none; }
+
+.disc-detalhe-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.disc-detalhe-corpo {
+    flex: 1;
+    min-width: 0;
+}
+
+.disc-detalhe-nome {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+}
+
+.disc-detalhe-bar-wrap {
+    height: 4px;
+    background: #e8ecf4;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.disc-detalhe-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+
+.disc-detalhe-nums {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.ddn-p   { color: #15803d; }
+.ddn-f   { color: #b91c1c; }
+.ddn-sep { color: #d1d5db; }
+
+.disc-detalhe-pct {
+    font-size: 12px;
+    font-weight: 800;
+    min-width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
 /* ── Barra de progresso ─────────────────────────────────────────────────── */
 .aluno-geral-bar-wrap {
     height: 6px;
@@ -1227,3 +1313,11 @@
 [data-theme="dark"] .ags-total .ags-val         { color: var(--text-primary); }
 [data-theme="dark"] .ags-label                  { color: var(--text-muted); }
 [data-theme="dark"] .ags-sep                    { background: var(--border); }
+[data-theme="dark"] .disc-detalhe-lista         { border-color: var(--border); }
+[data-theme="dark"] .disc-detalhe-titulo        { color: var(--text-muted); }
+[data-theme="dark"] .disc-detalhe-row           { border-color: var(--border); }
+[data-theme="dark"] .disc-detalhe-nome          { color: var(--text-primary); }
+[data-theme="dark"] .disc-detalhe-bar-wrap      { background: var(--bg-tertiary); }
+[data-theme="dark"] .ddn-sep                    { color: var(--border); }
+[data-theme="dark"] .ddn-p                      { color: #4ade80; }
+[data-theme="dark"] .ddn-f                      { color: #f87171; }
