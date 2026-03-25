@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Circulação</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./circulacao.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/crachas/">Crachás</a>
+            <a href="/pages/circulacao/" class="active">Circulação</a>
+            <a href="/pages/comportamento/">Comportamento</a>
+            <a href="/pages/presenca/">Presença</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- ── Barra superior ─────────────────────────────────────────── -->
+        <div class="circ-topbar">
+            <div class="circ-titulo-area">
+                <h2 class="circ-titulo">🚶 Circulação</h2>
+                <p class="circ-sub">Controle de fluxo e horários de acesso por ambiente</p>
+            </div>
+            <div class="circ-topbar-right">
+                <select id="selAmbiente" class="sel-ambiente" onchange="trocarAmbiente()">
+                    <option value="">Carregando ambientes...</option>
+                </select>
+                <button class="btn-gerenciar" onclick="abrirModalAmbientes()">⚙️ Ambientes</button>
+            </div>
+        </div>
+
+        <!-- ── Painel principal: Scanner + Ativos ─────────────────────── -->
+        <div class="circ-grid">
+
+            <!-- Scanner -->
+            <div class="circ-card card-scanner">
+                <div class="card-header-circ">
+                    <span class="card-titulo-circ">📷 Registrar Acesso</span>
+                </div>
+                <div class="scanner-body">
+                    <div class="scanner-hint">
+                        Escaneie o QR Code do crachá do aluno<br>
+                        <small>Leitora USB ou câmera</small>
+                    </div>
+                    <div class="scanner-input-wrap">
+                        <input
+                            type="text"
+                            id="inputScan"
+                            class="scanner-input"
+                            placeholder="Aguardando leitura..."
+                            autocomplete="off"
+                            autofocus
+                        >
+                        <button class="btn-scan-manual" onclick="processarScan()" title="Confirmar">↵</button>
+                    </div>
+                    <button class="btn-camera" onclick="abrirCamera()">📷 Usar câmera</button>
+
+                    <!-- Feedback da última ação -->
+                    <div id="feedbackScan" class="feedback-scan oculto">
+                        <div class="feedback-icon" id="feedbackIcon"></div>
+                        <div class="feedback-info">
+                            <div class="feedback-nome" id="feedbackNome"></div>
+                            <div class="feedback-acao" id="feedbackAcao"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Câmera QR (oculto por padrão) -->
+                <div id="camWrap" class="cam-wrap oculto">
+                    <video id="camVideo" class="cam-video" playsinline></video>
+                    <canvas id="camCanvas" class="oculto"></canvas>
+                    <button class="btn-cam-fechar" onclick="fecharCamera()">✕ Fechar câmera</button>
+                </div>
+            </div>
+
+            <!-- Dentro agora -->
+            <div class="circ-card card-ativos">
+                <div class="card-header-circ">
+                    <span class="card-titulo-circ">🟢 Dentro agora</span>
+                    <span class="badge-count" id="countAtivos">0</span>
+                    <div class="cap-info" id="capInfo"></div>
+                </div>
+                <div id="listaAtivos" class="lista-ativos">
+                    <div class="empty-ativos">Nenhum aluno dentro</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Histórico do dia ───────────────────────────────────────── -->
+        <div class="circ-card card-historico">
+            <div class="card-header-circ">
+                <span class="card-titulo-circ">📋 Histórico</span>
+                <div class="historico-filtros">
+                    <input type="date" id="inputData" class="input-data" onchange="carregarHistorico()">
+                    <span class="hist-count" id="countHistorico">0 registros</span>
+                </div>
+            </div>
+            <div class="tabela-wrap">
+                <table class="tabela-historico">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Turma</th>
+                            <th>Entrada</th>
+                            <th>Saída</th>
+                            <th>Duração</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoHistorico">
+                        <tr><td colspan="6" class="empty-row">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ── Modal: Gerenciar Ambientes ────────────────────────────────── -->
+    <div id="modalAmbientes" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⚙️ Ambientes</h3>
+                <button class="modal-close" onclick="fecharModalAmbientes()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulário novo ambiente -->
+                <div class="form-novo-ambiente">
+                    <h4>Novo ambiente</h4>
+                    <div class="form-row">
+                        <input type="text" id="novoNome" placeholder="Nome do ambiente" class="input-form">
+                        <select id="novoTipo" class="input-form">
+                            <option value="banheiro">🚻 Banheiro</option>
+                            <option value="laboratorio">🔬 Laboratório</option>
+                            <option value="biblioteca">📚 Biblioteca</option>
+                            <option value="sala">🏫 Sala especial</option>
+                            <option value="outro">📍 Outro</option>
+                        </select>
+                        <input type="number" id="novoCap" placeholder="Capacidade" min="1" max="50" value="2" class="input-form input-cap">
+                        <button class="btn-add-ambiente" onclick="adicionarAmbiente()">+ Adicionar</button>
+                    </div>
+                </div>
+                <!-- Lista de ambientes -->
+                <div id="listaAmbientesModal" class="lista-ambientes-modal">
+                    <div class="empty-row">Carregando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="./circulacao.js"></script>
+
+    <!-- ── Painel Lateral ───────────────────────────────────────────── -->
+    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">⚡ EduSync</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
+        </div>
+        <div class="side-panel-section-label">Ferramentas</div>
+        <div class="side-panel-nav">
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/materiais/" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                </div>
+            </a>
+            <a href="/pages/emprestimos/" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Controle de empréstimos</span>
+                </div>
+            </a>
+            <a href="/pages/cozinha/" class="side-nav-item">
+                <span class="side-nav-icon">🍽️</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Cozinha</span>
+                    <span class="side-nav-desc">Cardápio e presença por refeição</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+    <script>
+    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+    (function(){
+        var p = location.pathname;
+        document.querySelectorAll('.side-nav-item').forEach(function(a){
+            var href = a.getAttribute('href');
+            if(href && p.startsWith(href)) a.classList.add('active');
+        });
+    })();
+    </script>
+</body>
+</html>
