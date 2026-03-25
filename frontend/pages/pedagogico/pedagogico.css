@@ -47,7 +47,7 @@
 /* ── Cards de resumo ─────────────────────────────────────────────── */
 .ped-stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
     margin-bottom: 4px;
 }
@@ -77,6 +77,7 @@
 .ped-stat-atencao   .ped-stat-num { color: var(--ped-atencao); }
 .ped-stat-pendentes .ped-stat-num { color: var(--ped-grave); }
 .ped-stat-total     .ped-stat-num { color: var(--text-primary); }
+.ped-stat-rco       .ped-stat-num { color: #0ea5e9; }
 
 /* ── Filtros ─────────────────────────────────────────────────────── */
 .ped-filtros {
@@ -140,6 +141,8 @@
 .ped-tipo-btn--active.ped-tipo-btn--grave    { background: var(--ped-grave);    border-color: var(--ped-grave);    color: #fff; }
 .ped-tipo-btn--active.ped-tipo-btn--atencao  { background: var(--ped-atencao);  border-color: var(--ped-atencao);  color: #fff; }
 .ped-tipo-btn--active.ped-tipo-btn--positivo { background: var(--ped-positivo); border-color: var(--ped-positivo); color: #fff; }
+.ped-tipo-btn--active.ped-tipo-btn--rco      { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+.ped-tipo-btn--rco:hover { border-color: #0ea5e9; color: #0ea5e9; }
 
 /* ── Estado vazio / loading ──────────────────────────────────────── */
 .ped-empty {
@@ -177,6 +180,30 @@
 .ped-card--grave   { border-left: 4px solid var(--ped-grave); }
 .ped-card--atencao { border-left: 4px solid var(--ped-atencao); }
 .ped-card--positivo{ border-left: 4px solid var(--ped-positivo); }
+.ped-card--rco_obs { border-left: 4px solid #0ea5e9; }
+
+/* Badge RCO */
+.ped-badge--rco { background: color-mix(in srgb, #0ea5e9 15%, transparent); color: #0ea5e9; border: 1px solid color-mix(in srgb, #0ea5e9 30%, transparent); }
+
+/* Conteúdo RCO: texto da observação em destaque */
+.ped-rco-obs-bloco {
+    padding: 10px 14px;
+    background: color-mix(in srgb, #0ea5e9 6%, var(--bg));
+    border-radius: 8px;
+    border-left: 3px solid #0ea5e9;
+    font-size: .875rem;
+    color: var(--text-primary);
+    line-height: 1.55;
+    font-style: italic;
+}
+.ped-rco-aula-label {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #0ea5e9;
+    margin-bottom: 4px;
+}
 
 /* Faixa do professor (entre cabeçalho e corpo) */
 .ped-card-prof {
@@ -454,6 +481,9 @@
 }
 
 /* ── Responsivo ──────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .ped-stats { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 860px) {
     .ped-stats { grid-template-columns: repeat(2, 1fr); }
     .ped-grid  { grid-template-columns: 1fr; }
