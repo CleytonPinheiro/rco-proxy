@@ -178,6 +178,28 @@
 .ped-card--atencao { border-left: 4px solid var(--ped-atencao); }
 .ped-card--positivo{ border-left: 4px solid var(--ped-positivo); }
 
+/* Faixa do professor (entre cabeçalho e corpo) */
+.ped-card-prof {
+    padding: 6px 16px;
+    background: color-mix(in srgb, #6366f1 6%, var(--bg-card));
+    border-bottom: 1px solid color-mix(in srgb, #6366f1 15%, var(--border));
+}
+.ped-prof-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.ped-prof-icon {
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+.ped-prof-nome {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #6366f1;
+    letter-spacing: .01em;
+}
+
 /* Cabeçalho do card */
 .ped-card-head {
     display: flex;

@@ -55,6 +55,22 @@ function renderEstrelas(stars, max = 10) {
     return cheias + (stars > max ? `+${stars - max}` : vazias);
 }
 
+// ── Professor atual ────────────────────────────────────────────────────────────
+let professorNome = localStorage.getItem('professorNome') || '';
+
+async function carregarProfessorNome() {
+    try {
+        const r = await fetch(`${API}/api/me`);
+        if (!r.ok) return;
+        const me = await r.json();
+        // JWT geralmente tem o nome; caso contrário usamos localStorage
+        if (me.nome && me.nome !== 'Professor(a)') {
+            professorNome = me.nome;
+            localStorage.setItem('professorNome', me.nome);
+        }
+    } catch (_) {}
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 async function checkAuth() {
     try {
@@ -68,6 +84,7 @@ async function checkAuth() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
     if (!await checkAuth()) return;
+    carregarProfessorNome(); // em background, não bloqueia
     let acessos;
     try {
         const r = await fetch(`${API}/api/acessos`);
@@ -305,6 +322,8 @@ async function salvarOcorrencia() {
             categoria_label:  categoriaSelecionada.label,
             descricao,
             pontos:           categoriaSelecionada.pontos,
+            professor_nome:   professorNome || localStorage.getItem('professorNome') || '',
+            nome_turma:       turmaAtual.nomeTurma || '',
         }),
     });
 

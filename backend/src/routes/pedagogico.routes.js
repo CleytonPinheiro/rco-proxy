@@ -28,7 +28,7 @@ migrarTabela();
 export function createPedagogicoRouter({ supabaseAdmin }) {
     const router = Router();
 
-    // GET /api/pedagogico — ocorrências (de/grave/atencao) + notas do pedagogo
+    // GET /api/pedagogico — ocorrências do Supabase + notas + meta do professor (local PG)
     router.get('/pedagogico', async (req, res) => {
         const { tipo, codTurma, dataInicio, dataFim } = req.query;
         try {
@@ -40,28 +40,43 @@ export function createPedagogicoRouter({ supabaseAdmin }) {
                 .order('criado_em', { ascending: false });
 
             if (tipo && tipo !== 'todos')   query = query.eq('tipo', tipo);
-            if (codTurma)                   query = query.eq('cod_turma', parseInt(codTurma));
-            if (dataInicio)                 query = query.gte('data', dataInicio);
-            if (dataFim)                    query = query.lte('data', dataFim);
+            if (codTurma) {
+                // Supabase armazena cod_turma como inteiro — usa eq com int
+                const codNum = parseInt(codTurma, 10);
+                if (!isNaN(codNum)) query = query.eq('cod_turma', codNum);
+            }
+            if (dataInicio) query = query.gte('data', dataInicio);
+            if (dataFim)    query = query.lte('data', dataFim);
 
             const { data: ocorrencias, error } = await query;
             if (error) return res.status(500).json({ erro: error.message });
 
-            // Busca notas no local PG
             const ids = (ocorrencias || []).map(o => o.id);
+
+            // Busca notas pedagógicas e metadados do professor (tudo no local PG)
             let notasMap = {};
+            let metaMap  = {};
+
             if (ids.length > 0) {
-                const { rows } = await pool.query(
-                    `SELECT * FROM pedagogo_notas WHERE id_ocorrencia = ANY($1)`,
-                    [ids]
-                );
-                rows.forEach(r => { notasMap[r.id_ocorrencia] = r; });
+                const [notasResult, metaResult] = await Promise.all([
+                    pool.query(
+                        `SELECT * FROM pedagogo_notas WHERE id_ocorrencia = ANY($1)`,
+                        [ids]
+                    ),
+                    pool.query(
+                        `SELECT * FROM ocorrencia_meta WHERE id_ocorrencia = ANY($1)`,
+                        [ids]
+                    ).catch(() => ({ rows: [] })), // tabela pode não existir em instâncias antigas
+                ]);
+                notasResult.rows.forEach(r => { notasMap[r.id_ocorrencia] = r; });
+                metaResult.rows.forEach(r => { metaMap[r.id_ocorrencia] = r; });
             }
 
-            // Mescla
+            // Mescla: cada ocorrência ganha .pedagogo e .meta
             const resultado = (ocorrencias || []).map(o => ({
                 ...o,
                 pedagogo: notasMap[o.id] || null,
+                meta: metaMap[o.id] || null,
             }));
 
             res.json(resultado);

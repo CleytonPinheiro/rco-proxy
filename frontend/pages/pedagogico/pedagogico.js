@@ -128,6 +128,10 @@ function criarCard(o) {
     const encam   = o.pedagogo?.encaminhamento || '';
     const vistoEm = o.pedagogo?.visto_em ? new Date(o.pedagogo.visto_em) : null;
 
+    // Metadados do professor (salvos no local PG pela rota de comportamento)
+    const professorNome = o.meta?.professor_nome || '';
+    const nomeTurma     = o.meta?.nome_turma     || '';
+
     const pontos = o.pontos || 0;
     const pontosClass = pontos < 0 ? 'neg' : pontos > 0 ? 'pos' : 'zero';
     const pontosLabel = pontos === 0 ? '0 pts' : `${pontos > 0 ? '+' : ''}${pontos} pts`;
@@ -142,6 +146,16 @@ function criarCard(o) {
 
     const notaTruncada = nota.length > 80 ? nota.slice(0, 80) + '…' : nota;
 
+    // Linha de professor e turma
+    const professorHtml = professorNome
+        ? `<div class="ped-prof-row">
+               <span class="ped-prof-icon">👩‍🏫</span>
+               <span class="ped-prof-nome">${professorNome}</span>
+           </div>`
+        : '';
+
+    const turmaDisplay = nomeTurma || (o.cod_turma ? `Turma ${o.cod_turma}` : '');
+
     card.innerHTML = `
         <div class="ped-card-head">
             <div class="ped-card-badges">
@@ -152,12 +166,13 @@ function criarCard(o) {
             </div>
             <span class="ped-card-data">${isoParaBR(o.data)}</span>
         </div>
+        ${professorNome ? `<div class="ped-card-prof">${professorHtml}</div>` : ''}
         <div class="ped-card-body">
             <div>
                 <p class="ped-aluno-nome">${o.nome_aluno || 'Aluno não identificado'}</p>
                 <div class="ped-aluno-meta">
                     ${o.num_chamada ? `<span class="ped-meta-chip">Nº ${o.num_chamada}</span>` : ''}
-                    ${o.cod_turma   ? `<span class="ped-meta-chip">Turma ${o.cod_turma}</span>` : ''}
+                    ${turmaDisplay  ? `<span class="ped-meta-chip">📚 ${turmaDisplay}</span>` : ''}
                 </div>
             </div>
             <div class="ped-ocorrencia-info">
