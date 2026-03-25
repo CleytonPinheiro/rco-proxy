@@ -124,32 +124,77 @@
 /* ── Abas de turma ───────────────────────────────────────────── */
 .turma-tabs {
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    flex-wrap: wrap;
     margin-bottom: 20px;
 }
+
+/* Linha do botão "Todas" */
+.tab-geral-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Card de grupo de turmas */
+.tab-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+.tab-grupo-unico {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* Rótulo do grupo (nome do curso) */
+.tab-grupo-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+/* Linha de botões dentro do grupo */
+.tab-grupo-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
 .turma-tab {
-    padding: 7px 14px;
+    padding: 6px 13px;
     border-radius: 20px;
     border: 1.5px solid var(--border);
     background: var(--tab-bg);
     color: var(--tab-color);
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s;
     display: flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
 }
 .turma-tab:hover { background: var(--tab-hover-bg); color: var(--tab-hover-color); }
 .turma-tab.active { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+.turma-tab-todas { font-size: 13px; padding: 7px 16px; }
+
 .tab-count {
     background: rgba(255,255,255,0.25);
     color: inherit;
     border-radius: 10px;
     padding: 0 6px;
     font-size: 11px;
+    font-weight: 700;
 }
 .turma-tab:not(.active) .tab-count { background: var(--border); color: var(--text-muted); }
 

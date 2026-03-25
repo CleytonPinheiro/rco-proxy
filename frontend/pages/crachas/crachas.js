@@ -85,23 +85,75 @@ function extrairSerie(descrTurma) {
     return m ? m[1] : descrTurma.split(' - ')[0] || '';
 }
 
+// Extrai o nome do curso (primeiro segmento) como chave de agrupamento
+function extrairCurso(descrTurma) {
+    return descrTurma.split(' - ')[0].trim();
+}
+
+// Abrevia o nome da turma para exibição nos botões (série + período + classe)
+function abreviarParaTab(descrTurma) {
+    const parts = descrTurma.split(' - ').map(p => p.trim()).filter(Boolean);
+    const serieIdx = parts.findIndex((p, i) =>
+        i > 0 && /\d+[ªoaº°]?\s*(s[eé]rie|ano)/i.test(p)
+    );
+    if (serieIdx > 0) return parts.slice(serieIdx).join(' · ');
+    return parts.length > 1 ? parts.slice(1).join(' · ') : descrTurma.trim();
+}
+
 // ── Tabs de turma ─────────────────────────────────────────────────────────────
 function renderTabs() {
-    const turmasUnicas = [...new Set(todosAlunos.map(a => a.descrTurma))].sort();
     const container = document.getElementById('turmaTabs');
+    const turmasUnicas = [...new Set(todosAlunos.map(a => a.descrTurma))].sort();
 
-    container.innerHTML = `
-        <button class="turma-tab ${turmaAtual === 'todos' ? 'active' : ''}" onclick="selecionarTurma('todos')">
-            Todas (${todosAlunos.length})
+    // Agrupar por curso
+    const grupos = {};
+    turmasUnicas.forEach(t => {
+        const curso = extrairCurso(t);
+        if (!grupos[curso]) grupos[curso] = [];
+        grupos[curso].push(t);
+    });
+
+    const totalGeral = todosAlunos.length;
+    const nGrupos    = Object.keys(grupos).length;
+
+    // Botão "Todas"
+    let html = `<div class="tab-geral-wrap">
+        <button class="turma-tab turma-tab-todas ${turmaAtual === 'todos' ? 'active' : ''}" onclick="selecionarTurma('todos')">
+            Todas <span class="tab-count">${totalGeral}</span>
         </button>
-        ${turmasUnicas.map(t => {
-            const count = todosAlunos.filter(a => a.descrTurma === t).length;
-            const id    = t;
-            return `<button class="turma-tab ${turmaAtual === id ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g,"\\'")}')">
-                ${t} <span class="tab-count">${count}</span>
-            </button>`;
-        }).join('')}
-    `;
+    </div>`;
+
+    // Grupos de turma
+    if (nGrupos === 1) {
+        // Apenas um curso: não exibe agrupamento, botões em linha simples
+        html += `<div class="tab-grupo tab-grupo-unico"><div class="tab-grupo-btns">
+            ${turmasUnicas.map(t => {
+                const count = todosAlunos.filter(a => a.descrTurma === t).length;
+                const label = abreviarParaTab(t);
+                return `<button class="turma-tab ${turmaAtual === t ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
+                    ${label} <span class="tab-count">${count}</span>
+                </button>`;
+            }).join('')}
+        </div></div>`;
+    } else {
+        Object.entries(grupos).forEach(([curso, turmas]) => {
+            const labelCurso = curso.length > 45 ? curso.substring(0, 43) + '…' : curso;
+            html += `<div class="tab-grupo">
+                <span class="tab-grupo-label">${labelCurso}</span>
+                <div class="tab-grupo-btns">
+                    ${turmas.map(t => {
+                        const count = todosAlunos.filter(a => a.descrTurma === t).length;
+                        const label = abreviarParaTab(t);
+                        return `<button class="turma-tab ${turmaAtual === t ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
+                            ${label} <span class="tab-count">${count}</span>
+                        </button>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        });
+    }
+
+    container.innerHTML = html;
 }
 
 function selecionarTurma(turma) {
