@@ -721,6 +721,18 @@ async function ativarModoGeral() {
     renderModoGeral();
 }
 
+// Extrai a parte relevante do nome longo da turma (série + período + turma)
+function abreviarNomeTurma(nomeTurma) {
+    const parts = nomeTurma.split(' - ').map(p => p.trim()).filter(Boolean);
+    // Encontra o índice da parte que contém série/ano (ex: "3ª Série", "8ºAno", "1ª série")
+    const serieIdx = parts.findIndex((p, i) =>
+        i > 0 && /\d+[ªoaº°]?\s*(s[eé]rie|ano)/i.test(p)
+    );
+    if (serieIdx > 0) return parts.slice(serieIdx).join(' · ');
+    // Fallback: remove apenas o primeiro segmento (nome do curso)
+    return parts.length > 1 ? parts.slice(1).join(' · ') : (nomeTurma.trim() || '—');
+}
+
 function popularSelectTurma() {
     const sel = document.getElementById('selectTurma');
     if (!sel) return;
@@ -731,21 +743,40 @@ function popularSelectTurma() {
         if (a.codTurma && a.nomeTurma) turmasMap[a.codTurma] = a.nomeTurma;
     });
 
+    const nTurmas = Object.keys(turmasMap).length;
     const opcoes = Object.entries(turmasMap).sort((a, b) => a[1].localeCompare(b[1]));
 
-    sel.innerHTML = `<option value="">Todas as turmas (${todos.length})</option>`;
+    sel.innerHTML = `<option value="">Todas as turmas${nTurmas > 1 ? ` — ${nTurmas} turmas` : ''}</option>`;
     opcoes.forEach(([cod, nome]) => {
-        const n = todos.filter(a => a.codTurma === parseInt(cod)).length;
         const opt = document.createElement('option');
         opt.value = cod;
-        opt.textContent = `${nome} (${n})`;
+        opt.textContent = abreviarNomeTurma(nome);
         if (String(cod) === String(filtroTurma)) opt.selected = true;
         sel.appendChild(opt);
     });
+
+    atualizarEstadoSelectTurma();
+}
+
+function atualizarEstadoSelectTurma() {
+    const sel = document.getElementById('selectTurma');
+    if (!sel) return;
+    sel.classList.toggle('turma-ativa', !!filtroTurma);
+    // Atualiza o badge de turma ativa na barra
+    const badge = document.getElementById('turmaAtivaBadge');
+    if (!badge) return;
+    if (filtroTurma) {
+        const nomeSel = sel.options[sel.selectedIndex]?.text || '';
+        badge.textContent = nomeSel;
+        badge.style.display = 'inline-flex';
+    } else {
+        badge.style.display = 'none';
+    }
 }
 
 function filtrarPorTurma(val) {
     filtroTurma = val;
+    atualizarEstadoSelectTurma();
     renderModoGeral();
 }
 

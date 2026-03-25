@@ -906,7 +906,7 @@
 .filtro-turma {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 .filtro-sort {
     display: flex;
@@ -914,9 +914,59 @@
     gap: 4px;
 }
 
+.filtro-turma-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .turma-select {
-    min-width: 200px;
-    max-width: 340px;
+    min-width: 180px;
+    max-width: 320px;
+    padding: 6px 28px 6px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.18s, background 0.18s, color 0.18s, box-shadow 0.18s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+}
+.turma-select:hover {
+    border-color: #818cf8;
+}
+.turma-select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.turma-select.turma-ativa {
+    border-color: #6366f1;
+    background-color: #eef2ff;
+    color: #4338ca;
+    font-weight: 600;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234338ca' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.turma-ativa-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    background: #ede9fe;
+    color: #5b21b6;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 20px;
+    border: 1px solid #c4b5fd;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
 }
 
 .range-label {
@@ -1355,6 +1405,8 @@
 [data-theme="dark"] .range-num,
 [data-theme="dark"] .sort-select,
 [data-theme="dark"] .turma-select                { background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary); }
+[data-theme="dark"] .turma-select.turma-ativa    { background: rgba(99,102,241,0.15); border-color: #818cf8; color: #a5b4fc; }
+[data-theme="dark"] .turma-ativa-badge           { background: rgba(109,40,217,0.2); color: #a78bfa; border-color: #7c3aed; }
 [data-theme="dark"] .geral-loading,
 [data-theme="dark"] .geral-vazio                 { background: var(--bg-card); border-color: var(--border); color: var(--text-muted); }
 [data-theme="dark"] .geral-resumo-stat           { background: var(--bg-card); border-color: var(--border); }
