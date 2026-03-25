@@ -1,0 +1,340 @@
+/* ═══════════════════════════════════════════════════════════
+   EduSync — Quiosque Circulação
+═══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --brand:    #0ea5e9;
+    --brand2:   #38bdf8;
+    --entrada:  #22c55e;
+    --saida:    #f97316;
+    --danger:   #ef4444;
+    --bg:       #0c1628;
+    --surface:  #112036;
+    --card:     #172944;
+    --card2:    #1e3554;
+    --border:   #2a4365;
+    --text:     #e2e8f0;
+    --muted:    #7ca3c6;
+    --radius:   12px;
+}
+
+html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.kq-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 54px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.kq-brand {
+    font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+}
+.kq-brand span { color: var(--brand2); }
+.kq-brand em   { color: var(--muted); font-style: normal; font-size: 14px; margin-left: 4px; }
+
+.kq-clock {
+    font-size: 22px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--brand2); letter-spacing: 1px;
+}
+
+.kq-header-right { display: flex; align-items: center; gap: 10px; }
+
+.kq-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--entrada); box-shadow: 0 0 8px var(--entrada);
+    display: inline-block;
+    animation: breathe 2.5s ease-in-out infinite;
+}
+.kq-dot.loading { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: spin 1s linear infinite; }
+@keyframes breathe { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes spin     { to { transform: rotate(360deg); } }
+
+.kq-btn-sm {
+    padding: 6px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--text); font-size: 13px; cursor: pointer;
+    text-decoration: none; transition: background .15s;
+}
+.kq-btn-sm:hover { background: var(--card2); }
+.kq-btn-exit { border-color: var(--danger); color: #fca5a5; }
+.kq-btn-exit:hover { background: #2d1515; }
+
+/* ── Body layout ─────────────────────────────────────────── */
+.kq-body {
+    display: flex;
+    height: calc(100vh - 54px);
+    gap: 0;
+    overflow: hidden;
+}
+
+/* ── Left column ─────────────────────────────────────────── */
+.kq-left {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    overflow-y: auto;
+}
+
+.kq-section-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+/* ── Ambientes grid ─────────────────────────────────────── */
+.kq-ambientes-grid {
+    display: flex; flex-direction: column; gap: 8px;
+}
+
+.kq-loading-txt { color: var(--muted); font-size: 13px; }
+
+.kq-amb-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: var(--radius);
+    border: 2px solid var(--border);
+    background: var(--card); color: var(--text);
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all .15s; text-align: left;
+    width: 100%;
+}
+.kq-amb-btn:hover { border-color: var(--brand); background: var(--card2); }
+.kq-amb-btn.ativo {
+    border-color: var(--brand2);
+    background: rgba(14,165,233,.15);
+    color: var(--brand2);
+    box-shadow: 0 0 0 1px var(--brand2) inset;
+}
+.kq-amb-icon { font-size: 22px; line-height: 1; }
+.kq-amb-info { display: flex; flex-direction: column; gap: 2px; }
+.kq-amb-nome { font-size: 14px; font-weight: 700; }
+.kq-amb-tipo { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+.kq-amb-dentro {
+    margin-left: auto; font-size: 11px; font-weight: 800;
+    background: var(--border); padding: 2px 7px; border-radius: 20px;
+    color: var(--brand2);
+}
+
+/* ── Scan input ─────────────────────────────────────────── */
+.kq-scan-input {
+    width: 100%; padding: 12px 14px;
+    border-radius: var(--radius);
+    border: 2px solid var(--brand);
+    background: var(--card); color: var(--text);
+    font-size: 15px; outline: none;
+    transition: border-color .2s;
+    box-shadow: 0 0 0 4px rgba(14,165,233,.08);
+}
+.kq-scan-input:focus { border-color: var(--brand2); box-shadow: 0 0 0 4px rgba(56,189,248,.15); }
+.kq-scan-input::placeholder { color: var(--muted); }
+
+.kq-btn-confirm {
+    width: 100%; padding: 11px;
+    border-radius: var(--radius);
+    border: none; background: var(--brand);
+    color: #fff; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: background .15s;
+}
+.kq-btn-confirm:hover { background: var(--brand2); }
+
+/* ── Camera ─────────────────────────────────────────────── */
+.kq-camera-area {
+    position: relative; width: 100%;
+    border-radius: var(--radius); overflow: hidden;
+    background: #000; aspect-ratio: 1;
+}
+.kq-camera-area video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.kq-cam-frame {
+    position: absolute; inset: 0;
+    pointer-events: none;
+}
+.qr-corner {
+    position: absolute; width: 26px; height: 26px;
+    border-color: var(--brand2); border-style: solid;
+}
+.qr-corner.tl { top: 16px; left: 16px; border-width: 3px 0 0 3px; }
+.qr-corner.tr { top: 16px; right: 16px; border-width: 3px 3px 0 0; }
+.qr-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 3px 3px; }
+.qr-corner.br { bottom: 16px; right: 16px; border-width: 0 3px 3px 0; }
+
+.qr-scan-line {
+    position: absolute; left: 16px; right: 16px; height: 2px;
+    background: var(--brand2); opacity: .8;
+    animation: scanline 2s ease-in-out infinite;
+    top: 16px;
+}
+@keyframes scanline {
+    0%   { top: 16px;       opacity: .8; }
+    50%  { top: calc(100% - 16px); opacity: .8; }
+    100% { top: 16px;       opacity: .8; }
+}
+
+.kq-btn-camera {
+    width: 100%; padding: 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 13px; cursor: pointer;
+    transition: all .15s;
+}
+.kq-btn-camera:hover { color: var(--text); border-color: var(--brand); }
+.kq-btn-camera.ativa { color: var(--saida); border-color: var(--saida); }
+
+/* ── Feedback ─────────────────────────────────────────────── */
+.kq-feedback {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px; border-radius: var(--radius);
+    border: 2px solid var(--entrada);
+    background: rgba(34,197,94,.1);
+    animation: feedbackIn .3s ease;
+}
+.kq-feedback.saida { border-color: var(--saida); background: rgba(249,115,22,.1); }
+.kq-feedback.erro  { border-color: var(--danger); background: rgba(239,68,68,.1); }
+
+@keyframes feedbackIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.kq-feedback-icon { font-size: 36px; line-height: 1; }
+.kq-feedback-acao {
+    font-size: 11px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--entrada); margin-bottom: 2px;
+}
+.kq-feedback.saida .kq-feedback-acao { color: var(--saida); }
+.kq-feedback.erro  .kq-feedback-acao { color: var(--danger); }
+.kq-feedback-nome { font-size: 16px; font-weight: 800; }
+.kq-feedback-sub  { font-size: 12px; color: var(--muted); }
+
+/* ── Right column ─────────────────────────────────────────── */
+.kq-right {
+    flex: 1; display: flex; flex-direction: column;
+    padding: 20px 22px;
+    overflow: hidden; gap: 12px;
+}
+
+.kq-monitor-header {
+    display: flex; align-items: center; gap: 10px;
+}
+.kq-monitor-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase;
+}
+.kq-monitor-badge {
+    background: var(--brand); color: #fff;
+    font-size: 12px; font-weight: 800;
+    padding: 2px 8px; border-radius: 20px;
+}
+
+/* ── Ativos ──────────────────────────────────────────────── */
+.kq-ativos {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    min-height: 80px; max-height: 220px; overflow-y: auto;
+    padding: 4px 0;
+}
+
+.kq-ativo-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--radius);
+    background: var(--card);
+    border-left: 4px solid var(--entrada);
+    min-width: 220px; flex: 1;
+    animation: cardIn .3s ease;
+}
+@keyframes cardIn {
+    from { opacity: 0; transform: scale(.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.ka-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(14,165,233,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800; color: var(--brand2);
+    flex-shrink: 0;
+}
+.ka-nome { font-size: 14px; font-weight: 700; }
+.ka-amb  { font-size: 11px; color: var(--muted); }
+.ka-tempo {
+    margin-left: auto; font-size: 12px; font-weight: 700;
+    color: var(--brand2); white-space: nowrap;
+}
+
+/* ── Histórico ───────────────────────────────────────────── */
+.kq-hist-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase;
+}
+
+.kq-historico {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 6px;
+    padding-right: 4px;
+}
+.kq-historico::-webkit-scrollbar { width: 4px; }
+.kq-historico::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.kq-hist-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; border-radius: 8px;
+    background: var(--card); font-size: 13px;
+    border-left: 3px solid transparent;
+    animation: cardIn .25s ease;
+}
+.kq-hist-row.entrada { border-left-color: var(--entrada); }
+.kq-hist-row.saida   { border-left-color: var(--saida); }
+
+.kh-hora  { font-size: 12px; color: var(--muted); font-weight: 600; min-width: 42px; }
+.kh-acao  { font-size: 18px; }
+.kh-nome  { font-weight: 700; flex: 1; }
+.kh-amb   { font-size: 11px; color: var(--muted); }
+.kh-dur   {
+    margin-left: auto; font-size: 11px;
+    color: var(--muted); white-space: nowrap;
+}
+
+/* ── Vazio ───────────────────────────────────────────────── */
+.kq-vazio { color: var(--muted); font-size: 13px; padding: 12px; }
+
+/* ── Última atualização ──────────────────────────────────── */
+.kq-ultima { font-size: 10px; color: var(--muted); text-align: right; }
+
+/* ── Modal aviso ─────────────────────────────────────────── */
+.kq-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+}
+.kq-modal-box {
+    background: var(--surface); border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 40px 50px; text-align: center;
+    animation: cardIn .25s ease;
+}
+.kq-modal-icon { font-size: 48px; margin-bottom: 12px; }
+.kq-modal-msg  { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+.kq-modal-btn  {
+    padding: 10px 28px; border-radius: 10px;
+    border: none; background: var(--brand);
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.kq-modal-btn:hover { background: var(--brand2); }
+
+/* ── Scrollbars ─────────────────────────────────────────── */
+.kq-left::-webkit-scrollbar,
+.kq-ativos::-webkit-scrollbar { width: 4px; }
+.kq-left::-webkit-scrollbar-thumb,
+.kq-ativos::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }

@@ -40,6 +40,17 @@
 }
 .btn-gerenciar:hover { background: var(--bg-hover); }
 
+.btn-quiosque {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    border: 1px solid #0ea5e9;
+    background: rgba(14,165,233,.1);
+    color: #0ea5e9; font-size: .9rem; font-weight: 600;
+    text-decoration: none; white-space: nowrap;
+    transition: all .2s; cursor: pointer;
+}
+.btn-quiosque:hover { background: rgba(14,165,233,.2); border-color: #38bdf8; color: #38bdf8; }
+
 /* ── Painel Scanner ─────────────────────────────────────────────────── */
 .scanner-panel {
     display: grid;

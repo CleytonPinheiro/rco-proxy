@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../../shared/assets/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Quiosque Circulação</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link rel="stylesheet" href="./quiosque.css">
+</head>
+<body>
+
+    <!-- ── HEADER ───────────────────────────────────────────────────────── -->
+    <header class="kq-header">
+        <div class="kq-brand">⚡ <span>EduSync</span> <em>Circulação</em></div>
+        <div class="kq-clock" id="relogio">--:--:--</div>
+        <div class="kq-header-right">
+            <span id="refreshDot" class="kq-dot" title="Atualização automática"></span>
+            <button class="kq-btn-sm" onclick="toggleFullscreen()" title="Tela cheia">⛶</button>
+            <a href="/pages/circulacao/" class="kq-btn-sm kq-btn-exit">✕ Sair</a>
+        </div>
+    </header>
+
+    <!-- ── BODY ─────────────────────────────────────────────────────────── -->
+    <div class="kq-body">
+
+        <!-- COLUNA ESQUERDA: ambientes + scan -->
+        <aside class="kq-left">
+
+            <div class="kq-section-title">SELECIONAR AMBIENTE</div>
+            <div id="listaAmbientes" class="kq-ambientes-grid">
+                <div class="kq-loading-txt">Carregando...</div>
+            </div>
+
+            <div class="kq-section-title" style="margin-top:24px;">ESCANEAR CRACHÁ</div>
+
+            <!-- Input hidden para scanner USB (sempre focado) -->
+            <input
+                id="inputScanHidden"
+                class="kq-scan-input"
+                type="text"
+                placeholder="Escaneie ou digite o código..."
+                autocomplete="off"
+                autofocus
+                inputmode="numeric"
+            >
+            <button class="kq-btn-confirm" id="btnConfirmar" onclick="processarScan()">↵ Confirmar</button>
+
+            <div class="kq-camera-area" id="cameraArea" style="display:none;">
+                <video id="kqVideo" autoplay playsinline muted></video>
+                <canvas id="kqCanvas" style="display:none;"></canvas>
+                <div class="kq-cam-frame">
+                    <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+                    <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+                    <div class="qr-scan-line"></div>
+                </div>
+            </div>
+
+            <button class="kq-btn-camera" id="btnCamera" onclick="toggleCamera()">📷 Câmera QR</button>
+
+            <!-- Feedback do scan -->
+            <div class="kq-feedback" id="kqFeedback" style="display:none;">
+                <div class="kq-feedback-icon" id="fbIcon">✅</div>
+                <div class="kq-feedback-info">
+                    <div class="kq-feedback-acao" id="fbAcao">ENTROU</div>
+                    <div class="kq-feedback-nome" id="fbNome">—</div>
+                    <div class="kq-feedback-sub" id="fbSub">—</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- COLUNA DIREITA: monitor -->
+        <section class="kq-right">
+
+            <!-- Dentro agora -->
+            <div class="kq-monitor-header">
+                <span class="kq-monitor-title">DENTRO AGORA</span>
+                <span class="kq-monitor-badge" id="badgeAtivos">0</span>
+            </div>
+            <div class="kq-ativos" id="kqAtivos">
+                <div class="kq-vazio">Nenhum aluno no momento</div>
+            </div>
+
+            <!-- Histórico recente -->
+            <div class="kq-hist-title">HISTÓRICO DO DIA</div>
+            <div class="kq-historico" id="kqHistorico">
+                <div class="kq-vazio">Sem registros hoje</div>
+            </div>
+
+            <div class="kq-ultima" id="kqUltima"></div>
+        </section>
+    </div>
+
+    <!-- Modal: Selecione um ambiente primeiro -->
+    <div id="modalAviso" class="kq-modal" style="display:none;">
+        <div class="kq-modal-box">
+            <div class="kq-modal-icon">⚠️</div>
+            <div class="kq-modal-msg">Selecione um ambiente antes de escanear</div>
+            <button class="kq-modal-btn" onclick="document.getElementById('modalAviso').style.display='none'">OK</button>
+        </div>
+    </div>
+
+    <script src="./quiosque.js"></script>
+</body>
+</html>
