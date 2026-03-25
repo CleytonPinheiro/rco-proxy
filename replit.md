@@ -56,20 +56,29 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 │   │       └── insert_alunos_gerado.sql
 │   ├── package.json
 │   └── node_modules/
-├── frontend/                             # Arquivos estáticos (flat structure)
-│   ├── index.html / app.js               # Login
-│   ├── dashboard.html/css/js
-│   ├── frequencias.html/css/js           # Com drawer de detalhes do aluno
-│   ├── crachas.html/css/js
-│   ├── comportamento.html/css/js
-│   ├── grupos.html/css/js
-│   ├── materiais.html/css/js
-│   ├── emprestimos.html/css/js
-│   ├── presenca.html/css/js
-│   ├── quiosque.html/css/js              # Quiosque da cozinha
-│   ├── cozinha.html/css/js
-│   ├── theme.css / theme.js              # Modo escuro/claro
-│   └── style.css
+├── frontend/                             # Arquivos estáticos (feature-based)
+│   ├── index.html                        # Login (raiz)
+│   ├── shared/                           # Recursos compartilhados
+│   │   ├── css/
+│   │   │   ├── layout.css               # Header, footer, nav, modais, side panel
+│   │   │   ├── theme.css                # Variáveis de tema claro/escuro
+│   │   │   └── base.css                 # Estilos base da página de login
+│   │   ├── js/
+│   │   │   ├── theme.js                 # Toggle claro/escuro
+│   │   │   └── app.js                   # Lógica da página de login
+│   │   └── assets/
+│   │       └── favicon.svg
+│   └── pages/                           # Uma pasta por página
+│       ├── dashboard/index.html + dashboard.css + dashboard.js
+│       ├── frequencias/index.html + frequencias.css + frequencias.js
+│       ├── crachas/index.html + crachas.css + crachas.js
+│       ├── comportamento/index.html + comportamento.css + comportamento.js
+│       ├── presenca/index.html + presenca.css + presenca.js
+│       ├── grupos/index.html + grupos.css + grupos.js
+│       ├── materiais/index.html + materiais.css + materiais.js
+│       ├── emprestimos/index.html + emprestimos.css + materiais.css + emprestimos.js
+│       ├── cozinha/index.html + cozinha.css + cozinha.js
+│       └── quiosque/index.html + quiosque.css + quiosque.js
 ├── replit.md
 └── README.md
 ```
@@ -148,7 +157,7 @@ Os serviços são singletons inicializados em `initializeApp()` no `index.js`.
 1. **Servidor sobe antes das dependências**: Health check funciona imediatamente; módulos pesados (Puppeteer, Supabase) carregam em background via `initializeApp()`
 2. **OOP com classes ES2022**: Campos privados (`#field`) nos serviços para encapsulamento real
 3. **Injeção de dependências**: Route factories recebem serviços como parâmetro, sem globals
-4. **Frontend estático flat**: Arquivos HTML/CSS/JS na raiz do `frontend/` para simplicidade; reorganização hierárquica foi avaliada mas descartada pelo alto risco de quebra de paths relativos
+4. **Frontend feature-based**: Cada página tem sua própria pasta `pages/[page]/` com `index.html`, CSS e JS. Recursos compartilhados (tema, layout, assets) ficam em `shared/`. URLs sem `.html` — `/pages/dashboard/` etc. servidas pelo `express.static`. Redirects 301 de URLs antigas (`/dashboard.html`) para novas.
 5. **codPeriodoLetivo=261** (2026-1), **codPeriodoAvaliacao=9** (1º Trimestre)
 
 ## Notas de Segurança
