@@ -370,38 +370,43 @@
 .toast.erro { background: #dc2626; }
 
 /* ── PRINT ───────────────────────────────────────────────────── */
+@page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+}
+
 @media print {
     header, .ms-topbar, .ms-config-bar, .ms-banco, .ms-lousa,
     .side-panel, #toast, .ms-carteira-btn-rem, .ms-titulo-icon { display: none !important; }
 
-    .ms-mesa-professor { justify-content: flex-start; margin-bottom: 4px; }
-    .ms-mesa-prof-body { flex-direction: row; gap: 10px; align-items: center; }
-    .ms-mesa-prof-body svg { width: 80px; height: 32px; color: #5a3e1b !important; }
-    .ms-mesa-prof-label { color: #333 !important; font-size: 7pt; }
-    .ms-mesa-professor::before {
-        content: '';
-        display: block;
-        width: 100%;
-        height: 1px;
-        background: #ccc;
-        margin-bottom: 6px;
-    }
+    /* Corpo ocupa a folha toda sem margens extras */
+    html, body { width: 100%; margin: 0 !important; padding: 0 !important; background: #fff !important; }
 
-    body { background: #fff !important; }
-    .ms-workspace { display: block; }
-    .ms-grade-wrap { align-items: flex-start; }
-    .ms-grade { justify-content: flex-start; }
+    /* Workspace e grade-wrap em largura total */
+    .ms-workspace    { display: block; width: 100%; }
+    .ms-grade-wrap   { width: 100%; align-items: flex-start; }
 
+    /* Grade ocupa toda a largura — colunas via JS (beforeprint → 1fr) */
+    .ms-grade { width: 100% !important; justify-content: flex-start; }
+
+    /* Mesa do professor compacta (cadeira visível acima da mesa) */
+    .ms-mesa-professor { justify-content: center; margin-bottom: 6px; }
+    .ms-mesa-prof-body { flex-direction: column; gap: 2px; align-items: center; }
+    .ms-mesa-prof-body svg { width: 90px; height: 46px; color: #5a3e1b !important; }
+    .ms-mesa-prof-label { color: #333 !important; font-size: 7pt; margin-top: 1px; }
+
+    /* Título da turma (pseudo-elemento antes da grade) */
     .ms-grade-wrap::before {
         content: attr(data-turma);
         display: block;
-        font-size: 14pt;
+        font-size: 13pt;
         font-weight: 700;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         text-align: center;
         width: 100%;
         color: #000;
     }
+    /* Barra da lousa (pseudo-elemento com order:-1 sobe ao topo) */
     .ms-grade-wrap::after {
         content: 'LOUSA / QUADRO BRANCO';
         display: block;
@@ -409,24 +414,29 @@
         font-size: 9pt;
         font-weight: 700;
         letter-spacing: .1em;
-        border: 2px solid #000;
-        padding: 6px;
-        margin-bottom: 10px;
+        border: 2.5px solid #000;
+        padding: 5px;
+        margin-bottom: 8px;
         order: -1;
+        width: 100%;
+        box-sizing: border-box;
         color: #000;
     }
 
+    /* Carteiras: largura auto para preencher a célula do grid */
     .ms-carteira {
         border: 1.5px solid #aaa !important;
         background: #fff !important;
         break-inside: avoid;
-        width: 80px !important;
-        height: 68px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 70px !important;
     }
     .ms-carteira.ocupada { border-color: #333 !important; }
-    .ms-carteira-nome  { color: #000 !important; font-size: .6rem !important; }
-    .ms-carteira-avatar { background: #333 !important; }
+    .ms-carteira-nome    { color: #000 !important; font-size: .58rem !important; }
+    .ms-carteira-avatar  { background: #333 !important; width: 28px !important; height: 28px !important; font-size: .65rem !important; }
     .ms-carteira-chamada { color: #555 !important; }
-    .ms-carteira-num { color: #888 !important; }
+    .ms-carteira-num     { color: #888 !important; }
+    .ms-carteira-vazia-icon svg { width: 28px; height: 38px; }
     .ms-vazio-msg { display: none; }
 }

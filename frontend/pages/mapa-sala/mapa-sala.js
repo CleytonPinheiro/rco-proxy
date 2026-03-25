@@ -390,4 +390,19 @@ window.addEventListener('beforeunload', e => {
     if (modificado) { e.preventDefault(); e.returnValue = ''; }
 });
 
+// Impressão A4: expandir grade para largura total da folha
+window.addEventListener('beforeprint', () => {
+    const el = document.getElementById('grade');
+    if (!el) return;
+    el._origGridCols = el.style.gridTemplateColumns;
+    const colunas = parseInt(document.getElementById('inpColunas').value) || 5;
+    el.style.gridTemplateColumns = `repeat(${colunas}, 1fr)`;
+});
+window.addEventListener('afterprint', () => {
+    const el = document.getElementById('grade');
+    if (el && el._origGridCols !== undefined) {
+        el.style.gridTemplateColumns = el._origGridCols;
+    }
+});
+
 init();
