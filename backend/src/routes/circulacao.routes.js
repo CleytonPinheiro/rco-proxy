@@ -12,11 +12,14 @@ export function createCirculacaoRouter({ supabase, supabaseAdmin }) {
                 .select('*')
                 .order('nome');
             if (error) {
-                if (error.code === '42P01') return res.json([]);
-                return res.status(500).json({ erro: error.message });
+                console.warn('[CIRCULACAO] Tabela ambientes não disponível:', error.message);
+                return res.json([]);
             }
             res.json(data || []);
-        } catch (e) { res.status(500).json({ erro: e.message }); }
+        } catch (e) {
+            console.warn('[CIRCULACAO] Erro ao buscar ambientes:', e.message);
+            res.json([]);
+        }
     });
 
     router.post('/circulacao/ambientes', async (req, res) => {

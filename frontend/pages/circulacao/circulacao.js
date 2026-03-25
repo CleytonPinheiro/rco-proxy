@@ -48,10 +48,13 @@ async function verificarAuth() {
 async function carregarAmbientes() {
     try {
         const r = await fetch(`${API}/circulacao/ambientes`);
-        ambientes = (await r.json()).filter(a => a.ativo);
+        const data = await r.json();
+        ambientes = Array.isArray(data) ? data.filter(a => a.ativo) : [];
         renderSelectAmbiente();
     } catch (e) {
         console.error('Erro ao carregar ambientes', e);
+        ambientes = [];
+        renderSelectAmbiente();
     }
 }
 
