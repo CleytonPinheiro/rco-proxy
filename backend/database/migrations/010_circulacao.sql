@@ -32,7 +32,8 @@ ALTER TABLE registros_circulacao  DISABLE ROW LEVEL SECURITY;
 -- Ambientes padrão (só insere se a tabela estiver vazia)
 INSERT INTO ambientes (nome, tipo, capacidade_max)
 SELECT * FROM (VALUES
-    ('Banheiro Masculino', 'banheiro', 3),
-    ('Banheiro Feminino',  'banheiro', 3)
+    ('Banheiro Masculino',  'banheiro', 3),
+    ('Banheiro Feminino',   'banheiro', 3),
+    ('Banheiro Adaptado',   'banheiro', 1)
 ) AS v(nome, tipo, capacidade_max)
 WHERE NOT EXISTS (SELECT 1 FROM ambientes LIMIT 1);

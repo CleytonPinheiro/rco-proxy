@@ -38,83 +38,81 @@
 
     <main class="container">
 
-        <!-- ── Barra superior ─────────────────────────────────────────── -->
+        <!-- ── Título ─────────────────────────────────────────────────── -->
         <div class="circ-topbar">
             <div class="circ-titulo-area">
                 <h2 class="circ-titulo">🚶 Circulação</h2>
                 <p class="circ-sub">Controle de fluxo e horários de acesso por ambiente</p>
             </div>
             <div class="circ-topbar-right">
-                <select id="selAmbiente" class="sel-ambiente" onchange="trocarAmbiente()">
-                    <option value="">Carregando ambientes...</option>
-                </select>
-                <button class="btn-gerenciar" onclick="abrirModalAmbientes()">⚙️ Ambientes</button>
+                <input type="date" id="inputData" class="input-data" onchange="recarregarTudo()">
+                <button class="btn-gerenciar" onclick="abrirModalAmbientes()">⚙️ Gerenciar Ambientes</button>
             </div>
         </div>
 
-        <!-- ── Painel principal: Scanner + Ativos ─────────────────────── -->
-        <div class="circ-grid">
-
-            <!-- Scanner -->
-            <div class="circ-card card-scanner">
-                <div class="card-header-circ">
-                    <span class="card-titulo-circ">📷 Registrar Acesso</span>
-                </div>
-                <div class="scanner-body">
-                    <div class="scanner-hint">
-                        Escaneie o QR Code do crachá do aluno<br>
-                        <small>Leitora USB ou câmera</small>
-                    </div>
-                    <div class="scanner-input-wrap">
-                        <input
-                            type="text"
-                            id="inputScan"
-                            class="scanner-input"
-                            placeholder="Aguardando leitura..."
-                            autocomplete="off"
-                            autofocus
-                        >
-                        <button class="btn-scan-manual" onclick="processarScan()" title="Confirmar">↵</button>
-                    </div>
-                    <button class="btn-camera" onclick="abrirCamera()">📷 Usar câmera</button>
-
-                    <!-- Feedback da última ação -->
-                    <div id="feedbackScan" class="feedback-scan oculto">
-                        <div class="feedback-icon" id="feedbackIcon"></div>
-                        <div class="feedback-info">
-                            <div class="feedback-nome" id="feedbackNome"></div>
-                            <div class="feedback-acao" id="feedbackAcao"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Câmera QR (oculto por padrão) -->
-                <div id="camWrap" class="cam-wrap oculto">
-                    <video id="camVideo" class="cam-video" playsinline></video>
-                    <canvas id="camCanvas" class="oculto"></canvas>
-                    <button class="btn-cam-fechar" onclick="fecharCamera()">✕ Fechar câmera</button>
+        <!-- ── Painel scanner ─────────────────────────────────────────── -->
+        <div class="scanner-panel">
+            <div class="scanner-panel-left">
+                <div class="scanner-label">📷 Registrar acesso em:</div>
+                <div id="chipAmbientes" class="chip-ambientes">
+                    <span class="chip-loading">Carregando...</span>
                 </div>
             </div>
-
-            <!-- Dentro agora -->
-            <div class="circ-card card-ativos">
-                <div class="card-header-circ">
-                    <span class="card-titulo-circ">🟢 Dentro agora</span>
-                    <span class="badge-count" id="countAtivos">0</span>
-                    <div class="cap-info" id="capInfo"></div>
+            <div class="scanner-panel-center">
+                <div class="scanner-input-wrap">
+                    <input
+                        type="text"
+                        id="inputScan"
+                        class="scanner-input"
+                        placeholder="Escaneie o QR Code ou digite o código..."
+                        autocomplete="off"
+                        autofocus
+                    >
+                    <button class="btn-scan-manual" onclick="processarScan()" title="Confirmar">↵</button>
                 </div>
-                <div id="listaAtivos" class="lista-ativos">
-                    <div class="empty-ativos">Nenhum aluno dentro</div>
+                <button class="btn-camera" onclick="abrirCamera()">📷 Câmera</button>
+            </div>
+            <div class="scanner-panel-right">
+                <div id="feedbackScan" class="feedback-scan oculto">
+                    <div class="feedback-icon" id="feedbackIcon"></div>
+                    <div class="feedback-info">
+                        <div class="feedback-nome" id="feedbackNome"></div>
+                        <div class="feedback-acao" id="feedbackAcao"></div>
+                    </div>
+                </div>
+                <div class="feedback-scan oculto" id="feedbackVazio">
+                    <div class="feedback-icon">👆</div>
+                    <div class="feedback-info">
+                        <div class="feedback-nome">Pronto para registrar</div>
+                        <div class="feedback-acao">Selecione um ambiente e escaneie</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ── Histórico do dia ───────────────────────────────────────── -->
+        <!-- Câmera QR -->
+        <div id="camWrap" class="cam-wrap oculto">
+            <video id="camVideo" class="cam-video" playsinline></video>
+            <canvas id="camCanvas" class="oculto"></canvas>
+            <button class="btn-cam-fechar" onclick="fecharCamera()">✕ Fechar câmera</button>
+        </div>
+
+        <!-- ── Cards de ambientes ──────────────────────────────────────── -->
+        <div id="gridAmbientes" class="grid-ambientes">
+            <div class="amb-card-loading">
+                <div class="spinner"></div>
+                <p>Carregando ambientes...</p>
+            </div>
+        </div>
+
+        <!-- ── Histórico completo do dia ──────────────────────────────── -->
         <div class="circ-card card-historico">
             <div class="card-header-circ">
-                <span class="card-titulo-circ">📋 Histórico</span>
+                <span class="card-titulo-circ">📋 Histórico completo do dia</span>
                 <div class="historico-filtros">
-                    <input type="date" id="inputData" class="input-data" onchange="carregarHistorico()">
+                    <select id="filtroAmbHist" class="sel-hist" onchange="renderHistoricoGlobal()">
+                        <option value="">Todos os ambientes</option>
+                    </select>
                     <span class="hist-count" id="countHistorico">0 registros</span>
                 </div>
             </div>
@@ -124,6 +122,7 @@
                         <tr>
                             <th>Aluno</th>
                             <th>Turma</th>
+                            <th>Ambiente</th>
                             <th>Entrada</th>
                             <th>Saída</th>
                             <th>Duração</th>
@@ -131,7 +130,7 @@
                         </tr>
                     </thead>
                     <tbody id="corpoHistorico">
-                        <tr><td colspan="6" class="empty-row">Carregando...</td></tr>
+                        <tr><td colspan="7" class="empty-row">Carregando...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -143,15 +142,14 @@
     <div id="modalAmbientes" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event)">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>⚙️ Ambientes</h3>
+                <h3>⚙️ Gerenciar Ambientes</h3>
                 <button class="modal-close" onclick="fecharModalAmbientes()">✕</button>
             </div>
             <div class="modal-body">
-                <!-- Formulário novo ambiente -->
                 <div class="form-novo-ambiente">
                     <h4>Novo ambiente</h4>
                     <div class="form-row">
-                        <input type="text" id="novoNome" placeholder="Nome do ambiente" class="input-form">
+                        <input type="text" id="novoNome" placeholder="Ex: Banheiro Masculino" class="input-form">
                         <select id="novoTipo" class="input-form">
                             <option value="banheiro">🚻 Banheiro</option>
                             <option value="laboratorio">🔬 Laboratório</option>
@@ -160,10 +158,9 @@
                             <option value="outro">📍 Outro</option>
                         </select>
                         <input type="number" id="novoCap" placeholder="Capacidade" min="1" max="50" value="2" class="input-form input-cap">
-                        <button class="btn-add-ambiente" onclick="adicionarAmbiente()">+ Adicionar</button>
                     </div>
+                    <button class="btn-add-ambiente" onclick="adicionarAmbiente()">+ Adicionar Ambiente</button>
                 </div>
-                <!-- Lista de ambientes -->
                 <div id="listaAmbientesModal" class="lista-ambientes-modal">
                     <div class="empty-row">Carregando...</div>
                 </div>
