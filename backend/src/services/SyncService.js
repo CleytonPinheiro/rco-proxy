@@ -13,9 +13,11 @@ export class SyncService {
         console.log('[SYNC] Limpando dados do usuário anterior...');
         // Cada item: [tabela, coluna_pk_para_filtro]
         // Supabase SDK exige ao menos um filtro no DELETE — usamos a PK >= 0 ou neq('')
+        // Ordem importa: deletar filhos antes dos pais para respeitar FK
+        // rco_classes → rco_turmas → rco_estabelecimentos
         const tabelasFiltros = [
-            ['rco_turmas',          'cod_turma',           'gte', 0],
             ['rco_classes',         'cod_classe',           'gte', 0],
+            ['rco_turmas',          'cod_turma',            'gte', 0],
             ['rco_estabelecimentos','cod_estabelecimento',  'gte', 0],
             ['rco_observacoes',     'id',                   'gte', 0],
         ];

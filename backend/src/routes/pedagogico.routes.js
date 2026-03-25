@@ -185,6 +185,28 @@ export function createPedagogicoRouter({ supabaseAdmin, rcoApiService }) {
     router.get('/pedagogico/observacoes-rco', async (req, res) => {
         const { codTurma, dataInicio, dataFim } = req.query;
         try {
+            // 1. Mapa cod_classe → {cod_turma, nome_turma} diretamente de rco_classes + rco_turmas
+            //    (evita depender da tabela alunos, que pode estar incompleta)
+            const [classesRes, turmasRes] = await Promise.all([
+                supabaseAdmin.from('rco_classes').select('cod_classe, cod_turma'),
+                supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma'),
+            ]);
+
+            const turmaDescMap = {};  // cod_turma → descr_turma
+            (turmasRes.data || []).forEach(t => { turmaDescMap[t.cod_turma] = t.descr_turma || ''; });
+
+            const classeParaTurmaMap = {}; // cod_classe → {cod_turma, nome_turma}
+            (classesRes.data || []).forEach(c => {
+                classeParaTurmaMap[c.cod_classe] = {
+                    cod_turma:  c.cod_turma,
+                    nome_turma: turmaDescMap[c.cod_turma] || '',
+                };
+            });
+
+            // 2. Turmas do usuário atual (para filtro de isolamento entre professores)
+            const turmasDoUsuario = new Set((classesRes.data || []).map(c => c.cod_turma));
+
+            // 3. Busca observações — filtra por turma/período
             let obsQuery = supabaseAdmin
                 .from('rco_observacoes')
                 .select('*')
@@ -193,36 +215,37 @@ export function createPedagogicoRouter({ supabaseAdmin, rcoApiService }) {
             if (dataInicio) obsQuery = obsQuery.gte('data_aula', dataInicio);
             if (dataFim)    obsQuery = obsQuery.lte('data_aula', dataFim);
 
+            if (codTurma) {
+                // Filtro por turma específica: busca as classes dessa turma
+                const classesDestaTurma = (classesRes.data || [])
+                    .filter(c => c.cod_turma === parseInt(codTurma, 10))
+                    .map(c => c.cod_classe);
+                if (classesDestaTurma.length > 0) {
+                    obsQuery = obsQuery.in('cod_classe', classesDestaTurma);
+                } else {
+                    return res.json([]);
+                }
+            } else if (turmasDoUsuario.size > 0) {
+                // Sem filtro de turma: restringe às classes do professor atual
+                const todasClasses = (classesRes.data || []).map(c => c.cod_classe);
+                obsQuery = obsQuery.in('cod_classe', todasClasses);
+            }
+
             const { data: observacoes, error: obsErr } = await obsQuery;
             if (obsErr) return res.status(500).json({ erro: obsErr.message });
             if (!observacoes || observacoes.length === 0) return res.json([]);
 
-            // Mapeia codMatrizAluno → turma via tabela alunos
-            const { data: alunos } = await supabaseAdmin
-                .from('alunos')
-                .select('codmatrizaluno, codturma, turma');
-            const alunoMap = {};
-            (alunos || []).forEach(a => {
-                alunoMap[a.codmatrizaluno] = { codturma: a.codturma, nome_turma: a.turma || '' };
+            // 4. Enriquece com turma via cod_classe (confiável, sem depender da tabela alunos)
+            const enriquecidas = observacoes.map(o => {
+                const info = classeParaTurmaMap[o.cod_classe] || {};
+                return {
+                    ...o,
+                    cod_turma:  info.cod_turma  || null,
+                    nome_turma: info.nome_turma || '',
+                };
             });
 
-            let enriquecidas = observacoes.map(o => {
-                const info = alunoMap[o.cod_matriz_aluno] || {};
-                return { ...o, cod_turma: info.codturma || null, nome_turma: info.nome_turma || '' };
-            });
-
-            // Filtra pelas turmas do usuário atual
-            if (codTurma) {
-                const codNum = parseInt(codTurma, 10);
-                enriquecidas = enriquecidas.filter(o => o.cod_turma === codNum);
-            } else {
-                const turmasDoUsuario = await getTurmasDoUsuario(supabaseAdmin);
-                if (turmasDoUsuario && turmasDoUsuario.length > 0) {
-                    enriquecidas = enriquecidas.filter(o => turmasDoUsuario.includes(o.cod_turma));
-                }
-            }
-
-            // Notas pedagógicas no local PG
+            // 5. Notas pedagógicas no local PG
             const rcoIds = enriquecidas.map(o => `rco_${o.cod_aula}_${o.cod_matriz_aluno}`);
             let notasMap = {};
             if (rcoIds.length > 0) {
