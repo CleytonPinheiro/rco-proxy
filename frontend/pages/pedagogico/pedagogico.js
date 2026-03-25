@@ -203,13 +203,22 @@ function criarCard(o) {
     // Corpo diferente para RCO obs vs ocorrências normais
     let bodyHtml = '';
 
+    const nomeAluno = o.nome_aluno || 'Aluno não identificado';
+    const codMat    = o.cod_matriz_aluno || null;
+    // Botão clicável que abre o histórico do aluno
+    const nomeBtnHtml = `<button class="ped-aluno-nome-btn js-aluno-btn"
+        data-nome="${nomeAluno.replace(/"/g,'&quot;')}"
+        data-cod="${codMat || ''}"
+        data-turma="${nomeTurma.replace(/"/g,'&quot;')}"
+        title="Ver histórico de ${nomeAluno}">${nomeAluno}</button>`;
+
     if (isRco) {
         // Card de Observação RCO
         const dataAula = isoParaBR(o.data_aula);
         bodyHtml = `
             <div class="ped-card-body">
                 <div>
-                    <p class="ped-aluno-nome">${o.nome_aluno || 'Aluno não identificado'}</p>
+                    ${nomeBtnHtml}
                     <div class="ped-aluno-meta">
                         ${o.num_chamada ? `<span class="ped-meta-chip">Nº ${o.num_chamada}</span>` : ''}
                         ${nomeTurma     ? `<span class="ped-meta-chip">📚 ${nomeTurma}</span>` : ''}
@@ -230,7 +239,7 @@ function criarCard(o) {
         bodyHtml = `
             <div class="ped-card-body">
                 <div>
-                    <p class="ped-aluno-nome">${o.nome_aluno || 'Aluno não identificado'}</p>
+                    ${nomeBtnHtml}
                     <div class="ped-aluno-meta">
                         ${o.num_chamada ? `<span class="ped-meta-chip">Nº ${o.num_chamada}</span>` : ''}
                         ${nomeTurma     ? `<span class="ped-meta-chip">📚 ${nomeTurma}</span>` : ''}
@@ -392,6 +401,123 @@ selStatus.addEventListener('change', () => {
     statusFiltro = selStatus.value;
     renderGrid();
 });
+
+/* ── Drawer: Histórico do aluno ──────────────────────────────────── */
+const elDrawer   = document.getElementById('alunoDrawer');
+const elOverlay  = document.getElementById('alunoOverlay');
+const elDNome    = document.getElementById('alunoDrawerNome');
+const elDTurma   = document.getElementById('alunoDrawerTurma');
+const elDStats   = document.getElementById('alunoDrawerStats');
+const elDLista   = document.getElementById('alunoDrawerLista');
+
+function abrirDrawer() {
+    document.body.classList.add('drawer-aberto');
+    elDrawer.setAttribute('aria-hidden', 'false');
+    elOverlay.setAttribute('aria-hidden', 'false');
+    elDrawer.focus();
+}
+function fecharDrawer() {
+    document.body.classList.remove('drawer-aberto');
+    elDrawer.setAttribute('aria-hidden', 'true');
+    elOverlay.setAttribute('aria-hidden', 'true');
+}
+
+document.getElementById('alunoDrawerFechar').addEventListener('click', fecharDrawer);
+elOverlay.addEventListener('click', fecharDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('drawer-aberto')) fecharDrawer(); });
+
+// Clique nos nomes dos alunos via event delegation no grid
+elGrid.addEventListener('click', e => {
+    const btn = e.target.closest('.js-aluno-btn');
+    if (!btn) return;
+    const nomeAluno = btn.dataset.nome;
+    const codMat    = btn.dataset.cod ? parseInt(btn.dataset.cod) : null;
+    const turma     = btn.dataset.turma;
+    abrirHistoricoAluno(nomeAluno, codMat, turma);
+});
+
+function abrirHistoricoAluno(nomeAluno, codMatrizAluno, nomeTurma) {
+    // Coleta todos os registros desse aluno (por cod_matriz_aluno ou nome como fallback)
+    const matchObs = o =>
+        (codMatrizAluno && o.cod_matriz_aluno === codMatrizAluno) ||
+        (o.nome_aluno || '').toUpperCase().trim() === (nomeAluno || '').toUpperCase().trim();
+
+    const registros = [
+        ...todasObsRco.filter(matchObs),
+        ...todasOcorrencias.filter(matchObs),
+    ].sort((a, b) => {
+        const da = a.data_aula || a.data || '';
+        const db = b.data_aula || b.data || '';
+        return db.localeCompare(da);
+    });
+
+    // Atualiza cabeçalho
+    elDNome.textContent  = nomeAluno;
+    elDTurma.textContent = nomeTurma || '';
+
+    // Mini-estatísticas
+    const totalRco    = registros.filter(r => r.tipo === 'rco_obs').length;
+    const totalNeg    = registros.filter(r => r.tipo === 'grave' || r.tipo === 'atencao').length;
+    const totalPos    = registros.filter(r => r.tipo === 'positivo').length;
+    const totalGeral  = registros.length;
+    elDStats.innerHTML = `
+        <div class="aluno-dstat aluno-dstat--all">
+            <span class="aluno-dstat-num">${totalGeral}</span>
+            <span class="aluno-dstat-label">Total</span>
+        </div>
+        <div class="aluno-dstat aluno-dstat--rco">
+            <span class="aluno-dstat-num">${totalRco}</span>
+            <span class="aluno-dstat-label">Obs. RCO</span>
+        </div>
+        <div class="aluno-dstat aluno-dstat--neg">
+            <span class="aluno-dstat-num">${totalNeg}</span>
+            <span class="aluno-dstat-label">Ocorrências</span>
+        </div>
+        <div class="aluno-dstat aluno-dstat--pos">
+            <span class="aluno-dstat-num">${totalPos}</span>
+            <span class="aluno-dstat-label">Positivos</span>
+        </div>`;
+
+    // Lista de registros
+    if (registros.length === 0) {
+        elDLista.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:32px 0">Nenhum registro encontrado para este aluno.</p>`;
+    } else {
+        elDLista.innerHTML = registros.map(r => {
+            const isRco  = r.tipo === 'rco_obs';
+            const data   = isoParaBR(r.data_aula || r.data);
+            const tipo   = TIPO_LABELS[r.tipo] || { label: r.tipo, cls: 'atencao' };
+            const nota   = r.pedagogo?.nota || '';
+            const encam  = r.pedagogo?.encaminhamento || '';
+
+            let conteudo = '';
+            if (isRco) {
+                conteudo = `<p class="aluno-hist-texto">"${r.observacao || '—'}"</p>`;
+            } else {
+                const cat = r.categoria_label || r.categoria || '';
+                conteudo = `
+                    ${cat ? `<p class="aluno-hist-categoria">${cat}</p>` : ''}
+                    ${r.descricao ? `<p class="aluno-hist-texto">"${r.descricao}"</p>` : ''}`;
+            }
+
+            const notaHtml  = nota  ? `<div class="aluno-hist-nota">📝 ${nota}</div>` : '';
+            const encamHtml = encam ? `<div class="aluno-hist-encam">➜ ${encam}</div>` : '';
+
+            return `
+                <div class="aluno-hist-item aluno-hist-item--${r.tipo}">
+                    <div class="aluno-hist-header">
+                        <span class="aluno-hist-data">📅 ${data || '—'}</span>
+                        <span class="aluno-hist-badge aluno-hist-badge--${r.tipo}">${tipo.label}</span>
+                        ${r.pedagogo?.visto ? `<span class="aluno-hist-badge" style="background:#dcfce7;color:#16a34a">✔ Revisado</span>` : ''}
+                    </div>
+                    ${conteudo}
+                    ${encamHtml}
+                    ${notaHtml}
+                </div>`;
+        }).join('');
+    }
+
+    abrirDrawer();
+}
 
 /* ── Sincronização automática com RCO ────────────────────────────── */
 const elSyncBar     = document.getElementById('pedSyncBar');

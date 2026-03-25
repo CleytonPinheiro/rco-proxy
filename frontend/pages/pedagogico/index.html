@@ -247,6 +247,21 @@
         <div id="pedGrid" class="ped-grid" style="display:none"></div>
     </main>
 
+    <!-- Drawer: histórico do aluno -->
+    <div class="aluno-drawer-overlay" id="alunoOverlay" aria-hidden="true"></div>
+    <aside class="aluno-drawer" id="alunoDrawer" aria-hidden="true">
+        <div class="aluno-drawer-head">
+            <div>
+                <p class="aluno-drawer-label">Histórico de registros</p>
+                <h2 class="aluno-drawer-nome" id="alunoDrawerNome">—</h2>
+                <span class="aluno-drawer-turma" id="alunoDrawerTurma"></span>
+            </div>
+            <button class="aluno-drawer-fechar" id="alunoDrawerFechar" aria-label="Fechar">✕</button>
+        </div>
+        <div class="aluno-drawer-stats" id="alunoDrawerStats"></div>
+        <div class="aluno-drawer-lista" id="alunoDrawerLista"></div>
+    </aside>
+
     <script src="./pedagogico.js"></script>
     <script>
         function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
