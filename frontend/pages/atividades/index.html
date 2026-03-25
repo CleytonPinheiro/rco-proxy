@@ -75,34 +75,7 @@
         <!-- Tabela principal -->
         <div id="tabelaWrap" class="atv-tabela-wrap" style="display:none;">
             <table class="atv-table">
-                <thead>
-                    <tr class="tr-header-aulas">
-                        <th class="col-num">Nº</th>
-                        <th class="col-nome">Aluno</th>
-                        <th class="col-check">Aula 1</th>
-                        <th class="col-check">Aula 2</th>
-                        <th class="col-check">Aula 3</th>
-                        <th class="col-check">Aula 4</th>
-                        <th class="col-check">Aula 5</th>
-                        <th class="col-check">Aula 6</th>
-                        <th class="col-check">Aula 7</th>
-                        <th class="col-check">Aula 8</th>
-                        <th class="col-obs">Observação</th>
-                    </tr>
-                    <!-- Linha de marcar todos — oculta na impressão -->
-                    <tr class="tr-marcar-todos no-print">
-                        <td colspan="2" class="td-marcar-label">Marcar todos</td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula1" onchange="marcarTodos('aula1', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula2" onchange="marcarTodos('aula2', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula3" onchange="marcarTodos('aula3', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula4" onchange="marcarTodos('aula4', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula5" onchange="marcarTodos('aula5', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula6" onchange="marcarTodos('aula6', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula7" onchange="marcarTodos('aula7', this.checked)"></td>
-                        <td class="col-check"><input type="checkbox" class="chk-todos" data-col="aula8" onchange="marcarTodos('aula8', this.checked)"></td>
-                        <td></td>
-                    </tr>
-                </thead>
+                <thead id="tabelaHead"></thead>
                 <tbody id="tabelaBody"></tbody>
             </table>
         </div>

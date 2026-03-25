@@ -1,11 +1,13 @@
 // ── Atividades de Sala ─────────────────────────────────────────────────────
-const API = '';
-const COLS = ['aula1','aula2','aula3','aula4','aula5','aula6','aula7','aula8'];
+const API    = '';
+const N      = 15;   // número de aulas
+const COLS   = Array.from({ length: N }, (_, i) => `aula${i + 1}`);
 
 let turmas    = [];
 let alunos    = [];
 let registros = {};   // codmatrizaluno → { atividades:{}, observacao:'' }
 let modificado = false;
+let codturmaAtual = '';
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -39,12 +41,65 @@ async function carregarTurmas() {
     } catch (e) { console.error('Erro ao carregar turmas:', e); }
 }
 
+// ── Datas das aulas (localStorage por turma) ──────────────────────────────
+function lsKey(cod) { return `atv_datas_${cod}`; }
+
+function carregarDatasAula(cod) {
+    try { return JSON.parse(localStorage.getItem(lsKey(cod))) || {}; }
+    catch { return {}; }
+}
+
+function salvarDatasAula(cod, datas) {
+    localStorage.setItem(lsKey(cod), JSON.stringify(datas));
+}
+
+function onDataAula(inp) {
+    const datas = carregarDatasAula(codturmaAtual);
+    datas[inp.dataset.col] = inp.value;
+    salvarDatasAula(codturmaAtual, datas);
+}
+
+// ── Thead dinâmico ────────────────────────────────────────────────────────
+function renderThead() {
+    const datas = carregarDatasAula(codturmaAtual);
+    const thead = document.getElementById('tabelaHead');
+
+    thead.innerHTML = `
+        <tr class="tr-header-aulas">
+            <th class="col-num">Nº</th>
+            <th class="col-nome">Aluno</th>
+            ${COLS.map((col, i) => `<th class="col-check">Aula ${i + 1}</th>`).join('')}
+            <th class="col-obs">Observação</th>
+        </tr>
+        <tr class="tr-datas-aulas">
+            <td colspan="2" class="td-label-data">📅 Data</td>
+            ${COLS.map(col => `
+            <td class="col-check">
+                <input type="text" class="input-data-aula" data-col="${col}"
+                    placeholder="--/--"
+                    value="${(datas[col] || '').replace(/"/g, '&quot;')}"
+                    oninput="onDataAula(this)"
+                    maxlength="8">
+            </td>`).join('')}
+            <td></td>
+        </tr>
+        <tr class="tr-marcar-todos no-print">
+            <td colspan="2" class="td-marcar-label">Marcar todos</td>
+            ${COLS.map(col => `
+            <td class="col-check">
+                <input type="checkbox" class="chk-todos" data-col="${col}"
+                    onchange="marcarTodos('${col}', this.checked)">
+            </td>`).join('')}
+            <td></td>
+        </tr>
+    `;
+}
+
 // ── Mudança de turma ──────────────────────────────────────────────────────
 function onTurmaChange() {
     if (modificado) {
         if (!confirm('Há alterações não salvas. Deseja trocar de turma sem salvar?')) {
-            const turmaAtual = alunos.length ? String(alunos[0].codturma) : '';
-            document.getElementById('selTurma').value = turmaAtual;
+            document.getElementById('selTurma').value = codturmaAtual;
             return;
         }
     }
@@ -59,6 +114,7 @@ async function carregarPagina() {
 
     if (!codturma || !data) { mostrarPlaceholder(); return; }
 
+    codturmaAtual = codturma;
     mostrarLoading();
 
     try {
@@ -92,8 +148,10 @@ function renderTabela() {
     document.getElementById('atv-placeholder').style.display = 'none';
     document.getElementById('atv-loading').style.display     = 'none';
     document.getElementById('tabelaWrap').style.display      = 'block';
-    document.getElementById('btnSalvar').disabled  = false;
+    document.getElementById('btnSalvar').disabled   = false;
     document.getElementById('btnImprimir').disabled = false;
+
+    renderThead();
 
     const tbody = document.getElementById('tabelaBody');
     tbody.innerHTML = '';
@@ -126,7 +184,7 @@ function renderTabela() {
                     value="${(reg.observacao || '').replace(/"/g, '&quot;')}"
                     data-cod="${al.codmatrizaluno}"
                     oninput="onObs(this)">
-                <span class="obs-print">${(reg.observacao || '').replace(/</g,'&lt;')}</span>
+                <span class="obs-print">${(reg.observacao || '').replace(/</g, '&lt;')}</span>
             </td>
         `;
         tbody.appendChild(tr);
@@ -159,7 +217,6 @@ function onObs(inp) {
     const cod = inp.dataset.cod;
     if (!registros[cod]) registros[cod] = { atividades: {}, observacao: '' };
     registros[cod].observacao = inp.value;
-    // Atualiza o span de impressão em tempo real
     const span = inp.closest('td').querySelector('.obs-print');
     if (span) span.textContent = inp.value;
     marcarModificado();
@@ -201,7 +258,7 @@ function imprimir() {
 
     const nomeTurma = selTurma.options[selTurma.selectedIndex]?.text || '';
     const dataFmt   = data
-        ? new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' })
+        ? new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
         : '';
 
     document.getElementById('printTurma').textContent = nomeTurma;

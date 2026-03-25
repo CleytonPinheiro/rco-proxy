@@ -137,6 +137,44 @@
     text-align: left;
 }
 
+/* Linha de datas das aulas */
+.atv-table .tr-datas-aulas {
+    background: color-mix(in srgb, var(--atv-accent) 4%, var(--bg-card));
+}
+.atv-table .tr-datas-aulas td {
+    padding: 4px 4px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+}
+.td-label-data {
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: right !important;
+    padding-right: 12px !important;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+.input-data-aula {
+    width: 100%;
+    max-width: 58px;
+    padding: 3px 4px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: .72rem;
+    text-align: center;
+    font-weight: 600;
+}
+.input-data-aula:focus {
+    outline: none;
+    border-color: var(--atv-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--atv-accent) 20%, transparent);
+}
+.input-data-aula::placeholder { color: var(--text-muted); font-weight: 400; }
+
 /* Linha "Marcar todos" */
 .atv-table .tr-marcar-todos {
     background: color-mix(in srgb, var(--atv-accent) 6%, var(--bg-card));
@@ -264,8 +302,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 @media print {
     @page {
-        size: A4 portrait;
-        margin: 12mm 10mm 12mm 10mm;
+        size: A4 landscape;
+        margin: 10mm 8mm 10mm 8mm;
     }
 
     /* Ocultar tudo que não é o documento */
@@ -360,11 +398,36 @@
         background: #fff !important;
     }
 
-    /* Larguras das colunas em A4 */
-    .col-num   { width: 22pt !important; }
-    .col-nome  { width: auto !important; }
-    .col-check { width: 32pt !important; }
-    .col-obs   { width: 60pt !important; }
+    /* Larguras das colunas em A4 landscape (261mm úteis) */
+    .col-num   { width: 20pt !important; }
+    .col-nome  { width: 105pt !important; }
+    .col-check { width: 28pt !important; }
+    .col-obs   { width: 50pt !important; }
+
+    /* Linha de datas na impressão */
+    .atv-table .tr-datas-aulas td {
+        background: #f0f0f0 !important;
+        border: 1px solid #999 !important;
+        padding: 2pt 2pt !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    .td-label-data {
+        font-size: 6pt !important;
+        color: #555 !important;
+    }
+    .input-data-aula {
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        border: none !important;
+        background: transparent !important;
+        font-size: 7pt !important;
+        font-weight: 700 !important;
+        color: #000 !important;
+        width: 100% !important;
+        text-align: center !important;
+        padding: 0 !important;
+    }
 
     /* Checkbox → quadrado imprimível */
     .atv-chk {
