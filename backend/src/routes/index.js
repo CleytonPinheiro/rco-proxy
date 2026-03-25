@@ -15,6 +15,7 @@ import { createDebugRouter }         from './debug.routes.js';
 import { createMapaSalaRouter }      from './mapa-sala.routes.js';
 import { createAtividadesRouter }    from './atividades.routes.js';
 import { createPedagogicoRouter }   from './pedagogico.routes.js';
+import { createClassroomRouter }    from './classroom.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -35,6 +36,7 @@ export function createApiRouter(deps) {
     router.use('/', createMapaSalaRouter(deps));
     router.use('/', createAtividadesRouter());
     router.use('/', createPedagogicoRouter(deps));
+    router.use('/', createClassroomRouter());
 
     return router;
 }

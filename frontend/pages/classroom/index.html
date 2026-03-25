@@ -6,9 +6,9 @@
     <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
     <link rel="stylesheet" href="../../shared/css/theme.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduSync — Painel Pedagógico</title>
+    <title>EduSync — Classroom</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
-    <link rel="stylesheet" href="./pedagogico.css">
+    <link rel="stylesheet" href="./classroom.css">
 </head>
 <body>
     <header class="header">
@@ -100,7 +100,6 @@
                         <rect x="14" y="3" width="7" height="7" rx="1"/>
                         <rect x="3" y="14" width="7" height="7" rx="1"/>
                         <rect x="14" y="14" width="7" height="7" rx="1"/>
-                        <rect x="7" y="19" width="16" height="2" rx="1" opacity=".5"/>
                     </svg>
                 </span>
                 <div class="side-nav-info">
@@ -108,7 +107,7 @@
                     <span class="side-nav-desc">Arranjo de carteiras por turma</span>
                 </div>
             </a>
-                        <a href="/pages/atividades/" class="side-nav-item">
+            <a href="/pages/atividades/" class="side-nav-item">
                 <span class="side-nav-icon side-nav-icon-svg">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 11l3 3L22 4"/>
@@ -127,14 +126,14 @@
                     <span class="side-nav-desc">Organize alunos em equipes</span>
                 </div>
             </a>
-            <a href="/pages/pedagogico/" class="side-nav-item side-nav-item--active">
+            <a href="/pages/pedagogico/" class="side-nav-item">
                 <span class="side-nav-icon">🎓</span>
                 <div class="side-nav-info">
                     <span class="side-nav-nome">Painel Pedagógico</span>
                     <span class="side-nav-desc">Avisos e ocorrências para a equipe</span>
                 </div>
             </a>
-            <a href="/pages/classroom/" class="side-nav-item">
+            <a href="/pages/classroom/" class="side-nav-item side-nav-item--active">
                 <span class="side-nav-icon side-nav-icon-svg">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -164,124 +163,142 @@
         <div class="side-panel-footer">EduSync © 2026</div>
     </nav>
 
-    <main class="container">
-        <!-- Cabeçalho da página -->
-        <!-- Barra de status de sincronização -->
-        <div class="ped-sync-bar" id="pedSyncBar" style="display:none">
-            <span class="ped-sync-spinner" id="pedSyncSpinner"></span>
-            <span id="pedSyncMsg">Sincronizando observações do RCO…</span>
-        </div>
+    <main class="cl-main">
 
-        <div class="ped-page-header">
-            <div class="ped-page-title-row">
-                <div class="ped-page-icon">🎓</div>
-                <div>
-                    <h1 class="ped-page-title">Painel Pedagógico</h1>
-                    <p class="ped-page-sub">Acompanhe e registre os avisos e ocorrências dos professores</p>
+        <!-- ─── Tela de Conexão ─── -->
+        <div class="cl-connect-screen" id="clConnectScreen">
+            <div class="cl-connect-card">
+                <div class="cl-connect-icon">
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="48" height="48" rx="12" fill="#4285F4"/>
+                        <path d="M8 34V14l16 12 16-12v20H8z" fill="white" opacity=".9"/>
+                        <path d="M8 14l16 12 16-12H8z" fill="white"/>
+                    </svg>
                 </div>
-            </div>
-
-            <!-- Cards de resumo -->
-            <div class="ped-stats" id="pedStats">
-                <div class="ped-stat-card ped-stat-total">
-                    <span class="ped-stat-num" id="statTotal">—</span>
-                    <span class="ped-stat-label">Total de registros</span>
+                <h1 class="cl-connect-titulo">Google Classroom</h1>
+                <p class="cl-connect-desc" id="clConnectDesc">
+                    Conecte sua conta Google para gerenciar disciplinas, atividades e notas diretamente pelo EduSync.
+                </p>
+                <div id="clConnectActions">
+                    <button class="cl-btn cl-btn--google" id="clBtnConectar">
+                        <svg viewBox="0 0 18 18" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                            <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                        </svg>
+                        Conectar com Google Classroom
+                    </button>
                 </div>
-                <div class="ped-stat-card ped-stat-graves">
-                    <span class="ped-stat-num" id="statGraves">—</span>
-                    <span class="ped-stat-label">Graves</span>
-                </div>
-                <div class="ped-stat-card ped-stat-atencao">
-                    <span class="ped-stat-num" id="statAtencao">—</span>
-                    <span class="ped-stat-label">Atenção</span>
-                </div>
-                <div class="ped-stat-card ped-stat-rco">
-                    <span class="ped-stat-num" id="statRco">—</span>
-                    <span class="ped-stat-label">Obs. RCO</span>
-                </div>
-                <div class="ped-stat-card ped-stat-pendentes">
-                    <span class="ped-stat-num" id="statPendentes">—</span>
-                    <span class="ped-stat-label">Não revisados</span>
-                </div>
+                <p class="cl-connect-hint" id="clSemCredenciais" style="display:none">
+                    ⚠️ Configure as variáveis <strong>GOOGLE_CLIENT_ID</strong> e <strong>GOOGLE_CLIENT_SECRET</strong> nas configurações do servidor para ativar a integração.
+                </p>
             </div>
         </div>
 
-        <!-- Filtros -->
-        <div class="ped-filtros">
-            <div class="ped-filtros-row">
-                <div class="ped-filtro-group">
-                    <label class="ped-filtro-label">Tipo</label>
-                    <div class="ped-tipo-btns">
-                        <button class="ped-tipo-btn ped-tipo-btn--all ped-tipo-btn--active" data-tipo="todos">Todos</button>
-                        <button class="ped-tipo-btn ped-tipo-btn--grave" data-tipo="grave">⛔ Grave</button>
-                        <button class="ped-tipo-btn ped-tipo-btn--atencao" data-tipo="atencao">⚠️ Atenção</button>
-                        <button class="ped-tipo-btn ped-tipo-btn--positivo" data-tipo="positivo">✅ Positivo</button>
-                        <button class="ped-tipo-btn ped-tipo-btn--rco" data-tipo="rco_obs">📝 Obs. RCO</button>
+        <!-- ─── Interface principal (3 colunas) ─── -->
+        <div class="cl-workspace" id="clWorkspace" style="display:none">
+
+            <!-- Coluna 1: Disciplinas -->
+            <aside class="cl-col cl-col--cursos">
+                <div class="cl-col-head">
+                    <div>
+                        <h2 class="cl-col-titulo">Disciplinas</h2>
+                        <p class="cl-col-sub" id="clCursosCount">—</p>
+                    </div>
+                    <div class="cl-col-head-actions">
+                        <button class="cl-icon-btn" id="clBtnRefresh" title="Recarregar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        </button>
+                        <button class="cl-icon-btn cl-icon-btn--desconectar" id="clBtnDesconectar" title="Desconectar conta Google">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        </button>
                     </div>
                 </div>
-                <div class="ped-filtro-group">
-                    <label class="ped-filtro-label" for="filtroTurma">Turma</label>
-                    <select id="filtroTurma" class="ped-select">
-                        <option value="">Todas as turmas</option>
-                    </select>
+                <div class="cl-conta-badge" id="clContaBadge"></div>
+                <div class="cl-lista" id="clCursoLista">
+                    <div class="cl-loading">Carregando disciplinas...</div>
                 </div>
-                <div class="ped-filtro-group">
-                    <label class="ped-filtro-label" for="filtroStatus">Status pedagógico</label>
-                    <select id="filtroStatus" class="ped-select">
-                        <option value="todos">Todos</option>
-                        <option value="pendente">Não revisados</option>
-                        <option value="visto">Revisados</option>
-                    </select>
-                </div>
-                <div class="ped-filtro-group">
-                    <label class="ped-filtro-label" for="filtroPeriodo">Período</label>
-                    <select id="filtroPeriodo" class="ped-select">
-                        <option value="0" selected>Todo o período</option>
-                        <option value="7">Últimos 7 dias</option>
-                        <option value="30">Últimos 30 dias</option>
-                        <option value="90">Últimos 3 meses</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+            </aside>
 
-        <!-- Estado vazio / loading -->
-        <div id="pedLoading" class="ped-empty">
-            <div class="ped-empty-icon">⏳</div>
-            <p class="ped-empty-texto">Carregando ocorrências...</p>
-        </div>
-        <div id="pedVazio" class="ped-empty" style="display:none">
-            <div class="ped-empty-icon">📋</div>
-            <p class="ped-empty-texto">Nenhuma ocorrência encontrada com os filtros selecionados.</p>
-        </div>
+            <!-- Coluna 2: Atividades -->
+            <section class="cl-col cl-col--atividades">
+                <div class="cl-col-head">
+                    <div>
+                        <h2 class="cl-col-titulo">Atividades</h2>
+                        <p class="cl-col-sub" id="clAtivCount">Selecione uma disciplina</p>
+                    </div>
+                    <a class="cl-icon-btn" id="clAtivLink" href="#" target="_blank" title="Abrir no Classroom" style="display:none">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                </div>
+                <div class="cl-lista" id="clAtivLista">
+                    <div class="cl-empty-state">
+                        <p>← Selecione uma disciplina para ver as atividades</p>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Grid de cards -->
-        <div id="pedGrid" class="ped-grid" style="display:none"></div>
+            <!-- Coluna 3: Notas/Entregas -->
+            <section class="cl-col cl-col--notas">
+                <div class="cl-col-head">
+                    <div>
+                        <h2 class="cl-col-titulo">Notas & Entregas</h2>
+                        <p class="cl-col-sub" id="clNotasCount">Selecione uma atividade</p>
+                    </div>
+                    <div class="cl-col-head-actions" id="clNotasActions" style="display:none">
+                        <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnExportar">Exportar CSV</button>
+                    </div>
+                </div>
+                <!-- Stats -->
+                <div class="cl-notas-stats" id="clNotasStats" style="display:none">
+                    <div class="cl-stat">
+                        <span class="cl-stat-num" id="clStTotal">—</span>
+                        <span class="cl-stat-label">Alunos</span>
+                    </div>
+                    <div class="cl-stat">
+                        <span class="cl-stat-num cl-stat-num--ok" id="clStEntregues">—</span>
+                        <span class="cl-stat-label">Entregues</span>
+                    </div>
+                    <div class="cl-stat">
+                        <span class="cl-stat-num cl-stat-num--warn" id="clStPendentes">—</span>
+                        <span class="cl-stat-label">Pendentes</span>
+                    </div>
+                    <div class="cl-stat">
+                        <span class="cl-stat-num cl-stat-num--info" id="clStMedia">—</span>
+                        <span class="cl-stat-label">Média</span>
+                    </div>
+                </div>
+                <!-- Filtro -->
+                <div class="cl-notas-filtro" id="clNotasFiltro" style="display:none">
+                    <input class="cl-busca" type="search" id="clBuscaAluno" placeholder="Buscar aluno..."/>
+                    <select class="cl-select" id="clFiltroStatus">
+                        <option value="">Todos</option>
+                        <option value="entregue">Entregues</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="atrasado">Atrasados</option>
+                    </select>
+                </div>
+                <!-- Lista -->
+                <div class="cl-notas-lista" id="clNotasLista">
+                    <div class="cl-empty-state">
+                        <p>← Selecione uma atividade para ver as entregas</p>
+                    </div>
+                </div>
+            </section>
+
+        </div><!-- /cl-workspace -->
+
     </main>
 
-    <!-- Drawer: histórico do aluno -->
-    <div class="aluno-drawer-overlay" id="alunoOverlay" aria-hidden="true"></div>
-    <aside class="aluno-drawer" id="alunoDrawer" aria-hidden="true">
-        <div class="aluno-drawer-head">
-            <div>
-                <p class="aluno-drawer-label">Histórico de registros</p>
-                <h2 class="aluno-drawer-nome" id="alunoDrawerNome">—</h2>
-                <span class="aluno-drawer-turma" id="alunoDrawerTurma"></span>
-            </div>
-            <button class="aluno-drawer-fechar" id="alunoDrawerFechar" aria-label="Fechar">✕</button>
-        </div>
-        <div class="aluno-drawer-stats" id="alunoDrawerStats"></div>
-        <div class="aluno-drawer-lista" id="alunoDrawerLista"></div>
-    </aside>
+    <!-- Toast -->
+    <div class="cl-toast" id="clToast"></div>
 
-    <script src="./pedagogico.js"></script>
+    <script src="./classroom.js"></script>
     <script>
-        function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
-        function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+        function abrirSidePanel()  { document.getElementById('sidePanel').classList.add('side-panel--open'); }
+        function fecharSidePanel() { document.getElementById('sidePanel').classList.remove('side-panel--open'); }
         document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
-        document.getElementById('sidePanel').addEventListener('click', function(e){
-            if(e.target === this) fecharSidePanel();
-        });
     </script>
 </body>
 </html>

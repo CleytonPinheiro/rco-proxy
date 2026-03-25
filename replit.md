@@ -1,7 +1,15 @@
 # EduSync
 
 ## Visão Geral
-Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop e atividades de sala (checklist diário por turma/data).
+Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop, atividades de sala (checklist diário por turma/data) e **integração com Google Classroom** (disciplinas, atividades e notas).
+
+### Classroom (Google Classroom API)
+- **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD
+- **Frontend**: `frontend/pages/classroom/` — página de 3 colunas (disciplinas → atividades → notas)
+- **Token**: armazenado em `backend/data/classroom_token.json`
+- **Credenciais necessárias**: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (env secrets)
+- **Redirect URI** (registrar no Google Cloud Console): `https://{domínio}/api/classroom/callback`
+- **Escopos**: `classroom.courses.readonly`, `classroom.coursework.students`, `classroom.rosters.readonly`, `classroom.student-submissions.students.readonly`
 
 ## Estado Atual
 - **Data**: 24/03/2026
