@@ -17,7 +17,8 @@ export function createDebugRouter({ tokenService, rcoApiService }) {
             const BASE = 'https://apigateway-educacao.paas.pr.gov.br/seed/rcdig';
             const authToken = await tokenService.getValidToken();
             const headers = { consumerId: 'RCDIGWEB', Authorization: `Bearer ${authToken}` };
-            const hoje = new Date().toISOString().split('T')[0];
+            const { dataBrasilia } = await import('../config/dateUtils.js');
+            const hoje = dataBrasilia();
             const BASE_ESTADUAL = BASE + '/estadual/v1';
             const optsEst = { headers, timeout: 20000, validateStatus: () => true };
 

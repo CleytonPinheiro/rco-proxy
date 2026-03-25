@@ -1,12 +1,13 @@
 import { Router } from 'express';
+import { dataBrasilia } from '../config/dateUtils.js';
 
 export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
     const router = Router();
 
     router.get('/acessos', async (req, res) => {
         try {
-            const hoje = new Date().toISOString().split('T')[0];
-            console.log(`Consultando estabelecimentos para ${hoje}...`);
+            const hoje = dataBrasilia();
+            console.log(`Consultando estabelecimentos para ${hoje} (BRT)...`);
             const response = await rcoApiService.get(`/educador/estabelecimentos/v2/${hoje}`);
             console.log('RCO API status:', response.status, '| bytes:', JSON.stringify(response.data).length);
             if (response.status !== 200) {

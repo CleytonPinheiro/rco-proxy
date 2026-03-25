@@ -16,7 +16,8 @@ export class SyncService {
         console.log(`[SYNC] Iniciando sincronização com Supabase em ${agora}...`);
 
         try {
-            const hoje = new Date().toISOString().split('T')[0];
+            const { dataBrasilia } = await import('../config/dateUtils.js');
+            const hoje = dataBrasilia();
             const response = await this.#rcoApiService.get(`/educador/estabelecimentos/v2/${hoje}`);
 
             if (response.status !== 200) {

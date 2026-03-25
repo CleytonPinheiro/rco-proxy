@@ -16,7 +16,8 @@ export class PresencaService {
     }
 
     async syncPresencaDiariaRCO(targetDate = null) {
-        const hoje = targetDate || new Date().toISOString().split('T')[0];
+        const { dataBrasilia } = await import('../config/dateUtils.js');
+        const hoje = targetDate || dataBrasilia();
         console.log(`[PRESENÇA] Sincronizando presença de ${hoje} via RCO...`);
 
         try {

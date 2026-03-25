@@ -1,11 +1,12 @@
 import { Router } from 'express';
+import { dataBrasilia } from '../config/dateUtils.js';
 
 export function createCozinhaRouter({ supabaseAdmin }) {
     const router = Router();
 
     router.get('/cozinha', async (req, res) => {
         try {
-            const data = req.query.data || new Date().toISOString().split('T')[0];
+            const data = req.query.data || dataBrasilia();
 
             const { data: rows } = await supabaseAdmin
                 .from('presenca_diaria')

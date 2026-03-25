@@ -1,11 +1,12 @@
 import { Router } from 'express';
+import { dataBrasilia } from '../config/dateUtils.js';
 
 export function createPresencaRouter({ supabaseAdmin, presencaService }) {
     const router = Router();
 
     router.get('/presenca-diaria', async (req, res) => {
         try {
-            const data = req.query.data || new Date().toISOString().split('T')[0];
+            const data = req.query.data || dataBrasilia();
             const { data: rows, error } = await supabaseAdmin
                 .from('presenca_diaria').select('*').eq('data', data)
                 .order('periodo', { ascending: true }).order('descr_turma', { ascending: true });
@@ -16,7 +17,7 @@ export function createPresencaRouter({ supabaseAdmin, presencaService }) {
 
     router.post('/presenca-diaria/sync', async (req, res) => {
         try {
-            const data = req.body?.data || new Date().toISOString().split('T')[0];
+            const data = req.body?.data || dataBrasilia();
             presencaService.syncPresencaDiariaRCO(data).catch(console.error);
             res.json({ ok: true, msg: 'Sincronização iniciada. Aguarde alguns instantes e recarregue.' });
         } catch (e) { res.status(500).json({ erro: e.message }); }
@@ -24,7 +25,7 @@ export function createPresencaRouter({ supabaseAdmin, presencaService }) {
 
     router.post('/presenca-diaria/seed', async (req, res) => {
         try {
-            const data = req.body?.data || new Date().toISOString().split('T')[0];
+            const data = req.body?.data || dataBrasilia();
             const { data: turmas } = await supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma');
             const { data: alunosDB } = await supabaseAdmin.from('alunos').select('codturma');
             const alunosCount = {};
@@ -75,7 +76,7 @@ export function createPresencaRouter({ supabaseAdmin, presencaService }) {
 
     router.get('/presenca-diaria/historico', async (req, res) => {
         try {
-            const data    = req.query.data    || new Date().toISOString().split('T')[0];
+            const data    = req.query.data    || dataBrasilia();
             const periodos = ['manha', 'tarde', 'noite'];
             const historico = {};
             periodos.forEach(p => { historico[p] = []; });
