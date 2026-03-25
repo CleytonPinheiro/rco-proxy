@@ -1048,14 +1048,19 @@
     line-height: 1.2;
 }
 
-.aluno-geral-meta {
+.aluno-geral-sub {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-top: 3px;
     font-size: 11px;
     color: #9ca3af;
     flex-wrap: wrap;
+}
+
+.aluno-ndiscs {
+    font-size: 10px;
+    color: #9ca3af;
 }
 
 .aluno-chamada-num {
@@ -1075,13 +1080,83 @@
     flex-shrink: 0;
 }
 
-.aluno-geral-pct {
-    font-size: 22px;
-    font-weight: 900;
-    min-width: 56px;
-    text-align: right;
+/* % no topo direito */
+.aluno-geral-pct-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
     flex-shrink: 0;
+}
+.aluno-geral-pct {
+    font-size: 26px;
+    font-weight: 900;
+    min-width: 60px;
+    text-align: right;
     line-height: 1;
+}
+.aluno-geral-pct-label {
+    font-size: 9px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+    text-align: right;
+}
+
+/* ── Faixa de estatísticas totais ──────────────────────────────────────── */
+.aluno-geral-stats {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #f8f9ff;
+    border: 1px solid #eef1f8;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.ags-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 6px;
+}
+
+.ags-val {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+}
+.ags-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+}
+
+.ags-presenca .ags-val { color: #15803d; }
+.ags-presenca           { background: #f0faf3; }
+.ags-falta    .ags-val  { color: #b91c1c; }
+.ags-falta               { background: #fff5f5; }
+.ags-total    .ags-val  { color: #374151; }
+
+.ags-sep {
+    width: 1px;
+    height: 36px;
+    background: #e8ecf4;
+    flex-shrink: 0;
+}
+
+.ags-badge-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    flex-shrink: 0;
 }
 
 /* ── Barra de progresso ─────────────────────────────────────────────────── */
@@ -1141,3 +1216,14 @@
 [data-theme="dark"] .aluno-geral-meta            { color: var(--text-muted); }
 [data-theme="dark"] .aluno-chamada-num           { background: var(--bg-secondary); color: var(--text-secondary); }
 [data-theme="dark"] .aluno-geral-bar-wrap        { background: var(--bg-tertiary); }
+[data-theme="dark"] .aluno-geral-pct-label      { color: var(--text-muted); }
+[data-theme="dark"] .aluno-geral-sub            { color: var(--text-muted); }
+[data-theme="dark"] .aluno-ndiscs               { color: var(--text-muted); }
+[data-theme="dark"] .aluno-geral-stats          { background: var(--bg-secondary); border-color: var(--border); }
+[data-theme="dark"] .ags-presenca               { background: #0d2e1a; }
+[data-theme="dark"] .ags-presenca .ags-val      { color: #4ade80; }
+[data-theme="dark"] .ags-falta                  { background: #2a0d0d; }
+[data-theme="dark"] .ags-falta .ags-val         { color: #f87171; }
+[data-theme="dark"] .ags-total .ags-val         { color: var(--text-primary); }
+[data-theme="dark"] .ags-label                  { color: var(--text-muted); }
+[data-theme="dark"] .ags-sep                    { background: var(--border); }

@@ -829,12 +829,13 @@ function renderAlunoGeralCard(a) {
     const pctClass = pct === null ? '' : pct >= 80 ? 'pct-ok' : pct >= 60 ? 'pct-alerta' : 'pct-critico';
     const barColor = pct === null ? '#e5e7eb' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
     const barW     = pct !== null ? Math.min(100, pct) : 0;
-    const badge    = pct === null ? '' :
-                     pct >= 80 ? '<span class="aluno-badge badge-ok">Pé-de-Meia OK</span>' :
-                     pct >= 60 ? '<span class="aluno-badge badge-alerta">Em risco</span>' :
-                                 '<span class="aluno-badge badge-critico">Crítico</span>';
+    const badgeLabel = pct === null ? '' :
+                       pct >= 80 ? 'Pé-de-Meia OK' :
+                       pct >= 60 ? 'Em risco' : 'Crítico';
+    const badgeClass = pct === null ? '' :
+                       pct >= 80 ? 'badge-ok' : pct >= 60 ? 'badge-alerta' : 'badge-critico';
 
-    const discMini = (a.disciplinas || []).slice(0, 6).map(d =>
+    const discMini = (a.disciplinas || []).slice(0, 8).map(d =>
         `<span class="disc-mini-dot" style="background:${d.cor}" title="${d.nome}: ${d.pct !== null ? d.pct + '%' : '—'}"></span>`
     ).join('');
 
@@ -842,22 +843,49 @@ function renderAlunoGeralCard(a) {
 
     return `
         <div class="aluno-geral-card" data-nome="${nomeEsc}" data-chamada="${a.numChamada || ''}">
+
             <div class="aluno-geral-topo">
                 <div class="aluno-geral-avatar">${(a.nome || '?').charAt(0).toUpperCase()}</div>
                 <div class="aluno-geral-info">
                     <div class="aluno-geral-nome">${a.nome}</div>
-                    <div class="aluno-geral-meta">
+                    <div class="aluno-geral-sub">
                         ${a.numChamada ? `<span class="aluno-chamada-num">#${a.numChamada}</span>` : ''}
-                        <span>${a.totalP}P · ${a.totalF}F · ${a.disciplinas.length} disc.</span>
+                        <span class="aluno-ndiscs">${a.disciplinas.length} disciplina${a.disciplinas.length !== 1 ? 's' : ''}</span>
                         ${discMini}
                     </div>
                 </div>
-                <div class="aluno-geral-pct ${pctClass}">${pctStr}</div>
+                <div class="aluno-geral-pct-wrap">
+                    <div class="aluno-geral-pct ${pctClass}">${pctStr}</div>
+                    <div class="aluno-geral-pct-label">frequência geral</div>
+                </div>
             </div>
+
             <div class="aluno-geral-bar-wrap">
                 <div class="aluno-geral-bar" style="width:${barW}%;background:${barColor}"></div>
             </div>
-            ${badge}
+
+            <div class="aluno-geral-stats">
+                <div class="ags-stat ags-presenca">
+                    <span class="ags-val">${a.totalP}</span>
+                    <span class="ags-label">Presenças</span>
+                </div>
+                <div class="ags-sep"></div>
+                <div class="ags-stat ags-falta">
+                    <span class="ags-val">${a.totalF}</span>
+                    <span class="ags-label">Faltas</span>
+                </div>
+                <div class="ags-sep"></div>
+                <div class="ags-stat ags-total">
+                    <span class="ags-val">${a.total}</span>
+                    <span class="ags-label">Total aulas</span>
+                </div>
+                ${badgeLabel ? `
+                <div class="ags-sep"></div>
+                <div class="ags-badge-wrap">
+                    <span class="aluno-badge ${badgeClass}">${badgeLabel}</span>
+                </div>` : ''}
+            </div>
+
         </div>`;
 }
 
