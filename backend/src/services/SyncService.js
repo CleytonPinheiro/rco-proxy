@@ -135,11 +135,11 @@ export class SyncService {
 
                     if (alunos.length === 0) continue;
 
+                    const truncate = (str, max) => str ? String(str).substring(0, max) : null;
                     const alunosPayload = alunos.map(a => ({
-                        registro:       String(a.codMatrizAluno),
-                        nome:           a.nome,
-                        turma:          info.descrTurma,
-                        status:         'Ativo',
+                        registro:       truncate(String(a.codMatrizAluno), 50),
+                        nome:           truncate(a.nome, 120),
+                        turma:          truncate(info.descrTurma, 50),
                         codmatrizaluno: a.codMatrizAluno,
                         codturma:       codTurma,
                         numchamada:     a.numChamada,
