@@ -64,12 +64,14 @@ async function getBrowser() {
     browserInstance = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        timeout: 60000,
+        timeout: 90000,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
+            "--no-zygote",
+            "--single-process",
             "--disable-web-security",
             "--disable-features=VizDisplayCompositor,TranslateUI,BlinkGenPropertyTrees",
             "--disable-extensions",
@@ -117,7 +119,7 @@ export async function loginWithPuppeteer(cpf, senha) {
 
         // Navegar para o domínio do RCO primeiro para poder limpar o localStorage dele
         try {
-            await page.goto('https://rco.paas.pr.gov.br', { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.goto('https://rco.paas.pr.gov.br', { waitUntil: 'domcontentloaded', timeout: 10000 });
             await page.evaluate(() => {
                 try { localStorage.clear(); } catch {}
                 try { sessionStorage.clear(); } catch {}
@@ -126,7 +128,7 @@ export async function loginWithPuppeteer(cpf, senha) {
 
         // Navegar para o domínio de autenticação e limpar seu storage também
         try {
-            await page.goto('https://auth-cs.identidadedigital.pr.gov.br', { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.goto('https://auth-cs.identidadedigital.pr.gov.br', { waitUntil: 'domcontentloaded', timeout: 10000 });
             await page.evaluate(() => {
                 try { localStorage.clear(); } catch {}
                 try { sessionStorage.clear(); } catch {}
@@ -138,7 +140,7 @@ export async function loginWithPuppeteer(cpf, senha) {
 
         console.log("Sessão anterior limpa. Iniciando login limpo...");
 
-        // Otimização: Bloquear recursos desnecessários
+        // Bloquear recursos desnecessários para acelerar o carregamento
         await page.setRequestInterception(true);
         page.on("request", (req) => {
             const type = req.resourceType();
@@ -158,7 +160,19 @@ export async function loginWithPuppeteer(cpf, senha) {
         await page.setViewport({ width: 800, height: 600 });
 
         console.log("Navegando para página de login...");
-        await page.goto(loginUrl, { waitUntil: "networkidle2", timeout: 60000 });
+        // Usar domcontentloaded (não networkidle2) para não aguardar recursos externos que podem travar
+        let gotoOk = false;
+        for (let tentativa = 1; tentativa <= 2; tentativa++) {
+            try {
+                await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+                gotoOk = true;
+                break;
+            } catch (e) {
+                console.warn(`[Puppeteer] Tentativa ${tentativa}/2 de navegação falhou: ${e.message}`);
+                if (tentativa < 2) await new Promise(r => setTimeout(r, 3000));
+            }
+        }
+        if (!gotoOk) throw new Error("Não foi possível carregar a página de login após 2 tentativas");
 
         console.log("Aguardando formulário de login...");
 
