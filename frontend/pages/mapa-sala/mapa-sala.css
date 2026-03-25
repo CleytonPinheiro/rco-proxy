@@ -233,8 +233,8 @@
     gap: 4px;
 }
 .ms-mesa-prof-body svg {
-    width: 140px;
-    height: 56px;
+    width: 160px;
+    height: 76px;
     color: #7c5c2e;
 }
 [data-theme="dark"] .ms-mesa-prof-body svg { color: #c4954a; }
@@ -295,8 +295,8 @@
     color: var(--text);
 }
 .ms-carteira-vazia-icon svg {
-    width: 36px;
-    height: 30px;
+    width: 34px;
+    height: 46px;
 }
 .ms-carteira-num {
     position: absolute;

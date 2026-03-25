@@ -166,14 +166,15 @@ function criarCarteira(c) {
         div.addEventListener('dragend', () => div.classList.remove('dragging-from'));
     } else {
         div.innerHTML += `<span class="ms-carteira-vazia-icon">
-            <svg viewBox="0 0 52 44" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <rect x="4" y="12" width="36" height="5" rx="2"/>
-                <rect x="4" y="17" width="3" height="20" rx="1.5"/>
-                <rect x="37" y="17" width="3" height="20" rx="1.5"/>
-                <rect x="10" y="32" width="3" height="5" rx="1.5" opacity=".7"/>
-                <rect x="30" y="32" width="3" height="5" rx="1.5" opacity=".7"/>
-                <rect x="4" y="28" width="22" height="4" rx="2"/>
-                <rect x="7" y="19" width="16" height="2" rx="1" opacity=".5"/>
+            <svg viewBox="0 0 44 60" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <!-- vista aérea: superfície da escrivaninha (lado da lousa) -->
+                <rect x="1" y="1" width="42" height="22" rx="3"/>
+                <!-- borda frontal (profundidade sutil) -->
+                <rect x="1" y="21" width="42" height="2.5" rx="1" opacity=".35"/>
+                <!-- assento da cadeira -->
+                <rect x="5" y="32" width="34" height="24" rx="4"/>
+                <!-- encosto da cadeira (barra fina na extremidade) -->
+                <rect x="7" y="53" width="30" height="3" rx="1.5" opacity=".55"/>
             </svg>
         </span>`;
     }
@@ -192,10 +193,11 @@ function renderBanco() {
     const vazio = document.getElementById('bancoVazio');
 
     cont.textContent = alunosFora.length;
-    lista.innerHTML  = '';
+
+    // Remove apenas chips — preserva #bancoVazio no DOM
+    lista.querySelectorAll('.ms-aluno-chip').forEach(el => el.remove());
 
     if (!alunosFora.length) {
-        lista.appendChild(vazio);
         vazio.style.display = '';
         return;
     }
