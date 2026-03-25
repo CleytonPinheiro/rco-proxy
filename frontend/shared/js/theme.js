@@ -38,8 +38,31 @@
         aplicarTema(novo);
     };
 
-    // Ao carregar o DOM, garante que os botões estejam corretos
+    // Ao carregar o DOM, garante que os botões estejam corretos + scroll-hide header
     document.addEventListener('DOMContentLoaded', () => {
         atualizarBotoes(temaAtual());
+
+        // ── Esconde o header suavemente ao rolar para baixo ───────────────────
+        const header = document.querySelector('.header');
+        if (header) {
+            let lastScroll = 0;
+            let ticking = false;
+            const LIMIAR = 60; // px mínimos antes de esconder
+
+            window.addEventListener('scroll', () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                    const cur = window.scrollY;
+                    if (cur > lastScroll && cur > LIMIAR) {
+                        header.classList.add('header--hidden');
+                    } else {
+                        header.classList.remove('header--hidden');
+                    }
+                    lastScroll = cur <= 0 ? 0 : cur;
+                    ticking = false;
+                });
+            }, { passive: true });
+        }
     });
 })();

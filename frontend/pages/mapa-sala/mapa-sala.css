@@ -145,6 +145,12 @@
     position: sticky;
     top: 76px;
     max-height: calc(100vh - 92px);
+    transition: top .38s cubic-bezier(.4,0,.2,1), max-height .38s cubic-bezier(.4,0,.2,1);
+}
+/* Quando o header sobe, o banco sobe junto para aproveitar o espaço extra */
+:has(.header--hidden) .ms-banco {
+    top: 16px;
+    max-height: calc(100vh - 32px);
 }
 .ms-banco-header {
     display: flex;
