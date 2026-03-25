@@ -699,6 +699,9 @@ async function alternarModoGeral() {
         titulo.textContent = 'Frequências por Disciplina';
         painel.style.display = 'none';
         normal.style.display = 'block';
+        // Reseta o flag para que, ao voltar à Visão Geral,
+        // os dados sejam recarregados — incluindo disciplinas abertas no accordion.
+        modoGeralCarregado = false;
     }
 }
 
@@ -717,6 +720,11 @@ async function ativarModoGeral() {
     renderModoGeral();
 }
 
+// Normaliza nome igual ao backend para garantir chave consistente
+function normalizarNomeAluno(n) {
+    return (n || '').trim().toUpperCase().replace(/\s+/g, ' ');
+}
+
 function calcularFreqGeral() {
     const disciplinas = Object.values(disciplinaCache);
     const mapa = {};
@@ -726,11 +734,14 @@ function calcularFreqGeral() {
         const nomeTurma = disc.nomeTurma || '';
 
         (disc.alunos || []).forEach(aluno => {
-            // Chave inclui turma para não misturar alunos de turmas diferentes.
-            // codMatrizAluno pode ser 0/null — usamos String() para garantir
-            // que 0 gere uma chave real e não caia para o nome.
-            const codAluno = aluno.codMatrizAluno != null ? String(aluno.codMatrizAluno) : aluno.nome;
-            const key      = `${codTurma}_${codAluno}`;
+            // ─ CHAVE POR NOME (não por codMatrizAluno) ─────────────────────
+            // O backend deduplica alunos que saíram e voltaram por nome,
+            // mas como cada disciplina é uma chamada independente, a ordem
+            // do array raw pode variar → o codMatrizAluno "vencedor" pode
+            // diferir entre disciplinas para o mesmo aluno.
+            // Usar o nome normalizado garante agrupamento correto e consistente.
+            const nomeNorm = normalizarNomeAluno(aluno.nome);
+            const key      = `${codTurma}_${nomeNorm}`;
 
             if (!mapa[key]) {
                 mapa[key] = {
