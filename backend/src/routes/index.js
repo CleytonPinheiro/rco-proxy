@@ -13,6 +13,7 @@ import { createComunicadosRouter }   from './comunicados.routes.js';
 import { createSyncRouter }          from './sync.routes.js';
 import { createDebugRouter }         from './debug.routes.js';
 import { createMapaSalaRouter }      from './mapa-sala.routes.js';
+import { createAtividadesRouter }    from './atividades.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -31,6 +32,7 @@ export function createApiRouter(deps) {
     router.use('/', createSyncRouter(deps));
     router.use('/', createDebugRouter(deps));
     router.use('/', createMapaSalaRouter(deps));
+    router.use('/', createAtividadesRouter());
 
     return router;
 }
