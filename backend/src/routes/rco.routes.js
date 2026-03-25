@@ -55,41 +55,68 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
                 } catch (_) {}
             }));
 
-            // ── Construir mapa por codMatrizAluno para deduplicar ────────────
-            // O RCO pode retornar o mesmo aluno em mais de uma linha
-            // (rematrícula, registros duplicados, etc.).
-            // Mesclamos as frequências: para cada aula, preferimos 'C' a qualquer
-            // outro valor; se ainda não há registro, mantemos o que vier.
-            const mapaAlunos = new Map();
+            // ── Helper: mescla frequências de dois registros ─────────────────
+            // Regra: 'C' prevalece sobre qualquer outro valor;
+            // se o registro existente é nulo e o novo tem valor, usa o novo.
+            function mesclarFreqs(entrada, novaLinha) {
+                codAulas.forEach(cod => {
+                    const existente = entrada.frequencias[cod];
+                    const novo      = novaLinha[cod] || null;
+                    if (!existente && novo)     entrada.frequencias[cod] = novo;
+                    else if (novo === 'C')      entrada.frequencias[cod] = 'C';
+                });
+                // Mantém o numChamada menor (número de chamada original)
+                if (novaLinha.numChamada &&
+                    (!entrada.numChamada || novaLinha.numChamada < entrada.numChamada)) {
+                    entrada.numChamada = novaLinha.numChamada;
+                }
+            }
 
+            // ── 1ª passagem: deduplica por codMatrizAluno ────────────────────
+            // Trata registros exatos duplicados (mesmo ID de matrícula).
+            const mapaId = new Map();
             for (const a of raw) {
-                const chave = a.codMatrizAluno != null ? String(a.codMatrizAluno) : a.nome;
-
-                if (!mapaAlunos.has(chave)) {
+                const chave = a.codMatrizAluno != null ? String(a.codMatrizAluno) : `nome:${a.nome}`;
+                if (!mapaId.has(chave)) {
                     const frequencias = {};
                     codAulas.forEach(cod => { frequencias[cod] = a[cod] || null; });
-                    mapaAlunos.set(chave, {
+                    mapaId.set(chave, {
                         codMatrizAluno: a.codMatrizAluno,
                         numChamada:     a.numChamada,
                         nome:           a.nome,
                         frequencias,
                     });
                 } else {
-                    // Mescla frequências: se a linha nova tiver 'C' numa aula
-                    // onde o registro anterior era diferente, prevalece 'C'.
-                    const entrada = mapaAlunos.get(chave);
-                    codAulas.forEach(cod => {
-                        const existente = entrada.frequencias[cod];
-                        const novo      = a[cod] || null;
-                        if (!existente && novo)          entrada.frequencias[cod] = novo;
-                        else if (novo === 'C')           entrada.frequencias[cod] = 'C';
-                    });
-                    // Mantém o numChamada menor (ordem original da chamada)
-                    if (a.numChamada && (!entrada.numChamada || a.numChamada < entrada.numChamada)) {
-                        entrada.numChamada = a.numChamada;
-                    }
+                    mesclarFreqs(mapaId.get(chave), a);
                 }
             }
+
+            // ── 2ª passagem: deduplica por nome normalizado ──────────────────
+            // Trata o caso de aluno que saiu e voltou: o RCO cria um novo
+            // codMatrizAluno para a rematrícula, mas o nome é idêntico.
+            // Mesclamos as frequências dos dois períodos em um único registro.
+            function normalizarNome(n) {
+                return (n || '').trim().toUpperCase().replace(/\s+/g, ' ');
+            }
+
+            const mapaNome = new Map();
+            for (const entrada of mapaId.values()) {
+                const chave = normalizarNome(entrada.nome);
+                if (!mapaNome.has(chave)) {
+                    mapaNome.set(chave, entrada);
+                } else {
+                    // Já existe outro registro com o mesmo nome — mescla
+                    mesclarFreqs(mapaNome.get(chave), {
+                        ...entrada,
+                        // Passa as frequências diretamente como campos planos
+                        // para compatibilidade com mesclarFreqs
+                        ...entrada.frequencias,
+                        numChamada: entrada.numChamada,
+                    });
+                }
+            }
+
+            const mapaAlunos = mapaNome;
 
             // ── Calcular totais após deduplicação ────────────────────────────
             const alunos = Array.from(mapaAlunos.values()).map(a => {
