@@ -6,9 +6,9 @@
     <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
     <link rel="stylesheet" href="../../shared/css/theme.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduSync — Crachás</title>
+    <title>EduSync — Mapa de Sala</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
-    <link rel="stylesheet" href="./crachas.css">
+    <link rel="stylesheet" href="./mapa-sala.css">
 </head>
 <body>
     <header class="header">
@@ -25,7 +25,7 @@
             <a href="/pages/dashboard/">Turmas</a>
             <a href="/pages/frequencias/">Frequências</a>
             <a href="/pages/comunicados/">Comunicados</a>
-            <a href="/pages/crachas/" class="active">Crachás</a>
+            <a href="/pages/crachas/">Crachás</a>
             <a href="/pages/circulacao/">Circulação</a>
             <a href="/pages/comportamento/">Comportamento</a>
             <a href="/pages/presenca/">Presença</a>
@@ -38,79 +38,83 @@
     </header>
 
     <main class="container">
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Carregando alunos...</p>
+
+        <!-- ── Título ──────────────────────────────────────────── -->
+        <div class="ms-topbar">
+            <div class="ms-titulo-area">
+                <h2 class="ms-titulo">🪑 Mapa de Sala</h2>
+                <p class="ms-sub">Monte o arranjo das carteiras e posicione os alunos por arrasto</p>
+            </div>
+            <div class="ms-topbar-actions">
+                <button class="ms-btn-salvar" id="btnSalvar" onclick="salvarMapa()" disabled>
+                    💾 Salvar Mapa
+                </button>
+                <button class="ms-btn-imprimir" onclick="imprimirMapa()">
+                    🖨️ Imprimir
+                </button>
+            </div>
         </div>
 
-        <div id="content" style="display:none;">
+        <!-- ── Configurações ─────────────────────────────────────── -->
+        <div class="ms-config-bar" id="configBar">
+            <div class="ms-config-group">
+                <label class="ms-config-label">Turma</label>
+                <select id="selTurma" class="ms-select" onchange="onTurmaChange()">
+                    <option value="">— selecione —</option>
+                </select>
+            </div>
+            <div class="ms-config-group">
+                <label class="ms-config-label">Colunas <span id="lblColunas">5</span></label>
+                <input type="range" id="inpColunas" class="ms-range" min="1" max="10" value="5"
+                    oninput="document.getElementById('lblColunas').textContent=this.value; reconstruirGrade()">
+            </div>
+            <div class="ms-config-group">
+                <label class="ms-config-label">Filas <span id="lblFilas">6</span></label>
+                <input type="range" id="inpFilas" class="ms-range" min="1" max="10" value="6"
+                    oninput="document.getElementById('lblFilas').textContent=this.value; reconstruirGrade()">
+            </div>
+            <div class="ms-config-group ms-config-dica">
+                <span class="ms-dica-icon">💡</span>
+                <span>Arraste alunos para as carteiras. Arraste de volta para remover.</span>
+            </div>
+        </div>
 
-            <!-- Cabeçalho do módulo -->
-            <div class="crachas-top">
-                <div class="crachas-titulo-area">
-                    <h2 class="crachas-titulo">🪪 Gerenciar Crachás</h2>
-                    <p class="crachas-sub">Imprima e controle a entrega dos crachás dos alunos</p>
+        <!-- ── Workspace ─────────────────────────────────────────── -->
+        <div class="ms-workspace" id="workspace">
+
+            <!-- Banco de alunos -->
+            <div class="ms-banco" id="banco">
+                <div class="ms-banco-header">
+                    <span class="ms-banco-titulo">Alunos sem carteira</span>
+                    <span class="ms-banco-count" id="bancoCont">0</span>
                 </div>
-                <div class="crachas-actions-top">
-                    <button class="btn-imprimir-sel" id="btnImprimirSel" onclick="imprimirSelecionados()" disabled>
-                        🖨️ Imprimir selecionados (<span id="countSel">0</span>)
-                    </button>
-                    <button class="btn-imprimir-todos" onclick="imprimirTodos()">
-                        🖨️ Imprimir todos
-                    </button>
+                <div class="ms-banco-lista" id="bancoLista"
+                    ondragover="onDragOver(event)" ondrop="onDropBanco(event)">
+                    <div class="ms-banco-vazio" id="bancoVazio">
+                        Todos os alunos posicionados ✓
+                    </div>
                 </div>
             </div>
 
-            <!-- Filtros e stats -->
-            <div class="crachas-filtros">
-                <div class="stats-crachas">
-                    <div class="stat-cracha" id="statTotal">
-                        <span class="stat-n" id="numTotal">0</span>
-                        <span class="stat-l">Total</span>
-                    </div>
-                    <div class="stat-cracha pendente" id="statPendente">
-                        <span class="stat-n" id="numPendente">0</span>
-                        <span class="stat-l">Pendentes</span>
-                    </div>
-                    <div class="stat-cracha impresso" id="statImpresso">
-                        <span class="stat-n" id="numImpresso">0</span>
-                        <span class="stat-l">Impressos</span>
-                    </div>
-                    <div class="stat-cracha entregue" id="statEntregue">
-                        <span class="stat-n" id="numEntregue">0</span>
-                        <span class="stat-l">Entregues</span>
-                    </div>
+            <!-- Grade de carteiras -->
+            <div class="ms-grade-wrap">
+                <div class="ms-lousa">
+                    <span>◼ LOUSA / QUADRO BRANCO</span>
                 </div>
-                <div class="filtros-direita">
-                    <input type="search" id="inputBusca" placeholder="🔍 Buscar aluno..." oninput="filtrar()">
-                    <select id="filtroStatus" onchange="filtrar()">
-                        <option value="">Todos os status</option>
-                        <option value="pendente">Pendentes</option>
-                        <option value="impresso">Impressos</option>
-                        <option value="entregue">Entregues</option>
-                    </select>
+                <div class="ms-grade" id="grade"></div>
+                <div class="ms-vazio-msg" id="vazioMsg">
+                    Selecione uma turma para montar o mapa
                 </div>
             </div>
 
-            <!-- Abas de turma -->
-            <div class="turma-tabs" id="turmaTabs"></div>
-
-            <!-- Lista de alunos -->
-            <div id="listaAlunos"></div>
-
         </div>
+
     </main>
-
-    <!-- Área de impressão (invisível na tela, visível no print) -->
-    <div id="printArea" class="print-area"></div>
 
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
-    <script src="./crachas.js"></script>
-
-    <!-- ── Painel Lateral ───────────────────────────────────────────────── -->
-    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <!-- ── Side Panel ────────────────────────────────────────────── -->
     <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
         <div class="side-panel-header">
             <span class="side-panel-logo">⚡ EduSync</span>
@@ -156,6 +160,7 @@
         </div>
         <div class="side-panel-footer">EduSync © 2026</div>
     </nav>
+
     <script>
     function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
     function fecharSidePanel() { document.body.removeAttribute('data-side'); }
@@ -168,5 +173,7 @@
         });
     })();
     </script>
+    <script src="../../shared/js/auth.js"></script>
+    <script src="./mapa-sala.js"></script>
 </body>
 </html>

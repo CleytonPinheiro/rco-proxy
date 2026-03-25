@@ -23,6 +23,26 @@ export function createAlunosRouter({ supabase }) {
         }
     });
 
+    router.get('/alunos/turmas/lista', async (req, res) => {
+        try {
+            const { data, error } = await supabase
+                .from('alunos')
+                .select('codturma, turma')
+                .order('turma', { ascending: true });
+            if (error) throw error;
+            // Dedup por codturma
+            const seen = new Set();
+            const turmas = (data || []).filter(r => {
+                if (seen.has(r.codturma)) return false;
+                seen.add(r.codturma);
+                return true;
+            });
+            res.json(turmas);
+        } catch (erro) {
+            res.status(500).json({ erro: erro.message });
+        }
+    });
+
     router.get('/alunos/:registro', async (req, res) => {
         try {
             const { data, error } = await supabase

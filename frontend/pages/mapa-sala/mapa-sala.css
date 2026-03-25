@@ -1,0 +1,373 @@
+/* ─────────────────────────────────────────────────────────────
+   Mapa de Sala — estilos
+   ──────────────────────────────────────────────────────────── */
+
+:root {
+    --ms-desk-w: 88px;
+    --ms-desk-h: 76px;
+    --ms-gap:    10px;
+}
+
+/* ── Topbar ─────────────────────────────────────────────────── */
+.ms-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.ms-titulo { font-size: 1.45rem; font-weight: 700; margin: 0 0 2px; }
+.ms-sub    { font-size: .82rem; color: var(--text-muted); margin: 0; }
+.ms-topbar-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.ms-btn-salvar,
+.ms-btn-imprimir {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+    white-space: nowrap;
+}
+.ms-btn-salvar {
+    background: var(--primary);
+    color: #fff;
+}
+.ms-btn-salvar:disabled { opacity: .45; cursor: not-allowed; }
+.ms-btn-imprimir {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.ms-btn-imprimir:hover { background: var(--bg-hover); }
+
+/* ── Config bar ─────────────────────────────────────────────── */
+.ms-config-bar {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+}
+.ms-config-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.ms-config-label {
+    font-size: .82rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-weight: 500;
+    min-width: 60px;
+}
+.ms-select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: .88rem;
+    min-width: 240px;
+    max-width: 320px;
+}
+.ms-range {
+    width: 100px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+.ms-config-dica {
+    margin-left: auto;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: .78rem;
+}
+.ms-dica-icon { font-size: 1rem; }
+
+/* ── Workspace ──────────────────────────────────────────────── */
+.ms-workspace {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+/* ── Banco de alunos ────────────────────────────────────────── */
+.ms-banco {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 300px;
+}
+.ms-banco-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+.ms-banco-titulo { font-size: .82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+.ms-banco-count  {
+    font-size: .75rem; font-weight: 700;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 20px;
+    padding: 1px 8px;
+    min-width: 22px;
+    text-align: center;
+}
+.ms-banco-lista {
+    flex: 1;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    max-height: 70vh;
+    min-height: 60px;
+}
+.ms-banco-lista.drag-over { background: color-mix(in srgb, var(--primary) 8%, var(--bg-card)); }
+.ms-banco-vazio {
+    text-align: center;
+    padding: 20px 10px;
+    color: var(--text-muted);
+    font-size: .8rem;
+}
+
+/* ── Chip de aluno (banco) ──────────────────────────────────── */
+.ms-aluno-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow .12s, opacity .12s;
+}
+.ms-aluno-chip:hover { box-shadow: 0 2px 8px var(--shadow); }
+.ms-aluno-chip.dragging { opacity: .4; }
+.ms-aluno-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.ms-aluno-info { flex: 1; min-width: 0; }
+.ms-aluno-nome {
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+.ms-aluno-num {
+    font-size: .68rem;
+    color: var(--text-muted);
+}
+
+/* ── Grade de carteiras ─────────────────────────────────────── */
+.ms-grade-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+.ms-lousa {
+    width: 100%;
+    background: #1e3a5f;
+    color: #a8c4e0;
+    text-align: center;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.ms-grade {
+    display: grid;
+    gap: var(--ms-gap);
+    justify-content: center;
+    width: 100%;
+}
+.ms-vazio-msg {
+    color: var(--text-muted);
+    font-size: .9rem;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+/* ── Carteira ───────────────────────────────────────────────── */
+.ms-carteira {
+    width: var(--ms-desk-w);
+    height: var(--ms-desk-h);
+    border-radius: 10px;
+    border: 2px dashed var(--border);
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    transition: border-color .15s, background .15s;
+    position: relative;
+    overflow: hidden;
+}
+.ms-carteira.drag-over {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
+    border-style: solid;
+}
+.ms-carteira.ocupada {
+    border-style: solid;
+    border-color: var(--border);
+    cursor: grab;
+}
+.ms-carteira.ocupada:hover { box-shadow: 0 2px 8px var(--shadow); }
+.ms-carteira.dragging-from { opacity: .4; }
+
+.ms-carteira-vazia-icon {
+    font-size: 1.3rem;
+    opacity: .25;
+}
+.ms-carteira-num {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    font-size: .6rem;
+    color: var(--text-muted);
+    opacity: .6;
+    line-height: 1;
+}
+.ms-carteira-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-bottom: 3px;
+}
+.ms-carteira-nome {
+    font-size: .62rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    padding: 0 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text);
+}
+.ms-carteira-chamada {
+    font-size: .58rem;
+    color: var(--text-muted);
+}
+.ms-carteira-btn-rem {
+    position: absolute;
+    top: 2px; right: 3px;
+    background: none; border: none;
+    color: var(--text-muted);
+    font-size: .7rem;
+    cursor: pointer;
+    padding: 1px 3px;
+    border-radius: 4px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity .1s;
+}
+.ms-carteira.ocupada:hover .ms-carteira-btn-rem { opacity: 1; }
+.ms-carteira-btn-rem:hover { color: #dc2626; }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e293b;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 24px;
+    font-size: .85rem;
+    opacity: 0;
+    transition: opacity .25s, transform .25s;
+    pointer-events: none;
+    z-index: 9999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok   { background: #16a34a; }
+.toast.erro { background: #dc2626; }
+
+/* ── PRINT ───────────────────────────────────────────────────── */
+@media print {
+    header, .ms-topbar, .ms-config-bar, .ms-banco, .ms-lousa,
+    .side-panel, #toast, .ms-carteira-btn-rem { display: none !important; }
+
+    body { background: #fff !important; }
+    .ms-workspace { display: block; }
+    .ms-grade-wrap { align-items: flex-start; }
+    .ms-grade { justify-content: flex-start; }
+
+    .ms-grade-wrap::before {
+        content: attr(data-turma);
+        display: block;
+        font-size: 14pt;
+        font-weight: 700;
+        margin-bottom: 12px;
+        text-align: center;
+        width: 100%;
+        color: #000;
+    }
+    .ms-grade-wrap::after {
+        content: 'LOUSA / QUADRO BRANCO';
+        display: block;
+        text-align: center;
+        font-size: 9pt;
+        font-weight: 700;
+        letter-spacing: .1em;
+        border: 2px solid #000;
+        padding: 6px;
+        margin-bottom: 10px;
+        order: -1;
+        color: #000;
+    }
+
+    .ms-carteira {
+        border: 1.5px solid #aaa !important;
+        background: #fff !important;
+        break-inside: avoid;
+        width: 80px !important;
+        height: 68px !important;
+    }
+    .ms-carteira.ocupada { border-color: #333 !important; }
+    .ms-carteira-nome  { color: #000 !important; font-size: .6rem !important; }
+    .ms-carteira-avatar { background: #333 !important; }
+    .ms-carteira-chamada { color: #555 !important; }
+    .ms-carteira-num { color: #888 !important; }
+    .ms-vazio-msg { display: none; }
+}
