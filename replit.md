@@ -1,7 +1,7 @@
 # EduSync
 
 ## Visão Geral
-Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária e painel da cozinha.
+Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos e comunicados de falta via WhatsApp (N8n).
 
 ## Estado Atual
 - **Data**: 24/03/2026

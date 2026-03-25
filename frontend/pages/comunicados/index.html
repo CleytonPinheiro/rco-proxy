@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Comunicados</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./comunicados.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/comunicados/" class="active">Comunicados</a>
+            <a href="/pages/crachas/">Crachás</a>
+            <a href="/pages/circulacao/">Circulação</a>
+            <a href="/pages/comportamento/">Comportamento</a>
+            <a href="/pages/presenca/">Presença</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <!-- ── Topbar ──────────────────────────────────────────────────── -->
+        <div class="com-topbar">
+            <div class="com-titulo-area">
+                <h2 class="com-titulo">📨 Comunicados de Falta</h2>
+                <p class="com-sub">Notifique responsáveis e registre justificativas automaticamente</p>
+            </div>
+            <div class="com-topbar-actions">
+                <button class="btn-importar" onclick="abrirModalImportar()">+ Importar Faltas</button>
+                <button class="btn-config" onclick="abrirModalConfig()">⚙️ Configurar N8n</button>
+            </div>
+        </div>
+
+        <!-- ── Alerta N8n ──────────────────────────────────────────────── -->
+        <div id="alertaN8n" class="alerta-n8n oculto">
+            ⚠️ <strong>N8n não configurado.</strong>
+            O envio automático via WhatsApp está desativado.
+            <button onclick="abrirModalConfig()">Configurar agora →</button>
+        </div>
+
+        <!-- ── Stats ──────────────────────────────────────────────────── -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-n" id="statTotal">—</span>
+                <span class="stat-l">Total</span>
+            </div>
+            <div class="stat-item pendente">
+                <span class="stat-n" id="statPendente">—</span>
+                <span class="stat-l">Pendentes</span>
+            </div>
+            <div class="stat-item enviado">
+                <span class="stat-n" id="statEnviado">—</span>
+                <span class="stat-l">Enviados</span>
+            </div>
+            <div class="stat-item respondido">
+                <span class="stat-n" id="statRespondido">—</span>
+                <span class="stat-l">Respondidos</span>
+            </div>
+            <div class="stat-item justificado">
+                <span class="stat-n" id="statJustificado">—</span>
+                <span class="stat-l">Justificados</span>
+            </div>
+            <div class="stat-item taxa">
+                <span class="stat-n" id="statTaxa">—%</span>
+                <span class="stat-l">Taxa resposta</span>
+            </div>
+        </div>
+
+        <!-- ── Abas ────────────────────────────────────────────────────── -->
+        <div class="com-abas">
+            <button class="aba ativa" data-aba="todas"       onclick="trocarAba('todas')">Todas</button>
+            <button class="aba"       data-aba="pendente"    onclick="trocarAba('pendente')">🔴 Pendentes</button>
+            <button class="aba"       data-aba="enviado"     onclick="trocarAba('enviado')">🟡 Enviados</button>
+            <button class="aba"       data-aba="respondido"  onclick="trocarAba('respondido')">🔵 Respondidos</button>
+            <button class="aba"       data-aba="justificado" onclick="trocarAba('justificado')">🟢 Justificados</button>
+        </div>
+
+        <!-- ── Filtros + ações ─────────────────────────────────────────── -->
+        <div class="com-controles">
+            <div class="filtros-row">
+                <input type="search" id="inputBusca" placeholder="🔍 Buscar aluno..." oninput="aplicarFiltros()">
+                <select id="filtroTurma" onchange="aplicarFiltros()">
+                    <option value="">Todas as turmas</option>
+                </select>
+                <input type="date" id="filtroDataInicio" onchange="aplicarFiltros()" title="Data início">
+                <input type="date" id="filtroDataFim"    onchange="aplicarFiltros()" title="Data fim">
+                <button class="btn-limpar-filtros" onclick="limparFiltros()">✕ Limpar</button>
+            </div>
+            <div class="acoes-row">
+                <label class="check-all-label">
+                    <input type="checkbox" id="checkAll" onchange="toggleTodos(this.checked)">
+                    Selec. todos
+                </label>
+                <span id="countSel" class="count-sel">0 selecionados</span>
+                <button class="btn-enviar-sel" id="btnEnviarSel" onclick="enviarSelecionados()" disabled>
+                    📱 Enviar selecionados
+                </button>
+                <button class="btn-reenviar" onclick="reenviarSemResposta()">
+                    ↺ Reenviar sem resposta
+                </button>
+            </div>
+        </div>
+
+        <!-- ── Tabela ──────────────────────────────────────────────────── -->
+        <div class="tabela-wrap">
+            <table class="tabela-com">
+                <thead>
+                    <tr>
+                        <th class="th-check"></th>
+                        <th>Aluno</th>
+                        <th>Turma</th>
+                        <th>Data falta</th>
+                        <th>Status</th>
+                        <th>Responsável</th>
+                        <th>Resposta</th>
+                        <th class="th-acoes">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                    <tr><td colspan="8" class="loading-row">
+                        <div class="spinner"></div> Carregando...
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="tabela-footer">
+            <span id="countTotal">0 registros</span>
+        </div>
+
+    </main>
+
+    <!-- ═══ MODAIS ════════════════════════════════════════════════════════ -->
+
+    <!-- Modal: Importar Faltas -->
+    <div id="modalImportar" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event,'modalImportar')">
+        <div class="modal-box modal-lg">
+            <div class="modal-header">
+                <h3>📥 Importar Faltas</h3>
+                <button class="modal-close" onclick="fecharModal('modalImportar')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="imp-form-row">
+                    <div class="form-group">
+                        <label>Turma</label>
+                        <select id="impTurma" class="input-form" onchange="carregarAlunosImportar()">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data da falta</label>
+                        <input type="date" id="impData" class="input-form" onchange="carregarAlunosImportar()">
+                    </div>
+                </div>
+                <div id="impListaAlunos" class="imp-lista-alunos">
+                    <div class="imp-hint">Selecione turma e data para ver os alunos.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="impCountSel">0 alunos selecionados</span>
+                <button class="btn-cancelar" onclick="fecharModal('modalImportar')">Cancelar</button>
+                <button class="btn-gerar" id="btnGerar" onclick="gerarComunicados()" disabled>
+                    ✅ Gerar Comunicados
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalhes / Validar -->
+    <div id="modalDetalhes" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event,'modalDetalhes')">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="detTitulo">Detalhes do Comunicado</h3>
+                <button class="modal-close" onclick="fecharModal('modalDetalhes')">✕</button>
+            </div>
+            <div class="modal-body" id="detCorpo"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Contato -->
+    <div id="modalContato" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event,'modalContato')">
+        <div class="modal-box modal-sm">
+            <div class="modal-header">
+                <h3>✏️ Contato do Responsável</h3>
+                <button class="modal-close" onclick="fecharModal('modalContato')">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="contatoCod">
+                <div class="form-group">
+                    <label>Nome do responsável</label>
+                    <input type="text" id="contatoNome" class="input-form" placeholder="Ex: Maria Silva">
+                </div>
+                <div class="form-group">
+                    <label>WhatsApp (com DDD, só números)</label>
+                    <input type="text" id="contatoTel" class="input-form" placeholder="Ex: 41999999999"
+                        oninput="this.value=this.value.replace(/\D/g,'')">
+                </div>
+                <div class="form-group">
+                    <label>E-mail (opcional)</label>
+                    <input type="email" id="contatoEmail" class="input-form" placeholder="email@exemplo.com">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModal('modalContato')">Cancelar</button>
+                <button class="btn-salvar" onclick="salvarContato()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Configurar N8n -->
+    <div id="modalConfig" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event,'modalConfig')">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⚙️ Configurar Integração N8n</h3>
+                <button class="modal-close" onclick="fecharModal('modalConfig')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="config-info">
+                    <strong>Como funciona:</strong><br>
+                    1. Configure um workflow no N8n com um trigger Webhook<br>
+                    2. Cole a URL do webhook abaixo<br>
+                    3. O N8n enviará a mensagem via WhatsApp (Z-API / Evolution API)<br>
+                    4. Configure o N8n para chamar o EduSync quando o responsável responder
+                </div>
+                <div class="form-group">
+                    <label>URL do Webhook N8n</label>
+                    <input type="url" id="cfgWebhook" class="input-form"
+                        placeholder="https://seu-n8n.com/webhook/comunicados">
+                </div>
+                <div class="form-group">
+                    <label>Token de segurança (para autenticar callbacks)</label>
+                    <div class="input-btn-row">
+                        <input type="text" id="cfgToken" class="input-form" placeholder="Token secreto">
+                        <button class="btn-gerar-token" onclick="gerarToken()">Gerar</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Template da mensagem</label>
+                    <textarea id="cfgTemplate" class="input-form textarea-msg" rows="5"
+                        placeholder="Olá {responsavel}! Seu filho(a) {aluno} faltou às aulas em {data}. Qual foi o motivo? Responda: 1-Doença  2-Consulta médica  3-Viagem  4-Outro"></textarea>
+                    <small class="hint">Variáveis: <code>{responsavel}</code> <code>{aluno}</code> <code>{data}</code> <code>{turma}</code></small>
+                </div>
+                <div class="form-group">
+                    <label>Endpoint de callback (copie e cole no N8n)</label>
+                    <div class="input-btn-row">
+                        <input type="text" id="cfgEndpoint" class="input-form" readonly>
+                        <button class="btn-copiar" onclick="copiarEndpoint()">📋 Copiar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="fecharModal('modalConfig')">Cancelar</button>
+                <button class="btn-salvar" onclick="salvarConfig()">💾 Salvar configuração</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="./comunicados.js"></script>
+
+    <!-- ── Painel Lateral ───────────────────────────────────────────── -->
+    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">⚡ EduSync</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
+        </div>
+        <div class="side-panel-section-label">Ferramentas</div>
+        <div class="side-panel-nav">
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/materiais/" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                </div>
+            </a>
+            <a href="/pages/emprestimos/" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Controle de empréstimos</span>
+                </div>
+            </a>
+            <a href="/pages/cozinha/" class="side-nav-item">
+                <span class="side-nav-icon">🍽️</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Cozinha</span>
+                    <span class="side-nav-desc">Cardápio e presença por refeição</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+    <script>
+    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') { fecharSidePanel(); } });
+    (function(){
+        var p = location.pathname;
+        document.querySelectorAll('.side-nav-item').forEach(function(a){
+            var href = a.getAttribute('href');
+            if(href && p.startsWith(href)) a.classList.add('active');
+        });
+    })();
+    </script>
+</body>
+</html>

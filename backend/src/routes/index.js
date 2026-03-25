@@ -9,6 +9,7 @@ import { createComportamentoRouter } from './comportamento.routes.js';
 import { createPresencaRouter }      from './presenca.routes.js';
 import { createCozinhaRouter }       from './cozinha.routes.js';
 import { createCirculacaoRouter }    from './circulacao.routes.js';
+import { createComunicadosRouter }   from './comunicados.routes.js';
 import { createSyncRouter }          from './sync.routes.js';
 import { createDebugRouter }         from './debug.routes.js';
 
@@ -25,6 +26,7 @@ export function createApiRouter(deps) {
     router.use('/', createPresencaRouter(deps));
     router.use('/', createCozinhaRouter(deps));
     router.use('/', createCirculacaoRouter(deps));
+    router.use('/', createComunicadosRouter(deps));
     router.use('/', createSyncRouter(deps));
     router.use('/', createDebugRouter(deps));
 
