@@ -7,6 +7,35 @@ export class SyncService {
         this.#rcoApiService = rcoApiService;
     }
 
+    // Limpa dados de sessão anterior ao trocar de usuário.
+    // Preserva aluno_ocorrencias (criadas pelo professor, não re-sincronizáveis).
+    async limparParaTroca() {
+        console.log('[SYNC] Limpando dados do usuário anterior...');
+        // Cada item: [tabela, coluna_pk_para_filtro]
+        // Supabase SDK exige ao menos um filtro no DELETE — usamos a PK >= 0 ou neq('')
+        const tabelasFiltros = [
+            ['rco_turmas',          'cod_turma',           'gte', 0],
+            ['rco_classes',         'cod_classe',           'gte', 0],
+            ['rco_estabelecimentos','cod_estabelecimento',  'gte', 0],
+            ['rco_observacoes',     'id',                   'gte', 0],
+        ];
+        for (const [tabela, col, op, val] of tabelasFiltros) {
+            try {
+                const { error } = await this.#supabaseAdmin
+                    .from(tabela)
+                    .delete()
+                    [op](col, val);
+                if (error) {
+                    console.warn(`[SYNC] Aviso ao limpar ${tabela}:`, error.message);
+                } else {
+                    console.log(`[SYNC] ${tabela} limpa para troca de usuário.`);
+                }
+            } catch (e) {
+                console.warn(`[SYNC] Erro ao limpar ${tabela}:`, e.message);
+            }
+        }
+    }
+
     #dedup(arr, key) {
         return [...new Map(arr.map(x => [x[key], x])).values()];
     }

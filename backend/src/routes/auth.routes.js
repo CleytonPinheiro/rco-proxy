@@ -58,15 +58,20 @@ export function createAuthRouter({ tokenService, syncService }) {
             const status = tokenService.getStatus();
 
             // Disparar sincronização em background após login bem-sucedido
-            // (especialmente importante ao trocar de usuário)
             if (trocouUsuario) {
-                console.log(`[Auth] Troca de usuário detectada (${cpfAnterior.slice(-4)} → ${cpf.slice(-4)}), iniciando re-sync...`);
+                console.log(`[Auth] Troca de usuário detectada (${cpfAnterior.slice(-4)} → ${cpf.slice(-4)}), limpando dados anteriores e re-sincronizando...`);
+                // Limpa turmas/classes/obs RCO do usuário anterior antes de re-sincronizar
+                // Preserva aluno_ocorrencias (registros do professor, não re-sincronizáveis)
+                syncService.limparParaTroca()
+                    .then(() => syncService.sincronizarComSupabase())
+                    .then(r => console.log('[Auth] Re-sync pós-troca concluído:', r.status))
+                    .catch(e => console.warn('[Auth] Re-sync pós-troca falhou:', e.message));
             } else {
                 console.log('[Auth] Login bem-sucedido, iniciando sync em background...');
+                syncService.sincronizarComSupabase()
+                    .then(r => console.log('[Auth] Sync pós-login concluído:', r.status))
+                    .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
             }
-            syncService.sincronizarComSupabase()
-                .then(r => console.log('[Auth] Sync pós-login concluído:', r.status))
-                .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
 
             res.json({
                 sucesso: true,

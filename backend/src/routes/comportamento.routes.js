@@ -32,7 +32,19 @@ export function createComportamentoRouter({ supabaseAdmin }) {
                 .select('*')
                 .order('data', { ascending: false })
                 .order('criado_em', { ascending: false });
-            if (codTurma) query = query.eq('cod_turma', parseInt(codTurma));
+
+            if (codTurma) {
+                query = query.eq('cod_turma', parseInt(codTurma));
+            } else {
+                // Restringe às turmas do usuário atual para não exibir dados de outros professores
+                const { data: turmasData } = await supabaseAdmin
+                    .from('rco_turmas')
+                    .select('cod_turma');
+                if (turmasData && turmasData.length > 0) {
+                    query = query.in('cod_turma', turmasData.map(t => t.cod_turma));
+                }
+            }
+
             const { data, error } = await query;
             if (error) return res.status(500).json({ erro: error.message });
             res.json(data || []);
