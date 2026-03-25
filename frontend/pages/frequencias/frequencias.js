@@ -904,6 +904,262 @@ function aplicarRangeCustom() {
     renderModoGeral();
 }
 
+// ── Imprimir Visão Geral ──────────────────────────────────────────────────────
+function imprimirGeralFreq() {
+    // ── Recolhe dados exatamente como estão no momento ──────────────────────
+    const sort    = document.getElementById('selectSort')?.value || 'asc';
+    const min     = filtroMin;
+    const max     = filtroMax;
+    const todos   = calcularFreqGeral();
+
+    const filtrados = todos.filter(a => {
+        if (a.pct === null) return min === 0;
+        return a.pct >= min && a.pct <= max;
+    });
+    const ordenados = [...filtrados].sort((a, b) => {
+        if (sort === 'asc')  return (a.pct ?? -1) - (b.pct ?? -1);
+        if (sort === 'desc') return (b.pct ?? -1) - (a.pct ?? -1);
+        return a.nome.localeCompare(b.nome);
+    });
+
+    if (!ordenados.length) {
+        alert('Nenhum aluno na lista atual para imprimir.');
+        return;
+    }
+
+    // ── Disciplinas carregadas (em ordem alfabética) ─────────────────────────
+    const discs = Object.values(disciplinaCache)
+        .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina));
+
+    // ── Estatísticas do resumo ───────────────────────────────────────────────
+    const comDado  = todos.filter(a => a.pct !== null);
+    const nOk      = comDado.filter(a => a.pct >= 80).length;
+    const nAlerta  = comDado.filter(a => a.pct >= 60 && a.pct < 80).length;
+    const nCritico = comDado.filter(a => a.pct < 60).length;
+
+    // ── Labels ───────────────────────────────────────────────────────────────
+    const sortLabel = { asc: 'Menor % primeiro', desc: 'Maior % primeiro', az: 'Nome A–Z' }[sort] || sort;
+    const faixaLabel = (min === 0 && max === 100) ? 'Todos' : `${min}%–${max}%`;
+    const agora = new Date().toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+
+    // ── Nomes abreviados das disciplinas para o cabeçalho da tabela ──────────
+    function abrevDisc(nome) {
+        if (nome.length <= 14) return nome;
+        return nome.split(' ')
+            .filter(p => !['DE','DA','DO','DOS','DAS','E','A','O','EM','NO','NA'].includes(p.toUpperCase()))
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1, 4).toLowerCase())
+            .join('. ')
+            .substring(0, 14);
+    }
+
+    // ── Linhas da tabela ─────────────────────────────────────────────────────
+    function classePct(pct) {
+        if (pct === null) return '';
+        return pct >= 80 ? 'pct-ok' : pct >= 60 ? 'pct-alerta' : 'pct-critico';
+    }
+    function labelSit(pct) {
+        if (pct === null) return '';
+        return pct >= 80 ? '✓ OK' : pct >= 60 ? '⚠ Risco' : '✗ Crítico';
+    }
+
+    const linhas = ordenados.map((a, idx) => {
+        const pctStr = a.pct !== null ? `${a.pct}%` : '—';
+        const cellsDisc = discs.map(disc => {
+            const dadoAluno = disc.alunos.find(al => al.nome === a.nome);
+            if (!dadoAluno) return `<td class="td-disc">—</td>`;
+            const p = dadoAluno.percentual;
+            return `<td class="td-disc ${classePct(p)}">${p !== null ? p + '%' : '—'}</td>`;
+        }).join('');
+
+        const trClass = idx % 2 === 0 ? '' : ' class="tr-par"';
+        return `<tr${trClass}>
+            <td class="td-num">${a.numChamada || (idx + 1)}</td>
+            <td class="td-nome">${a.nome || '—'}</td>
+            <td class="td-pct ${classePct(a.pct)}">${pctStr}</td>
+            <td class="td-pf">${a.totalP}</td>
+            <td class="td-pf">${a.totalF}</td>
+            <td class="td-sit ${classePct(a.pct)}">${labelSit(a.pct)}</td>
+            ${cellsDisc}
+        </tr>`;
+    }).join('');
+
+    // ── Cabeçalhos das disciplinas ───────────────────────────────────────────
+    const thDiscs = discs.map(d =>
+        `<th class="th-disc" title="${d.nomeDisciplina}">${abrevDisc(d.nomeDisciplina)}</th>`
+    ).join('');
+
+    // ── HTML completo da janela de impressão ─────────────────────────────────
+    const html = `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Frequências — Visão Geral</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 9.5pt; color: #111;
+    padding: 16mm 14mm;
+  }
+  /* ── Cabeçalho ── */
+  .print-header { margin-bottom: 14px; border-bottom: 2px solid #1e3a5f; padding-bottom: 10px; }
+  .print-titulo { font-size: 15pt; font-weight: 800; color: #1e3a5f; margin-bottom: 3px; }
+  .print-meta   { font-size: 8pt; color: #555; display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+  .print-meta span::before { content: '•'; margin-right: 5px; color: #1e3a5f; }
+  /* ── Resumo ── */
+  .print-resumo {
+    display: flex; gap: 0; margin-bottom: 14px;
+    border: 1px solid #dde1e7; border-radius: 8px; overflow: hidden;
+  }
+  .res-item {
+    flex: 1; text-align: center; padding: 8px 6px;
+    border-right: 1px solid #dde1e7;
+  }
+  .res-item:last-child { border-right: none; }
+  .res-n { font-size: 18pt; font-weight: 800; line-height: 1; }
+  .res-l { font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; color: #666; margin-top: 2px; }
+  .res-ok      { background: #f0fdf4; }
+  .res-alerta  { background: #fffbeb; }
+  .res-critico { background: #fef2f2; }
+  .res-ok .res-n      { color: #15803d; }
+  .res-alerta .res-n  { color: #b45309; }
+  .res-critico .res-n { color: #dc2626; }
+  /* ── Tabela ── */
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 8.5pt; margin-bottom: 12px;
+  }
+  thead tr { background: #1e3a5f; color: #fff; }
+  thead th {
+    padding: 6px 5px; text-align: left;
+    font-weight: 700; font-size: 7.5pt;
+    letter-spacing: .03em; white-space: nowrap;
+  }
+  thead th.th-disc { text-align: center; font-size: 7pt; max-width: 60px; }
+  tbody td { padding: 5px 5px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+  .tr-par td { background: #f8fafc; }
+  .td-num  { width: 28px; text-align: center; color: #6b7280; font-size: 8pt; }
+  .td-nome { font-weight: 600; min-width: 180px; }
+  .td-pct  { text-align: center; font-weight: 800; font-size: 10pt; min-width: 44px; }
+  .td-pf   { text-align: center; color: #6b7280; min-width: 26px; }
+  .td-sit  { font-size: 7.5pt; font-weight: 700; white-space: nowrap; min-width: 64px; }
+  .td-disc { text-align: center; font-size: 7.5pt; min-width: 38px; }
+  /* ── Cores % ── */
+  .pct-ok      { color: #15803d !important; }
+  .pct-alerta  { color: #b45309 !important; }
+  .pct-critico { color: #dc2626 !important; }
+  /* ── Legenda ── */
+  .print-legenda {
+    display: flex; gap: 20px; font-size: 7.5pt; color: #555;
+    margin-bottom: 10px; padding: 6px 10px;
+    background: #f8fafc; border-radius: 6px; border: 1px solid #e5e7eb;
+  }
+  .leg-item { display: flex; align-items: center; gap: 5px; }
+  .leg-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  /* ── Rodapé ── */
+  .print-footer {
+    text-align: center; font-size: 7pt; color: #9ca3af;
+    border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 8px;
+  }
+  /* ── Configurações de impressão ── */
+  @page {
+    size: ${discs.length > 6 ? 'A4 landscape' : 'A4 portrait'};
+    margin: 12mm 14mm;
+  }
+  @media print {
+    body { padding: 0; font-size: 8.5pt; }
+    .print-header { page-break-after: avoid; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="print-header">
+  <div class="print-titulo">📋 Frequências — Visão Geral por Aluno</div>
+  <div class="print-meta">
+    <span>Período: 1º Trimestre 2026</span>
+    <span>Faixa exibida: ${faixaLabel}</span>
+    <span>Ordenação: ${sortLabel}</span>
+    <span>Disciplinas: ${discs.length}</span>
+    <span>Gerado em: ${agora}</span>
+  </div>
+</div>
+
+<div class="print-resumo">
+  <div class="res-item">
+    <div class="res-n">${todos.length}</div>
+    <div class="res-l">Total alunos</div>
+  </div>
+  <div class="res-item res-ok">
+    <div class="res-n">${nOk}</div>
+    <div class="res-l">≥80% OK</div>
+  </div>
+  <div class="res-item res-alerta">
+    <div class="res-n">${nAlerta}</div>
+    <div class="res-l">60–79% Risco</div>
+  </div>
+  <div class="res-item res-critico">
+    <div class="res-n">${nCritico}</div>
+    <div class="res-l">&lt;60% Crítico</div>
+  </div>
+  <div class="res-item">
+    <div class="res-n">${filtrados.length}</div>
+    <div class="res-l">Listados abaixo</div>
+  </div>
+</div>
+
+<div class="print-legenda">
+  <div class="leg-item"><div class="leg-dot" style="background:#15803d"></div> ≥80% — Pé-de-Meia OK (direito ao benefício)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#b45309"></div> 60–79% — Em risco de perda do benefício</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#dc2626"></div> &lt;60% — Crítico (sem direito)</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:center">Nº</th>
+      <th>Aluno</th>
+      <th style="text-align:center">Geral</th>
+      <th style="text-align:center">P</th>
+      <th style="text-align:center">F</th>
+      <th style="text-align:center">Situação</th>
+      ${thDiscs}
+    </tr>
+  </thead>
+  <tbody>
+    ${linhas}
+  </tbody>
+</table>
+
+<div class="print-footer">
+  EduSync · Frequências Escolares · ${agora} · ${filtrados.length} aluno${filtrados.length !== 1 ? 's' : ''} listado${filtrados.length !== 1 ? 's' : ''}
+  ${(min !== 0 || max !== 100) ? ` · Filtro ativo: ${faixaLabel}` : ''}
+</div>
+
+<script>
+  window.addEventListener('load', function() {
+    setTimeout(function() { window.print(); }, 250);
+  });
+<\/script>
+
+</body></html>`;
+
+    // ── Abre janela de impressão ─────────────────────────────────────────────
+    const win = window.open('', '_blank', 'width=1100,height=800,scrollbars=yes');
+    if (!win) {
+        alert('Permita pop-ups neste site para imprimir.');
+        return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+}
+
 // ── Sincronizar frequências com o RCO ─────────────────────────────────────────
 async function sincronizarFrequencias() {
     const btn = document.getElementById('btnSyncRco');

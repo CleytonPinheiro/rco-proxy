@@ -830,6 +830,22 @@
 }
 [data-theme="dark"] .btn-sync-rco:hover:not(:disabled) { background: var(--bg-hover); }
 
+/* ── Botão Imprimir Visão Geral ─────────────────────────────────── */
+.btn-imprimir-geral {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: 8px;
+    border: 1px solid #d1d5db; background: white;
+    color: #374151; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    align-self: flex-end;
+}
+.btn-imprimir-geral:hover { background: #f3f4f6; border-color: #9ca3af; }
+[data-theme="dark"] .btn-imprimir-geral {
+    background: var(--bg-card); border-color: var(--border);
+    color: var(--text-primary);
+}
+[data-theme="dark"] .btn-imprimir-geral:hover { background: var(--bg-hover); }
+
 /* Painel geral wrapper */
 .painel-geral-wrap {
     display: flex;
