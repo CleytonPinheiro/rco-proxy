@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Painel Pedagógico</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./pedagogico.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/comunicados/">Comunicados</a>
+            <a href="/pages/crachas/">Crachás</a>
+            <a href="/pages/circulacao/">Circulação</a>
+            <a href="/pages/comportamento/">Comportamento</a>
+            <a href="/pages/presenca/">Presença</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav id="sidePanel" class="side-panel">
+        <div class="side-panel-header">
+            <span class="side-panel-title">Menu</span>
+            <button class="side-panel-close" onclick="fecharSidePanel()">✕</button>
+        </div>
+        <div class="side-nav">
+            <a href="/pages/dashboard/" class="side-nav-item">
+                <span class="side-nav-icon">🏠</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Turmas</span>
+                    <span class="side-nav-desc">Visão geral das turmas</span>
+                </div>
+            </a>
+            <a href="/pages/frequencias/" class="side-nav-item">
+                <span class="side-nav-icon">📅</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Frequências</span>
+                    <span class="side-nav-desc">Lance e consulte faltas</span>
+                </div>
+            </a>
+            <a href="/pages/comunicados/" class="side-nav-item">
+                <span class="side-nav-icon">📢</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Comunicados de Falta</span>
+                    <span class="side-nav-desc">Imprima comunicados de falta</span>
+                </div>
+            </a>
+            <a href="/pages/crachas/" class="side-nav-item">
+                <span class="side-nav-icon">🪪</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Crachás</span>
+                    <span class="side-nav-desc">Gere e imprima crachás</span>
+                </div>
+            </a>
+            <a href="/pages/circulacao/" class="side-nav-item">
+                <span class="side-nav-icon">🚶</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Circulação</span>
+                    <span class="side-nav-desc">Registro de saídas e entradas</span>
+                </div>
+            </a>
+            <a href="/pages/comportamento/" class="side-nav-item">
+                <span class="side-nav-icon">⭐</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Comportamento</span>
+                    <span class="side-nav-desc">Pontuação e ocorrências</span>
+                </div>
+            </a>
+            <a href="/pages/presenca/" class="side-nav-item">
+                <span class="side-nav-icon">✋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Presença Diária</span>
+                    <span class="side-nav-desc">Chamada rápida do dia</span>
+                </div>
+            </a>
+            <a href="/pages/mapa-sala/" class="side-nav-item">
+                <span class="side-nav-icon side-nav-icon-svg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                        <rect x="7" y="19" width="16" height="2" rx="1" opacity=".5"/>
+                    </svg>
+                </span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Mapa de Sala</span>
+                    <span class="side-nav-desc">Arranjo de carteiras por turma</span>
+                </div>
+            </a>
+                        <a href="/pages/atividades/" class="side-nav-item">
+                <span class="side-nav-icon side-nav-icon-svg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
+                </span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Atividades de Sala</span>
+                    <span class="side-nav-desc">Checklist diário de atividades</span>
+                </div>
+            </a>
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/pedagogico/" class="side-nav-item side-nav-item--active">
+                <span class="side-nav-icon">🎓</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Painel Pedagógico</span>
+                    <span class="side-nav-desc">Avisos e ocorrências para a equipe</span>
+                </div>
+            </a>
+            <a href="/pages/materiais/" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                </div>
+            </a>
+            <a href="/pages/emprestimos/" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Controle de empréstimos</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+
+    <main class="container">
+        <!-- Cabeçalho da página -->
+        <div class="ped-page-header">
+            <div class="ped-page-title-row">
+                <div class="ped-page-icon">🎓</div>
+                <div>
+                    <h1 class="ped-page-title">Painel Pedagógico</h1>
+                    <p class="ped-page-sub">Acompanhe e registre os avisos e ocorrências dos professores</p>
+                </div>
+            </div>
+
+            <!-- Cards de resumo -->
+            <div class="ped-stats" id="pedStats">
+                <div class="ped-stat-card ped-stat-total">
+                    <span class="ped-stat-num" id="statTotal">—</span>
+                    <span class="ped-stat-label">Total de ocorrências</span>
+                </div>
+                <div class="ped-stat-card ped-stat-graves">
+                    <span class="ped-stat-num" id="statGraves">—</span>
+                    <span class="ped-stat-label">Graves</span>
+                </div>
+                <div class="ped-stat-card ped-stat-atencao">
+                    <span class="ped-stat-num" id="statAtencao">—</span>
+                    <span class="ped-stat-label">Atenção</span>
+                </div>
+                <div class="ped-stat-card ped-stat-pendentes">
+                    <span class="ped-stat-num" id="statPendentes">—</span>
+                    <span class="ped-stat-label">Não revisados</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="ped-filtros">
+            <div class="ped-filtros-row">
+                <div class="ped-filtro-group">
+                    <label class="ped-filtro-label">Tipo</label>
+                    <div class="ped-tipo-btns">
+                        <button class="ped-tipo-btn ped-tipo-btn--all ped-tipo-btn--active" data-tipo="todos">Todos</button>
+                        <button class="ped-tipo-btn ped-tipo-btn--grave" data-tipo="grave">⛔ Grave</button>
+                        <button class="ped-tipo-btn ped-tipo-btn--atencao" data-tipo="atencao">⚠️ Atenção</button>
+                        <button class="ped-tipo-btn ped-tipo-btn--positivo" data-tipo="positivo">✅ Positivo</button>
+                    </div>
+                </div>
+                <div class="ped-filtro-group">
+                    <label class="ped-filtro-label" for="filtroTurma">Turma</label>
+                    <select id="filtroTurma" class="ped-select">
+                        <option value="">Todas as turmas</option>
+                    </select>
+                </div>
+                <div class="ped-filtro-group">
+                    <label class="ped-filtro-label" for="filtroStatus">Status pedagógico</label>
+                    <select id="filtroStatus" class="ped-select">
+                        <option value="todos">Todos</option>
+                        <option value="pendente">Não revisados</option>
+                        <option value="visto">Revisados</option>
+                    </select>
+                </div>
+                <div class="ped-filtro-group">
+                    <label class="ped-filtro-label" for="filtroPeriodo">Período</label>
+                    <select id="filtroPeriodo" class="ped-select">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30" selected>Últimos 30 dias</option>
+                        <option value="90">Últimos 3 meses</option>
+                        <option value="0">Todo o período</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado vazio / loading -->
+        <div id="pedLoading" class="ped-empty">
+            <div class="ped-empty-icon">⏳</div>
+            <p class="ped-empty-texto">Carregando ocorrências...</p>
+        </div>
+        <div id="pedVazio" class="ped-empty" style="display:none">
+            <div class="ped-empty-icon">📋</div>
+            <p class="ped-empty-texto">Nenhuma ocorrência encontrada com os filtros selecionados.</p>
+        </div>
+
+        <!-- Grid de cards -->
+        <div id="pedGrid" class="ped-grid" style="display:none"></div>
+    </main>
+
+    <script src="./pedagogico.js"></script>
+    <script>
+        function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+        function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+        document.getElementById('sidePanel').addEventListener('click', function(e){
+            if(e.target === this) fecharSidePanel();
+        });
+    </script>
+</body>
+</html>

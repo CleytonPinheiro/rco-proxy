@@ -1,0 +1,443 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PAINEL PEDAGÓGICO — pedagogico.css
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+    --ped-grave:    #ef4444;
+    --ped-atencao:  #f59e0b;
+    --ped-positivo: #22c55e;
+    --ped-neutro:   #6b7280;
+    --ped-visto-bg: color-mix(in srgb, #22c55e 10%, var(--bg-card));
+    --ped-radius:   14px;
+}
+[data-theme="dark"] {
+    --ped-grave:    #f87171;
+    --ped-atencao:  #fbbf24;
+    --ped-positivo: #4ade80;
+    --ped-visto-bg: color-mix(in srgb, #22c55e 8%, var(--bg-card));
+}
+
+/* ── Cabeçalho da página ─────────────────────────────────────────── */
+.ped-page-header {
+    margin-bottom: 24px;
+}
+.ped-page-title-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.ped-page-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.ped-page-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+    letter-spacing: -.02em;
+}
+.ped-page-sub {
+    color: var(--text-muted);
+    font-size: .9rem;
+    margin: 0;
+}
+
+/* ── Cards de resumo ─────────────────────────────────────────────── */
+.ped-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.ped-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--ped-radius);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ped-stat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -.04em;
+    line-height: 1;
+}
+.ped-stat-label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+.ped-stat-graves    .ped-stat-num { color: var(--ped-grave); }
+.ped-stat-atencao   .ped-stat-num { color: var(--ped-atencao); }
+.ped-stat-pendentes .ped-stat-num { color: var(--ped-grave); }
+.ped-stat-total     .ped-stat-num { color: var(--text-primary); }
+
+/* ── Filtros ─────────────────────────────────────────────────────── */
+.ped-filtros {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--ped-radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+.ped-filtros-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+}
+.ped-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.ped-filtro-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+}
+.ped-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: .875rem;
+    cursor: pointer;
+    min-width: 160px;
+}
+.ped-select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+
+/* Botões de tipo */
+.ped-tipo-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.ped-tipo-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+}
+.ped-tipo-btn:hover { border-color: #6366f1; color: #6366f1; }
+
+.ped-tipo-btn--active.ped-tipo-btn--all      { background: #6366f1; border-color: #6366f1; color: #fff; }
+.ped-tipo-btn--active.ped-tipo-btn--grave    { background: var(--ped-grave);    border-color: var(--ped-grave);    color: #fff; }
+.ped-tipo-btn--active.ped-tipo-btn--atencao  { background: var(--ped-atencao);  border-color: var(--ped-atencao);  color: #fff; }
+.ped-tipo-btn--active.ped-tipo-btn--positivo { background: var(--ped-positivo); border-color: var(--ped-positivo); color: #fff; }
+
+/* ── Estado vazio / loading ──────────────────────────────────────── */
+.ped-empty {
+    text-align: center;
+    padding: 64px 24px;
+}
+.ped-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.ped-empty-texto { color: var(--text-muted); font-size: .95rem; }
+
+/* ── Grid de cards ───────────────────────────────────────────────── */
+.ped-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+    padding-bottom: 48px;
+}
+
+/* ── Card individual ─────────────────────────────────────────────── */
+.ped-card {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--ped-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow .2s, border-color .2s;
+}
+.ped-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,.1);
+}
+.ped-card--visto {
+    border-color: color-mix(in srgb, #22c55e 30%, var(--border));
+    background: var(--ped-visto-bg);
+}
+.ped-card--grave   { border-left: 4px solid var(--ped-grave); }
+.ped-card--atencao { border-left: 4px solid var(--ped-atencao); }
+.ped-card--positivo{ border-left: 4px solid var(--ped-positivo); }
+
+/* Cabeçalho do card */
+.ped-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.ped-card-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.ped-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.ped-badge--grave    { background: color-mix(in srgb, var(--ped-grave) 15%, transparent);    color: var(--ped-grave);    border: 1px solid color-mix(in srgb, var(--ped-grave) 30%, transparent); }
+.ped-badge--atencao  { background: color-mix(in srgb, var(--ped-atencao) 15%, transparent);  color: var(--ped-atencao);  border: 1px solid color-mix(in srgb, var(--ped-atencao) 30%, transparent); }
+.ped-badge--positivo { background: color-mix(in srgb, var(--ped-positivo) 15%, transparent); color: var(--ped-positivo); border: 1px solid color-mix(in srgb, var(--ped-positivo) 30%, transparent); }
+.ped-badge--visto    { background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a; border: 1px solid color-mix(in srgb, #22c55e 30%, transparent); }
+.ped-badge--pendente { background: color-mix(in srgb, var(--ped-grave) 10%, transparent); color: var(--ped-grave); border: 1px solid color-mix(in srgb, var(--ped-grave) 20%, transparent); }
+
+.ped-card-data {
+    font-size: .75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Corpo do card */
+.ped-card-body {
+    padding: 0 16px 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.ped-aluno-nome {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+.ped-aluno-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.ped-meta-chip {
+    font-size: .72rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+/* Categoria + pontos */
+.ped-ocorrencia-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+.ped-categoria-label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.ped-pontos-badge {
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+.ped-pontos--neg { background: color-mix(in srgb, var(--ped-grave) 12%, transparent); color: var(--ped-grave); }
+.ped-pontos--pos { background: color-mix(in srgb, var(--ped-positivo) 12%, transparent); color: #16a34a; }
+.ped-pontos--zero { background: var(--bg); color: var(--text-muted); }
+
+/* Descrição do professor */
+.ped-descricao {
+    font-size: .82rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--border) 20%, var(--bg));
+    border-radius: 8px;
+    border-left: 3px solid var(--border);
+    line-height: 1.5;
+    margin: 0;
+}
+.ped-descricao-label {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+/* Rodapé pedagógico */
+.ped-card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: color-mix(in srgb, var(--border) 5%, var(--bg-card));
+}
+.ped-footer-label {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+.ped-nota-area {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: .82rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color .15s, box-shadow .15s;
+    box-sizing: border-box;
+}
+.ped-nota-area:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99,102,241,.15);
+}
+.ped-nota-area::placeholder { color: var(--text-muted); }
+
+.ped-encaminhamento-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.ped-encaminhamento-label {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.ped-encaminhamento-select {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: .8rem;
+    min-width: 140px;
+}
+.ped-encaminhamento-select:focus { outline: none; border-color: #6366f1; }
+
+.ped-footer-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.ped-btn-salvar {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #6366f1;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+}
+.ped-btn-salvar:hover { background: #4f46e5; }
+.ped-btn-salvar:active { transform: scale(.97); }
+
+.ped-btn-visto {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--ped-positivo);
+    background: transparent;
+    color: var(--ped-positivo);
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.ped-btn-visto:hover { background: color-mix(in srgb, var(--ped-positivo) 15%, transparent); }
+.ped-btn-visto--ativo {
+    background: var(--ped-positivo);
+    color: #fff;
+}
+.ped-btn-visto--ativo:hover { background: #16a34a; border-color: #16a34a; }
+
+/* Nota já salva (miniatura) */
+.ped-nota-salva {
+    font-size: .78rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 6px 10px;
+    background: color-mix(in srgb, #6366f1 8%, var(--bg));
+    border-radius: 6px;
+    border-left: 3px solid #6366f1;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+.ped-nota-salva:hover { opacity: .7; }
+
+/* Encaminhamento badge */
+.ped-encaminhamento-badge {
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: color-mix(in srgb, #6366f1 12%, transparent);
+    color: #6366f1;
+    border: 1px solid color-mix(in srgb, #6366f1 25%, transparent);
+}
+
+/* Horário de revisão */
+.ped-visto-em {
+    font-size: .68rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* ── Responsivo ──────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+    .ped-stats { grid-template-columns: repeat(2, 1fr); }
+    .ped-grid  { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+    .ped-stats { grid-template-columns: repeat(2, 1fr); }
+    .ped-filtros-row { flex-direction: column; }
+    .ped-tipo-btns { flex-wrap: wrap; }
+}
