@@ -675,6 +675,7 @@ body[data-side="open"] .side-panel {
     border-color: #007bff;
 }
 .side-nav-item:hover .side-nav-icon { background: var(--bg-hover); }
+.side-nav-icon-svg svg { width: 22px; height: 22px; }
 
 .side-nav-info {
     display: flex;

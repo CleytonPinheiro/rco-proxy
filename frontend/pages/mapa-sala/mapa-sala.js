@@ -165,7 +165,17 @@ function criarCarteira(c) {
         div.addEventListener('dragstart', e => onDragStartCarteira(e, c.pos));
         div.addEventListener('dragend', () => div.classList.remove('dragging-from'));
     } else {
-        div.innerHTML += `<span class="ms-carteira-vazia-icon">🪑</span>`;
+        div.innerHTML += `<span class="ms-carteira-vazia-icon">
+            <svg viewBox="0 0 52 44" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="12" width="36" height="5" rx="2"/>
+                <rect x="4" y="17" width="3" height="20" rx="1.5"/>
+                <rect x="37" y="17" width="3" height="20" rx="1.5"/>
+                <rect x="10" y="32" width="3" height="5" rx="1.5" opacity=".7"/>
+                <rect x="30" y="32" width="3" height="5" rx="1.5" opacity=".7"/>
+                <rect x="4" y="28" width="22" height="4" rx="2"/>
+                <rect x="7" y="19" width="16" height="2" rx="1" opacity=".5"/>
+            </svg>
+        </span>`;
     }
 
     div.addEventListener('dragover',  e => onDragOver(e));

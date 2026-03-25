@@ -17,7 +17,20 @@
     margin-bottom: 16px;
     flex-wrap: wrap;
 }
-.ms-titulo { font-size: 1.45rem; font-weight: 700; margin: 0 0 2px; }
+.ms-titulo {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0 0 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.ms-titulo-icon {
+    width: 36px;
+    height: 30px;
+    flex-shrink: 0;
+    color: var(--primary);
+}
 .ms-sub    { font-size: .82rem; color: var(--text-muted); margin: 0; }
 .ms-topbar-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
@@ -206,6 +219,32 @@
     letter-spacing: .1em;
     text-transform: uppercase;
 }
+
+/* ── Mesa do Professor ──────────────────────────────────────── */
+.ms-mesa-professor {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+.ms-mesa-prof-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.ms-mesa-prof-body svg {
+    width: 140px;
+    height: 56px;
+    color: #7c5c2e;
+}
+[data-theme="dark"] .ms-mesa-prof-body svg { color: #c4954a; }
+.ms-mesa-prof-label {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
 .ms-grade {
     display: grid;
     gap: var(--ms-gap);
@@ -249,8 +288,15 @@
 .ms-carteira.dragging-from { opacity: .4; }
 
 .ms-carteira-vazia-icon {
-    font-size: 1.3rem;
-    opacity: .25;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: .22;
+    color: var(--text);
+}
+.ms-carteira-vazia-icon svg {
+    width: 36px;
+    height: 30px;
 }
 .ms-carteira-num {
     position: absolute;
@@ -326,7 +372,20 @@
 /* ── PRINT ───────────────────────────────────────────────────── */
 @media print {
     header, .ms-topbar, .ms-config-bar, .ms-banco, .ms-lousa,
-    .side-panel, #toast, .ms-carteira-btn-rem { display: none !important; }
+    .side-panel, #toast, .ms-carteira-btn-rem, .ms-titulo-icon { display: none !important; }
+
+    .ms-mesa-professor { justify-content: flex-start; margin-bottom: 4px; }
+    .ms-mesa-prof-body { flex-direction: row; gap: 10px; align-items: center; }
+    .ms-mesa-prof-body svg { width: 80px; height: 32px; color: #5a3e1b !important; }
+    .ms-mesa-prof-label { color: #333 !important; font-size: 7pt; }
+    .ms-mesa-professor::before {
+        content: '';
+        display: block;
+        width: 100%;
+        height: 1px;
+        background: #ccc;
+        margin-bottom: 6px;
+    }
 
     body { background: #fff !important; }
     .ms-workspace { display: block; }
