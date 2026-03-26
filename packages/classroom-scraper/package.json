@@ -1,0 +1,26 @@
+{
+  "name": "@edusync/classroom-scraper",
+  "version": "1.0.0",
+  "description": "Google Classroom scraper via Puppeteer para domínios Workspace com restrições de API (ex: escola.pr.gov.br). Intercepta token de primeira parte do classroom.google.com para contornar bloqueios de apps externos.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "keywords": [
+    "google-classroom",
+    "scraper",
+    "puppeteer",
+    "escola-pr",
+    "workspace",
+    "seed-pr"
+  ],
+  "author": "EduSync",
+  "license": "MIT",
+  "peerDependencies": {
+    "puppeteer": ">=20.0.0"
+  },
+  "peerDependenciesMeta": {
+    "puppeteer": { "optional": false }
+  }
+}

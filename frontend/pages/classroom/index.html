@@ -179,7 +179,17 @@
                 <p class="cl-connect-desc" id="clConnectDesc">
                     Conecte sua conta Google para gerenciar disciplinas, atividades e notas diretamente pelo EduSync.
                 </p>
-                <div id="clConnectActions">
+
+                <!-- Estado: credenciais não configuradas -->
+                <div id="clSemCredenciais" class="cl-connect-hint cl-connect-hint--aviso" style="display:none">
+                    <strong>⚙️ Configuração necessária</strong><br>
+                    Defina as variáveis de ambiente <code>GOOGLE_EMAIL</code> e <code>GOOGLE_PASSWORD</code>
+                    com o e-mail e senha da conta Google da professora para ativar a integração.
+                </div>
+
+                <!-- Estado: credenciais configuradas, pronto para conectar -->
+                <div id="clConnectActions" style="display:none">
+                    <p class="cl-connect-account" id="clConnectEmail"></p>
                     <button class="cl-btn cl-btn--google" id="clBtnConectar">
                         <svg viewBox="0 0 18 18" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
                             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
@@ -187,12 +197,13 @@
                             <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
                             <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                         </svg>
-                        Conectar com Google Classroom
+                        <span id="clBtnConectarLabel">Conectar com Google Classroom</span>
                     </button>
+                    <p class="cl-connect-hint cl-connect-hint--info">
+                        O sistema abre o Google automaticamente em segundo plano —
+                        nenhuma janela aparecerá. Pode levar até 30 segundos na primeira vez.
+                    </p>
                 </div>
-                <p class="cl-connect-hint" id="clSemCredenciais" style="display:none">
-                    ⚠️ Configure as variáveis <strong>GOOGLE_CLIENT_ID</strong> e <strong>GOOGLE_CLIENT_SECRET</strong> nas configurações do servidor para ativar a integração.
-                </p>
             </div>
         </div>
 

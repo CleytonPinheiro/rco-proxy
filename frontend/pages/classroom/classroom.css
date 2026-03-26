@@ -65,6 +65,26 @@ body {
 }
 .dark .cl-connect-hint { color: #fcd34d; }
 
+.cl-connect-hint--aviso {
+    background: color-mix(in srgb, #f59e0b 12%, transparent);
+    border-color: color-mix(in srgb, #f59e0b 30%, transparent);
+    color: #92400e;
+}
+.dark .cl-connect-hint--aviso { color: #fcd34d; }
+
+.cl-connect-hint--info {
+    background: color-mix(in srgb, #4285F4 8%, transparent);
+    border-color: color-mix(in srgb, #4285F4 20%, transparent);
+    color: var(--text-secondary);
+}
+
+.cl-connect-account {
+    font-size: .88rem;
+    color: var(--text-secondary);
+    margin: 0 0 12px;
+    font-style: italic;
+}
+
 /* ─── Workspace 3 colunas ──────────────────────────── */
 .cl-workspace {
     display: grid;

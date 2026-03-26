@@ -10,6 +10,7 @@ let todasNotas   = [];     // cache para filtragem
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
 const elConnectDesc    = document.getElementById('clConnectDesc');
+const elConnectActions = document.getElementById('clConnectActions');
 const elWorkspace      = document.getElementById('clWorkspace');
 const elBtnConectar    = document.getElementById('clBtnConectar');
 const elSemCredenciais = document.getElementById('clSemCredenciais');
@@ -52,51 +53,57 @@ async function api(path, opts = {}) {
 
 /* ── Inicialização ── */
 async function init() {
-    // Verifica params de retorno do OAuth
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('sucesso')) toast('Conectado com sucesso ao Google Classroom!', 'ok');
-    if (params.has('erro')) {
-        const erros = {
-            acesso_negado:  'Acesso negado pelo Google.',
-            sem_credenciais:'Credenciais não configuradas.',
-            falha_auth:     'Falha na autenticação Google.',
-        };
-        toast(erros[params.get('erro')] || 'Erro desconhecido.', 'erro');
-    }
-    // Limpa params da URL
-    if (params.has('sucesso') || params.has('erro')) {
-        history.replaceState({}, '', window.location.pathname);
-    }
-
     const status = await api('/status');
-    if (!status.hasCredentials) {
-        elSemCredenciais.style.display = 'block';
-        elBtnConectar.style.display    = 'none';
-        elConnectDesc.textContent      = 'Configure as credenciais do Google para ativar a integração.';
+
+    if (!status.configured) {
+        // Credenciais não configuradas no servidor
+        elSemCredenciais.style.display  = 'block';
+        elConnectActions.style.display  = 'none';
+        elConnectScreen.style.display   = 'flex';
+        elWorkspace.style.display       = 'none';
+        elConnectDesc.textContent = 'Configure as credenciais para ativar a integração.';
         return;
     }
 
-    if (!status.connected) {
-        elConnectScreen.style.display = 'flex';
-        elWorkspace.style.display     = 'none';
+    if (!status.authenticated) {
+        // Credenciais ok, mas sessão não ativa
+        elConnectScreen.style.display   = 'flex';
+        elWorkspace.style.display       = 'none';
+        elSemCredenciais.style.display  = 'none';
+        elConnectActions.style.display  = 'block';
+        document.getElementById('clConnectEmail').textContent = status.email
+            ? `Conta: ${status.email}` : '';
         return;
     }
 
-    // Já conectado
+    // Já conectado — abre workspace
     elConnectScreen.style.display = 'none';
     elWorkspace.style.display     = 'grid';
     if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
     carregarCursos();
 }
 
-/* ── Conectar ── */
+/* ── Conectar (via Puppeteer — sem OAuth) ── */
 elBtnConectar.addEventListener('click', async () => {
+    const label = document.getElementById('clBtnConectarLabel');
+    elBtnConectar.disabled = true;
+    label.textContent = 'Conectando… aguarde';
     try {
-        const { url } = await api('/auth-url');
-        // Navega o frame raiz para evitar bloqueio de cookie SameSite em iframes aninhados
-        (window.top || window).location.href = url;
+        await api('/connect', { method: 'POST' });
+        toast('Conectado com sucesso ao Google Classroom!', 'ok');
+        // Recarrega estado
+        const status = await api('/status');
+        if (status.authenticated) {
+            elConnectScreen.style.display = 'none';
+            elWorkspace.style.display     = 'grid';
+            if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
+            carregarCursos();
+        }
     } catch (e) {
-        toast(e.message, 'erro');
+        toast(e.message || 'Falha ao conectar. Verifique e-mail e senha.', 'erro');
+    } finally {
+        elBtnConectar.disabled = false;
+        label.textContent = 'Conectar com Google Classroom';
     }
 });
 
