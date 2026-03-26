@@ -1613,6 +1613,62 @@ function exportarAuditCSV() {
 })();
 
 /* ══════════════════════════════════════════════════════════════
+   HANDLES DE REDIMENSIONAMENTO DE COLUNAS
+══════════════════════════════════════════════════════════════ */
+function initResizeHandles() {
+    const workspace = document.getElementById('clWorkspace');
+    if (!workspace) return;
+
+    const MIN_W   = 150;
+    const LS_KEY1 = 'cl-col1-w';
+    const LS_KEY2 = 'cl-col2-w';
+
+    let w1 = parseInt(localStorage.getItem(LS_KEY1) || '260', 10);
+    let w2 = parseInt(localStorage.getItem(LS_KEY2) || '280', 10);
+
+    function applyWidths() {
+        workspace.style.gridTemplateColumns = `${w1}px 4px ${w2}px 4px 1fr`;
+    }
+    applyWidths();
+
+    function setupHandle(handleEl, colIdx) {
+        handleEl.addEventListener('mousedown', e => {
+            e.preventDefault();
+            handleEl.classList.add('cl-resize-handle--dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+
+            const startX = e.clientX;
+            const startW = colIdx === 1 ? w1 : w2;
+
+            const onMove = ev => {
+                const delta = ev.clientX - startX;
+                const newW  = Math.max(MIN_W, startW + delta);
+                if (colIdx === 1) w1 = newW;
+                else              w2 = newW;
+                applyWidths();
+            };
+
+            const onUp = () => {
+                handleEl.classList.remove('cl-resize-handle--dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                localStorage.setItem(colIdx === 1 ? LS_KEY1 : LS_KEY2, colIdx === 1 ? w1 : w2);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    }
+
+    setupHandle(document.getElementById('clHandle1'), 1);
+    setupHandle(document.getElementById('clHandle2'), 2);
+}
+initResizeHandles();
+
+/* ══════════════════════════════════════════════════════════════
    INICIA
 ══════════════════════════════════════════════════════════════ */
 init();

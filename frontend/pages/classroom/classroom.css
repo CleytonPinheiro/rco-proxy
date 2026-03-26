@@ -68,7 +68,7 @@ body {
 /* ─── Workspace 3 colunas ──────────────────────────── */
 .cl-workspace {
     display: grid;
-    grid-template-columns: 260px 280px 1fr;
+    grid-template-columns: 260px 4px 280px 4px 1fr;
     flex: 1;
     overflow: hidden;
     border-top: 1px solid var(--border);
@@ -76,10 +76,29 @@ body {
 .cl-col {
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--border);
     overflow: hidden;
 }
-.cl-col:last-child { border-right: none; }
+
+/* ─── Handles de redimensionamento ──────────────────── */
+.cl-resize-handle {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    user-select: none;
+    position: relative;
+    z-index: 10;
+    transition: background .15s;
+}
+.cl-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: -5px; right: -5px;
+}
+.cl-resize-handle:hover,
+.cl-resize-handle--dragging {
+    background: #4285F4;
+}
 
 /* Cabeçalho de coluna */
 .cl-col-head {
