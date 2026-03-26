@@ -1112,7 +1112,7 @@ function renderAuditDetalhe(lista, ativ, temPendentes) {
         html += `<div class="cl-audit-section-head">
             <span>Ausentes nesta aula (${ausentes.length})</span>
             ${temPendentes ? `<button class="cl-btn cl-btn--sm cl-btn--danger" id="clBtnAplicarTodos">
-                Aplicar zero p/ todos os ausentes
+                Registrar todos os ausentes
             </button>` : '<span class="cl-audit-todos-ok">✓ Todos zerados</span>'}
         </div>`;
         html += ausentes.map(l => renderAuditRow(l, ativ)).join('');
@@ -1163,13 +1163,11 @@ function renderAuditRow(l, ativ) {
     let acaoHtml;
 
     if (jaZerado) {
-        acaoHtml = `<span class="cl-nota-status-badge cl-nota-status--devolvido">Zerado ✓</span>`;
-    } else if (!subId) {
-        acaoHtml = `<span class="cl-audit-sem-sub" title="Aluno sem registro de entrega no Classroom">Sem submissão</span>`;
+        acaoHtml = `<span class="cl-nota-status-badge cl-nota-status--devolvido">Registrado ✓</span>`;
     } else {
         acaoHtml = `<button class="cl-btn cl-btn--sm cl-btn--danger cl-btn-audit-zero"
             data-user="${esc(l.userId)}" data-sub="${esc(subId)}" data-nome="${esc(l.nome || '')}">
-            Aplicar zero
+            Registrar ausência
         </button>`;
     }
 
@@ -1185,14 +1183,9 @@ function renderAuditRow(l, ativ) {
 }
 
 async function aplicarZeroIndividual(userId, subId, nome, ativ) {
-    if (!subId) { toast('Este aluno não possui submissão registrada no Classroom.', 'erro'); return; }
-    if (!confirm(`Aplicar nota ZERO para ${nome} na atividade "${ativ.titulo}"?`)) return;
+    if (!confirm(`Registrar ${nome} como AUSENTE na atividade "${ativ.titulo}"?`)) return;
 
     try {
-        await api(`/courses/${cursoAtivo.id}/coursework/${ativ.id}/submissions/${subId}/grade`,
-            { method: 'PATCH', body: { nota: 0 } });
-
-        // Registrar ausência
         await apiRaw('/classroom/ausencias', {
             method: 'POST',
             body: {
@@ -1205,28 +1198,25 @@ async function aplicarZeroIndividual(userId, subId, nome, ativ) {
             },
         });
 
-        toast(`Zero aplicado para ${nome}.`, 'ok');
-        // Recarregar auditoria desta atividade
+        toast(`Ausência registrada para ${nome}.`, 'ok');
         await selecionarAuditAtiv(ativ, document.querySelector('.cl-audit-ativ-item--ativo'));
     } catch (e) {
-        toast('Erro ao aplicar zero: ' + e.message, 'erro');
+        toast('Erro ao registrar ausência: ' + e.message, 'erro');
     }
 }
 
 async function aplicarZerosTodos(ausentesLista, ativ) {
-    const pendentes = ausentesLista.filter(l => !l.sub?.ausente && l.sub?.id);
-    if (!pendentes.length) { toast('Todos os ausentes já foram zerados.', 'ok'); return; }
-    if (!confirm(`Aplicar nota ZERO para ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`)) return;
+    const pendentes = ausentesLista.filter(l => !l.sub?.ausente);
+    if (!pendentes.length) { toast('Todos os ausentes já foram registrados.', 'ok'); return; }
+    if (!confirm(`Registrar ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`)) return;
 
     const btn = document.getElementById('clBtnAplicarTodos');
-    if (btn) { btn.disabled = true; btn.textContent = 'Aplicando...'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Registrando...'; }
 
     let ok = 0;
     let erros = 0;
     for (const l of pendentes) {
         try {
-            await api(`/courses/${cursoAtivo.id}/coursework/${ativ.id}/submissions/${l.sub.id}/grade`,
-                { method: 'PATCH', body: { nota: 0 } });
             await apiRaw('/classroom/ausencias', {
                 method: 'POST',
                 body: {
@@ -1244,7 +1234,7 @@ async function aplicarZerosTodos(ausentesLista, ativ) {
         }
     }
 
-    toast(`${ok} zero${ok !== 1 ? 's' : ''} aplicado${ok !== 1 ? 's' : ''}${erros > 0 ? ` (${erros} erro${erros !== 1 ? 's' : ''})` : ''}.`, erros > 0 ? '' : 'ok');
+    toast(`${ok} ausência${ok !== 1 ? 's' : ''} registrada${ok !== 1 ? 's' : ''}${erros > 0 ? ` (${erros} erro${erros !== 1 ? 's' : ''})` : ''}.`, erros > 0 ? '' : 'ok');
     await selecionarAuditAtiv(ativ, document.querySelector('.cl-audit-ativ-item--ativo'));
 }
 
