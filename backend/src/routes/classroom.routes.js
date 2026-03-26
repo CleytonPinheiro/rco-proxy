@@ -98,7 +98,7 @@ export function createClassroomRouter() {
     router.get('/classroom/callback', async (req, res) => {
         const { code, error } = req.query;
         if (error) {
-            return res.redirect('/pages/classroom/oauth-done.html?erro=acesso_negado');
+            return res.redirect('/pages/classroom/?erro=acesso_negado');
         }
         const oauth2Client = getOAuth2Client(req);
         if (!oauth2Client) {
@@ -117,10 +117,10 @@ export function createClassroomRouter() {
 
             saveToken(tokens);
             console.log('[CLASSROOM] Conectado com sucesso. Email:', tokens.email || '(sem email)');
-            res.redirect('/pages/classroom/oauth-done.html');
+            res.redirect('/pages/classroom/?sucesso=conectado');
         } catch (e) {
             console.error('[CLASSROOM] Erro no callback:', e.message);
-            res.redirect('/pages/classroom/oauth-done.html?erro=falha_auth');
+            res.redirect('/pages/classroom/?erro=falha_auth');
         }
     });
 
