@@ -214,8 +214,28 @@ async function selecionarCurso(curso, itemEl, cor) {
             elAtivLista.appendChild(item);
         });
     } catch (e) {
-        elAtivLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
-        toast(e.message, 'erro');
+        const semPermissao = e.message?.toLowerCase().includes('permission') || e.status === 403;
+        if (semPermissao) {
+            elAtivLista.innerHTML = `
+                <div class="cl-empty-state" style="padding:20px;text-align:center">
+                    <p style="color:#dc2626;font-weight:600;margin-bottom:8px">Sem permissão para acessar atividades</p>
+                    <p style="color:#64748b;font-size:.85rem;line-height:1.5">
+                        O administrador do Google Workspace da escola pode ter bloqueado
+                        o acesso de apps externos. Solicite ao administrador que permita
+                        o acesso à API do Google Classroom, ou reconecte sua conta para
+                        autorizar os escopos necessários.
+                    </p>
+                    <button onclick="document.getElementById('clBtnDesconectar').click()"
+                            style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid #dc2626;color:#dc2626;background:none;cursor:pointer;font-size:.85rem">
+                        Reconectar conta
+                    </button>
+                </div>`;
+            elAtivCount.textContent = 'Sem permissão';
+        } else {
+            elAtivLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
+            elAtivCount.textContent = 'Erro';
+        }
+        toast(semPermissao ? 'Sem permissão — reconecte ou contate o admin.' : e.message, 'erro');
     }
 }
 

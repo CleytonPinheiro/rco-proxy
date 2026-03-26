@@ -10,8 +10,10 @@ const TOKEN_FILE = path.join(__dirname, '../../data/classroom_token.json');
 const SCOPES = [
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.me',
+    'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
     'https://www.googleapis.com/auth/classroom.rosters.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
+    'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
 ];
 
@@ -104,8 +106,6 @@ export function createClassroomRouter() {
         if (!oauth2Client) {
             return res.redirect('/pages/classroom/?erro=sem_credenciais');
         }
-        console.log('[CLASSROOM] Callback recebido. redirect_uri usado:', oauth2Client._clientId ? process.env.GOOGLE_REDIRECT_URI : 'fallback');
-        console.log('[CLASSROOM] redirect_uri value:', oauth2Client.redirectUri);
         try {
             const { tokens } = await oauth2Client.getToken(code);
             oauth2Client.setCredentials(tokens);
@@ -121,12 +121,7 @@ export function createClassroomRouter() {
             console.log('[CLASSROOM] Conectado com sucesso. Email:', tokens.email || '(sem email)');
             res.redirect('/pages/classroom/?sucesso=conectado');
         } catch (e) {
-            const detail = e.response?.data || {};
             console.error('[CLASSROOM] Erro no callback:', e.message);
-            console.error('[CLASSROOM] error:', detail.error);
-            console.error('[CLASSROOM] error_description:', detail.error_description);
-            console.error('[CLASSROOM] redirect_uri enviado para Google:', oauth2Client.redirectUri);
-            console.error('[CLASSROOM] GOOGLE_REDIRECT_URI env:', process.env.GOOGLE_REDIRECT_URI);
             res.redirect('/pages/classroom/?erro=falha_auth');
         }
     });
@@ -245,7 +240,8 @@ export function createClassroomRouter() {
             }));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar atividades:', e.message);
-            res.status(500).json({ erro: e.message });
+            const status = e.code === 403 || e.message?.includes('permission') ? 403 : 500;
+            res.status(status).json({ erro: e.message, tipo: status === 403 ? 'sem_permissao' : 'erro' });
         }
     });
 
