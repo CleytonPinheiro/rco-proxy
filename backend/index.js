@@ -39,14 +39,6 @@ async function initializeApp() {
         syncService.initialize(supabaseAdmin, rcoApiService);
         presencaService.initialize(supabaseAdmin, rcoApiService);
 
-        // Google Classroom (sessão via Puppeteer)
-        const { googleSession } = await import('./src/services/GoogleSession.js');
-        const { getBrowser }    = await import('./auth-puppeteer.js');
-        googleSession.initialize(getBrowser);
-        if (googleSession.isConfigured()) {
-            googleSession.warmUp().catch(e => console.warn('[GoogleSession] Warm-up inicial falhou:', e.message));
-        }
-
         // Registro de rotas com dependências injetadas
         const { createApiRouter } = await import('./src/routes/index.js');
         const deps = { supabase, supabaseAdmin, tokenService, rcoApiService, syncService, presencaService };

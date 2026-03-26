@@ -65,64 +65,6 @@ body {
 }
 .dark .cl-connect-hint { color: #fcd34d; }
 
-.cl-connect-hint--aviso {
-    background: color-mix(in srgb, #f59e0b 12%, transparent);
-    border-color: color-mix(in srgb, #f59e0b 30%, transparent);
-    color: #92400e;
-}
-.dark .cl-connect-hint--aviso { color: #fcd34d; }
-
-.cl-connect-hint--info {
-    background: color-mix(in srgb, #4285F4 8%, transparent);
-    border-color: color-mix(in srgb, #4285F4 20%, transparent);
-    color: var(--text-secondary);
-}
-
-.cl-connect-account {
-    font-size: .88rem;
-    color: var(--text-secondary);
-    margin: 0 0 12px;
-    font-style: italic;
-}
-
-.cl-connect-form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.cl-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    text-align: left;
-}
-.cl-form-label {
-    font-size: .82rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: .03em;
-}
-.cl-form-input {
-    padding: 10px 13px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: .93rem;
-    outline: none;
-    transition: border-color .15s;
-}
-.cl-form-input:focus {
-    border-color: #4285F4;
-    box-shadow: 0 0 0 3px color-mix(in srgb, #4285F4 15%, transparent);
-}
-.cl-form-input::placeholder {
-    color: var(--text-secondary);
-    opacity: .5;
-}
-
 /* ─── Workspace 3 colunas ──────────────────────────── */
 .cl-workspace {
     display: grid;

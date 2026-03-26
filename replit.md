@@ -3,16 +3,13 @@
 ## Visão Geral
 Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop, atividades de sala (checklist diário por turma/data) e **integração com Google Classroom** (disciplinas, atividades e notas).
 
-### Classroom (Google Classroom — Sessão via Puppeteer)
-- **Estratégia**: Autenticação via Puppeteer (sem OAuth de app externo). Contorna restrições do Workspace SEED-PR interceptando o Bearer token de primeira parte gerado pelo próprio `classroom.google.com`.
-- **Fluxo do usuário**: professora digita e-mail + senha Google diretamente na tela do app (idêntico ao RCO). Sessão é mantida via cookies (validade ~12h). Senha nunca é gravada em disco.
-- **Backend**: `backend/src/routes/classroom.routes.js` — endpoints CRUD que usam `GoogleSession`
-- **Serviço**: `backend/src/services/GoogleSession.js` — singleton que gerencia auth + client
-- **Biblioteca separada**: `packages/classroom-scraper/` — pacote `@edusync/classroom-scraper` (futuro npm)
-  - `src/GoogleAuth.js` — login Puppeteer, interceptação de token, persistência de cookies
-  - `src/ClassroomClient.js` — wrapper para classroom.googleapis.com/v1/
-- **Persistência**: `backend/data/google_session.json` (cookies), `backend/data/google_cred.json` (só e-mail)
-- **Sem variáveis de ambiente necessárias** — credenciais inseridas pelo usuário na UI
+### Classroom (Google Classroom API)
+- **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD
+- **Frontend**: `frontend/pages/classroom/` — página de 3 colunas (disciplinas → atividades → notas)
+- **Token**: armazenado em `backend/data/classroom_token.json`
+- **Credenciais necessárias**: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (env secrets)
+- **Redirect URI** (registrar no Google Cloud Console): `https://{domínio}/api/classroom/callback`
+- **Escopos**: `classroom.courses.readonly`, `classroom.coursework.students`, `classroom.rosters.readonly`, `classroom.student-submissions.students.readonly`
 
 ## Estado Atual
 - **Data**: 24/03/2026
