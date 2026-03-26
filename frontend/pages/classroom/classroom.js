@@ -16,7 +16,7 @@ let auditCodClasse  = null;   // codClasse vinculado ao curso atual
 let corSelecionada  = '#4285F4';
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
-let filtroGrupoAtivo = 'todos'; // filtro de faixa de cor ativo no momento
+let filtrosGrupoAtivos = new Set(['todos']); // filtros de faixa de cor ativos (múltiplos)
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -702,10 +702,10 @@ async function selecionarGrupo(grupo, itemEl) {
         }
 
         // Salvar dados para o painel de detalhe e filtro
-        grupoResumoData  = { atividades: resumo.atividades, alunosResumo, meta };
-        filtroGrupoAtivo = 'todos';
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta };
+        filtrosGrupoAtivos = new Set(['todos']);
 
-        renderListaFiltrada('todos');
+        renderListaFiltrada();
 
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
@@ -720,9 +720,23 @@ function faixaCor(soma, meta) {
     return 'abaixo';
 }
 
-function renderListaFiltrada(filtro) {
+function toggleFiltro(chave) {
+    if (chave === 'todos') {
+        filtrosGrupoAtivos = new Set(['todos']);
+    } else {
+        filtrosGrupoAtivos.delete('todos');
+        if (filtrosGrupoAtivos.has(chave)) {
+            filtrosGrupoAtivos.delete(chave);
+        } else {
+            filtrosGrupoAtivos.add(chave);
+        }
+        if (filtrosGrupoAtivos.size === 0) filtrosGrupoAtivos = new Set(['todos']);
+    }
+    renderListaFiltrada();
+}
+
+function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    filtroGrupoAtivo = filtro;
     const { alunosResumo, meta, atividades } = grupoResumoData;
 
     // Contagens por faixa
@@ -732,7 +746,7 @@ function renderListaFiltrada(filtro) {
     const nTodos  = alunosResumo.length;
 
     const chip = (key, cor, label, count) => {
-        const ativo  = filtro === key ? ' cl-faixa-chip--ativo' : '';
+        const ativo  = filtrosGrupoAtivos.has(key) ? ' cl-faixa-chip--ativo' : '';
         const pctStr = nTodos > 0 ? Math.round((count / nTodos) * 100) + '%' : '0%';
         const numLabel = key === 'todos' ? count : `${count} · ${pctStr}`;
         return `<button class="cl-faixa-chip${ativo}" data-faixa="${key}" style="--chip-cor:${cor}">
@@ -741,9 +755,9 @@ function renderListaFiltrada(filtro) {
         </button>`;
     };
 
-    const filtrados = filtro === 'todos'
+    const filtrados = filtrosGrupoAtivos.has('todos')
         ? alunosResumo
-        : alunosResumo.filter(a => faixaCor(a.soma, meta) === filtro);
+        : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
     elNotasLista.innerHTML = `
         <div class="cl-passos-legenda">
@@ -770,9 +784,9 @@ function renderListaFiltrada(filtro) {
                 : `<div class="cl-empty-state"><p>Nenhum aluno nessa faixa.</p></div>`}
         </div>`;
 
-    // Chips → re-filtrar
+    // Chips → toggle
     elNotasLista.querySelectorAll('.cl-faixa-chip').forEach(btn => {
-        btn.addEventListener('click', () => renderListaFiltrada(btn.dataset.faixa));
+        btn.addEventListener('click', () => toggleFiltro(btn.dataset.faixa));
     });
 
     // Rows → detalhe do aluno
@@ -846,12 +860,15 @@ function imprimirRelatorioGrupo() {
     const grupo    = grupoAtivo?.nome || '—';
     const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
-    // Aplicar filtro ativo
-    const filtroNomes = { todos: 'Todos', meta: 'Meta atingida', prog: 'Em progresso', abaixo: 'Abaixo da meta' };
-    const filtroLabel = filtroNomes[filtroGrupoAtivo] || 'Todos';
-    const lista = filtroGrupoAtivo === 'todos'
+    // Aplicar filtros ativos (pode ser múltiplos)
+    const faixaNomeMap = { todos: 'Todos', meta: 'Meta atingida', prog: 'Em progresso', abaixo: 'Abaixo da meta' };
+    const isTodos    = filtrosGrupoAtivos.has('todos');
+    const filtroLabel = isTodos
+        ? 'Todos'
+        : [...filtrosGrupoAtivos].map(k => faixaNomeMap[k]).join(' + ');
+    const lista = isTodos
         ? alunosResumo
-        : alunosResumo.filter(a => faixaCor(a.soma, meta) === filtroGrupoAtivo);
+        : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
     // Estatísticas sobre a turma toda (para referência)
     const totalTurma = alunosResumo.length;
@@ -925,16 +942,16 @@ function imprimirRelatorioGrupo() {
         button.no-print { margin-bottom: 16px; padding: 8px 18px; background: #4285F4; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; }
     </style></head><body>
     <button class="no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-    <h1>${esc(grupo)}${filtroGrupoAtivo !== 'todos' ? ` — ${filtroLabel}` : ''}</h1>
+    <h1>${esc(grupo)}${!isTodos ? ` — ${filtroLabel}` : ''}</h1>
     <p class="sub">${esc(curso)} &nbsp;·&nbsp; Meta: ${meta} pts &nbsp;·&nbsp; Gerado em ${dataHoje}
-    ${filtroGrupoAtivo !== 'todos' ? `&nbsp;·&nbsp; <strong>${total} de ${totalTurma} alunos</strong> (filtro: ${filtroLabel})` : ''}</p>
+    ${!isTodos ? `&nbsp;·&nbsp; <strong>${total} de ${totalTurma} alunos</strong> (filtro: ${filtroLabel})` : ''}</p>
 
     <div class="stats">
-        <div class="stat"><span class="stat-num">${total}${filtroGrupoAtivo !== 'todos' ? `<span style="font-size:.7rem;color:#6b7280">/${totalTurma}</span>` : ''}</span><span class="stat-lbl">Alunos${filtroGrupoAtivo !== 'todos' ? ' (filtrados)' : ''}</span></div>
+        <div class="stat"><span class="stat-num">${total}${!isTodos ? `<span style="font-size:.7rem;color:#6b7280">/${totalTurma}</span>` : ''}</span><span class="stat-lbl">Alunos${!isTodos ? ' (filtrados)' : ''}</span></div>
         <div class="stat"><span class="stat-num" style="color:#10b981">${nMeta}</span><span class="stat-lbl">Meta (${pMeta}%)</span></div>
         <div class="stat"><span class="stat-num" style="color:#4285F4">${nProg}</span><span class="stat-lbl">Progresso (${pProg}%)</span></div>
         <div class="stat"><span class="stat-num" style="color:#f59e0b">${nAbaixo}</span><span class="stat-lbl">Abaixo (${pAbaixo}%)</span></div>
-        <div class="stat"><span class="stat-num" style="color:#4285F4">${media}</span><span class="stat-lbl">Média ${filtroGrupoAtivo !== 'todos' ? 'filtro' : 'geral'}</span></div>
+        <div class="stat"><span class="stat-num" style="color:#4285F4">${media}</span><span class="stat-lbl">Média ${!isTodos ? 'filtro' : 'geral'}</span></div>
     </div>
 
     <div class="dist">
