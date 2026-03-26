@@ -908,6 +908,7 @@ async function prepararAuditSelector() {
     const root = Array.isArray(acessosCache) ? acessosCache[0] : acessosCache;
     if (root) {
         for (const periodo of Object.values(root)) {
+            if (!periodo) continue;
             for (const livro of (periodo.livros || [])) {
                 const classe = livro.classe;
                 if (!classe) continue;
