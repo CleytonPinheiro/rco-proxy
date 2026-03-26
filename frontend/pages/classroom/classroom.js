@@ -217,17 +217,26 @@ async function selecionarCurso(curso, itemEl, cor) {
         const semPermissao = e.message?.toLowerCase().includes('permission') || e.status === 403;
         if (semPermissao) {
             elAtivLista.innerHTML = `
-                <div class="cl-empty-state" style="padding:20px;text-align:center">
-                    <p style="color:#dc2626;font-weight:600;margin-bottom:8px">Sem permissão para acessar atividades</p>
-                    <p style="color:#64748b;font-size:.85rem;line-height:1.5">
-                        O administrador do Google Workspace da escola pode ter bloqueado
-                        o acesso de apps externos. Solicite ao administrador que permita
-                        o acesso à API do Google Classroom, ou reconecte sua conta para
-                        autorizar os escopos necessários.
+                <div style="padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+                    <div style="display:flex;align-items:center;gap:10px;color:#dc2626">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <strong style="font-size:.95rem">Acesso bloqueado pelo Workspace</strong>
+                    </div>
+                    <p style="color:#475569;font-size:.83rem;line-height:1.6;margin:0">
+                        A conta <strong>escola.pr.gov.br</strong> é gerenciada pela SEED-PR, que bloqueia
+                        apps externos de acessar dados pedagógicos do Classroom por padrão.
                     </p>
+                    <div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:12px;font-size:.82rem;color:#713f12;line-height:1.6">
+                        <strong>Como resolver:</strong><br>
+                        <strong>Opção 1 —</strong> Use uma <strong>conta Gmail pessoal</strong> com as mesmas
+                        turmas adicionadas como co-professor. Contas Gmail não têm essa restrição.<br><br>
+                        <strong>Opção 2 —</strong> Solicite ao TI da escola que acesse
+                        <em>Admin Console → Segurança → Controles de API</em>
+                        e aprove o acesso do app à API do Classroom.
+                    </div>
                     <button onclick="document.getElementById('clBtnDesconectar').click()"
-                            style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid #dc2626;color:#dc2626;background:none;cursor:pointer;font-size:.85rem">
-                        Reconectar conta
+                            style="align-self:flex-start;padding:7px 14px;border-radius:8px;border:1px solid #94a3b8;color:#475569;background:#f8fafc;cursor:pointer;font-size:.82rem">
+                        Trocar conta
                     </button>
                 </div>`;
             elAtivCount.textContent = 'Sem permissão';
@@ -235,7 +244,7 @@ async function selecionarCurso(curso, itemEl, cor) {
             elAtivLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
             elAtivCount.textContent = 'Erro';
         }
-        toast(semPermissao ? 'Sem permissão — reconecte ou contate o admin.' : e.message, 'erro');
+        toast(semPermissao ? 'Acesso bloqueado pelo Workspace da escola.' : e.message, 'erro');
     }
 }
 
