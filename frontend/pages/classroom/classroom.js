@@ -41,6 +41,7 @@ const elNotasActions   = document.getElementById('clNotasActions');
 const elContaBadge     = document.getElementById('clContaBadge');
 const elAtivLink       = document.getElementById('clAtivLink');
 const elBtnExportar    = document.getElementById('clBtnExportar');
+const elBtnImprimir    = document.getElementById('clBtnImprimir');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
 const elToast          = document.getElementById('clToast');
@@ -415,6 +416,7 @@ async function selecionarAtividade(ativ, itemEl) {
         elNotasStats.style.display   = 'grid';
         elNotasFiltro.style.display  = 'flex';
         elNotasActions.style.display = 'flex';
+        elBtnImprimir.style.display  = 'none';
 
         document.getElementById('clStEntreguesLabel').textContent = 'Entregues';
         document.getElementById('clStPendentesLabel').textContent = 'Pendentes';
@@ -567,6 +569,10 @@ async function devolverEntrega(btn) {
 }
 
 /* ── Exportar CSV (atividade individual) ── */
+elBtnImprimir.addEventListener('click', () => {
+    if (grupoAtivo) imprimirRelatorioGrupo();
+});
+
 elBtnExportar.addEventListener('click', () => {
     if (grupoAtivo)      { exportarGrupoCSV();  return; }
     if (auditAtivAtiva)  { exportarAuditCSV();  return; }
@@ -654,6 +660,7 @@ async function selecionarGrupo(grupo, itemEl) {
     elNotasStats.style.display   = 'none';
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'flex';
+    elBtnImprimir.style.display  = 'inline-flex';
     elNotasLista.innerHTML       = '<div class="cl-loading">Calculando somas...</div>';
 
     if (!grupo.atividades.length) {
@@ -827,6 +834,129 @@ function exportarGrupoCSV() {
     a.href = url; a.download = `${curso} – ${grupoAtivo?.nome || 'grupo'}.csv`.replace(/[\\/:*?"<>|]/g,'_');
     a.click(); URL.revokeObjectURL(url);
     toast('CSV exportado!', 'ok');
+}
+
+function imprimirRelatorioGrupo() {
+    if (!grupoResumoData) return;
+    const { alunosResumo, meta, atividades } = grupoResumoData;
+    const curso    = cursoAtivo?.nome || '—';
+    const grupo    = grupoAtivo?.nome || '—';
+    const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+
+    const total   = alunosResumo.length;
+    const nMeta   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
+    const nProg   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'prog').length;
+    const nAbaixo = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'abaixo').length;
+    const media   = total ? (alunosResumo.reduce((s, a) => s + (a.soma ?? 0), 0) / total).toFixed(1) : '—';
+    const pMeta   = total ? Math.round((nMeta   / total) * 100) : 0;
+    const pProg   = total ? Math.round((nProg   / total) * 100) : 0;
+    const pAbaixo = total ? Math.round((nAbaixo / total) * 100) : 0;
+
+    const faixaNome  = { meta: 'Meta atingida', prog: 'Em progresso', abaixo: 'Abaixo da meta' };
+    const faixaCores = { meta: '#10b981',        prog: '#4285F4',      abaixo: '#f59e0b' };
+
+    // Linhas da tabela
+    const linhas = alunosResumo.map((a, i) => {
+        const soma   = a.soma ?? 0;
+        const pct    = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
+        const faixa  = faixaCor(soma, meta);
+        const cor    = faixaCores[faixa];
+        const fLabel = faixaNome[faixa];
+
+        // Mini dots por atividade
+        const dots = atividades.map(atv => {
+            const sub  = a.atividades?.[atv.id];
+            const nota = sub?.nota ?? null;
+            const ent  = sub?.entregue ?? false;
+            const c    = nota !== null ? '#10b981' : ent ? '#4285F4' : '#d1d5db';
+            const t    = nota !== null ? `${atv.titulo}: ${nota}pts` : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
+            return `<span title="${t}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin:1px"></span>`;
+        }).join('');
+
+        return `<tr>
+            <td style="text-align:center;color:#6b7280">${i+1}</td>
+            <td><strong>${esc(a.aluno.nome || '—')}</strong></td>
+            <td style="text-align:center;font-weight:700;color:${cor}">${soma.toFixed(1)}</td>
+            <td style="text-align:center">${pct.toFixed(0)}%</td>
+            <td style="text-align:center">
+                <span style="background:${cor}22;color:${cor};padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;white-space:nowrap">${fLabel}</span>
+            </td>
+            <td style="text-align:center;color:${a.pendentes > 0 ? '#dc2626' : '#16a34a'}">${a.pendentes > 0 ? a.pendentes + ' pend.' : '✓'}</td>
+            <td style="text-align:center">${dots}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head>
+    <meta charset="UTF-8">
+    <title>Relatório — ${grupo}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+        h1 { font-size: 1.2rem; font-weight: 700; margin-bottom: 2px; }
+        .sub { color: #6b7280; font-size: .8rem; margin-bottom: 16px; }
+        .stats { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .stat { background: #f3f4f6; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 80px; }
+        .stat-num { font-size: 1.4rem; font-weight: 800; display: block; }
+        .stat-lbl { font-size: .68rem; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; }
+        .dist { display: flex; border-radius: 8px; overflow: hidden; height: 28px; margin-bottom: 6px; }
+        .dist-seg { display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; color: #fff; transition: width .3s; }
+        .dist-leg { display: flex; gap: 16px; margin-bottom: 16px; }
+        .dist-leg span { display: flex; align-items: center; gap: 4px; font-size: .75rem; color: #374151; }
+        .dist-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th { background: #f3f4f6; padding: 6px 8px; text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+        td { padding: 7px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #fafafa; }
+        .footer { margin-top: 20px; font-size: .68rem; color: #9ca3af; text-align: right; }
+        button.no-print { margin-bottom: 16px; padding: 8px 18px; background: #4285F4; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; }
+    </style></head><body>
+    <button class="no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <h1>${esc(grupo)}</h1>
+    <p class="sub">${esc(curso)} &nbsp;·&nbsp; Meta: ${meta} pts &nbsp;·&nbsp; Gerado em ${dataHoje}</p>
+
+    <div class="stats">
+        <div class="stat"><span class="stat-num">${total}</span><span class="stat-lbl">Alunos</span></div>
+        <div class="stat"><span class="stat-num" style="color:#10b981">${nMeta}</span><span class="stat-lbl">Meta (${pMeta}%)</span></div>
+        <div class="stat"><span class="stat-num" style="color:#4285F4">${nProg}</span><span class="stat-lbl">Progresso (${pProg}%)</span></div>
+        <div class="stat"><span class="stat-num" style="color:#f59e0b">${nAbaixo}</span><span class="stat-lbl">Abaixo (${pAbaixo}%)</span></div>
+        <div class="stat"><span class="stat-num" style="color:#4285F4">${media}</span><span class="stat-lbl">Média geral</span></div>
+    </div>
+
+    <div class="dist">
+        ${nMeta   > 0 ? `<div class="dist-seg" style="width:${pMeta}%;background:#10b981">${pMeta > 8 ? pMeta + '%' : ''}</div>` : ''}
+        ${nProg   > 0 ? `<div class="dist-seg" style="width:${pProg}%;background:#4285F4">${pProg > 8 ? pProg + '%' : ''}</div>` : ''}
+        ${nAbaixo > 0 ? `<div class="dist-seg" style="width:${pAbaixo}%;background:#f59e0b">${pAbaixo > 8 ? pAbaixo + '%' : ''}</div>` : ''}
+        ${total === 0 ? `<div class="dist-seg" style="width:100%;background:#e5e7eb"></div>` : ''}
+    </div>
+    <div class="dist-leg">
+        <span><span class="dist-dot" style="background:#10b981"></span>Meta atingida</span>
+        <span><span class="dist-dot" style="background:#4285F4"></span>Em progresso (60–99%)</span>
+        <span><span class="dist-dot" style="background:#f59e0b"></span>Abaixo da meta (&lt;60%)</span>
+    </div>
+
+    <table>
+        <thead><tr>
+            <th style="width:30px">#</th>
+            <th>Aluno</th>
+            <th style="width:60px;text-align:center">Soma</th>
+            <th style="width:45px;text-align:center">%</th>
+            <th style="width:120px;text-align:center">Faixa</th>
+            <th style="width:65px;text-align:center">Pendentes</th>
+            <th style="text-align:center">Atividades</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+    </table>
+
+    <div class="footer">EduSync &nbsp;·&nbsp; ${dataHoje}</div>
+    </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { toast('Permite pop-ups para imprimir.', 'erro'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1242,6 +1372,7 @@ async function selecionarAuditAtiv(ativ, itemEl) {
     elNotasStats.style.display   = 'none';
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'flex';
+    elBtnImprimir.style.display  = 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Carregando dados da atividade...</div>';
 
     try {
