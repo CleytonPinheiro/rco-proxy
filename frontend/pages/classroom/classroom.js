@@ -93,8 +93,12 @@ async function init() {
 elBtnConectar.addEventListener('click', async () => {
     try {
         const { url } = await api('/auth-url');
-        // Navega o frame raiz para evitar bloqueio de cookie SameSite em iframes aninhados
-        (window.top || window).location.href = url;
+        // Tenta navegar o frame raiz; se bloqueado por sandbox, abre em nova aba
+        try {
+            window.top.location.href = url;
+        } catch (_) {
+            window.open(url, '_blank', 'noopener');
+        }
     } catch (e) {
         toast(e.message, 'erro');
     }
