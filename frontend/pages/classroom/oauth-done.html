@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Conectado ao Google Classroom</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    background: #f0f4ff;
+    color: #1e293b;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 40px 48px;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,.1);
+    max-width: 360px;
+  }
+  .icon { font-size: 56px; margin-bottom: 16px; }
+  h2 { margin: 0 0 8px; font-size: 1.4rem; }
+  p  { margin: 0; color: #64748b; font-size: .95rem; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">✅</div>
+  <h2>Conectado!</h2>
+  <p>Conta Google autorizada com sucesso.<br>Esta janela fechará automaticamente.</p>
+</div>
+<script>
+  if (window.opener) {
+    try { window.opener.postMessage({ classroom: 'connected' }, '*'); } catch(_) {}
+    setTimeout(() => window.close(), 1200);
+  } else {
+    setTimeout(() => { window.location.href = '/pages/classroom/'; }, 2000);
+  }
+</script>
+</body>
+</html>

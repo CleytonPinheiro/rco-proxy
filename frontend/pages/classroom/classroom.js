@@ -93,9 +93,41 @@ async function init() {
 elBtnConectar.addEventListener('click', async () => {
     try {
         const { url } = await api('/auth-url');
-        window.location.href = url;
+        const popup = window.open(url, 'google-oauth', 'width=520,height=680,scrollbars=yes,resizable=yes');
+        if (!popup) {
+            toast('Popup bloqueado pelo navegador. Permita popups para este site.', 'erro');
+            return;
+        }
+        // Verifica quando o popup fechar
+        const check = setInterval(async () => {
+            if (popup.closed) {
+                clearInterval(check);
+                const status = await api('/status');
+                if (status.connected) {
+                    toast('Conectado com sucesso ao Google Classroom!', 'ok');
+                    elConnectScreen.style.display = 'none';
+                    elWorkspace.style.display     = 'grid';
+                    if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
+                    carregarCursos();
+                }
+            }
+        }, 800);
     } catch (e) {
         toast(e.message, 'erro');
+    }
+});
+
+/* ── Listener postMessage (popup OAuth) ── */
+window.addEventListener('message', async (e) => {
+    if (e.data && e.data.classroom === 'connected') {
+        const status = await api('/status');
+        if (status.connected) {
+            toast('Conectado com sucesso ao Google Classroom!', 'ok');
+            elConnectScreen.style.display = 'none';
+            elWorkspace.style.display     = 'grid';
+            if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
+            carregarCursos();
+        }
     }
 });
 
