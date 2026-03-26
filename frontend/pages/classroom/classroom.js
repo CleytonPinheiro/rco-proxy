@@ -15,6 +15,7 @@ let auditAtivAtiva  = null;   // atividade selecionada no modo auditoria
 let auditCodClasse  = null;   // codClasse vinculado ao curso atual
 let corSelecionada  = '#4285F4';
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
+let grupoResumoData = null;   // { atividades, alunosResumo, meta } do grupo aberto
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -692,6 +693,9 @@ async function selecionarGrupo(grupo, itemEl) {
             return;
         }
 
+        // Salvar dados para o painel de detalhe
+        grupoResumoData = { atividades: resumo.atividades, alunosResumo, meta };
+
         elNotasLista.innerHTML = `
             <div class="cl-resumo-header">
                 <span></span>
@@ -700,6 +704,12 @@ async function selecionarGrupo(grupo, itemEl) {
                 <span style="text-align:center">Pendentes</span>
             </div>
             ${alunosResumo.map(a => renderResumoRow(a, meta)).join('')}`;
+
+        // Click em cada linha → detalhe do aluno
+        elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', () => mostrarDetalheAluno(alunosResumo[i], resumo.atividades, meta));
+        });
 
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
@@ -751,6 +761,110 @@ function exportarGrupoCSV() {
     a.href = url; a.download = `${curso} – ${grupoAtivo?.nome || 'grupo'}.csv`.replace(/[\\/:*?"<>|]/g,'_');
     a.click(); URL.revokeObjectURL(url);
     toast('CSV exportado!', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DETALHE DO ALUNO NO GRUPO
+══════════════════════════════════════════════════════════════ */
+function mostrarDetalheAluno(alunoData, atividades, meta) {
+    const al      = alunoData.aluno;
+    const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+    const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
+    const soma     = alunoData.soma ?? 0;
+    const pct      = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
+    const barCor   = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
+
+    // Preparar linhas de atividade
+    const rows = atividades.map(atv => {
+        const sub      = alunoData.atividades?.[atv.id];
+        const nota     = sub?.nota ?? null;
+        const entregue = sub?.entregue ?? false;
+        const atrasado = sub?.atrasado ?? false;
+        const estado   = sub?.estado ?? null;
+
+        let statusHtml, tipo;
+        if (nota !== null) {
+            const ptMax  = atv.pontos ?? 100;
+            const pctAtv = ptMax > 0 ? ((nota / ptMax) * 100).toFixed(0) : nota;
+            statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${nota} / ${ptMax} pts &nbsp;(${pctAtv}%)</span>`;
+            tipo = 'realizada';
+        } else if (entregue) {
+            statusHtml = `<span class="cl-nota-status-badge cl-nota-status--pendente">Entregue – sem nota</span>`;
+            tipo = 'realizada';
+        } else if (atrasado) {
+            statusHtml = `<span class="cl-nota-status-badge" style="background:#fff3e0;color:#c05621">Atrasado</span>`;
+            tipo = 'nao-realizada';
+        } else if (estado) {
+            statusHtml = `<span class="cl-nota-status-badge" style="background:#fef2f2;color:#dc2626">Não entregue</span>`;
+            tipo = 'nao-realizada';
+        } else {
+            statusHtml = `<span class="cl-nota-status-badge" style="background:var(--bg-alt);color:var(--text-muted)">Sem dados</span>`;
+            tipo = 'nao-realizada';
+        }
+
+        return { atv, statusHtml, tipo, nota, entregue };
+    });
+
+    const totalAtiv     = atividades.length;
+    const realizadas    = rows.filter(r => r.tipo === 'realizada').length;
+    const naoRealizadas = rows.filter(r => r.tipo === 'nao-realizada').length;
+
+    const rowsHtml = rows.map(r => `
+        <div class="cl-detalhe-row" data-tipo="${r.tipo}">
+            <div class="cl-detalhe-row-titulo">${esc(r.atv.titulo)}</div>
+            <div class="cl-detalhe-row-status">${r.statusHtml}</div>
+        </div>`).join('');
+
+    elNotasLista.innerHTML = `
+        <div class="cl-detalhe-header">
+            <button class="cl-btn cl-btn--ghost cl-detalhe-voltar" id="clDetalheVoltar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar
+            </button>
+            <div class="cl-detalhe-aluno-info">
+                <div class="cl-nota-avatar cl-nota-avatar--lg">${fotoHtml}</div>
+                <div>
+                    <div class="cl-nota-nome">${esc(al.nome || '—')}</div>
+                    <div class="cl-detalhe-soma" style="color:${barCor}">
+                        ${soma.toFixed(1)} / ${meta} pts
+                        <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cl-detalhe-tabs">
+            <button class="cl-detalhe-tab cl-detalhe-tab--ativa" data-filtro="todas">
+                Todas <span class="cl-detalhe-tab-cnt">${totalAtiv}</span>
+            </button>
+            <button class="cl-detalhe-tab" data-filtro="realizada">
+                Realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--ok">${realizadas}</span>
+            </button>
+            <button class="cl-detalhe-tab" data-filtro="nao-realizada">
+                Não realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--err">${naoRealizadas}</span>
+            </button>
+        </div>
+
+        <div class="cl-detalhe-lista" id="clDetalheLista">
+            ${rowsHtml}
+        </div>`;
+
+    // Tabs de filtro
+    elNotasLista.querySelectorAll('.cl-detalhe-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            elNotasLista.querySelectorAll('.cl-detalhe-tab').forEach(b => b.classList.remove('cl-detalhe-tab--ativa'));
+            btn.classList.add('cl-detalhe-tab--ativa');
+            const filtro = btn.dataset.filtro;
+            elNotasLista.querySelectorAll('.cl-detalhe-row').forEach(row => {
+                row.style.display = filtro === 'todas' || row.dataset.tipo === filtro ? '' : 'none';
+            });
+        });
+    });
+
+    // Voltar
+    document.getElementById('clDetalheVoltar').addEventListener('click', () => {
+        if (grupoAtivo) selecionarGrupo(grupoAtivo, document.querySelector('.cl-grupo-item--ativo'));
+    });
 }
 
 /* ══════════════════════════════════════════════════════════════

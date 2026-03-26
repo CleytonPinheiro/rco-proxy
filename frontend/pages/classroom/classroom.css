@@ -770,6 +770,112 @@ body {
 .cl-resumo-den { font-size: .72rem; color: var(--text-muted); }
 
 /* ══════════════════════════════════════════════════════════════
+   DETALHE DO ALUNO NO GRUPO
+══════════════════════════════════════════════════════════════ */
+.cl-detalhe-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.cl-detalhe-voltar {
+    align-self: flex-start;
+    font-size: .78rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    padding: 4px 8px;
+}
+.cl-detalhe-voltar:hover { color: var(--text-primary); }
+.cl-detalhe-aluno-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cl-nota-avatar--lg {
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.cl-detalhe-soma {
+    font-size: .95rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+.cl-detalhe-pct {
+    font-weight: 400;
+    font-size: .8rem;
+    opacity: .8;
+}
+.cl-detalhe-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 16px 0;
+    border-bottom: 1px solid var(--border);
+}
+.cl-detalhe-tab {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color .15s;
+}
+.cl-detalhe-tab:hover { color: var(--text-primary); }
+.cl-detalhe-tab--ativa {
+    color: var(--primary, #4285F4);
+    border-bottom-color: var(--primary, #4285F4);
+}
+.cl-detalhe-tab-cnt {
+    font-size: .72rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--bg-alt);
+    color: var(--text-muted);
+}
+.cl-tab-cnt--ok  { background: #d1fae5; color: #065f46; }
+.cl-tab-cnt--err { background: #fee2e2; color: #991b1b; }
+
+.cl-detalhe-lista {
+    overflow-y: auto;
+    flex: 1;
+    padding: 6px 0;
+}
+.cl-detalhe-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+}
+.cl-detalhe-row:hover { background: var(--bg-alt); }
+.cl-detalhe-row-titulo {
+    font-size: .85rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cl-detalhe-row-status {
+    flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
    AUDITORIA DE FREQUÊNCIA
 ══════════════════════════════════════════════════════════════ */
 
