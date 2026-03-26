@@ -697,6 +697,12 @@ async function selecionarGrupo(grupo, itemEl) {
         grupoResumoData = { atividades: resumo.atividades, alunosResumo, meta };
 
         elNotasLista.innerHTML = `
+            <div class="cl-passos-legenda">
+                <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
+                <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue</span>
+                <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:var(--border)"></span>Pendente</span>
+                <span class="cl-legenda-hint">Clique no aluno para ver detalhes</span>
+            </div>
             <div class="cl-resumo-header">
                 <span></span>
                 <span>Aluno</span>
