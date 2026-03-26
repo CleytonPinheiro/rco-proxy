@@ -262,7 +262,7 @@
 
                 <!-- Painel de Auditoria -->
                 <div class="cl-audit-panel" id="clAuditPanel" style="display:none">
-                    <div class="cl-audit-config" id="clAuditConfig">
+                    <div class="cl-audit-config" id="clAuditConfig" style="overflow-y:auto">
                         <label class="cl-audit-label">Turma/Disciplina no RCO</label>
                         <select id="clAuditClasseSel" style="display:none">
                             <option value="">— selecione —</option>
@@ -281,6 +281,9 @@
                         </button>
                         <p class="cl-audit-hint" id="clAuditHint"></p>
                     </div>
+                    <!-- Handle vertical auditoria -->
+                    <div class="cl-hresize-handle" id="clAuditConfigHandle"></div>
+
                     <div class="cl-audit-results" id="clAuditResults" style="display:none">
                         <div class="cl-audit-results-header" id="clAuditResultsHeader"></div>
                         <div class="cl-lista" id="clAuditAtivLista"></div>

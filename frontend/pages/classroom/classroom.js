@@ -1721,6 +1721,52 @@ function initResizeHandles() {
     setupHandle(document.getElementById('clHandle2'), 2);
 }
 initResizeHandles();
+
+/* ── Handle vertical da área de config de auditoria ── */
+function initAuditConfigHandle() {
+    const handle = document.getElementById('clAuditConfigHandle');
+    const config = document.getElementById('clAuditConfig');
+    if (!handle || !config) return;
+
+    const LS_KEY  = 'cl-audit-config-h';
+    const MIN_H   = 80;
+    const MAX_H   = 500;
+
+    const saved = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
+    if (saved >= MIN_H) {
+        config.style.height    = saved + 'px';
+        config.style.flexShrink = '0';
+    }
+
+    handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        handle.classList.add('cl-hresize-handle--dragging');
+        document.body.style.cursor    = 'row-resize';
+        document.body.style.userSelect = 'none';
+
+        const startY = e.clientY;
+        const startH = config.getBoundingClientRect().height;
+
+        const onMove = ev => {
+            const newH = Math.min(MAX_H, Math.max(MIN_H, startH + (ev.clientY - startY)));
+            config.style.height    = newH + 'px';
+            config.style.flexShrink = '0';
+        };
+
+        const onUp = () => {
+            handle.classList.remove('cl-hresize-handle--dragging');
+            document.body.style.cursor    = '';
+            document.body.style.userSelect = '';
+            localStorage.setItem(LS_KEY, parseInt(config.style.height, 10));
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+initAuditConfigHandle();
 initCustomSel();
 
 /* ══════════════════════════════════════════════════════════════

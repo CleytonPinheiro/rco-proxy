@@ -100,6 +100,28 @@ body {
     background: #4285F4;
 }
 
+/* ─── Handle de redimensionamento horizontal (auditoria) ─── */
+.cl-hresize-handle {
+    height: 4px;
+    background: var(--border);
+    cursor: row-resize;
+    user-select: none;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.cl-hresize-handle::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: -5px; bottom: -5px;
+}
+.cl-hresize-handle:hover,
+.cl-hresize-handle--dragging {
+    background: #4285F4;
+}
+
 /* Cabeçalho de coluna */
 .cl-col-head {
     display: flex;
