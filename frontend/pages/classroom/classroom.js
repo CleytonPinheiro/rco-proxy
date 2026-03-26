@@ -693,34 +693,81 @@ async function selecionarGrupo(grupo, itemEl) {
             return;
         }
 
-        // Salvar dados para o painel de detalhe
+        // Salvar dados para o painel de detalhe e filtro
         grupoResumoData = { atividades: resumo.atividades, alunosResumo, meta };
 
-        elNotasLista.innerHTML = `
-            <div class="cl-passos-legenda">
-                <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
-                <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue</span>
-                <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:var(--border)"></span>Pendente</span>
-                <span class="cl-legenda-hint">Clique no aluno para ver detalhes</span>
-            </div>
-            <div class="cl-resumo-header">
-                <span></span>
-                <span>Aluno</span>
-                <span>Soma / ${meta} pts</span>
-                <span style="text-align:center">Pendentes</span>
-            </div>
-            ${alunosResumo.map(a => renderResumoRow(a, meta, resumo.atividades)).join('')}`;
-
-        // Click em cada linha → detalhe do aluno
-        elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
-            row.style.cursor = 'pointer';
-            row.addEventListener('click', () => mostrarDetalheAluno(alunosResumo[i], resumo.atividades, meta));
-        });
+        renderListaFiltrada('todos');
 
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
         toast(e.message, 'erro');
     }
+}
+
+function faixaCor(soma, meta) {
+    const pct = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
+    if (pct >= 100) return 'meta';
+    if (pct >= 60)  return 'prog';
+    return 'abaixo';
+}
+
+function renderListaFiltrada(filtro) {
+    if (!grupoResumoData) return;
+    const { alunosResumo, meta, atividades } = grupoResumoData;
+
+    // Contagens por faixa
+    const nMeta   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
+    const nProg   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'prog').length;
+    const nAbaixo = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'abaixo').length;
+    const nTodos  = alunosResumo.length;
+
+    const chip = (key, cor, label, count) => {
+        const ativo = filtro === key ? ' cl-faixa-chip--ativo' : '';
+        return `<button class="cl-faixa-chip${ativo}" data-faixa="${key}" style="--chip-cor:${cor}">
+            <span class="cl-faixa-dot" style="background:${cor}"></span>${label}
+            <span class="cl-faixa-num">${count}</span>
+        </button>`;
+    };
+
+    const filtrados = filtro === 'todos'
+        ? alunosResumo
+        : alunosResumo.filter(a => faixaCor(a.soma, meta) === filtro);
+
+    elNotasLista.innerHTML = `
+        <div class="cl-passos-legenda">
+            <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
+            <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue</span>
+            <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:var(--border)"></span>Pendente</span>
+            <span class="cl-legenda-hint">Clique no aluno para ver detalhes</span>
+        </div>
+        <div class="cl-faixa-filtros">
+            ${chip('todos',  '#6b7280', 'Todos',      nTodos)}
+            ${chip('meta',   '#10b981', 'Meta',        nMeta)}
+            ${chip('prog',   '#4285F4', 'Em progresso', nProg)}
+            ${chip('abaixo', '#f59e0b', 'Abaixo',     nAbaixo)}
+        </div>
+        <div class="cl-resumo-header">
+            <span></span>
+            <span>Aluno</span>
+            <span>Soma / ${meta} pts</span>
+            <span style="text-align:center">Pendentes</span>
+        </div>
+        <div class="cl-faixa-lista" id="clFaixaLista">
+            ${filtrados.length
+                ? filtrados.map(a => renderResumoRow(a, meta, atividades)).join('')
+                : `<div class="cl-empty-state"><p>Nenhum aluno nessa faixa.</p></div>`}
+        </div>`;
+
+    // Chips → re-filtrar
+    elNotasLista.querySelectorAll('.cl-faixa-chip').forEach(btn => {
+        btn.addEventListener('click', () => renderListaFiltrada(btn.dataset.faixa));
+    });
+
+    // Rows → detalhe do aluno
+    elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta));
+    });
 }
 
 function renderResumoRow(a, meta, atividades = []) {

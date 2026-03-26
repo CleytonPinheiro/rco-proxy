@@ -346,6 +346,9 @@ body {
 .cl-notas-lista {
     flex: 1;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 .cl-nota-row {
     display: grid;
@@ -779,6 +782,56 @@ body {
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
 }
+
+/* ── Filtros por faixa de nota ── */
+.cl-faixa-filtros {
+    display: flex;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--bg-alt);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.cl-faixa-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--chip-cor, var(--border));
+    background: transparent;
+    color: var(--chip-cor, var(--text-muted));
+    font-size: .72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+.cl-faixa-chip:hover {
+    background: color-mix(in srgb, var(--chip-cor, var(--border)) 15%, transparent);
+}
+.cl-faixa-chip--ativo {
+    background: var(--chip-cor, var(--border));
+    color: #fff;
+}
+.dark .cl-faixa-chip--ativo { color: #fff; }
+.cl-faixa-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.cl-faixa-chip--ativo .cl-faixa-dot { background: #fff !important; }
+.cl-faixa-num {
+    background: rgba(0,0,0,.1);
+    border-radius: 10px;
+    padding: 0 5px;
+    font-size: .68rem;
+    min-width: 18px;
+    text-align: center;
+}
+.cl-faixa-chip--ativo .cl-faixa-num { background: rgba(255,255,255,.25); }
+.cl-faixa-lista { flex: 1; }
 .cl-legenda-item {
     display: flex;
     align-items: center;
