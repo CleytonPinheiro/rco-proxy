@@ -50,14 +50,18 @@ export function createClassroomRouter() {
         });
     });
 
-    /* ── Conectar (warm-up / re-autenticar) ── */
-    router.post('/classroom/connect', async (_req, res) => {
-        if (!googleSession.isConfigured()) {
+    /* ── Conectar — recebe email e senha digitados pela professora na UI ── */
+    router.post('/classroom/connect', async (req, res) => {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
             return res.status(400).json({
-                erro: 'Configure GOOGLE_EMAIL e GOOGLE_PASSWORD antes de conectar.',
+                erro: 'E-mail e senha são obrigatórios.',
             });
         }
+
         try {
+            googleSession.setCredentials(email.trim(), password);
             await googleSession.warmUp();
             res.json({
                 ok:    true,

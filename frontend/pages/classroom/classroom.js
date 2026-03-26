@@ -13,7 +13,6 @@ const elConnectDesc    = document.getElementById('clConnectDesc');
 const elConnectActions = document.getElementById('clConnectActions');
 const elWorkspace      = document.getElementById('clWorkspace');
 const elBtnConectar    = document.getElementById('clBtnConectar');
-const elSemCredenciais = document.getElementById('clSemCredenciais');
 const elCursoLista     = document.getElementById('clCursoLista');
 const elAtivLista      = document.getElementById('clAtivLista');
 const elNotasLista     = document.getElementById('clNotasLista');
@@ -51,47 +50,59 @@ async function api(path, opts = {}) {
     return data;
 }
 
+/* ── Elementos do formulário de login ── */
+const elEmail = document.getElementById('clEmail');
+const elSenha = document.getElementById('clSenha');
+
 /* ── Inicialização ── */
 async function init() {
     const status = await api('/status');
 
-    if (!status.configured) {
-        // Credenciais não configuradas no servidor
-        elSemCredenciais.style.display  = 'block';
-        elConnectActions.style.display  = 'none';
-        elConnectScreen.style.display   = 'flex';
-        elWorkspace.style.display       = 'none';
-        elConnectDesc.textContent = 'Configure as credenciais para ativar a integração.';
+    if (status.authenticated) {
+        // Sessão ativa — abre workspace direto
+        elConnectScreen.style.display = 'none';
+        elWorkspace.style.display     = 'grid';
+        if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
+        carregarCursos();
         return;
     }
 
-    if (!status.authenticated) {
-        // Credenciais ok, mas sessão não ativa
-        elConnectScreen.style.display   = 'flex';
-        elWorkspace.style.display       = 'none';
-        elSemCredenciais.style.display  = 'none';
-        elConnectActions.style.display  = 'block';
-        document.getElementById('clConnectEmail').textContent = status.email
-            ? `Conta: ${status.email}` : '';
-        return;
-    }
+    // Sessão não ativa — mostra formulário de login
+    elConnectScreen.style.display   = 'flex';
+    elWorkspace.style.display       = 'none';
+    elConnectActions.style.display  = 'block';
 
-    // Já conectado — abre workspace
-    elConnectScreen.style.display = 'none';
-    elWorkspace.style.display     = 'grid';
-    if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
-    carregarCursos();
+    // Pré-preenche e-mail se já estava configurado (sessão expirou após restart)
+    if (status.email) {
+        elEmail.value = status.email;
+        elSenha.focus();
+        elConnectDesc.textContent = 'Sua sessão expirou. Digite a senha para reconectar.';
+    } else {
+        elEmail.focus();
+    }
 }
 
-/* ── Conectar (via Puppeteer — sem OAuth) ── */
+/* ── Conectar: envia e-mail e senha para o backend via Puppeteer ── */
 elBtnConectar.addEventListener('click', async () => {
-    const label = document.getElementById('clBtnConectarLabel');
+    const email    = elEmail.value.trim();
+    const password = elSenha.value;
+    const label    = document.getElementById('clBtnConectarLabel');
+
+    if (!email || !password) {
+        toast('Preencha e-mail e senha.', 'erro');
+        return;
+    }
+
     elBtnConectar.disabled = true;
-    label.textContent = 'Conectando… aguarde';
+    label.textContent = 'Conectando… aguarde (até 30s)';
+
     try {
-        await api('/connect', { method: 'POST' });
+        await api('/connect', {
+            method: 'POST',
+            body:   { email, password },
+        });
         toast('Conectado com sucesso ao Google Classroom!', 'ok');
-        // Recarrega estado
+        elSenha.value = ''; // limpa senha da memória do navegador
         const status = await api('/status');
         if (status.authenticated) {
             elConnectScreen.style.display = 'none';
@@ -103,8 +114,15 @@ elBtnConectar.addEventListener('click', async () => {
         toast(e.message || 'Falha ao conectar. Verifique e-mail e senha.', 'erro');
     } finally {
         elBtnConectar.disabled = false;
-        label.textContent = 'Conectar com Google Classroom';
+        label.textContent = 'Entrar com Google Classroom';
     }
+});
+
+/* ── Permite pressionar Enter nos campos para conectar ── */
+[elEmail, elSenha].forEach(el => {
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') elBtnConectar.click();
+    });
 });
 
 /* ── Desconectar ── */
