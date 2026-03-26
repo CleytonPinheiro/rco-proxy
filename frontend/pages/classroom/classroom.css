@@ -825,10 +825,11 @@ body {
 .cl-faixa-num {
     background: rgba(0,0,0,.1);
     border-radius: 10px;
-    padding: 0 5px;
+    padding: 0 6px;
     font-size: .68rem;
-    min-width: 18px;
+    min-width: 22px;
     text-align: center;
+    letter-spacing: .01em;
 }
 .cl-faixa-chip--ativo .cl-faixa-num { background: rgba(255,255,255,.25); }
 .cl-faixa-lista { flex: 1; }

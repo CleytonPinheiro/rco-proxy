@@ -722,10 +722,12 @@ function renderListaFiltrada(filtro) {
     const nTodos  = alunosResumo.length;
 
     const chip = (key, cor, label, count) => {
-        const ativo = filtro === key ? ' cl-faixa-chip--ativo' : '';
+        const ativo  = filtro === key ? ' cl-faixa-chip--ativo' : '';
+        const pctStr = nTodos > 0 ? Math.round((count / nTodos) * 100) + '%' : '0%';
+        const numLabel = key === 'todos' ? count : `${count} · ${pctStr}`;
         return `<button class="cl-faixa-chip${ativo}" data-faixa="${key}" style="--chip-cor:${cor}">
             <span class="cl-faixa-dot" style="background:${cor}"></span>${label}
-            <span class="cl-faixa-num">${count}</span>
+            <span class="cl-faixa-num">${numLabel}</span>
         </button>`;
     };
 
