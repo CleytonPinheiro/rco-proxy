@@ -15,7 +15,8 @@ let auditAtivAtiva  = null;   // atividade selecionada no modo auditoria
 let auditCodClasse  = null;   // codClasse vinculado ao curso atual
 let corSelecionada  = '#4285F4';
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
-let grupoResumoData = null;   // { atividades, alunosResumo, meta } do grupo aberto
+let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
+let filtroGrupoAtivo = 'todos'; // filtro de faixa de cor ativo no momento
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -701,7 +702,8 @@ async function selecionarGrupo(grupo, itemEl) {
         }
 
         // Salvar dados para o painel de detalhe e filtro
-        grupoResumoData = { atividades: resumo.atividades, alunosResumo, meta };
+        grupoResumoData  = { atividades: resumo.atividades, alunosResumo, meta };
+        filtroGrupoAtivo = 'todos';
 
         renderListaFiltrada('todos');
 
@@ -720,6 +722,7 @@ function faixaCor(soma, meta) {
 
 function renderListaFiltrada(filtro) {
     if (!grupoResumoData) return;
+    filtroGrupoAtivo = filtro;
     const { alunosResumo, meta, atividades } = grupoResumoData;
 
     // Contagens por faixa
@@ -843,20 +846,29 @@ function imprimirRelatorioGrupo() {
     const grupo    = grupoAtivo?.nome || '—';
     const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
-    const total   = alunosResumo.length;
+    // Aplicar filtro ativo
+    const filtroNomes = { todos: 'Todos', meta: 'Meta atingida', prog: 'Em progresso', abaixo: 'Abaixo da meta' };
+    const filtroLabel = filtroNomes[filtroGrupoAtivo] || 'Todos';
+    const lista = filtroGrupoAtivo === 'todos'
+        ? alunosResumo
+        : alunosResumo.filter(a => faixaCor(a.soma, meta) === filtroGrupoAtivo);
+
+    // Estatísticas sobre a turma toda (para referência)
+    const totalTurma = alunosResumo.length;
+    const total   = lista.length;
     const nMeta   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
     const nProg   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'prog').length;
     const nAbaixo = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'abaixo').length;
-    const media   = total ? (alunosResumo.reduce((s, a) => s + (a.soma ?? 0), 0) / total).toFixed(1) : '—';
-    const pMeta   = total ? Math.round((nMeta   / total) * 100) : 0;
-    const pProg   = total ? Math.round((nProg   / total) * 100) : 0;
-    const pAbaixo = total ? Math.round((nAbaixo / total) * 100) : 0;
+    const media   = lista.length ? (lista.reduce((s, a) => s + (a.soma ?? 0), 0) / lista.length).toFixed(1) : '—';
+    const pMeta   = totalTurma ? Math.round((nMeta   / totalTurma) * 100) : 0;
+    const pProg   = totalTurma ? Math.round((nProg   / totalTurma) * 100) : 0;
+    const pAbaixo = totalTurma ? Math.round((nAbaixo / totalTurma) * 100) : 0;
 
     const faixaNome  = { meta: 'Meta atingida', prog: 'Em progresso', abaixo: 'Abaixo da meta' };
     const faixaCores = { meta: '#10b981',        prog: '#4285F4',      abaixo: '#f59e0b' };
 
-    // Linhas da tabela
-    const linhas = alunosResumo.map((a, i) => {
+    // Linhas da tabela — apenas alunos do filtro ativo
+    const linhas = lista.map((a, i) => {
         const soma   = a.soma ?? 0;
         const pct    = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
         const faixa  = faixaCor(soma, meta);
@@ -913,15 +925,16 @@ function imprimirRelatorioGrupo() {
         button.no-print { margin-bottom: 16px; padding: 8px 18px; background: #4285F4; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; }
     </style></head><body>
     <button class="no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-    <h1>${esc(grupo)}</h1>
-    <p class="sub">${esc(curso)} &nbsp;·&nbsp; Meta: ${meta} pts &nbsp;·&nbsp; Gerado em ${dataHoje}</p>
+    <h1>${esc(grupo)}${filtroGrupoAtivo !== 'todos' ? ` — ${filtroLabel}` : ''}</h1>
+    <p class="sub">${esc(curso)} &nbsp;·&nbsp; Meta: ${meta} pts &nbsp;·&nbsp; Gerado em ${dataHoje}
+    ${filtroGrupoAtivo !== 'todos' ? `&nbsp;·&nbsp; <strong>${total} de ${totalTurma} alunos</strong> (filtro: ${filtroLabel})` : ''}</p>
 
     <div class="stats">
-        <div class="stat"><span class="stat-num">${total}</span><span class="stat-lbl">Alunos</span></div>
+        <div class="stat"><span class="stat-num">${total}${filtroGrupoAtivo !== 'todos' ? `<span style="font-size:.7rem;color:#6b7280">/${totalTurma}</span>` : ''}</span><span class="stat-lbl">Alunos${filtroGrupoAtivo !== 'todos' ? ' (filtrados)' : ''}</span></div>
         <div class="stat"><span class="stat-num" style="color:#10b981">${nMeta}</span><span class="stat-lbl">Meta (${pMeta}%)</span></div>
         <div class="stat"><span class="stat-num" style="color:#4285F4">${nProg}</span><span class="stat-lbl">Progresso (${pProg}%)</span></div>
         <div class="stat"><span class="stat-num" style="color:#f59e0b">${nAbaixo}</span><span class="stat-lbl">Abaixo (${pAbaixo}%)</span></div>
-        <div class="stat"><span class="stat-num" style="color:#4285F4">${media}</span><span class="stat-lbl">Média geral</span></div>
+        <div class="stat"><span class="stat-num" style="color:#4285F4">${media}</span><span class="stat-lbl">Média ${filtroGrupoAtivo !== 'todos' ? 'filtro' : 'geral'}</span></div>
     </div>
 
     <div class="dist">
