@@ -4,13 +4,17 @@
 let cursoAtivo      = null;   // { id, nome, link }
 let ativAtiva       = null;   // { id, titulo, pontos }
 let grupoAtivo      = null;   // { id, nome, pontosMeta, cor, atividades }
-let viewMode        = 'atividades'; // 'atividades' | 'grupos'
+let viewMode        = 'atividades'; // 'atividades' | 'grupos' | 'auditoria'
 let alunos          = {};     // { [userId]: { nome, email, foto } }
 let submissions     = [];     // entregas da atividade individual
 let todasNotas      = [];     // cache filtrado da atividade individual
 let atividadesCache = [];     // todas atividades do curso atual
 let gruposCache     = [];     // todos grupos do curso atual
+let auditResultado  = null;   // resultado da auditoria { atividades, semCorrespondencia }
+let auditAtivAtiva  = null;   // atividade selecionada no modo auditoria
+let auditCodClasse  = null;   // codClasse vinculado ao curso atual
 let corSelecionada  = '#4285F4';
+let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -21,6 +25,11 @@ const elSemCredenciais = document.getElementById('clSemCredenciais');
 const elCursoLista     = document.getElementById('clCursoLista');
 const elAtivLista      = document.getElementById('clAtivLista');
 const elGrupoLista     = document.getElementById('clGrupoLista');
+const elAuditPanel     = document.getElementById('clAuditPanel');
+const elAuditClasseSel = document.getElementById('clAuditClasseSel');
+const elAuditResults   = document.getElementById('clAuditResults');
+const elAuditAtivLista = document.getElementById('clAuditAtivLista');
+const elAuditHint      = document.getElementById('clAuditHint');
 const elNotasLista     = document.getElementById('clNotasLista');
 const elCursosCount    = document.getElementById('clCursosCount');
 const elAtivCount      = document.getElementById('clAtivCount');
@@ -37,6 +46,7 @@ const elToast          = document.getElementById('clToast');
 const elTabs           = document.getElementById('clTabs');
 const elTabAtiv        = document.getElementById('clTabAtiv');
 const elTabGrupos      = document.getElementById('clTabGrupos');
+const elTabAudit       = document.getElementById('clTabAudit');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
@@ -50,9 +60,21 @@ function toast(msg, tipo = '') {
     toastTimer = setTimeout(() => elToast.classList.remove('cl-toast--visivel'), 3000);
 }
 
-/* ── API helper ── */
+/* ── API helper (prefixo /api/classroom) ── */
 async function api(path, opts = {}) {
     const r = await fetch('/api/classroom' + path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.erro || 'Erro na requisição');
+    return data;
+}
+
+/* ── API raw (/api/...) ── */
+async function apiRaw(path, opts = {}) {
+    const r = await fetch('/api' + path, {
         ...opts,
         headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -74,6 +96,11 @@ const TIPO_LABELS = {
     MATERIAL:                 'Material',
 };
 const GRUPO_CORES = ['#4285F4','#EA4335','#34A853','#FBBC05','#8B5CF6','#EC4899','#14B8A6','#F97316','#0ea5e9','#a3e635'];
+
+/* ── Chave localStorage para mapeamento curso→codClasse ── */
+function auditMapKey(courseId) {
+    return `cl_audit_classe_${courseId}`;
+}
 
 /* ══════════════════════════════════════════════════════════════
    INICIALIZAÇÃO
@@ -137,6 +164,8 @@ document.getElementById('clBtnRefresh').addEventListener('click', () => {
     alunos       = {};
     atividadesCache = [];
     gruposCache     = [];
+    auditResultado  = null;
+    auditAtivAtiva  = null;
     viewMode     = 'atividades';
     carregarCursos();
     resetColuna2();
@@ -151,6 +180,7 @@ function resetColuna2() {
     elTabs.style.display      = 'none';
     elBtnNovoGrupo.style.display = 'none';
     elAtivLink.style.display  = 'none';
+    elAuditResults.style.display = 'none';
     setTab('atividades');
 }
 
@@ -206,6 +236,8 @@ async function selecionarCurso(curso, itemEl, cor) {
     cursoAtivo      = curso;
     ativAtiva       = null;
     grupoAtivo      = null;
+    auditAtivAtiva  = null;
+    auditResultado  = null;
     atividadesCache = [];
     gruposCache     = [];
 
@@ -221,6 +253,7 @@ async function selecionarCurso(curso, itemEl, cor) {
     elGrupoLista.innerHTML    = '<div class="cl-loading">Carregando grupos...</div>';
 
     if (viewMode === 'grupos') setTab('grupos');
+    else if (viewMode === 'auditoria') setTab('auditoria');
 
     try {
         const [atividades, estudantes] = await Promise.all([
@@ -267,6 +300,9 @@ async function selecionarCurso(curso, itemEl, cor) {
         }
         toast(semPermissao ? 'Acesso bloqueado pelo Workspace.' : e.message, 'erro');
     }
+
+    // Se a aba auditoria estava ativa, preparar seletor
+    if (viewMode === 'auditoria') prepararAuditSelector();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -276,31 +312,50 @@ function setTab(tab) {
     viewMode = tab;
     elTabAtiv.classList.toggle('cl-tab--ativo', tab === 'atividades');
     elTabGrupos.classList.toggle('cl-tab--ativo', tab === 'grupos');
+    elTabAudit.classList.toggle('cl-tab--ativo', tab === 'auditoria');
 
     elAtivLista.style.display        = tab === 'atividades' ? '' : 'none';
     elGrupoLista.style.display       = tab === 'grupos' ? '' : 'none';
+    elAuditPanel.style.display       = tab === 'auditoria' ? '' : 'none';
     elAtivLink.style.display         = tab === 'atividades' && cursoAtivo?.link ? 'flex' : 'none';
     elBtnNovoGrupo.style.display     = tab === 'grupos' && cursoAtivo ? 'flex' : 'none';
-    elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : 'Atividades';
+    elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : tab === 'auditoria' ? 'Auditoria' : 'Atividades';
 
     if (tab === 'atividades') {
         elAtivCount.textContent = atividadesCache.length
             ? `${atividadesCache.length} atividade${atividadesCache.length !== 1 ? 's' : ''}`
             : 'Selecione uma disciplina';
-    } else {
+    } else if (tab === 'grupos') {
         elAtivCount.textContent = gruposCache.length
             ? `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`
             : 'Nenhum grupo criado';
+    } else {
+        elAtivCount.textContent = auditResultado
+            ? `${auditResultado.atividades.length} atividade${auditResultado.atividades.length !== 1 ? 's' : ''} auditadas`
+            : 'Selecione o vinculo RCO';
     }
 
-    if (tab === 'atividades' && grupoAtivo) {
-        grupoAtivo = null;
+    if (tab === 'atividades' && (grupoAtivo || auditAtivAtiva)) {
+        grupoAtivo     = null;
+        auditAtivAtiva = null;
         resetColuna3();
+    }
+    if (tab === 'grupos' && (ativAtiva || auditAtivAtiva)) {
+        ativAtiva      = null;
+        auditAtivAtiva = null;
+        resetColuna3();
+    }
+    if (tab === 'auditoria' && cursoAtivo) {
+        ativAtiva  = null;
+        grupoAtivo = null;
+        prepararAuditSelector();
+        if (auditResultado) renderAuditAtividades();
     }
 }
 
 elTabAtiv.addEventListener('click', () => setTab('atividades'));
 elTabGrupos.addEventListener('click', () => setTab('grupos'));
+elTabAudit.addEventListener('click', () => setTab('auditoria'));
 
 /* ══════════════════════════════════════════════════════════════
    ATIVIDADES (lista individual)
@@ -396,6 +451,7 @@ function filtrarNotas() {
         if (status === 'entregue' && !n.entregue && n.estado !== 'RETURNED') return false;
         if (status === 'pendente' && (n.entregue || n.estado === 'RETURNED')) return false;
         if (status === 'atrasado' && !n.atrasado) return false;
+        if (status === 'ausente' && !n.ausente) return false;
         return true;
     });
 }
@@ -438,10 +494,13 @@ function renderNotaRow(n) {
 
     const inputVal     = n.nota !== null ? n.nota : '';
     const podeDevolver = n.entregue && n.estado !== 'RETURNED';
+    const ausenteBadge = n.ausente
+        ? `<span class="cl-ausente-badge" title="Aluno estava ausente neste dia — zero aplicado pela auditoria">AUSENTE</span>`
+        : '';
 
-    return `<div class="cl-nota-row" data-user="${n.userId}" data-sub="${n.id}">
+    return `<div class="cl-nota-row${n.ausente ? ' cl-nota-row--ausente' : ''}" data-user="${n.userId}" data-sub="${n.id}">
         <div class="cl-nota-avatar">${fotoHtml}</div>
-        <div class="cl-nota-nome" title="${esc(a.email)}">${esc(a.nome || '—')}</div>
+        <div class="cl-nota-nome" title="${esc(a.email)}">${esc(a.nome || '—')}${ausenteBadge}</div>
         <div style="text-align:center">
             <span class="cl-nota-status-badge cl-nota-status--${statusCls}">${statusLabel}</span>
         </div>
@@ -508,16 +567,17 @@ async function devolverEntrega(btn) {
 
 /* ── Exportar CSV (atividade individual) ── */
 elBtnExportar.addEventListener('click', () => {
-    if (grupoAtivo) { exportarGrupoCSV(); return; }
+    if (grupoAtivo)      { exportarGrupoCSV();  return; }
+    if (auditAtivAtiva)  { exportarAuditCSV();  return; }
     const lista  = filtrarNotas();
     const titulo = ativAtiva?.titulo || 'atividade';
     const curso  = cursoAtivo?.nome  || 'disciplina';
     const maxPts = ativAtiva?.pontos ?? '';
     let csv = `Disciplina,Atividade,Pontuação máxima\n"${curso}","${titulo}","${maxPts}"\n\n`;
-    csv    += 'Nº,Aluno,Email,Status,Nota\n';
+    csv    += 'Nº,Aluno,Email,Status,Nota,Ausente\n';
     lista.forEach((n, i) => {
         const status = n.estado === 'RETURNED' ? 'Devolvido' : n.atrasado ? 'Atrasado' : n.entregue ? 'Entregue' : 'Pendente';
-        csv += `${i+1},"${n.aluno.nome || ''}","${n.aluno.email || ''}","${status}","${n.nota ?? ''}"\n`;
+        csv += `${i+1},"${n.aluno.nome || ''}","${n.aluno.email || ''}","${status}","${n.nota ?? ''}","${n.ausente ? 'Sim' : ''}"\n`;
     });
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
@@ -572,7 +632,6 @@ function renderGrupos() {
                 </button>
             </div>`;
 
-        // Clicar no item (não nos botões)
         item.addEventListener('click', (e) => {
             if (e.target.closest('.cl-grupo-acoes')) return;
             selecionarGrupo(g, item);
@@ -704,7 +763,6 @@ const elCorPicker      = document.getElementById('clCorPicker');
 const elModalAtivs     = document.getElementById('clModalAtividades');
 
 function abrirModalGrupo(grupo = null) {
-    // Preencher seletor de cor
     elCorPicker.innerHTML = '';
     GRUPO_CORES.forEach(cor => {
         const btn = document.createElement('button');
@@ -734,13 +792,11 @@ function abrirModalGrupo(grupo = null) {
         corSelecionada            = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
 
-    // Marcar cor ativa
     elCorPicker.querySelectorAll('.cl-cor-btn').forEach(b => {
         b.classList.toggle('cl-cor-btn--ativo', b.style.background === corSelecionada ||
             b.title === corSelecionada);
     });
 
-    // Preencher lista de atividades
     const ativsNoGrupo = new Set((grupo?.atividades || []).map(a => a.atividade_id));
     if (!atividadesCache.length) {
         elModalAtivs.innerHTML = '<div class="cl-empty-state" style="padding:12px">Selecione uma disciplina primeiro.</div>';
@@ -776,7 +832,6 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     if (!nome) { elGrupoNome.focus(); toast('Informe o nome do grupo.', 'erro'); return; }
     if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }
 
-    // Coleta atividades marcadas
     const atividades = [];
     elModalAtivs.querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
         atividades.push({
@@ -805,7 +860,6 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
         if (viewMode === 'grupos') {
             elAtivCount.textContent = `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`;
         }
-        // Reatualiza grupo ativo se for o mesmo
         if (grupoAtivo && String(grupoAtivo.id) === String(grupoId)) {
             grupoAtivo = gruposCache.find(g => String(g.id) === String(grupoId)) || null;
         }
@@ -829,6 +883,400 @@ async function excluirGrupo(grupo) {
         toast('Erro ao excluir: ' + e.message, 'erro');
     }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   AUDITORIA DE FREQUÊNCIA
+══════════════════════════════════════════════════════════════ */
+
+/* ── Carrega acessos e popula seletor de classe RCO ── */
+async function prepararAuditSelector() {
+    if (!cursoAtivo) return;
+
+    // Recuperar classe salva para este curso
+    const savedClasse = localStorage.getItem(auditMapKey(cursoAtivo.id));
+
+    if (!acessosCache) {
+        try {
+            acessosCache = await apiRaw('/acessos');
+        } catch (_) {
+            acessosCache = {};
+        }
+    }
+
+    // Montar lista de classes do RCO
+    const classes = [];
+    const root = Array.isArray(acessosCache) ? acessosCache[0] : acessosCache;
+    if (root) {
+        for (const periodo of Object.values(root)) {
+            for (const livro of (periodo.livros || [])) {
+                const classe = livro.classe;
+                if (!classe) continue;
+                const disc  = classe.disciplina || {};
+                const turma = classe.turma || {};
+                classes.push({
+                    codClasse:       classe.codClasse,
+                    nomeDisciplina:  disc.nomeDisciplina || 'Disciplina',
+                    descrTurma:      turma.descrTurma   || '',
+                });
+            }
+        }
+    }
+
+    // Deduplicar por codClasse
+    const vistas = new Set();
+    const classesUnicas = classes.filter(c => {
+        if (vistas.has(c.codClasse)) return false;
+        vistas.add(c.codClasse);
+        return true;
+    }).sort((a, b) => (a.descrTurma + a.nomeDisciplina).localeCompare(b.descrTurma + b.nomeDisciplina));
+
+    elAuditClasseSel.innerHTML = '<option value="">— selecione a turma/disciplina —</option>';
+    classesUnicas.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value       = c.codClasse;
+        opt.textContent = `${c.descrTurma} — ${c.nomeDisciplina}`;
+        if (String(c.codClasse) === String(savedClasse)) opt.selected = true;
+        elAuditClasseSel.appendChild(opt);
+    });
+
+    if (savedClasse) {
+        auditCodClasse = savedClasse;
+        elAuditHint.textContent = '✓ Vínculo RCO salvo para esta disciplina';
+        elAuditHint.style.color = 'var(--text-muted)';
+    } else {
+        elAuditHint.textContent = '';
+    }
+
+    // Mostrar resultados anteriores se existirem
+    if (auditResultado) {
+        elAuditResults.style.display = '';
+        renderAuditAtividades();
+    }
+}
+
+elAuditClasseSel.addEventListener('change', () => {
+    auditCodClasse = elAuditClasseSel.value || null;
+    if (auditCodClasse && cursoAtivo) {
+        localStorage.setItem(auditMapKey(cursoAtivo.id), auditCodClasse);
+        elAuditHint.textContent = '✓ Vínculo salvo';
+        elAuditHint.style.color = '#16a34a';
+    } else {
+        elAuditHint.textContent = '';
+    }
+});
+
+document.getElementById('clBtnRodarAudit').addEventListener('click', rodarAuditoria);
+
+async function rodarAuditoria() {
+    if (!cursoAtivo) { toast('Selecione uma disciplina do Classroom primeiro.', 'erro'); return; }
+    if (!auditCodClasse) { toast('Selecione a turma/disciplina correspondente no RCO.', 'erro'); return; }
+
+    const btn = document.getElementById('clBtnRodarAudit');
+    btn.disabled    = true;
+    btn.textContent = 'Analisando...';
+    elAuditResults.style.display = 'none';
+    elAuditAtivLista.innerHTML   = '<div class="cl-loading">Cruzando dados de frequência com atividades…<br><small style="color:var(--text-muted)">Isso pode levar alguns instantes.</small></div>';
+    elNotasLista.innerHTML       = '<div class="cl-empty-state"><p>← Selecione uma atividade na lista de auditoria</p></div>';
+    elNotasCount.textContent     = 'Aguardando...';
+    elNotasTitulo.textContent    = 'Auditoria de Frequência';
+    elNotasStats.style.display   = 'none';
+    elNotasFiltro.style.display  = 'none';
+    elNotasActions.style.display = 'none';
+
+    try {
+        const resultado = await apiRaw(
+            `/classroom/audit?courseId=${cursoAtivo.id}&codClasse=${auditCodClasse}`
+        );
+        auditResultado = resultado;
+        elAuditResults.style.display = '';
+
+        const totalAusencias = resultado.atividades.reduce((s, a) => s + a.ausentes.length, 0);
+        const header = document.getElementById('clAuditResultsHeader');
+        header.innerHTML = `
+            <div class="cl-audit-summary">
+                <span class="cl-audit-summary-num ${totalAusencias > 0 ? 'cl-audit-summary-num--warn' : 'cl-audit-summary-num--ok'}">${totalAusencias}</span>
+                <span class="cl-audit-summary-label">ausência${totalAusencias !== 1 ? 's' : ''} detectada${totalAusencias !== 1 ? 's' : ''}</span>
+                <span class="cl-audit-summary-sep">•</span>
+                <span class="cl-audit-summary-detail">${resultado.atividades.length} atividade${resultado.atividades.length !== 1 ? 's' : ''} com aula na chamada</span>
+                ${resultado.semCorrespondencia?.length ? `<span class="cl-audit-summary-sep">•</span><span class="cl-audit-summary-detail" style="color:var(--text-muted)">${resultado.semCorrespondencia.length} sem data na chamada</span>` : ''}
+            </div>`;
+
+        elAtivCount.textContent = `${resultado.atividades.length} atividade${resultado.atividades.length !== 1 ? 's' : ''} auditadas`;
+        renderAuditAtividades();
+        toast(`Auditoria concluída: ${totalAusencias} ausência${totalAusencias !== 1 ? 's' : ''} detectada${totalAusencias !== 1 ? 's' : ''}.`, totalAusencias > 0 ? '' : 'ok');
+    } catch (e) {
+        elAuditAtivLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
+        toast('Erro na auditoria: ' + e.message, 'erro');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Analisar frequência';
+    }
+}
+
+function renderAuditAtividades() {
+    if (!auditResultado) return;
+    const { atividades } = auditResultado;
+    if (!atividades.length) {
+        elAuditAtivLista.innerHTML = '<div class="cl-empty-state"><p>Nenhuma atividade com data correspondente na chamada.</p></div>';
+        return;
+    }
+
+    elAuditAtivLista.innerHTML = '';
+    atividades.forEach(a => {
+        const nAus  = a.ausentes.length;
+        const item  = document.createElement('div');
+        item.className = 'cl-audit-ativ-item';
+        if (auditAtivAtiva?.id === a.id) item.classList.add('cl-audit-ativ-item--ativo');
+
+        let badgeHtml;
+        if (nAus === 0) {
+            badgeHtml = `<span class="cl-audit-badge cl-audit-badge--ok">Sem faltas</span>`;
+        } else {
+            badgeHtml = `<span class="cl-audit-badge cl-audit-badge--warn">${nAus} ausente${nAus !== 1 ? 's' : ''}</span>`;
+        }
+
+        item.innerHTML = `
+            <div class="cl-audit-ativ-info">
+                <div class="cl-audit-ativ-titulo" title="${esc(a.titulo)}">${esc(a.titulo)}</div>
+                <div class="cl-audit-ativ-data">📅 Aula: ${a.data}${a.prazo ? ` &bull; Prazo: ${a.prazo}` : ''}</div>
+            </div>
+            ${badgeHtml}`;
+
+        item.addEventListener('click', () => selecionarAuditAtiv(a, item));
+        elAuditAtivLista.appendChild(item);
+    });
+}
+
+async function selecionarAuditAtiv(ativ, itemEl) {
+    document.querySelectorAll('.cl-audit-ativ-item--ativo').forEach(el => el.classList.remove('cl-audit-ativ-item--ativo'));
+    itemEl.classList.add('cl-audit-ativ-item--ativo');
+    auditAtivAtiva = ativ;
+    ativAtiva      = null;
+    grupoAtivo     = null;
+
+    elNotasTitulo.textContent    = `Auditoria — ${ativ.titulo}`;
+    elNotasCount.textContent     = 'Carregando...';
+    elNotasStats.style.display   = 'none';
+    elNotasFiltro.style.display  = 'none';
+    elNotasActions.style.display = 'flex';
+    elNotasLista.innerHTML       = '<div class="cl-loading">Carregando dados da atividade...</div>';
+
+    try {
+        // Buscar submissions para obter subId e nota atual
+        const subs = await api(`/courses/${cursoAtivo.id}/coursework/${ativ.id}/submissions`);
+        const subMap = {};
+        subs.forEach(s => { subMap[s.userId] = s; });
+
+        // Buscar todos os alunos matriculados, ordenar por nome
+        const todosAlunos = Object.values(alunos).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+        const ausentesSet = new Set(ativ.ausentes.map(a => a.userId));
+
+        // Montar lista completa com flag de ausente
+        const lista = todosAlunos.map(al => ({
+            ...al,
+            sub:     subMap[al.userId] || null,
+            ausente: ausentesSet.has(al.userId),
+            nomeRco: ativ.ausentes.find(a => a.userId === al.userId)?.nomeRco || null,
+        }));
+
+        const totalAusentes = lista.filter(l => l.ausente).length;
+        const jaZerados     = lista.filter(l => l.ausente && l.sub?.ausente).length;
+        const pendentes     = totalAusentes - jaZerados;
+
+        elNotasCount.textContent = `${lista.length} aluno${lista.length !== 1 ? 's' : ''} — ${totalAusentes} ausente${totalAusentes !== 1 ? 's' : ''}`;
+
+        // Estatísticas da auditoria
+        document.getElementById('clStTotal').textContent          = lista.length;
+        document.getElementById('clStEntregues').textContent      = totalAusentes;
+        document.getElementById('clStEntreguesLabel').textContent  = 'Ausentes';
+        document.getElementById('clStPendentes').textContent      = jaZerados;
+        document.getElementById('clStPendentesLabel').textContent  = 'Já zerados';
+        document.getElementById('clStMedia').textContent          = pendentes > 0 ? pendentes : '✓';
+        elNotasStats.style.display = 'grid';
+
+        renderAuditDetalhe(lista, ativ, pendentes > 0);
+    } catch (e) {
+        elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
+        toast(e.message, 'erro');
+    }
+}
+
+function renderAuditDetalhe(lista, ativ, temPendentes) {
+    const ausentes   = lista.filter(l => l.ausente);
+    const presentes  = lista.filter(l => !l.ausente);
+
+    let html = '';
+
+    if (ausentes.length > 0) {
+        html += `<div class="cl-audit-section-head">
+            <span>Ausentes nesta aula (${ausentes.length})</span>
+            ${temPendentes ? `<button class="cl-btn cl-btn--sm cl-btn--danger" id="clBtnAplicarTodos">
+                Aplicar zero p/ todos os ausentes
+            </button>` : '<span class="cl-audit-todos-ok">✓ Todos zerados</span>'}
+        </div>`;
+        html += ausentes.map(l => renderAuditRow(l, ativ)).join('');
+    }
+
+    if (presentes.length > 0) {
+        html += `<div class="cl-audit-section-head cl-audit-section-head--present">Presentes (${presentes.length})</div>`;
+        html += presentes.map(l => renderAuditRow(l, ativ)).join('');
+    }
+
+    elNotasLista.innerHTML = html;
+
+    // Botão aplicar todos
+    document.getElementById('clBtnAplicarTodos')?.addEventListener('click', () => aplicarZerosTodos(ausentes, ativ));
+
+    // Botões individuais
+    elNotasLista.querySelectorAll('.cl-btn-audit-zero').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const userId = btn.dataset.user;
+            const subId  = btn.dataset.sub;
+            const nome   = btn.dataset.nome;
+            aplicarZeroIndividual(userId, subId, nome, ativ);
+        });
+    });
+}
+
+function renderAuditRow(l, ativ) {
+    const iniciais = (l.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+    const fotoHtml = l.foto ? `<img src="${esc(l.foto)}" alt="" loading="lazy"/>` : iniciais;
+    const nota     = l.sub?.nota ?? null;
+    const notaStr  = nota !== null ? `<span class="cl-audit-nota">${nota} pts</span>` : '<span class="cl-audit-nota cl-audit-nota--vazia">—</span>';
+
+    if (!l.ausente) {
+        return `<div class="cl-audit-row cl-audit-row--presente">
+            <div class="cl-nota-avatar">${fotoHtml}</div>
+            <div class="cl-audit-row-info">
+                <div class="cl-nota-nome">${esc(l.nome || '—')}</div>
+            </div>
+            <div class="cl-audit-row-nota">${notaStr}</div>
+            <div class="cl-audit-row-status">
+                <span class="cl-nota-status-badge cl-nota-status--entregue">Presente</span>
+            </div>
+        </div>`;
+    }
+
+    const subId    = l.sub?.id || '';
+    const jaZerado = l.sub?.ausente === true;
+    let acaoHtml;
+
+    if (jaZerado) {
+        acaoHtml = `<span class="cl-nota-status-badge cl-nota-status--devolvido">Zerado ✓</span>`;
+    } else if (!subId) {
+        acaoHtml = `<span class="cl-audit-sem-sub" title="Aluno sem registro de entrega no Classroom">Sem submissão</span>`;
+    } else {
+        acaoHtml = `<button class="cl-btn cl-btn--sm cl-btn--danger cl-btn-audit-zero"
+            data-user="${esc(l.userId)}" data-sub="${esc(subId)}" data-nome="${esc(l.nome || '')}">
+            Aplicar zero
+        </button>`;
+    }
+
+    return `<div class="cl-audit-row cl-audit-row--ausente">
+        <div class="cl-nota-avatar cl-nota-avatar--ausente">${fotoHtml}</div>
+        <div class="cl-audit-row-info">
+            <div class="cl-nota-nome">${esc(l.nome || '—')} <span class="cl-ausente-badge">AUSENTE</span></div>
+            ${l.nomeRco ? `<div class="cl-audit-rco-nome">RCO: ${esc(l.nomeRco)}</div>` : ''}
+        </div>
+        <div class="cl-audit-row-nota">${notaStr}</div>
+        <div class="cl-audit-row-status">${acaoHtml}</div>
+    </div>`;
+}
+
+async function aplicarZeroIndividual(userId, subId, nome, ativ) {
+    if (!subId) { toast('Este aluno não possui submissão registrada no Classroom.', 'erro'); return; }
+    if (!confirm(`Aplicar nota ZERO para ${nome} na atividade "${ativ.titulo}"?`)) return;
+
+    try {
+        await api(`/courses/${cursoAtivo.id}/coursework/${ativ.id}/submissions/${subId}/grade`,
+            { method: 'PATCH', body: { nota: 0 } });
+
+        // Registrar ausência
+        await apiRaw('/classroom/ausencias', {
+            method: 'POST',
+            body: {
+                courseId:      cursoAtivo.id,
+                atividadeId:   ativ.id,
+                userId,
+                nomeAluno:     nome,
+                dataAtividade: ativ.data,
+                codClasse:     auditCodClasse,
+            },
+        });
+
+        toast(`Zero aplicado para ${nome}.`, 'ok');
+        // Recarregar auditoria desta atividade
+        await selecionarAuditAtiv(ativ, document.querySelector('.cl-audit-ativ-item--ativo'));
+    } catch (e) {
+        toast('Erro ao aplicar zero: ' + e.message, 'erro');
+    }
+}
+
+async function aplicarZerosTodos(ausentesLista, ativ) {
+    const pendentes = ausentesLista.filter(l => !l.sub?.ausente && l.sub?.id);
+    if (!pendentes.length) { toast('Todos os ausentes já foram zerados.', 'ok'); return; }
+    if (!confirm(`Aplicar nota ZERO para ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`)) return;
+
+    const btn = document.getElementById('clBtnAplicarTodos');
+    if (btn) { btn.disabled = true; btn.textContent = 'Aplicando...'; }
+
+    let ok = 0;
+    let erros = 0;
+    for (const l of pendentes) {
+        try {
+            await api(`/courses/${cursoAtivo.id}/coursework/${ativ.id}/submissions/${l.sub.id}/grade`,
+                { method: 'PATCH', body: { nota: 0 } });
+            await apiRaw('/classroom/ausencias', {
+                method: 'POST',
+                body: {
+                    courseId:      cursoAtivo.id,
+                    atividadeId:   ativ.id,
+                    userId:        l.userId,
+                    nomeAluno:     l.nome,
+                    dataAtividade: ativ.data,
+                    codClasse:     auditCodClasse,
+                },
+            });
+            ok++;
+        } catch (_) {
+            erros++;
+        }
+    }
+
+    toast(`${ok} zero${ok !== 1 ? 's' : ''} aplicado${ok !== 1 ? 's' : ''}${erros > 0 ? ` (${erros} erro${erros !== 1 ? 's' : ''})` : ''}.`, erros > 0 ? '' : 'ok');
+    await selecionarAuditAtiv(ativ, document.querySelector('.cl-audit-ativ-item--ativo'));
+}
+
+function exportarAuditCSV() {
+    if (!auditAtivAtiva || !auditResultado) return;
+    const curso = cursoAtivo?.nome || 'disciplina';
+    const ativ  = auditAtivAtiva;
+    let csv = `Disciplina,Atividade,Data da aula\n"${curso}","${ativ.titulo}","${ativ.data}"\n\n`;
+    csv    += 'Nº,Aluno,Status Frequência,Nota\n';
+    elNotasLista.querySelectorAll('.cl-audit-row').forEach((row, i) => {
+        const nome   = row.querySelector('.cl-nota-nome')?.textContent.replace('AUSENTE','').trim() || '';
+        const ausent = row.classList.contains('cl-audit-row--ausente') ? 'Ausente' : 'Presente';
+        const nota   = row.querySelector('.cl-audit-nota')?.textContent.trim().replace(' pts', '') || '';
+        csv += `${i+1},"${nome}","${ausent}","${nota}"\n`;
+    });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `Auditoria – ${curso} – ${ativ.titulo} – ${ativ.data.replace('/','.')}.csv`.replace(/[\\/:*?"<>|]/g,'_');
+    a.click(); URL.revokeObjectURL(url);
+    toast('CSV exportado!', 'ok');
+}
+
+/* ── Filtro de status (adicionar opção "Ausente") ── */
+(function adicionarFiltroAusente() {
+    const sel = document.getElementById('clFiltroStatus');
+    if (sel && !sel.querySelector('option[value="ausente"]')) {
+        const opt = document.createElement('option');
+        opt.value       = 'ausente';
+        opt.textContent = 'Ausentes';
+        sel.appendChild(opt);
+    }
+})();
 
 /* ══════════════════════════════════════════════════════════════
    INICIA

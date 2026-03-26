@@ -768,3 +768,227 @@ body {
 }
 .cl-resumo-num { font-size: 1rem; }
 .cl-resumo-den { font-size: .72rem; color: var(--text-muted); }
+
+/* ══════════════════════════════════════════════════════════════
+   AUDITORIA DE FREQUÊNCIA
+══════════════════════════════════════════════════════════════ */
+
+/* ── Painel de auditoria (coluna 2) ── */
+.cl-audit-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.cl-audit-config {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cl-audit-label {
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-muted);
+}
+
+.cl-audit-hint {
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.cl-audit-results {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.cl-audit-results-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.cl-audit-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .78rem;
+    flex-wrap: wrap;
+}
+
+.cl-audit-summary-num {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.cl-audit-summary-num--warn  { color: #dc2626; }
+.cl-audit-summary-num--ok    { color: #16a34a; }
+.cl-audit-summary-label      { font-weight: 600; color: var(--text-primary); }
+.cl-audit-summary-sep        { color: var(--text-muted); }
+.cl-audit-summary-detail     { color: var(--text-muted); }
+
+/* ── Lista de atividades da auditoria ── */
+.cl-audit-ativ-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .12s;
+}
+
+.cl-audit-ativ-item:hover { background: color-mix(in srgb, var(--text-muted) 5%, transparent); }
+.cl-audit-ativ-item--ativo {
+    background: color-mix(in srgb, #4285F4 8%, transparent);
+    border-left: 3px solid #4285F4;
+}
+
+.cl-audit-ativ-info { min-width: 0; flex: 1; }
+
+.cl-audit-ativ-titulo {
+    font-size: .83rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cl-audit-ativ-data {
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.cl-audit-badge {
+    flex-shrink: 0;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.cl-audit-badge--ok   { background: #dcfce7; color: #166534; }
+.cl-audit-badge--warn { background: #fee2e2; color: #991b1b; }
+.dark .cl-audit-badge--ok   { background: #14532d; color: #86efac; }
+.dark .cl-audit-badge--warn { background: #7f1d1d; color: #fca5a5; }
+
+/* ── Badge AUSENTE (inline na nota row) ── */
+.cl-ausente-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 4px;
+    padding: 1px 5px;
+    vertical-align: middle;
+}
+.dark .cl-ausente-badge { background: #7f1d1d; color: #fca5a5; }
+
+/* ── Linha de nota com flag ausente ── */
+.cl-nota-row--ausente { background: color-mix(in srgb, #dc2626 4%, transparent); }
+.cl-nota-row--ausente:hover { background: color-mix(in srgb, #dc2626 6%, transparent); }
+
+/* ── Detalhe da auditoria (coluna 3) ── */
+.cl-audit-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 14px;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-muted);
+    background: color-mix(in srgb, #dc2626 6%, var(--surface));
+    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.cl-audit-section-head--present {
+    background: color-mix(in srgb, #16a34a 5%, var(--surface));
+    margin-top: 4px;
+}
+
+.cl-audit-todos-ok {
+    font-size: .72rem;
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.cl-audit-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 70px 110px;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: .82rem;
+}
+
+.cl-audit-row--ausente {
+    background: color-mix(in srgb, #dc2626 3%, transparent);
+}
+.cl-audit-row--ausente:hover {
+    background: color-mix(in srgb, #dc2626 6%, transparent);
+}
+.cl-audit-row--presente { opacity: .75; }
+
+.cl-nota-avatar--ausente {
+    outline: 2px solid #dc2626;
+    outline-offset: 1px;
+}
+
+.cl-audit-row-info { min-width: 0; }
+.cl-audit-rco-nome {
+    font-size: .68rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cl-audit-row-nota { text-align: right; font-weight: 700; }
+.cl-audit-nota      { color: var(--text-primary); font-size: .82rem; }
+.cl-audit-nota--vazia { color: var(--text-muted); }
+
+.cl-audit-row-status { text-align: center; }
+
+.cl-audit-sem-sub {
+    font-size: .68rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* ── Botão danger ── */
+.cl-btn--danger {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+.cl-btn--danger:hover { background: #b91c1c; }
+
+/* ── Tab auditoria com ícone ── */
+#clTabAudit {
+    display: flex;
+    align-items: center;
+}

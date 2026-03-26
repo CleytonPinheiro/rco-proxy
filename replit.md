@@ -5,11 +5,15 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 
 ### Classroom (Google Classroom API)
 - **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD
-- **Frontend**: `frontend/pages/classroom/` — página de 3 colunas (disciplinas → atividades → notas)
+- **Frontend**: `frontend/pages/classroom/` — página de 3 colunas (disciplinas → atividades/grupos/auditoria → notas)
 - **Token**: armazenado em `backend/data/classroom_token.json`
 - **Credenciais necessárias**: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (env secrets)
 - **Redirect URI** (registrar no Google Cloud Console): `https://{domínio}/api/classroom/callback`
 - **Escopos**: `classroom.courses.readonly`, `classroom.coursework.students`, `classroom.rosters.readonly`, `classroom.student-submissions.students.readonly`
+- **Auditoria de Frequência**: cruza dados de presença do RCO com atividades do Classroom; zera notas de ausentes automaticamente; registra na tabela `classroom_ausencias` (local PG)
+  - Endpoint: `GET /api/classroom/audit?courseId=X&codClasse=Y` — cruza frequência RCO + Classroom
+  - Endpoint: `POST /api/classroom/ausencias` — salva registro de ausência
+  - Endpoint: `GET/DELETE /api/classroom/ausencias` — consulta/remove registros
 
 ## Estado Atual
 - **Data**: 24/03/2026

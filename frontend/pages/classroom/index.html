@@ -238,10 +238,13 @@
                     </div>
                 </div>
 
-                <!-- Abas Atividades / Grupos -->
+                <!-- Abas Atividades / Grupos / Auditoria -->
                 <div class="cl-tabs" id="clTabs" style="display:none">
                     <button class="cl-tab cl-tab--ativo" id="clTabAtiv">Atividades</button>
                     <button class="cl-tab" id="clTabGrupos">Grupos</button>
+                    <button class="cl-tab" id="clTabAudit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="margin-right:4px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Auditoria
+                    </button>
                 </div>
 
                 <!-- Lista de atividades -->
@@ -252,6 +255,24 @@
                 <!-- Lista de grupos -->
                 <div class="cl-lista" id="clGrupoLista" style="display:none">
                     <div class="cl-empty-state"><p>Nenhum grupo criado.<br>Clique em <strong>+</strong> para criar.</p></div>
+                </div>
+
+                <!-- Painel de Auditoria -->
+                <div class="cl-audit-panel" id="clAuditPanel" style="display:none">
+                    <div class="cl-audit-config" id="clAuditConfig">
+                        <label class="cl-audit-label">Turma/Disciplina no RCO</label>
+                        <select class="cl-select" id="clAuditClasseSel">
+                            <option value="">— selecione —</option>
+                        </select>
+                        <button class="cl-btn cl-btn--primary cl-btn--sm" id="clBtnRodarAudit" style="margin-top:8px;width:100%">
+                            Analisar frequência
+                        </button>
+                        <p class="cl-audit-hint" id="clAuditHint"></p>
+                    </div>
+                    <div class="cl-audit-results" id="clAuditResults" style="display:none">
+                        <div class="cl-audit-results-header" id="clAuditResultsHeader"></div>
+                        <div class="cl-lista" id="clAuditAtivLista"></div>
+                    </div>
                 </div>
             </section>
 

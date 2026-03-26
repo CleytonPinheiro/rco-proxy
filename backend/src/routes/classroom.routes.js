@@ -21,8 +21,8 @@ const SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
 ];
 
-/* ── Migração das tabelas de grupos ── */
-async function migrarGrupos() {
+/* ── Migração das tabelas ── */
+async function migrarTabelas() {
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS classroom_grupos (
@@ -44,13 +44,26 @@ async function migrarGrupos() {
                 UNIQUE(grupo_id, atividade_id)
             )
         `);
-        console.log('[CLASSROOM] Tabelas de grupos OK');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS classroom_ausencias (
+                id              SERIAL PRIMARY KEY,
+                curso_id        TEXT        NOT NULL,
+                atividade_id    TEXT        NOT NULL,
+                user_id         TEXT        NOT NULL,
+                nome_aluno      TEXT,
+                data_atividade  TEXT,
+                cod_classe      TEXT,
+                criado_em       TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(curso_id, atividade_id, user_id)
+            )
+        `);
+        console.log('[CLASSROOM] Tabelas OK (grupos + ausências)');
     } catch (e) {
-        console.warn('[CLASSROOM] Erro na migração de grupos:', e.message);
+        console.warn('[CLASSROOM] Erro na migração:', e.message);
     }
 }
 
-migrarGrupos();
+migrarTabelas();
 
 /* ── Helpers OAuth ── */
 function getOAuth2Client(req) {
@@ -98,8 +111,41 @@ async function getAuthenticatedClient(req) {
     return oauth2Client;
 }
 
+/* ── Helpers de nome ── */
+const PREPOSICOES = new Set(['DE','DA','DO','DAS','DOS','E','A','O','AS','OS','EM','NO','NA','NOS','NAS']);
+
+function normNome(nome) {
+    return (nome || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function palavrasSignificativas(nomeNorm) {
+    return nomeNorm.split(' ').filter(w => w.length > 1 && !PREPOSICOES.has(w));
+}
+
+function encontrarMatchAluno(nomeClNorm, mapaAlunosRco) {
+    const palavrasCl = new Set(palavrasSignificativas(nomeClNorm));
+    let melhor = null;
+    let melhorScore = 0;
+    for (const [nomeRcoNorm, aluno] of Object.entries(mapaAlunosRco)) {
+        const palavrasRco = palavrasSignificativas(nomeRcoNorm);
+        const intersecao  = palavrasRco.filter(p => palavrasCl.has(p)).length;
+        if (intersecao > melhorScore) {
+            melhorScore = intersecao;
+            melhor      = aluno;
+        }
+    }
+    return melhorScore >= 2 ? melhor : null;
+}
+
 /* ══════════════════════════════════════════════════════════════ */
-export function createClassroomRouter() {
+export function createClassroomRouter(deps = {}) {
+    const { rcoApiService } = deps;
     const router = Router();
 
     /* ── Status da conexão ── */
@@ -237,11 +283,20 @@ export function createClassroomRouter() {
                 allSubs.push(...(resp.data.studentSubmissions || []));
                 pageToken = resp.data.nextPageToken;
             } while (pageToken);
+
+            // Buscar ausências marcadas para esta atividade
+            const { rows: ausRows } = await pool.query(
+                `SELECT user_id FROM classroom_ausencias WHERE curso_id=$1 AND atividade_id=$2`,
+                [req.params.courseId, req.params.cwId]
+            );
+            const ausentes = new Set(ausRows.map(r => r.user_id));
+
             res.json(allSubs.map(s => ({
                 id: s.id, userId: s.userId, estado: s.state,
                 entregue: s.state === 'TURNED_IN' || s.state === 'RETURNED',
                 nota: s.assignedGrade ?? null, notaRascunho: s.draftGrade ?? null,
                 atrasado: s.late || false, atualizadoEm: s.updateTime,
+                ausente: ausentes.has(s.userId),
             })));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar entregas:', e.message);
@@ -280,6 +335,223 @@ export function createClassroomRouter() {
             res.json({ ok: true });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao devolver entrega:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════════
+       AUDITORIA DE FREQUÊNCIA
+    ════════════════════════════════════════════════════════════ */
+
+    /* ── Executar auditoria: cruza faltas do RCO com atividades do Classroom ── */
+    router.get('/classroom/audit', async (req, res) => {
+        const { courseId, codClasse, codPeriodoAvaliacao = 9, codPeriodoLetivo = 261 } = req.query;
+        if (!courseId || !codClasse) {
+            return res.status(400).json({ erro: 'courseId e codClasse são obrigatórios' });
+        }
+        if (!rcoApiService) {
+            return res.status(503).json({ erro: 'Serviço RCO indisponível.' });
+        }
+        const auth = await getAuthenticatedClient(req);
+        if (!auth) return res.status(401).json({ erro: 'Não autenticado com Google.' });
+
+        try {
+            /* 1. Buscar frequências do RCO */
+            const freqPath = `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=${codPeriodoLetivo}&page=1&perPage=200`;
+            const freqResp = await rcoApiService.get(freqPath);
+            if (freqResp.status !== 200) {
+                return res.status(502).json({ erro: `RCO retornou ${freqResp.status}` });
+            }
+            const rawFreq = Array.isArray(freqResp.data) ? freqResp.data : [];
+
+            /* 2. Descobrir codAulas */
+            const aulaSet = new Set();
+            rawFreq.forEach(a => Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); }));
+            const codAulas = [...aulaSet].sort((a, b) => parseInt(a) - parseInt(b));
+
+            /* 3. Buscar datas das aulas em paralelo */
+            const aulaDatas = {};
+            await Promise.all(codAulas.map(async (cod) => {
+                try {
+                    const r = await rcoApiService.get(`/educador/grade/aula/v2/${cod}?codPeriodoLetivo=${codPeriodoLetivo}`);
+                    const dataRaw = r?.data?.aula?.dataAula || r?.data?.dataAula || null;
+                    if (dataRaw) {
+                        const d  = new Date(dataRaw);
+                        const dd = String(d.getUTCDate()).padStart(2, '0');
+                        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                        aulaDatas[cod] = `${dd}/${mm}`;
+                    }
+                } catch (_) {}
+            }));
+
+            /* 4. Montar mapa de alunos do RCO: nomeNorm → { nome, frequencias } */
+            const mapaRco = {};
+            rawFreq.forEach(a => {
+                const chave = normNome(a.nome);
+                if (!mapaRco[chave]) {
+                    const frequencias = {};
+                    codAulas.forEach(cod => { frequencias[cod] = a[cod] || null; });
+                    mapaRco[chave] = { nome: a.nome, frequencias };
+                } else {
+                    codAulas.forEach(cod => {
+                        if (a[cod] === 'C') mapaRco[chave].frequencias[cod] = 'C';
+                        else if (!mapaRco[chave].frequencias[cod] && a[cod]) {
+                            mapaRco[chave].frequencias[cod] = a[cod];
+                        }
+                    });
+                }
+            });
+
+            /* 5. Mapa data → codAulas */
+            const datePorCodAulas = {};
+            for (const [cod, data] of Object.entries(aulaDatas)) {
+                if (!datePorCodAulas[data]) datePorCodAulas[data] = [];
+                datePorCodAulas[data].push(cod);
+            }
+
+            /* 6. Buscar alunos e atividades do Classroom */
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            const [studentsResp, workResp] = await Promise.all([
+                (async () => {
+                    const all = [];
+                    let pt;
+                    do {
+                        const r = await classroom.courses.students.list({ courseId, pageSize: 100, pageToken: pt });
+                        all.push(...(r.data.students || []));
+                        pt = r.data.nextPageToken;
+                    } while (pt);
+                    return all;
+                })(),
+                (async () => {
+                    const all = [];
+                    let pt;
+                    do {
+                        const r = await classroom.courses.courseWork.list({ courseId, pageSize: 50, pageToken: pt });
+                        all.push(...(r.data.courseWork || []));
+                        pt = r.data.nextPageToken;
+                    } while (pt);
+                    return all;
+                })(),
+            ]);
+
+            /* 7. Para cada atividade, verificar ausentes */
+            const atividades   = [];
+            const semCorrespondencia = [];
+
+            for (const w of workResp) {
+                if (!w.creationTime) continue;
+                const d   = new Date(w.creationTime);
+                const dd  = String(d.getUTCDate()).padStart(2, '0');
+                const mm  = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dataDDMM = `${dd}/${mm}`;
+
+                const codAulasNoDia = datePorCodAulas[dataDDMM] || [];
+                if (!codAulasNoDia.length) {
+                    semCorrespondencia.push({ id: w.id, titulo: w.title, data: dataDDMM });
+                    continue;
+                }
+
+                const ausentes      = [];
+                const semMatchNome  = [];
+
+                for (const st of studentsResp) {
+                    const nomeClNorm = normNome(st.profile?.name?.fullName || '');
+                    const matchRco   = encontrarMatchAluno(nomeClNorm, mapaRco);
+
+                    if (!matchRco) {
+                        semMatchNome.push(st.profile?.name?.fullName || st.userId);
+                        continue;
+                    }
+
+                    // Determinar se estava ausente naquele dia
+                    const aulasDoDia = codAulasNoDia.filter(cod =>
+                        matchRco.frequencias[cod] !== null && matchRco.frequencias[cod] !== undefined
+                    );
+                    if (!aulasDoDia.length) continue; // sem registro de presença neste dia
+
+                    const presente = aulasDoDia.some(cod => matchRco.frequencias[cod] === 'C');
+                    if (!presente) {
+                        ausentes.push({
+                            userId:        st.userId,
+                            nomeClassroom: st.profile?.name?.fullName || '—',
+                            nomeRco:       matchRco.nome,
+                        });
+                    }
+                }
+
+                let prazo = null;
+                if (w.dueDate) {
+                    prazo = `${String(w.dueDate.day).padStart(2,'0')}/${String(w.dueDate.month).padStart(2,'0')}/${w.dueDate.year}`;
+                }
+
+                atividades.push({
+                    id:           w.id,
+                    titulo:       w.title,
+                    data:         dataDDMM,
+                    prazo,
+                    pontos:       w.maxPoints ?? null,
+                    ausentes,
+                    semMatchNome: [...new Set(semMatchNome)],
+                });
+            }
+
+            res.json({ atividades, semCorrespondencia });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro na auditoria:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Registrar ausências (após aplicar zeros) ── */
+    router.post('/classroom/ausencias', async (req, res) => {
+        const { courseId, atividadeId, userId, nomeAluno, dataAtividade, codClasse } = req.body;
+        if (!courseId || !atividadeId || !userId) {
+            return res.status(400).json({ erro: 'courseId, atividadeId e userId são obrigatórios' });
+        }
+        try {
+            await pool.query(`
+                INSERT INTO classroom_ausencias (curso_id, atividade_id, user_id, nome_aluno, data_atividade, cod_classe)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (curso_id, atividade_id, user_id) DO NOTHING
+            `, [courseId, atividadeId, userId, nomeAluno || null, dataAtividade || null, codClasse || null]);
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao salvar ausência:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Remover registro de ausência (desfazer) ── */
+    router.delete('/classroom/ausencias', async (req, res) => {
+        const { courseId, atividadeId, userId } = req.query;
+        if (!courseId || !atividadeId || !userId) {
+            return res.status(400).json({ erro: 'courseId, atividadeId e userId são obrigatórios' });
+        }
+        try {
+            await pool.query(
+                `DELETE FROM classroom_ausencias WHERE curso_id=$1 AND atividade_id=$2 AND user_id=$3`,
+                [courseId, atividadeId, userId]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao remover ausência:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Listar ausências de um curso/atividade ── */
+    router.get('/classroom/ausencias', async (req, res) => {
+        const { courseId, atividadeId } = req.query;
+        if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
+        try {
+            let q = `SELECT * FROM classroom_ausencias WHERE curso_id=$1`;
+            const params = [courseId];
+            if (atividadeId) { q += ` AND atividade_id=$2`; params.push(atividadeId); }
+            const { rows } = await pool.query(q + ' ORDER BY criado_em DESC', params);
+            res.json(rows);
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao listar ausências:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });
@@ -421,7 +693,7 @@ export function createClassroomRouter() {
                     if (!alunoMap[s.userId]) {
                         alunoMap[s.userId] = { userId: s.userId, soma: 0, pendentes: 0, atividades: {} };
                     }
-                    const nota = s.assignedGrade ?? null;
+                    const nota     = s.assignedGrade ?? null;
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
                         nota, estado: s.state, entregue, atrasado: s.late || false,
