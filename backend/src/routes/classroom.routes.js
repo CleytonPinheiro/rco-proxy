@@ -691,16 +691,13 @@ export function createClassroomRouter(deps = {}) {
             results.forEach(({ atividade, submissions }) => {
                 // pontos_max da atividade — se null/0 assume 100 (escala percentual)
                 const pontosMax = atividade.pontos_max > 0 ? Number(atividade.pontos_max) : 100;
-                // DEBUG — imprimir amostra para diagnóstico
-                const amostra = submissions.slice(0, 2);
-                console.log(`[SUMMARY_DEBUG] atv=${atividade.atividade_titulo} pontosMax=${pontosMax} totalSubs=${submissions.length}`);
-                amostra.forEach(s => console.log(`  userId=${s.userId} state=${s.state} assignedGrade=${s.assignedGrade} draftGrade=${s.draftGrade}`));
                 submissions.forEach(s => {
                     if (!alunoMap[s.userId]) {
                         alunoMap[s.userId] = { userId: s.userId, totalPct: 0, countPct: 0, pendentes: 0, atividades: {} };
                     }
-                    // assignedGrade = publicada (devolvida ao aluno); draftGrade = rascunho (não devolvida)
-                    const nota     = s.assignedGrade ?? s.draftGrade ?? null;
+                    // assignedGrade = publicada (devolvida); draftGrade = rascunho do professor
+                    // draftGrade=0 é ambíguo (padrão do Classroom) → só usar se > 0
+                    const nota = s.assignedGrade ?? (s.draftGrade > 0 ? s.draftGrade : null);
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
                         nota, estado: s.state, entregue, atrasado: s.late || false,
