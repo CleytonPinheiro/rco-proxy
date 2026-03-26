@@ -1281,6 +1281,7 @@ async function prepararAuditSelector() {
         if (String(c.codClasse) === String(savedClasse)) opt.selected = true;
         elAuditClasseSel.appendChild(opt);
     });
+    syncCustomSel();
 
     if (savedClasse) {
         auditCodClasse = savedClasse;
@@ -1613,6 +1614,59 @@ function exportarAuditCSV() {
 })();
 
 /* ══════════════════════════════════════════════════════════════
+   CUSTOM SELECT — AUDITORIA
+══════════════════════════════════════════════════════════════ */
+let _cselClose = null;   // fecha o dropdown de qualquer lugar
+
+function syncCustomSel() {
+    const sel   = elAuditClasseSel;
+    const valEl = document.getElementById('clAuditSelVal');
+    const list  = document.getElementById('clAuditSelList');
+    if (!list || !valEl) return;
+
+    list.innerHTML = '';
+    [...sel.options].forEach(opt => {
+        const item = document.createElement('div');
+        item.className = 'cl-csel-item'
+            + (opt.value === '' ? ' cl-csel-item--placeholder' : '')
+            + (opt.selected  ? ' cl-csel-item--sel' : '');
+        item.textContent = opt.textContent;
+        item.title = opt.textContent;
+        item.addEventListener('click', () => {
+            sel.value = opt.value;
+            sel.dispatchEvent(new Event('change'));
+            syncCustomSel();
+            _cselClose?.();
+        });
+        list.appendChild(item);
+    });
+
+    const selOpt = sel.options[sel.selectedIndex];
+    const txt    = selOpt?.textContent || '— selecione a turma/disciplina —';
+    valEl.textContent = txt;
+    valEl.classList.toggle('cl-csel-val--placeholder', !sel.value);
+}
+
+function initCustomSel() {
+    const btn  = document.getElementById('clAuditSelBtn');
+    const drop = document.getElementById('clAuditSelDrop');
+    if (!btn || !drop) return;
+
+    function openDrop()  { drop.style.display = ''; btn.classList.add('cl-csel-btn--open'); }
+    function closeDrop() { drop.style.display = 'none'; btn.classList.remove('cl-csel-btn--open'); }
+    _cselClose = closeDrop;
+
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        drop.style.display === 'none' ? openDrop() : closeDrop();
+    });
+    drop.addEventListener('click', e => e.stopPropagation());
+    document.addEventListener('click', () => closeDrop());
+
+    syncCustomSel();
+}
+
+/* ══════════════════════════════════════════════════════════════
    HANDLES DE REDIMENSIONAMENTO DE COLUNAS
 ══════════════════════════════════════════════════════════════ */
 function initResizeHandles() {
@@ -1667,6 +1721,7 @@ function initResizeHandles() {
     setupHandle(document.getElementById('clHandle2'), 2);
 }
 initResizeHandles();
+initCustomSel();
 
 /* ══════════════════════════════════════════════════════════════
    INICIA
