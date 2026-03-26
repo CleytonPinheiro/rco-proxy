@@ -670,14 +670,13 @@ async function selecionarGrupo(grupo, itemEl) {
             ...a,
             aluno: alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
             // soma proporcional: média dos índices (%) aplicada ao valor total do grupo
-            soma: (a.mediaIndice / 100) * meta,
+            soma: ((a.mediaIndice ?? 0) / 100) * meta,
         })).sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || ''));
 
         const total   = alunosResumo.length;
         const comTudo = alunosResumo.filter(a => a.pendentes === 0).length;
         const pend    = alunosResumo.filter(a => a.pendentes > 0).length;
-        const comNota = alunosResumo.filter(a => a.soma > 0);
-        const media   = comNota.length ? (comNota.reduce((s, a) => s + a.soma, 0) / comNota.length).toFixed(1) : '—';
+        const media   = total ? (alunosResumo.reduce((s, a) => s + a.soma, 0) / total).toFixed(1) : '—';
 
         document.getElementById('clStTotal').textContent              = total;
         document.getElementById('clStEntregues').textContent          = comTudo;
