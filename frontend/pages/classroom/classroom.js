@@ -703,7 +703,7 @@ async function selecionarGrupo(grupo, itemEl) {
                 <span>Soma / ${meta} pts</span>
                 <span style="text-align:center">Pendentes</span>
             </div>
-            ${alunosResumo.map(a => renderResumoRow(a, meta)).join('')}`;
+            ${alunosResumo.map(a => renderResumoRow(a, meta, resumo.atividades)).join('')}`;
 
         // Click em cada linha → detalhe do aluno
         elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
@@ -717,24 +717,35 @@ async function selecionarGrupo(grupo, itemEl) {
     }
 }
 
-function renderResumoRow(a, meta) {
+function renderResumoRow(a, meta, atividades = []) {
     const al       = a.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
-    const soma     = a.soma;
-    const pct      = meta > 0 ? Math.min(100, (soma / meta) * 100).toFixed(1) : 0;
-    const barCor   = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
+    const soma     = a.soma ?? 0;
+    const pct      = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
+    const somaCor  = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
+
+    // Barra de passos: um segmento por atividade
+    const stepsHtml = atividades.map(atv => {
+        const sub  = a.atividades?.[atv.id];
+        const nota = sub?.nota ?? null;
+        const ent  = sub?.entregue ?? false;
+        // verde = nota lançada | azul = entregue s/ nota | cinza = pendente
+        const cor   = nota !== null ? '#10b981' : ent ? '#4285F4' : 'var(--border)';
+        const label = nota !== null
+            ? `${atv.titulo}: ${nota}${atv.pontos != null ? '/' + atv.pontos : ''} pts`
+            : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
+        return `<span class="cl-passo" style="background:${cor}" title="${esc(label)}"></span>`;
+    }).join('');
 
     return `<div class="cl-resumo-row">
         <div class="cl-nota-avatar">${fotoHtml}</div>
         <div class="cl-resumo-info">
             <div class="cl-nota-nome" title="${esc(al.email)}">${esc(al.nome || '—')}</div>
-            <div class="cl-resumo-barra">
-                <div class="cl-resumo-fill" style="width:${pct}%;background:${barCor}"></div>
-            </div>
+            <div class="cl-passos-barra">${stepsHtml || '<span class="cl-passos-vazia">—</span>'}</div>
         </div>
         <div class="cl-resumo-soma">
-            <span class="cl-resumo-num" style="color:${barCor}">${soma.toFixed(1)}</span>
+            <span class="cl-resumo-num" style="color:${somaCor}">${soma.toFixed(1)}</span>
             <span class="cl-resumo-den">/${meta}</span>
         </div>
         <div style="text-align:center">
