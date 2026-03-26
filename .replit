@@ -47,3 +47,4 @@ waitForPort = 5000
 SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cm5uZGxtdWx0bmxwbXloaGVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTA1MzUsImV4cCI6MjA4MzkyNjUzNX0.deIayTxJwbtvWZLJwBxi-5YkLlWaQMRPFP1Q61elC1I"
 GOOGLE_CLIENT_ID = "644184251184-552hml6ujpbk7tot3mpocl8eaas4lref.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET = "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"
+GOOGLE_REDIRECT_URI = "https://12466c21-e938-4201-9f91-cf01c0df736c-00-192svrpirrfkj.janeway.replit.dev/api/classroom/callback"
