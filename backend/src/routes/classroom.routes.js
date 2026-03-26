@@ -689,9 +689,11 @@ export function createClassroomRouter(deps = {}) {
 
             const alunoMap = {};
             results.forEach(({ atividade, submissions }) => {
+                // pontos_max da atividade — se null/0 assume 100 (escala percentual)
+                const pontosMax = atividade.pontos_max > 0 ? Number(atividade.pontos_max) : 100;
                 submissions.forEach(s => {
                     if (!alunoMap[s.userId]) {
-                        alunoMap[s.userId] = { userId: s.userId, soma: 0, pendentes: 0, atividades: {} };
+                        alunoMap[s.userId] = { userId: s.userId, totalPct: 0, countPct: 0, pendentes: 0, atividades: {} };
                     }
                     const nota     = s.assignedGrade ?? null;
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
@@ -699,18 +701,29 @@ export function createClassroomRouter(deps = {}) {
                         nota, estado: s.state, entregue, atrasado: s.late || false,
                     };
                     if (nota !== null) {
-                        alunoMap[s.userId].soma += nota;
+                        // normaliza nota como índice percentual (0–100)
+                        const pct = (nota / pontosMax) * 100;
+                        alunoMap[s.userId].totalPct += pct;
+                        alunoMap[s.userId].countPct++;
                     } else if (!entregue) {
                         alunoMap[s.userId].pendentes++;
                     }
                 });
             });
 
+            // mediaIndice = média dos índices percentuais de todas as atividades com nota
+            const alunos = Object.values(alunoMap).map(a => ({
+                userId:      a.userId,
+                mediaIndice: a.countPct > 0 ? a.totalPct / a.countPct : 0,
+                pendentes:   a.pendentes,
+                atividades:  a.atividades,
+            }));
+
             res.json({
                 atividades: ativs.map(a => ({
                     id: a.atividade_id, titulo: a.atividade_titulo, pontos: a.pontos_max !== null ? Number(a.pontos_max) : null,
                 })),
-                alunos: Object.values(alunoMap),
+                alunos,
             });
         } catch (e) {
             console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);

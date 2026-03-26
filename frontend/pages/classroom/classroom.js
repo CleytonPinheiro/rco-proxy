@@ -664,9 +664,13 @@ async function selecionarGrupo(grupo, itemEl) {
     try {
         const resumo = await api(`/groups/${grupo.id}/summary?courseId=${cursoAtivo.id}`);
 
+        const meta = grupo.pontosMeta;
+
         const alunosResumo = resumo.alunos.map(a => ({
             ...a,
             aluno: alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
+            // soma proporcional: média dos índices (%) aplicada ao valor total do grupo
+            soma: (a.mediaIndice / 100) * meta,
         })).sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || ''));
 
         const total   = alunosResumo.length;
@@ -689,7 +693,6 @@ async function selecionarGrupo(grupo, itemEl) {
             return;
         }
 
-        const meta = grupo.pontosMeta;
         elNotasLista.innerHTML = `
             <div class="cl-resumo-header">
                 <span></span>
