@@ -1277,6 +1277,12 @@ elAtivLista.addEventListener('click', async e => {
             });
             // Atualiza cache local
             if (cacheEntry) cacheEntry.pontos = valInterno;
+            // Se a atividade editada for a que está aberta no painel direito,
+            // atualiza ativAtiva e re-renderiza as notas sem chamada extra à API
+            if (ativAtiva && ativAtiva.id === ativId) {
+                ativAtiva.pontos = valInterno;
+                renderNotas();
+            }
             // Se houver grupo aberto com esta atividade, recarrega o resumo
             if (grupoAtivo) {
                 const contemAtiv = grupoAtivo.atividades?.some(a => a.atividade_id === ativId);
