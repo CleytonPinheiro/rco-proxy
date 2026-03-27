@@ -748,6 +748,34 @@ body {
 .cl-modal-ativ-item input { flex-shrink: 0; accent-color: #4285F4; width: 15px; height: 15px; cursor: pointer; }
 .cl-modal-ativ-nome { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* pontos editáveis no modal */
+.cl-modal-ativ-item .cl-ativ-pontos {
+    cursor: text;
+    border: 1px dashed transparent;
+    transition: border-color .15s, background .15s;
+}
+.cl-modal-ativ-item .cl-ativ-pontos:hover {
+    border-color: #10b981;
+    background: color-mix(in srgb, #10b981 22%, transparent);
+}
+.cl-pontos-edit {
+    width: 62px;
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border: 1px solid #10b981;
+    border-radius: 5px;
+    background: color-mix(in srgb, #10b981 12%, transparent);
+    color: #10b981;
+    font-size: .7rem;
+    font-weight: 700;
+    font-family: inherit;
+    outline: none;
+    text-align: right;
+    -moz-appearance: textfield;
+}
+.cl-pontos-edit::-webkit-outer-spin-button,
+.cl-pontos-edit::-webkit-inner-spin-button { -webkit-appearance: none; }
+
 .cl-modal-foot {
     display: flex;
     gap: 10px;

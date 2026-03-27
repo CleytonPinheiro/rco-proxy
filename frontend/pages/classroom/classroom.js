@@ -1166,6 +1166,51 @@ document.getElementById('clGrupoModalFechar').addEventListener('click', fecharMo
 document.getElementById('clGrupoModalCancelar').addEventListener('click', fecharModal);
 elModal.addEventListener('click', e => { if (e.target === elModal) fecharModal(); });
 
+/* ── Edição inline dos pontos de cada atividade no modal ── */
+elModalAtivs.addEventListener('click', e => {
+    const span = e.target.closest('.cl-modal-ativ-item .cl-ativ-pontos');
+    if (!span) return;
+
+    // Impede que o clique no badge marque/desmarque o checkbox
+    e.preventDefault();
+    e.stopPropagation();
+
+    const cb      = span.closest('.cl-modal-ativ-item')?.querySelector('input[type=checkbox]');
+    if (!cb) return;
+    const current = cb.dataset.pontos !== '' ? parseFloat(cb.dataset.pontos) : 0;
+
+    const input = document.createElement('input');
+    input.type      = 'number';
+    input.min       = '0';
+    input.max       = '9999';
+    input.step      = '1';
+    input.value     = current;
+    input.className = 'cl-pontos-edit';
+    input.title     = 'Enter para confirmar · Esc para cancelar';
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = () => {
+        if (committed) return;
+        committed = true;
+        const raw  = parseFloat(input.value);
+        const val  = (!isNaN(raw) && raw >= 0) ? Math.round(raw) : Math.round(current);
+        cb.dataset.pontos = val;
+        const newSpan       = document.createElement('span');
+        newSpan.className   = 'cl-ativ-pontos';
+        newSpan.textContent = val + ' pts';
+        input.replaceWith(newSpan);
+    };
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter')  { ev.preventDefault(); input.blur(); }
+        if (ev.key === 'Escape') { input.value = current; input.blur(); }
+    });
+});
+
 document.getElementById('clGrupoModalSalvar').addEventListener('click', async () => {
     const nome      = elGrupoNome.value.trim();
     const pontos    = Number(elGrupoPontos.value) || 40;
