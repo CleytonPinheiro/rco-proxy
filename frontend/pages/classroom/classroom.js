@@ -63,6 +63,9 @@ function toast(msg, tipo = '') {
     toastTimer = setTimeout(() => elToast.classList.remove('cl-toast--visivel'), 3000);
 }
 
+/* ── Escala RCO: divide por 10, 1 casa decimal ── */
+const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
+
 /* ── API helper (prefixo /api/classroom) ── */
 async function api(path, opts = {}) {
     const r = await fetch('/api/classroom' + path, {
@@ -380,7 +383,7 @@ function renderAtividades(atividades) {
         item.innerHTML = `
             <div class="cl-ativ-header">
                 <span class="cl-ativ-titulo" title="${esc(a.titulo)}">${esc(a.titulo)}</span>
-                ${a.pontos !== null ? `<span class="cl-ativ-pontos">${a.pontos} pts</span>` : ''}
+                ${a.pontos !== null ? `<span class="cl-ativ-pontos">${rco(a.pontos)} pts</span>` : ''}
             </div>
             <div class="cl-ativ-meta">
                 <span class="cl-ativ-tipo-badge ${tipoCls}">${TIPO_LABELS[a.tipo] || a.tipo || 'Atividade'}</span>
@@ -435,7 +438,7 @@ function atualizarStats() {
     const entregues = todasNotas.filter(n => n.entregue || n.estado === 'RETURNED').length;
     const pendentes = todasNotas.filter(n => !n.entregue && n.estado !== 'RETURNED').length;
     const comNota   = todasNotas.filter(n => n.nota !== null);
-    const media     = comNota.length ? (comNota.reduce((s, n) => s + n.nota, 0) / comNota.length).toFixed(1) : '—';
+    const media     = comNota.length ? rco(comNota.reduce((s, n) => s + n.nota, 0) / comNota.length) : '—';
 
     document.getElementById('clStTotal').textContent     = total;
     document.getElementById('clStEntregues').textContent = entregues;
@@ -472,7 +475,7 @@ function renderNotas() {
             <span></span>
             <span>Aluno</span>
             <span style="text-align:center">Status</span>
-            <span style="text-align:center">Nota${maxPts !== null ? ` /${maxPts}` : ''}</span>
+            <span style="text-align:center">Nota${maxPts !== null ? ` /${rco(maxPts)}` : ''}</span>
             <span style="text-align:center">Ação</span>
         </div>
         ${lista.map(n => renderNotaRow(n)).join('')}`;
@@ -496,7 +499,7 @@ function renderNotaRow(n) {
     else if (n.entregue)           { statusLabel = 'Entregue';  statusCls = 'entregue'; }
     else                           { statusLabel = 'Pendente';  statusCls = 'pendente'; }
 
-    const inputVal     = n.nota !== null ? n.nota : '';
+    const inputVal     = n.nota !== null ? (n.nota / 10).toFixed(1) : '';
     const podeDevolver = n.entregue && n.estado !== 'RETURNED';
     const ausenteBadge = n.ausente
         ? `<span class="cl-ausente-badge" title="Aluno estava ausente neste dia — zero aplicado pela auditoria">AUSENTE</span>`
@@ -509,8 +512,8 @@ function renderNotaRow(n) {
             <span class="cl-nota-status-badge cl-nota-status--${statusCls}">${statusLabel}</span>
         </div>
         <div>
-            <input class="cl-nota-input" type="number" min="0" max="${ativAtiva?.pontos ?? 100}"
-                step="0.5" value="${inputVal}" placeholder="—"
+            <input class="cl-nota-input" type="number" min="0" max="${ativAtiva?.pontos != null ? (ativAtiva.pontos / 10).toFixed(1) : 10}"
+                step="0.1" value="${inputVal}" placeholder="—"
                 data-sub="${n.id}" data-original="${inputVal}"/>
         </div>
         <div class="cl-nota-acao">
@@ -529,13 +532,15 @@ async function salvarNota(input) {
     if (nova === original) return;
     input.disabled = true;
     try {
+        // Converte de volta para escala Classroom (×10) antes de enviar
+        const notaInterno = nova === '' ? null : Math.round(Number(nova) * 10);
         await api(`/courses/${cursoAtivo.id}/coursework/${ativAtiva.id}/submissions/${subId}/grade`, {
-            method: 'PATCH', body: { nota: nova === '' ? null : Number(nova) },
+            method: 'PATCH', body: { nota: notaInterno },
         });
         input.classList.add('cl-nota-input--salva');
         input.dataset.original = nova;
         const sub = todasNotas.find(n => n.id === subId);
-        if (sub) sub.nota = nova === '' ? null : Number(nova);
+        if (sub) sub.nota = notaInterno;   // mantém escala interna em todasNotas
         atualizarStats();
         toast('Nota salva!', 'ok');
         setTimeout(() => input.classList.remove('cl-nota-input--salva'), 2000);
@@ -628,7 +633,7 @@ function renderGrupos() {
                 <div class="cl-grupo-nome">${esc(g.nome)}</div>
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
-                    <span class="cl-grupo-pts">${g.pontosMeta} pts</span>
+                    <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
                 </div>
             </div>
             <div class="cl-grupo-acoes">
@@ -685,7 +690,7 @@ async function selecionarGrupo(grupo, itemEl) {
         const total   = alunosResumo.length;
         const comTudo = alunosResumo.filter(a => a.pendentes === 0).length;
         const pend    = alunosResumo.filter(a => a.pendentes > 0).length;
-        const media   = total ? (alunosResumo.reduce((s, a) => s + a.soma, 0) / total).toFixed(1) : '—';
+        const media   = total ? rco(alunosResumo.reduce((s, a) => s + a.soma, 0) / total) : '—';
 
         document.getElementById('clStTotal').textContent              = total;
         document.getElementById('clStEntregues').textContent          = comTudo;
@@ -775,7 +780,7 @@ function renderListaFiltrada() {
         <div class="cl-resumo-header">
             <span></span>
             <span>Aluno</span>
-            <span>Soma / ${meta} pts</span>
+            <span>Soma / ${rco(meta)} pts</span>
             <span style="text-align:center">Pendentes</span>
         </div>
         <div class="cl-faixa-lista" id="clFaixaLista">
@@ -812,7 +817,7 @@ function renderResumoRow(a, meta, atividades = []) {
         // verde = nota lançada | azul = entregue s/ nota | cinza = pendente
         const cor   = nota !== null ? '#10b981' : ent ? '#4285F4' : 'var(--border)';
         const label = nota !== null
-            ? `${atv.titulo}: ${nota}${atv.pontos != null ? '/' + atv.pontos : ''} pts`
+            ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
             : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
         return `<span class="cl-passo" style="background:${cor}" title="${esc(label)}"></span>`;
     }).join('');
@@ -824,8 +829,8 @@ function renderResumoRow(a, meta, atividades = []) {
             <div class="cl-passos-barra">${stepsHtml || '<span class="cl-passos-vazia">—</span>'}</div>
         </div>
         <div class="cl-resumo-soma">
-            <span class="cl-resumo-num" style="color:${somaCor}">${soma.toFixed(1)}</span>
-            <span class="cl-resumo-den">/${meta}</span>
+            <span class="cl-resumo-num" style="color:${somaCor}">${rco(soma)}</span>
+            <span class="cl-resumo-den">/${rco(meta)}</span>
         </div>
         <div style="text-align:center">
             ${a.pendentes > 0
@@ -837,7 +842,7 @@ function renderResumoRow(a, meta, atividades = []) {
 
 function exportarGrupoCSV() {
     const curso = cursoAtivo?.nome || 'disciplina';
-    let csv = `Disciplina,Grupo,Meta de pontos\n"${curso}","${grupoAtivo?.nome || ''}","${grupoAtivo?.pontosMeta || ''}"\n\n`;
+    let csv = `Disciplina,Grupo,Meta de pontos (RCO)\n"${curso}","${grupoAtivo?.nome || ''}","${grupoAtivo?.pontosMeta ? rco(grupoAtivo.pontosMeta) : ''}"\n\n`;
     csv    += 'Nº,Aluno,Email,Soma,Pendentes\n';
     elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
         const nome  = row.querySelector('.cl-nota-nome')?.textContent.trim() || '';
@@ -876,7 +881,7 @@ function imprimirRelatorioGrupo() {
     const nMeta   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
     const nProg   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'prog').length;
     const nAbaixo = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'abaixo').length;
-    const media   = lista.length ? (lista.reduce((s, a) => s + (a.soma ?? 0), 0) / lista.length).toFixed(1) : '—';
+    const media   = lista.length ? rco(lista.reduce((s, a) => s + (a.soma ?? 0), 0) / lista.length) : '—';
     const pMeta   = totalTurma ? Math.round((nMeta   / totalTurma) * 100) : 0;
     const pProg   = totalTurma ? Math.round((nProg   / totalTurma) * 100) : 0;
     const pAbaixo = totalTurma ? Math.round((nAbaixo / totalTurma) * 100) : 0;
@@ -898,14 +903,14 @@ function imprimirRelatorioGrupo() {
             const nota = sub?.nota ?? null;
             const ent  = sub?.entregue ?? false;
             const c    = nota !== null ? '#10b981' : ent ? '#4285F4' : '#d1d5db';
-            const t    = nota !== null ? `${atv.titulo}: ${nota}pts` : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
+            const t    = nota !== null ? `${atv.titulo}: ${rco(nota)}pts` : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
             return `<span title="${t}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin:1px"></span>`;
         }).join('');
 
         return `<tr>
             <td style="text-align:center;color:#6b7280">${i+1}</td>
             <td><strong>${esc(a.aluno.nome || '—')}</strong></td>
-            <td style="text-align:center;font-weight:700;color:${cor}">${soma.toFixed(1)}</td>
+            <td style="text-align:center;font-weight:700;color:${cor}">${rco(soma)}</td>
             <td style="text-align:center">${pct.toFixed(0)}%</td>
             <td style="text-align:center">
                 <span style="background:${cor}22;color:${cor};padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;white-space:nowrap">${fLabel}</span>
@@ -943,7 +948,7 @@ function imprimirRelatorioGrupo() {
     </style></head><body>
     <button class="no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     <h1>${esc(grupo)}${!isTodos ? ` — ${filtroLabel}` : ''}</h1>
-    <p class="sub">${esc(curso)} &nbsp;·&nbsp; Meta: ${meta} pts &nbsp;·&nbsp; Gerado em ${dataHoje}
+    <p class="sub">${esc(curso)} &nbsp;·&nbsp; Meta: ${rco(meta)} pts &nbsp;·&nbsp; Gerado em ${dataHoje}
     ${!isTodos ? `&nbsp;·&nbsp; <strong>${total} de ${totalTurma} alunos</strong> (filtro: ${filtroLabel})` : ''}</p>
 
     <div class="stats">
@@ -1012,7 +1017,7 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
         if (nota !== null) {
             const ptMax  = atv.pontos ?? 100;
             const pctAtv = ptMax > 0 ? ((nota / ptMax) * 100).toFixed(0) : nota;
-            statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${nota} / ${ptMax} pts &nbsp;(${pctAtv}%)</span>`;
+            statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(nota)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
             tipo = 'realizada';
         } else if (entregue) {
             statusHtml = `<span class="cl-nota-status-badge cl-nota-status--pendente">Entregue – sem nota</span>`;
@@ -1052,7 +1057,7 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
                 <div>
                     <div class="cl-nota-nome">${esc(al.nome || '—')}</div>
                     <div class="cl-detalhe-soma" style="color:${barCor}">
-                        ${soma.toFixed(1)} / ${meta} pts
+                        ${rco(soma)} / ${rco(meta)} pts
                         <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
                     </div>
                 </div>
@@ -1124,13 +1129,13 @@ function abrirModalGrupo(grupo = null) {
         elModalTitulo.textContent = 'Editar Grupo';
         elGrupoId.value           = grupo.id;
         elGrupoNome.value         = grupo.nome;
-        elGrupoPontos.value       = grupo.pontosMeta;
+        elGrupoPontos.value       = (grupo.pontosMeta / 10).toFixed(1);
         corSelecionada            = grupo.cor;
     } else {
         elModalTitulo.textContent = 'Novo Grupo';
         elGrupoId.value           = '';
         elGrupoNome.value         = '';
-        elGrupoPontos.value       = 40;
+        elGrupoPontos.value       = 4;
         corSelecionada            = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
 
@@ -1150,7 +1155,7 @@ function abrirModalGrupo(grupo = null) {
                     data-pontos="${a.pontos ?? ''}"
                     ${ativsNoGrupo.has(a.id) ? 'checked' : ''}/>
                 <span class="cl-modal-ativ-nome">${esc(a.titulo)}</span>
-                ${a.pontos !== null ? `<span class="cl-ativ-pontos">${a.pontos} pts</span>` : ''}
+                ${a.pontos !== null ? `<span class="cl-ativ-pontos">${rco(a.pontos)} pts</span>` : ''}
             </label>`).join('');
     }
 
@@ -1177,16 +1182,18 @@ elModalAtivs.addEventListener('click', e => {
 
     const cb      = span.closest('.cl-modal-ativ-item')?.querySelector('input[type=checkbox]');
     if (!cb) return;
-    const current = cb.dataset.pontos !== '' ? parseFloat(cb.dataset.pontos) : 0;
+    // dataset.pontos guarda o valor interno (escala ×10)
+    const currentInterno = cb.dataset.pontos !== '' ? parseFloat(cb.dataset.pontos) : 0;
+    const currentRCO     = (currentInterno / 10);   // escala 0–10 para o usuário
 
     const input = document.createElement('input');
     input.type      = 'number';
     input.min       = '0';
-    input.max       = '9999';
-    input.step      = '1';
-    input.value     = current;
+    input.max       = '10';
+    input.step      = '0.1';
+    input.value     = currentRCO.toFixed(1);
     input.className = 'cl-pontos-edit';
-    input.title     = 'Enter para confirmar · Esc para cancelar';
+    input.title     = 'Nota RCO (0–10) · Enter confirma · Esc cancela';
     span.replaceWith(input);
     input.focus();
     input.select();
@@ -1195,25 +1202,27 @@ elModalAtivs.addEventListener('click', e => {
     const commit = () => {
         if (committed) return;
         committed = true;
-        const raw  = parseFloat(input.value);
-        const val  = (!isNaN(raw) && raw >= 0) ? Math.round(raw) : Math.round(current);
-        cb.dataset.pontos = val;
+        const raw        = parseFloat(input.value);
+        // Converte de volta para escala interna (×10), arredonda para 1 decimal
+        const valRCO     = (!isNaN(raw) && raw >= 0) ? Math.min(10, raw) : currentRCO;
+        const valInterno = Math.round(valRCO * 10);
+        cb.dataset.pontos = valInterno;
         const newSpan       = document.createElement('span');
         newSpan.className   = 'cl-ativ-pontos';
-        newSpan.textContent = val + ' pts';
+        newSpan.textContent = rco(valInterno) + ' pts';
         input.replaceWith(newSpan);
     };
 
     input.addEventListener('blur', commit);
     input.addEventListener('keydown', ev => {
         if (ev.key === 'Enter')  { ev.preventDefault(); input.blur(); }
-        if (ev.key === 'Escape') { input.value = current; input.blur(); }
+        if (ev.key === 'Escape') { input.value = currentRCO.toFixed(1); input.blur(); }
     });
 });
 
 document.getElementById('clGrupoModalSalvar').addEventListener('click', async () => {
     const nome      = elGrupoNome.value.trim();
-    const pontos    = Number(elGrupoPontos.value) || 40;
+    const pontos    = Math.round((Number(elGrupoPontos.value) || 4) * 10);
     const id        = elGrupoId.value;
 
     if (!nome) { elGrupoNome.focus(); toast('Informe o nome do grupo.', 'erro'); return; }
