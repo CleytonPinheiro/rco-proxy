@@ -79,6 +79,10 @@ web_modules/
 .env.production.local
 .env.local
 
+# Tokens OAuth gerados em runtime — NUNCA commitar
+backend/data/classroom_token.json
+backend/data/*.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
