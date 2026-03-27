@@ -229,6 +229,19 @@ body {
     font-style: italic;
 }
 
+/* ── Cabeçalho de turma na lista de cursos ── */
+.cl-turma-header {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 10px 12px 4px;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+}
+.cl-turma-header:first-child { margin-top: 0; border-top: none; }
+
 /* ── Item de curso ── */
 .cl-curso-item {
     display: flex;

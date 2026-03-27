@@ -204,6 +204,19 @@ function resetColuna3() {
 ══════════════════════════════════════════════════════════════ */
 const CURSO_CORES = ['#4285F4','#EA4335','#34A853','#FBBC05','#8B5CF6','#EC4899','#14B8A6','#F97316'];
 
+/* Extrai a turma do nome do curso, ex: "Logica - 1º Ano C Manha" → "1º Ano C" */
+function extrairTurma(nome) {
+    const m = (nome || '').match(/(\d+[ºo°]\s*Ano\s+[A-Z])/i);
+    return m ? m[1].replace(/\s+/g, ' ').trim() : 'Outras';
+}
+
+/* Ordena turmas: 1º < 2º < 3º; dentro do mesmo ano por letra */
+function ordenarTurmas(a, b) {
+    const numA = parseInt(a) || 0, numB = parseInt(b) || 0;
+    if (numA !== numB) return numA - numB;
+    return a.localeCompare(b);
+}
+
 async function carregarCursos() {
     elCursoLista.innerHTML    = '<div class="cl-loading">Carregando disciplinas...</div>';
     elCursosCount.textContent = '—';
@@ -215,20 +228,47 @@ async function carregarCursos() {
             return;
         }
         elCursosCount.textContent = `${cursos.length} disciplina${cursos.length !== 1 ? 's' : ''}`;
+
+        /* Atribui cor permanente por índice global */
+        const cursosComCor = cursos.map((c, i) => ({ ...c, cor: CURSO_CORES[i % CURSO_CORES.length] }));
+
+        /* Agrupa por turma */
+        const grupos = {};
+        cursosComCor.forEach(c => {
+            const turma = extrairTurma(c.nome);
+            if (!grupos[turma]) grupos[turma] = [];
+            grupos[turma].push(c);
+        });
+
+        /* Ordena turmas e dentro de cada turma ordena por nome */
+        const turmasOrdenadas = Object.keys(grupos).sort(ordenarTurmas);
+        turmasOrdenadas.forEach(t => {
+            grupos[t].sort((a, b) => a.nome.localeCompare(b.nome));
+        });
+
         elCursoLista.innerHTML = '';
-        cursos.forEach((c, i) => {
-            const cor  = CURSO_CORES[i % CURSO_CORES.length];
-            const item = document.createElement('div');
-            item.className  = 'cl-curso-item';
-            item.dataset.id = c.id;
-            item.innerHTML  = `
-                <div class="cl-curso-cor" style="background:${cor}"></div>
-                <div class="cl-curso-info">
-                    <div class="cl-curso-nome" title="${esc(c.nome)}">${esc(c.nome)}</div>
-                    <div class="cl-curso-secao">${esc(c.secao || 'Sem seção')}</div>
-                </div>`;
-            item.addEventListener('click', () => selecionarCurso(c, item, cor));
-            elCursoLista.appendChild(item);
+
+        turmasOrdenadas.forEach(turma => {
+            /* Cabeçalho de turma */
+            const hdr = document.createElement('div');
+            hdr.className = 'cl-turma-header';
+            hdr.textContent = turma;
+            elCursoLista.appendChild(hdr);
+
+            /* Itens da turma */
+            grupos[turma].forEach(c => {
+                const item = document.createElement('div');
+                item.className  = 'cl-curso-item';
+                item.dataset.id = c.id;
+                item.innerHTML  = `
+                    <div class="cl-curso-cor" style="background:${c.cor}"></div>
+                    <div class="cl-curso-info">
+                        <div class="cl-curso-nome" title="${esc(c.nome)}">${esc(c.nome)}</div>
+                        <div class="cl-curso-secao">${esc(c.secao || 'Sem seção')}</div>
+                    </div>`;
+                item.addEventListener('click', () => selecionarCurso(c, item, c.cor));
+                elCursoLista.appendChild(item);
+            });
         });
     } catch (e) {
         elCursoLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
