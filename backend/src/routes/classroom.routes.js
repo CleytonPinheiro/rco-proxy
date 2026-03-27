@@ -687,36 +687,51 @@ export function createClassroomRouter(deps = {}) {
                 }
             }));
 
+            // totalPossivel = soma dos pontos_max de TODAS as atividades do grupo
+            // Atividades sem pontos_max definido assumem 100 apenas para o peso relativo
+            const totalPossivel = results.reduce((acc, { atividade }) => {
+                return acc + (atividade.pontos_max > 0 ? Number(atividade.pontos_max) : 100);
+            }, 0);
+
             const alunoMap = {};
             results.forEach(({ atividade, submissions }) => {
-                // pontos_max da atividade — se null/0 assume 100 (escala percentual)
+                // pontos_max da atividade — se null/0 assume 100 (escala relativa)
                 const pontosMax = atividade.pontos_max > 0 ? Number(atividade.pontos_max) : 100;
                 submissions.forEach(s => {
                     if (!alunoMap[s.userId]) {
-                        alunoMap[s.userId] = { userId: s.userId, totalPct: 0, countPct: 0, pendentes: 0, atividades: {} };
+                        alunoMap[s.userId] = {
+                            userId: s.userId,
+                            totalGanho: 0,   // soma bruta das notas obtidas
+                            pendentes:  0,
+                            atividades: {},
+                        };
                     }
                     // assignedGrade = publicada (devolvida); draftGrade = rascunho do professor
                     // draftGrade=0 é ambíguo (padrão do Classroom) → só usar se > 0
-                    const nota = s.assignedGrade ?? (s.draftGrade > 0 ? s.draftGrade : null);
+                    const nota     = s.assignedGrade ?? (s.draftGrade > 0 ? s.draftGrade : null);
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
+                    const atrasado = s.late || false;
+
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
-                        nota, estado: s.state, entregue, atrasado: s.late || false,
+                        nota, estado: s.state, entregue, atrasado,
                     };
+
                     if (nota !== null) {
-                        // normaliza nota como índice percentual (0–100)
-                        const pct = (nota / pontosMax) * 100;
-                        alunoMap[s.userId].totalPct += pct;
-                        alunoMap[s.userId].countPct++;
+                        // Soma os pontos brutos obtidos (atividades faltantes ficam como 0)
+                        alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
                     } else if (!entregue) {
+                        // Atividade não entregue / atrasada sem nota = 0 pontos + conta como pendente
                         alunoMap[s.userId].pendentes++;
+                        // totalGanho não cresce → pontos ficam em 0 para esta atividade
                     }
                 });
             });
 
-            // mediaIndice = média dos índices percentuais de todas as atividades com nota
+            // mediaIndice = porcentagem dos pontos ganhos sobre o total possível do grupo
+            // Inclui atividades faltantes como 0, refletindo o desempenho real
             const alunos = Object.values(alunoMap).map(a => ({
                 userId:      a.userId,
-                mediaIndice: a.countPct > 0 ? a.totalPct / a.countPct : 0,
+                mediaIndice: totalPossivel > 0 ? (a.totalGanho / totalPossivel) * 100 : 0,
                 pendentes:   a.pendentes,
                 atividades:  a.atividades,
             }));
