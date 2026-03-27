@@ -304,6 +304,22 @@ body {
     white-space: nowrap;
     flex-shrink: 0;
 }
+.cl-ativ-pontos--editavel {
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.cl-ativ-pontos--editavel:hover {
+    background: color-mix(in srgb, #10b981 25%, transparent);
+    color: #059669;
+}
+.cl-ativ-pontos--vazio {
+    color: var(--text-muted);
+    background: var(--bg-alt);
+}
+.cl-ativ-pontos--vazio:hover {
+    color: #10b981;
+    background: color-mix(in srgb, #10b981 18%, transparent);
+}
 .cl-ativ-meta {
     display: flex;
     gap: 6px;

@@ -636,6 +636,26 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
+    /* ── Atualizar pontos_max de uma atividade em todos os grupos do curso ── */
+    router.patch('/classroom/courses/:courseId/activities/:activityId/pontos_max', async (req, res) => {
+        const { courseId, activityId } = req.params;
+        const { pontos_max } = req.body;
+        if (pontos_max === undefined) return res.status(400).json({ erro: 'pontos_max obrigatório' });
+        try {
+            const { rowCount } = await pool.query(
+                `UPDATE classroom_grupo_atividades
+                 SET pontos_max = $1
+                 WHERE atividade_id = $2
+                   AND grupo_id IN (SELECT id FROM classroom_grupos WHERE curso_id = $3)`,
+                [pontos_max === null ? null : Number(pontos_max), activityId, courseId]
+            );
+            res.json({ ok: true, gruposAfetados: rowCount });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao atualizar pontos_max da atividade:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Salvar atividades de um grupo (substitui todas) ── */
     router.put('/classroom/groups/:id/activities', async (req, res) => {
         const { atividades } = req.body;

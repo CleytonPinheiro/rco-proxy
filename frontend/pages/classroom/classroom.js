@@ -380,10 +380,13 @@ function renderAtividades(atividades) {
         const item     = document.createElement('div');
         item.className = 'cl-ativ-item';
         const tipoCls  = `cl-ativ-tipo--${a.tipo || 'ASSIGNMENT'}`;
+        item.dataset.ativId = a.id;
         item.innerHTML = `
             <div class="cl-ativ-header">
                 <span class="cl-ativ-titulo" title="${esc(a.titulo)}">${esc(a.titulo)}</span>
-                ${a.pontos !== null ? `<span class="cl-ativ-pontos">${rco(a.pontos)} pts</span>` : ''}
+                ${a.pontos !== null
+                    ? `<span class="cl-ativ-pontos cl-ativ-pontos--editavel" title="Clique para editar pontos">${rco(a.pontos)} pts</span>`
+                    : `<span class="cl-ativ-pontos cl-ativ-pontos--vazio cl-ativ-pontos--editavel" title="Clique para definir pontos">— pts</span>`}
             </div>
             <div class="cl-ativ-meta">
                 <span class="cl-ativ-tipo-badge ${tipoCls}">${TIPO_LABELS[a.tipo] || a.tipo || 'Atividade'}</span>
@@ -1217,6 +1220,81 @@ elModalAtivs.addEventListener('click', e => {
     input.addEventListener('keydown', ev => {
         if (ev.key === 'Enter')  { ev.preventDefault(); input.blur(); }
         if (ev.key === 'Escape') { input.value = currentRCO.toFixed(1); input.blur(); }
+    });
+});
+
+/* ── Edição inline de pontos na lista de atividades (aba Atividades) ── */
+elAtivLista.addEventListener('click', async e => {
+    const span = e.target.closest('.cl-ativ-item .cl-ativ-pontos--editavel');
+    if (!span) return;
+
+    e.preventDefault();
+    e.stopPropagation();   // impede seleção da atividade
+
+    const item    = span.closest('.cl-ativ-item');
+    const ativId  = item?.dataset.ativId;
+    if (!ativId || !cursoAtivo) return;
+
+    const cacheEntry = atividadesCache.find(a => a.id === ativId);
+    const currentInterno = cacheEntry?.pontos ?? 0;
+    const currentRCO     = currentInterno / 10;
+
+    // Mostra input
+    const input = document.createElement('input');
+    input.type      = 'number';
+    input.min       = '0';
+    input.max       = '10';
+    input.step      = '0.1';
+    input.value     = currentRCO > 0 ? currentRCO.toFixed(1) : '';
+    input.className = 'cl-pontos-edit';
+    input.title     = 'Nota RCO (0–10) · Enter confirma · Esc cancela';
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = async () => {
+        if (committed) return;
+        committed = true;
+
+        const raw        = parseFloat(input.value);
+        const valRCO     = (!isNaN(raw) && raw >= 0) ? Math.min(10, raw) : currentRCO;
+        const valInterno = Math.round(valRCO * 10);
+
+        // Restaura o badge imediatamente (feedback visual)
+        const newSpan       = document.createElement('span');
+        newSpan.className   = `cl-ativ-pontos cl-ativ-pontos--editavel${valInterno === 0 ? ' cl-ativ-pontos--vazio' : ''}`;
+        newSpan.title       = 'Clique para editar pontos';
+        newSpan.textContent = rco(valInterno) + ' pts';
+        input.replaceWith(newSpan);
+
+        if (valInterno === currentInterno) return;   // sem mudança
+
+        try {
+            await api(`/courses/${cursoAtivo.id}/activities/${ativId}/pontos_max`, {
+                method: 'PATCH',
+                body: { pontos_max: valInterno },
+            });
+            // Atualiza cache local
+            if (cacheEntry) cacheEntry.pontos = valInterno;
+            // Se houver grupo aberto com esta atividade, recarrega o resumo
+            if (grupoAtivo) {
+                const contemAtiv = grupoAtivo.atividades?.some(a => a.atividade_id === ativId);
+                if (contemAtiv) selecionarGrupo(grupoAtivo, document.querySelector('.cl-grupo-item--ativo'));
+            }
+            toast(`Pontos atualizados em todos os grupos (${rco(valInterno)} pts)`, 'ok');
+        } catch (err) {
+            // Reverte o badge para o valor original
+            newSpan.textContent = rco(currentInterno) + ' pts';
+            if (cacheEntry) cacheEntry.pontos = currentInterno;
+            toast('Erro ao salvar pontos: ' + err.message, 'erro');
+        }
+    };
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter')  { ev.preventDefault(); input.blur(); }
+        if (ev.key === 'Escape') { committed = true; const s2 = document.createElement('span'); s2.className = `cl-ativ-pontos cl-ativ-pontos--editavel${currentInterno === 0 ? ' cl-ativ-pontos--vazio' : ''}`; s2.title = 'Clique para editar pontos'; s2.textContent = rco(currentInterno) + ' pts'; input.replaceWith(s2); }
     });
 });
 
