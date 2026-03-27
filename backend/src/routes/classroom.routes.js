@@ -143,12 +143,6 @@ function encontrarMatchAluno(nomeClNorm, mapaAlunosRco) {
     return melhorScore >= 2 ? melhor : null;
 }
 
-/* ══════════════════════════════════════════════════════════════ */
-/* Normaliza nome para comparação: sem acento, maiúsculo, sem espaços duplos */
-const normNome = str => (str || '').toUpperCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ').trim();
-
 export function createClassroomRouter(deps = {}) {
     const { rcoApiService, supabaseAdmin } = deps;
     const router = Router();
