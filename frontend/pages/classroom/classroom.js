@@ -417,7 +417,11 @@ async function selecionarAtividade(ativ, itemEl) {
         todasNotas  = submissions.map(s => ({
             ...s,
             aluno: alunos[s.userId] || { nome: 'Aluno ' + s.userId, email: '', foto: null },
-        })).sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || ''));
+        })).sort((a, b) => {
+            const na = a.aluno.numChamada ?? 9999;
+            const nb = b.aluno.numChamada ?? 9999;
+            return na !== nb ? na - nb : (a.aluno.nome || '').localeCompare(b.aluno.nome || '');
+        });
 
         elNotasCount.textContent     = `${todasNotas.length} aluno${todasNotas.length !== 1 ? 's' : ''}`;
         elNotasStats.style.display   = 'grid';
@@ -508,9 +512,10 @@ function renderNotaRow(n) {
         ? `<span class="cl-ausente-badge" title="Aluno estava ausente neste dia — zero aplicado pela auditoria">AUSENTE</span>`
         : '';
 
+    const numBadgeNota = a.numChamada ? `<span class="cl-num-chamada">${a.numChamada}</span>` : '';
     return `<div class="cl-nota-row${n.ausente ? ' cl-nota-row--ausente' : ''}" data-user="${n.userId}" data-sub="${n.id}">
         <div class="cl-nota-avatar">${fotoHtml}</div>
-        <div class="cl-nota-nome" title="${esc(a.email)}">${esc(a.nome || '—')}${ausenteBadge}</div>
+        <div class="cl-nota-nome" title="${esc(a.email)}">${numBadgeNota}${esc(a.nome || '—')}${ausenteBadge}</div>
         <div style="text-align:center">
             <span class="cl-nota-status-badge cl-nota-status--${statusCls}">${statusLabel}</span>
         </div>
@@ -688,7 +693,11 @@ async function selecionarGrupo(grupo, itemEl) {
             aluno: alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
             // soma proporcional: média dos índices (%) aplicada ao valor total do grupo
             soma: ((a.mediaIndice ?? 0) / 100) * meta,
-        })).sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || ''));
+        })).sort((a, b) => {
+            const na = a.aluno.numChamada ?? 9999;
+            const nb = b.aluno.numChamada ?? 9999;
+            return na !== nb ? na - nb : (a.aluno.nome || '').localeCompare(b.aluno.nome || '');
+        });
 
         const total   = alunosResumo.length;
         const comTudo = alunosResumo.filter(a => a.pendentes === 0).length;
@@ -825,10 +834,11 @@ function renderResumoRow(a, meta, atividades = []) {
         return `<span class="cl-passo" style="background:${cor}" title="${esc(label)}"></span>`;
     }).join('');
 
+    const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
     return `<div class="cl-resumo-row">
         <div class="cl-nota-avatar">${fotoHtml}</div>
         <div class="cl-resumo-info">
-            <div class="cl-nota-nome" title="${esc(al.email)}">${esc(al.nome || '—')}</div>
+            <div class="cl-nota-nome" title="${esc(al.email)}">${numBadge}${esc(al.nome || '—')}</div>
             <div class="cl-passos-barra">${stepsHtml || '<span class="cl-passos-vazia">—</span>'}</div>
         </div>
         <div class="cl-resumo-soma">
@@ -910,9 +920,10 @@ function imprimirRelatorioGrupo() {
             return `<span title="${t}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin:1px"></span>`;
         }).join('');
 
+        const numCh = a.aluno.numChamada ? `<span style="font-size:.65rem;font-weight:700;color:#9ca3af;background:#f3f4f6;border-radius:3px;padding:0 4px;margin-right:4px">${a.aluno.numChamada}</span>` : '';
         return `<tr>
             <td style="text-align:center;color:#6b7280">${i+1}</td>
-            <td><strong>${esc(a.aluno.nome || '—')}</strong></td>
+            <td>${numCh}<strong>${esc(a.aluno.nome || '—')}</strong></td>
             <td style="text-align:center;font-weight:700;color:${cor}">${rco(soma)}</td>
             <td style="text-align:center">${pct.toFixed(0)}%</td>
             <td style="text-align:center">

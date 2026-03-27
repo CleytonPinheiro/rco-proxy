@@ -453,6 +453,18 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.cl-num-chamada {
+    display: inline-block;
+    font-size: .65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg-alt);
+    border-radius: 4px;
+    padding: 0 5px;
+    margin-right: 5px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
 .cl-nota-status-badge {
     font-size: .68rem;
     font-weight: 700;

@@ -144,8 +144,13 @@ function encontrarMatchAluno(nomeClNorm, mapaAlunosRco) {
 }
 
 /* ══════════════════════════════════════════════════════════════ */
+/* Normaliza nome para comparação: sem acento, maiúsculo, sem espaços duplos */
+const normNome = str => (str || '').toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim();
+
 export function createClassroomRouter(deps = {}) {
-    const { rcoApiService } = deps;
+    const { rcoApiService, supabaseAdmin } = deps;
     const router = Router();
 
     /* ── Status da conexão ── */
@@ -228,10 +233,28 @@ export function createClassroomRouter(deps = {}) {
                 allStudents.push(...(resp.data.students || []));
                 pageToken = resp.data.nextPageToken;
             } while (pageToken);
-            res.json(allStudents.map(s => ({
-                userId: s.userId, nome: s.profile?.name?.fullName || '—',
-                email: s.profile?.emailAddress || '', foto: s.profile?.photoUrl || null,
-            })));
+
+            // Busca numChamada do Supabase e faz match por nome normalizado
+            let numChamadaMap = {};
+            if (supabaseAdmin) {
+                const { data: alunosRCO } = await supabaseAdmin
+                    .from('alunos')
+                    .select('nome, numchamada');
+                (alunosRCO || []).forEach(a => {
+                    numChamadaMap[normNome(a.nome)] = a.numchamada;
+                });
+            }
+
+            res.json(allStudents.map(s => {
+                const nome = s.profile?.name?.fullName || '—';
+                return {
+                    userId:      s.userId,
+                    nome,
+                    email:       s.profile?.emailAddress || '',
+                    foto:        s.profile?.photoUrl || null,
+                    numChamada:  numChamadaMap[normNome(nome)] ?? null,
+                };
+            }));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar alunos:', e.message);
             res.status(500).json({ erro: e.message });
