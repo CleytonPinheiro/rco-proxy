@@ -745,7 +745,7 @@ body {
 }
 .cl-modal-ativ-item:last-child { border-bottom: none; }
 .cl-modal-ativ-item:hover { background: color-mix(in srgb, #4285F4 5%, transparent); }
-.cl-modal-ativ-item input { flex-shrink: 0; accent-color: #4285F4; width: 15px; height: 15px; cursor: pointer; }
+.cl-modal-ativ-item input[type=checkbox] { flex-shrink: 0; accent-color: #4285F4; width: 15px; height: 15px; cursor: pointer; }
 .cl-modal-ativ-nome { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* pontos editáveis no modal */
