@@ -317,7 +317,7 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════════
-       6. Painel de Perfil (FAB no canto inferior)
+       6. Painel de Perfil (dropdown do avatar no header)
     ══════════════════════════════════════════════════════════════════════ */
     let _perfilPanelOpen = false;
 
@@ -389,22 +389,9 @@
             <input type="file" id="perfilAvatarInput" accept="image/*">
         `;
 
-        /* FAB wrap */
-        const fabWrap = document.createElement('div');
-        fabWrap.className = 'perfil-fab-wrap';
-
-        const fab = document.createElement('button');
-        fab.className = 'perfil-fab';
-        fab.id        = 'perfilFab';
-        fab.title     = 'Meu Perfil';
-        fab.type      = 'button';
-        fab.addEventListener('click', togglePerfilPanel);
-        _atualizarFab(fab);
-
-        fabWrap.appendChild(panel);
-        fabWrap.appendChild(fab);
+        /* Adiciona ao body — o painel vai flutuar perto do header */
         document.body.appendChild(overlay);
-        document.body.appendChild(fabWrap);
+        document.body.appendChild(panel);
 
         /* Tema: estado inicial */
         _atualizarTemaUI();
@@ -434,13 +421,7 @@
             reader.onload = ev => {
                 redimensionarAvatar(ev.target.result, 200, b64 => {
                     setAvatar(b64);
-                    /* Atualiza visualmente o painel e o FAB */
-                    const avEl = document.getElementById('perfilAvatar');
-                    if (avEl) avEl.innerHTML = `<img src="${b64}" alt="Avatar">`;
-                    _atualizarFab(document.getElementById('perfilFab'));
-                    /* Atualiza header avatar */
-                    const hav = document.querySelector('.nav-avatar-btn');
-                    if (hav) hav.innerHTML = `<img src="${b64}" alt="Avatar">`;
+                    sincronizarAvatares(b64);
                 });
             };
             reader.readAsDataURL(file);
@@ -451,16 +432,6 @@
         document.getElementById('perfilEditarNomeBtn').addEventListener('click', () => {
             abrirEdicaoNome(user);
         });
-    }
-
-    function _atualizarFab(fab) {
-        if (!fab) return;
-        const av = getAvatar();
-        if (av) {
-            fab.innerHTML = `<img src="${av}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-        } else {
-            fab.textContent = iniciais(user.nome);
-        }
     }
 
     function _atualizarTemaUI() {
@@ -480,18 +451,46 @@
     function togglePerfilPanel() {
         _perfilPanelOpen ? fecharPerfilPanel() : abrirPerfilPanel();
     }
+
     function abrirPerfilPanel() {
         _perfilPanelOpen = true;
-        document.getElementById('perfilPanel')?.classList.add('open');
+        const panel  = document.getElementById('perfilPanel');
+        const avatarBtn = document.querySelector('.nav-avatar-btn');
+
+        /* Posiciona o painel logo abaixo do botão de avatar */
+        if (panel && avatarBtn) {
+            const rect   = avatarBtn.getBoundingClientRect();
+            const panelW = 300;
+            const viewW  = window.innerWidth;
+            const gap    = 10;
+
+            /*
+             * Alinha a seta (::before right:14px, largura:13px → centro a 20.5px da borda direita
+             * do painel) com o centro do botão de avatar.
+             *
+             * Arrow center from viewport right = rightPos + 20.5
+             * Avatar center from viewport right = viewW - rect.right + rect.width/2
+             * → rightPos = (viewW - rect.right + rect.width/2) - 20.5
+             *            ≈ viewW - rect.right - 3  (para avatar 34px)
+             */
+            let rightPos = viewW - rect.right + (rect.width / 2) - 20;
+            rightPos = Math.max(8, Math.min(rightPos, viewW - panelW - 8));
+
+            panel.style.right = `${rightPos}px`;
+            panel.style.top   = `${rect.bottom + gap}px`;
+        }
+
+        panel?.classList.add('open');
         document.getElementById('perfilOverlay')?.classList.add('open');
-        document.getElementById('perfilFab')?.classList.add('open');
+        avatarBtn?.classList.add('open');
         _atualizarTemaUI();
     }
+
     function fecharPerfilPanel() {
         _perfilPanelOpen = false;
         document.getElementById('perfilPanel')?.classList.remove('open');
         document.getElementById('perfilOverlay')?.classList.remove('open');
-        document.getElementById('perfilFab')?.classList.remove('open');
+        document.querySelector('.nav-avatar-btn')?.classList.remove('open');
     }
 
     /* ── Redimensionar avatar via canvas ── */
@@ -513,12 +512,8 @@
 
     /* ── Sincroniza avatares no DOM ── */
     function sincronizarAvatares(b64) {
-        document.querySelectorAll('.nav-avatar-btn, .perfil-fab, .perfil-panel-avatar').forEach(el => {
-            const img = el.querySelector('img') || document.createElement('img');
-            img.src   = b64;
-            img.alt   = 'Avatar';
-            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
-            if (!el.querySelector('img')) { el.innerHTML = ''; el.appendChild(img); }
+        document.querySelectorAll('.nav-avatar-btn, .perfil-panel-avatar').forEach(el => {
+            el.innerHTML = `<img src="${b64}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
         });
     }
 
