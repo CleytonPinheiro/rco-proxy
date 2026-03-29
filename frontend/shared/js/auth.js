@@ -92,11 +92,18 @@
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
 
-        // Badge com nome/perfil do usuário logado
+        // Converte MAIÚSCULAS do RCO para título: "CLEYTON" → "Cleyton"
+        const toTitleCase = s => s
+            .toLowerCase()
+            .replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+
+        const primeiroNome = toTitleCase(user.nome?.split(' ')[0] || 'Usuário');
+        const nomeCompleto = toTitleCase(user.nome || 'Usuário');
+
         const badge = document.createElement('span');
-        badge.className = 'user-badge';
-        badge.title     = `Perfil: ${user.perfil}`;
-        badge.textContent = user.nome?.split(' ')[0] || 'Usuário';
+        badge.className   = 'user-badge';
+        badge.title       = `${nomeCompleto} · Perfil: ${user.perfil}`;
+        badge.textContent = `👤 ${primeiroNome}`;
         headerActions.insertBefore(badge, headerActions.firstChild);
     }
 
