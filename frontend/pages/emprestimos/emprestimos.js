@@ -65,6 +65,12 @@ async function init() {
         atualizarStats();
         renderEmprestimos();
         renderAcervo();
+
+        // Inicializa data estimada de entrega com hoje
+        const inputData = document.getElementById('printDataEntregaLista');
+        if (inputData && !inputData.value) {
+            inputData.value = new Date().toISOString().slice(0, 10);
+        }
     } catch (e) {
         toast('Erro ao carregar dados: ' + e.message, 'erro');
     }
@@ -880,12 +886,18 @@ function extrairSerie(descrTurma) {
 function imprimirListaResponsabilidade() {
     const turmaFiltro = document.getElementById('printFiltroTurmaLista')?.value || '';
     const livroFiltro = document.getElementById('printFiltroLivroLista')?.value || '';
+    const dataInputVal = document.getElementById('printDataEntregaLista')?.value || '';
 
     let lista = emprestimos.filter(e => e.status === 'emprestado');
     if (turmaFiltro) lista = lista.filter(e => e.turma === turmaFiltro);
     if (livroFiltro) lista = lista.filter(e => String(e.livro_id) === livroFiltro);
 
     if (!lista.length) { toast('Nenhum empréstimo encontrado para os filtros selecionados.', 'aviso'); return; }
+
+    // Data de entrega selecionada (ou hoje como fallback)
+    const dataEntregaObj  = dataInputVal ? new Date(dataInputVal + 'T12:00:00') : new Date();
+    const dataEntregaStr  = dataEntregaObj.toLocaleDateString('pt-BR');
+    const dataEntregaLong = dataEntregaObj.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
     // Agrupar por livro
     const grupos = {};
@@ -907,14 +919,19 @@ function imprimirListaResponsabilidade() {
     const dataFormato = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
     const secoes = Object.values(grupos).map(g => {
+        g.itens.sort((a, b) => (a.num_chamada || 999) - (b.num_chamada || 999));
+
         const linhas = g.itens.map(e => `
             <tr>
-                <td style="text-align:center">${e.num_chamada || '—'}</td>
-                <td>${e.nome_aluno}</td>
-                <td>${e.turma || ''}</td>
-                <td>${new Date(e.data_emprestimo).toLocaleDateString('pt-BR')}</td>
-                <td style="text-align:center">
-                    <div style="width:80px;border-bottom:1px solid #333;margin:0 auto;height:24px;"></div>
+                <td class="col-num">${e.num_chamada || '—'}</td>
+                <td class="col-nome">${e.nome_aluno}</td>
+                <td class="col-turma">${e.turma || ''}</td>
+                <td class="col-data">${dataEntregaStr}</td>
+                <td class="col-ass">
+                    <div class="ass-cell">
+                        <span class="ass-num">${e.num_chamada || ''}</span>
+                        <div class="ass-linha"></div>
+                    </div>
                 </td>
             </tr>`).join('');
 
@@ -941,11 +958,11 @@ function imprimirListaResponsabilidade() {
             <table class="lista-table">
                 <thead>
                     <tr>
-                        <th style="width:50px">Nº</th>
-                        <th>Nome do Aluno</th>
-                        <th>Turma</th>
-                        <th>Data Entrega</th>
-                        <th style="width:100px">Assinatura</th>
+                        <th class="col-num">Nº</th>
+                        <th class="col-nome">Nome do Aluno</th>
+                        <th class="col-turma">Turma</th>
+                        <th class="col-data">Data Entrega</th>
+                        <th class="col-ass">Nº / Assinatura</th>
                     </tr>
                 </thead>
                 <tbody>${linhas}</tbody>
@@ -977,10 +994,18 @@ body{font-family:'Times New Roman',Times,serif;background:#fff;color:#000}
 .lista-livro-titulo{font-size:12pt;font-weight:900;color:#1a1a6e}
 .lista-livro-detalhe{font-size:9pt;color:#444;background:#e8e8e8;padding:2px 6px;border-radius:3px}
 .lista-aviso{font-size:9pt;line-height:1.6;padding:10px 12px;border:1pt solid #bbb;border-radius:4px;margin-bottom:12px;background:#fffef0;text-align:justify}
-.lista-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt}
+.lista-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt;table-layout:fixed}
 .lista-table th{padding:6px 8px;border:1pt solid #333;background:#e8e8f0;font-weight:700;text-align:left;font-size:9pt}
-.lista-table td{padding:5px 8px;border:1pt solid #ccc;vertical-align:middle;height:28px}
+.lista-table td{padding:5px 8px;border:1pt solid #ccc;vertical-align:middle;height:36px}
 .lista-table tr:nth-child(even) td{background:#fafafa}
+.col-num{width:36px;text-align:center}
+.col-nome{width:28%}
+.col-turma{width:auto}
+.col-data{width:88px;text-align:center;white-space:nowrap}
+.col-ass{width:160px}
+.ass-cell{display:flex;align-items:flex-end;gap:6px;padding-bottom:2px}
+.ass-num{font-size:10pt;font-weight:800;min-width:22px;text-align:right;flex-shrink:0;line-height:1}
+.ass-linha{flex:1;border-bottom:1pt solid #333;height:28px}
 .lista-rodape{display:flex;align-items:flex-end;justify-content:space-between;margin-top:20px;gap:20px;flex-wrap:wrap}
 .lista-assinatura-campo{flex:1;min-width:160px}
 .lista-linha{border-bottom:1pt solid #333;margin-bottom:4px;height:24px}
