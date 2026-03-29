@@ -239,7 +239,11 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             ip:          req.ip,
         });
         userSessionStore.destroy(req.cookies[COOKIE_NAME]);
-        res.clearCookie(COOKIE_NAME);
+        res.clearCookie(COOKIE_NAME, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure:   req.secure,
+        });
         res.json({ sucesso: true });
     });
 
