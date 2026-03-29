@@ -361,12 +361,12 @@
 }
 .fc-vazio { color: #d1d5db; }
 
-.col-presenca { color: #dcfce7; font-weight: 700; background: #166534; width: 28px; }
-.col-falta    { color: #fee2e2; font-weight: 700; background: #991b1b; width: 28px; }
+.col-presenca { color: #fff; font-weight: 800; font-size: 13px; background: #166534; width: 28px; }
+.col-falta    { color: #fff; font-weight: 800; font-size: 13px; background: #991b1b; width: 28px; }
 .col-pct      { font-weight: 700; width: 40px; }
-.pct-ok       { color: #dcfce7; background: #166534; }
-.pct-alerta   { color: #fef3c7; background: #92400e; }
-.pct-critico  { color: #fee2e2; background: #991b1b; }
+.pct-ok       { color: #fff; font-weight: 700; background: #166534; }
+.pct-alerta   { color: #fff; font-weight: 700; background: #92400e; }
+.pct-critico  { color: #fff; font-weight: 700; background: #991b1b; }
 
 .linha-totais td {
     background: #fafbfc;
@@ -754,26 +754,26 @@
 [data-theme="dark"] .col-nome { box-shadow: 3px 0 6px -2px rgba(0,0,0,0.35); }
 [data-theme="dark"] .freq-scroll { scrollbar-color: var(--border) transparent; }
 
-/* ── Células de presença/falta — dark: fundo saturado + texto claro ─────── */
+/* ── Células de presença/falta — dark: mesmas cores base, texto branco ───── */
 [data-theme="dark"] .col-presenca {
     background: #166534 !important;
-    color:      #dcfce7 !important;
+    color:      #fff    !important;
 }
 [data-theme="dark"] .col-falta {
     background: #991b1b !important;
-    color:      #fee2e2 !important;
+    color:      #fff    !important;
 }
 [data-theme="dark"] .pct-ok {
     background: #166534 !important;
-    color:      #dcfce7 !important;
+    color:      #fff    !important;
 }
 [data-theme="dark"] .pct-alerta {
     background: #92400e !important;
-    color:      #fef3c7 !important;
+    color:      #fff    !important;
 }
 [data-theme="dark"] .pct-critico {
     background: #991b1b !important;
-    color:      #fee2e2 !important;
+    color:      #fff    !important;
 }
 
 [data-theme="dark"] .freq-aluno-modal .modal-content { background: var(--bg-card); }
