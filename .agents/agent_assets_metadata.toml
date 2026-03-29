@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "_hBL8cNfbGPnS80jh6yyM"
+uri = "file://edusync-insomnia.json"
+type = "unspecified"
+title = "EduSync API — Coleção Insomnia"

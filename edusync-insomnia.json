@@ -1,0 +1,2957 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-03-29T17:18:07.573Z",
+  "__export_source": "edusync.v1",
+  "resources": [
+    {
+      "_id": "wrk_edusync",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "EduSync API",
+      "description": "Sistema de Gestão Escolar — Paraná",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_edusync",
+      "name": "Local",
+      "data": {
+        "base_url": "http://localhost:5000/api"
+      },
+      "color": "#1d4ed8"
+    },
+    {
+      "_id": "fld_000001",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🔐 Auth",
+      "description": "Login, logout e status de sessão"
+    },
+    {
+      "_id": "req_000002",
+      "_type": "request",
+      "parentId": "fld_000001",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cpf\": \"00000000000\",\n  \"senha\": \"suaSenha\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000003"
+        }
+      ],
+      "description": "Autentica com CPF + senha do RCO. Retorna cookie HttpOnly de sessão.",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000004",
+      "_type": "request",
+      "parentId": "fld_000001",
+      "name": "Logout",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/logout",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000005"
+        }
+      ],
+      "description": "Encerra a sessão atual.",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000006",
+      "_type": "request",
+      "parentId": "fld_000001",
+      "name": "Usuário atual (me)",
+      "method": "GET",
+      "url": "{{ base_url }}/me",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000007"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000008",
+      "_type": "request",
+      "parentId": "fld_000001",
+      "name": "Status RCO",
+      "method": "GET",
+      "url": "{{ base_url }}/status",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000009"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000010",
+      "_type": "request",
+      "parentId": "fld_000001",
+      "name": "Setup status",
+      "method": "GET",
+      "url": "{{ base_url }}/setup-status",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000011"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000012",
+      "_type": "request",
+      "parentId": "fld_000001",
+      "name": "Configurar credenciais (legado)",
+      "method": "POST",
+      "url": "{{ base_url }}/configurar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cpf\": \"00000000000\",\n  \"senha\": \"suaSenha\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000013"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000014",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "⚙ Admin",
+      "description": "Gestão de usuários, escolas e log de auditoria"
+    },
+    {
+      "_id": "fld_000015",
+      "_type": "request_group",
+      "parentId": "fld_000014",
+      "name": "Usuários",
+      "description": ""
+    },
+    {
+      "_id": "req_000016",
+      "_type": "request",
+      "parentId": "fld_000015",
+      "name": "Listar usuários",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/usuarios",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000017"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000018",
+      "_type": "request",
+      "parentId": "fld_000015",
+      "name": "Criar usuário",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/usuarios",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Maria Silva\",\n  \"cpf\": \"12345678901\",\n  \"perfil\": \"professor\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000019"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000020",
+      "_type": "request",
+      "parentId": "fld_000015",
+      "name": "Atualizar usuário",
+      "method": "PUT",
+      "url": "{{ base_url }}/admin/usuarios/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Maria Souza\",\n  \"perfil\": \"secretaria\",\n  \"ativo\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000021"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000022",
+      "_type": "request",
+      "parentId": "fld_000015",
+      "name": "Desativar usuário",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/usuarios/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000023"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000024",
+      "_type": "request",
+      "parentId": "fld_000015",
+      "name": "Listar perfis",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/perfis",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000025"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000026",
+      "_type": "request_group",
+      "parentId": "fld_000014",
+      "name": "Escolas (Whitelist)",
+      "description": ""
+    },
+    {
+      "_id": "req_000027",
+      "_type": "request",
+      "parentId": "fld_000026",
+      "name": "Listar escolas",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/escolas",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000028"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000029",
+      "_type": "request",
+      "parentId": "fld_000026",
+      "name": "Adicionar escola",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/escolas",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"E.E. Prof. João Paulo\",\n  \"codigo_estabelecimento\": 123456,\n  \"permite_auto_cadastro\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000030"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000031",
+      "_type": "request",
+      "parentId": "fld_000026",
+      "name": "Atualizar escola",
+      "method": "PUT",
+      "url": "{{ base_url }}/admin/escolas/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"E.E. Prof. João Paulo\",\n  \"permite_auto_cadastro\": true,\n  \"ativo\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000032"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000033",
+      "_type": "request",
+      "parentId": "fld_000026",
+      "name": "Remover escola",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/escolas/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000034"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000035",
+      "_type": "request",
+      "parentId": "fld_000026",
+      "name": "Lookup RCO estabelecimentos",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/rco-estabelecimentos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000036"
+        }
+      ],
+      "description": "Dropdown de escolas sincronizadas do Supabase",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000037",
+      "_type": "request_group",
+      "parentId": "fld_000014",
+      "name": "Audit Log",
+      "description": ""
+    },
+    {
+      "_id": "req_000038",
+      "_type": "request",
+      "parentId": "fld_000037",
+      "name": "Consultar log",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/audit-log?limite=50&offset=0",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000039"
+        }
+      ],
+      "description": "Filtros: ?usuario_id=X&modulo=auth&limite=100&offset=0",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000040",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "👨‍🎓 Alunos",
+      "description": "Dados sincronizados do RCO"
+    },
+    {
+      "_id": "req_000041",
+      "_type": "request",
+      "parentId": "fld_000040",
+      "name": "Listar alunos",
+      "method": "GET",
+      "url": "{{ base_url }}/alunos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000042"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000043",
+      "_type": "request",
+      "parentId": "fld_000040",
+      "name": "Buscar por registro",
+      "method": "GET",
+      "url": "{{ base_url }}/alunos/:registro",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000044"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000045",
+      "_type": "request",
+      "parentId": "fld_000040",
+      "name": "Listar turmas",
+      "method": "GET",
+      "url": "{{ base_url }}/alunos/turmas/lista",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000046"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000047",
+      "_type": "request",
+      "parentId": "fld_000040",
+      "name": "Buscar responsável",
+      "method": "GET",
+      "url": "{{ base_url }}/responsaveis/:cod",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000048"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000049",
+      "_type": "request",
+      "parentId": "fld_000040",
+      "name": "Atualizar responsável",
+      "method": "PUT",
+      "url": "{{ base_url }}/responsaveis/:cod",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"José Santos\",\n  \"telefone\": \"(41) 9 9999-9999\",\n  \"email\": \"jose@email.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000050"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000051",
+      "_type": "request",
+      "parentId": "fld_000040",
+      "name": "Alunos RCO (sem cache)",
+      "method": "GET",
+      "url": "{{ base_url }}/alunos-rco",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000052"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000053",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "📚 Livros Didáticos",
+      "description": "Acervo e empréstimos anuais"
+    },
+    {
+      "_id": "fld_000054",
+      "_type": "request_group",
+      "parentId": "fld_000053",
+      "name": "Acervo",
+      "description": ""
+    },
+    {
+      "_id": "req_000055",
+      "_type": "request",
+      "parentId": "fld_000054",
+      "name": "Listar livros",
+      "method": "GET",
+      "url": "{{ base_url }}/livros",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000056"
+        }
+      ],
+      "description": "Retorna livros com contagem de emprestados",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000057",
+      "_type": "request",
+      "parentId": "fld_000054",
+      "name": "Cadastrar livro",
+      "method": "POST",
+      "url": "{{ base_url }}/livros",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titulo\": \"Matemática Vol. 1\",\n  \"autor\": \"João Silva\",\n  \"editora\": \"FTD\",\n  \"ano_publicacao\": 2023,\n  \"disciplina\": \"Matemática\",\n  \"serie\": \"1º Ano\",\n  \"isbn\": \"978-85-322-0000-0\",\n  \"quantidade\": 30\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000058"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000059",
+      "_type": "request",
+      "parentId": "fld_000054",
+      "name": "Atualizar livro",
+      "method": "PUT",
+      "url": "{{ base_url }}/livros/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titulo\": \"Matemática Vol. 1 — Ed. Rev.\",\n  \"quantidade\": 35,\n  \"ativo\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000060"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000061",
+      "_type": "request",
+      "parentId": "fld_000054",
+      "name": "Remover livro",
+      "method": "DELETE",
+      "url": "{{ base_url }}/livros/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "\"Soft delete — livro fica inativo\""
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000062"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000063",
+      "_type": "request_group",
+      "parentId": "fld_000053",
+      "name": "Empréstimos",
+      "description": ""
+    },
+    {
+      "_id": "req_000064",
+      "_type": "request",
+      "parentId": "fld_000063",
+      "name": "Listar empréstimos",
+      "method": "GET",
+      "url": "{{ base_url }}/livros-emprestimos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000065"
+        }
+      ],
+      "description": "Filtros: ?status=emprestado&turma=1A&livro_id=1&ano_letivo=2026",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000066",
+      "_type": "request",
+      "parentId": "fld_000063",
+      "name": "Registrar empréstimo",
+      "method": "POST",
+      "url": "{{ base_url }}/livros-emprestimos",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"livro_id\": 1,\n  \"cod_matriz_aluno\": 123456,\n  \"nome_aluno\": \"Pedro Oliveira\",\n  \"turma\": \"Ensino Médio - 1ª Série A - Manhã\",\n  \"num_chamada\": 15,\n  \"ano_letivo\": 2026,\n  \"obs\": null\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000067"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000068",
+      "_type": "request",
+      "parentId": "fld_000063",
+      "name": "Registrar devolução",
+      "method": "PUT",
+      "url": "{{ base_url }}/livros-emprestimos/:id/devolver",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"obs\": \"Devolvido em boas condições\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000069"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000070",
+      "_type": "request",
+      "parentId": "fld_000063",
+      "name": "Marcar como perdido",
+      "method": "PUT",
+      "url": "{{ base_url }}/livros-emprestimos/:id/perdido",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"obs\": \"Aluno perdeu o livro\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000071"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000072",
+      "_type": "request",
+      "parentId": "fld_000063",
+      "name": "Empréstimos de um aluno",
+      "method": "GET",
+      "url": "{{ base_url }}/livros-emprestimos/aluno/:cod",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000073"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000074",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🪪 Crachás",
+      "description": "Impressão e entrega de crachás"
+    },
+    {
+      "_id": "req_000075",
+      "_type": "request",
+      "parentId": "fld_000074",
+      "name": "Listar status",
+      "method": "GET",
+      "url": "{{ base_url }}/crachas",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000076"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000077",
+      "_type": "request",
+      "parentId": "fld_000074",
+      "name": "Atualizar status",
+      "method": "POST",
+      "url": "{{ base_url }}/crachas/status",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ids\": [\n    123456,\n    789012\n  ],\n  \"status\": \"impresso\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000078"
+        }
+      ],
+      "description": "status: pendente | impresso | entregue",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000079",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "👥 Grupos",
+      "description": "Grupos de alunos e atividades"
+    },
+    {
+      "_id": "req_000080",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Listar grupos",
+      "method": "GET",
+      "url": "{{ base_url }}/grupos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000081"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000082",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Criar grupo",
+      "method": "POST",
+      "url": "{{ base_url }}/grupos",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Grupo A\",\n  \"turma\": \"1A\",\n  \"cor\": \"#1d4ed8\",\n  \"icone\": \"🔵\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000083"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000084",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Atualizar grupo",
+      "method": "PUT",
+      "url": "{{ base_url }}/grupos/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Grupo Alpha\",\n  \"cor\": \"#059669\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000085"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000086",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Excluir grupo",
+      "method": "DELETE",
+      "url": "{{ base_url }}/grupos/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000087"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000088",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Adicionar aluno",
+      "method": "POST",
+      "url": "{{ base_url }}/grupos/:id/alunos",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 123456\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000089"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000090",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Remover aluno",
+      "method": "DELETE",
+      "url": "{{ base_url }}/grupos/:id/alunos/:codMatrizAluno",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000091"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000092",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Adicionar atividade",
+      "method": "POST",
+      "url": "{{ base_url }}/grupos/:id/atividades",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"descricao\": \"Apresentação oral\",\n  \"pontos\": 10\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000093"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000094",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Atualizar atividade",
+      "method": "PUT",
+      "url": "{{ base_url }}/grupos/:id/atividades/:ativId",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"descricao\": \"Apresentação final\",\n  \"pontos\": 15\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000095"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000096",
+      "_type": "request",
+      "parentId": "fld_000079",
+      "name": "Excluir atividade",
+      "method": "DELETE",
+      "url": "{{ base_url }}/grupos/:id/atividades/:ativId",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000097"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000098",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "📦 Materiais",
+      "description": "Acervo de materiais escolares"
+    },
+    {
+      "_id": "req_000099",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Listar materiais",
+      "method": "GET",
+      "url": "{{ base_url }}/materiais",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000100"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000101",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Buscar por código",
+      "method": "GET",
+      "url": "{{ base_url }}/materiais/:codigo",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000102"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000103",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Cadastrar material",
+      "method": "POST",
+      "url": "{{ base_url }}/materiais",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Tablet Samsung 10\\\"\",\n  \"codigo\": \"TAB-001\",\n  \"categoria\": \"Eletrônico\",\n  \"quantidade\": 10\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000104"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000105",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Atualizar material",
+      "method": "PUT",
+      "url": "{{ base_url }}/materiais/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Tablet Samsung 10\\\" (Rev.)\",\n  \"quantidade\": 12\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000106"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000107",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Remover material",
+      "method": "DELETE",
+      "url": "{{ base_url }}/materiais/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000108"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000109",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Estatísticas",
+      "method": "GET",
+      "url": "{{ base_url }}/estatisticas/materiais",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000110"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000111",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Listar empréstimos (materiais)",
+      "method": "GET",
+      "url": "{{ base_url }}/emprestimos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000112"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000113",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Registrar empréstimo (material)",
+      "method": "POST",
+      "url": "{{ base_url }}/emprestimos",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"materialId\": 1,\n  \"alunoRegistro\": \"123456\",\n  \"professorResponsavel\": \"Prof. Ana\",\n  \"periodos\": [\n    1,\n    2\n  ]\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000114"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000115",
+      "_type": "request",
+      "parentId": "fld_000098",
+      "name": "Registrar devolução (material)",
+      "method": "PUT",
+      "url": "{{ base_url }}/emprestimos/:id/devolver",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"estado\": \"bom\",\n  \"obs\": \"\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000116"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000117",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🪑 Mapa de Sala",
+      "description": ""
+    },
+    {
+      "_id": "req_000118",
+      "_type": "request",
+      "parentId": "fld_000117",
+      "name": "Buscar mapa",
+      "method": "GET",
+      "url": "{{ base_url }}/mapa-sala?turma=1A",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000119"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000120",
+      "_type": "request",
+      "parentId": "fld_000117",
+      "name": "Salvar mapa",
+      "method": "POST",
+      "url": "{{ base_url }}/mapa-sala",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"turma\": \"1A\",\n  \"layout\": []\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000121"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000122",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "✅ Atividades de Sala",
+      "description": ""
+    },
+    {
+      "_id": "req_000123",
+      "_type": "request",
+      "parentId": "fld_000122",
+      "name": "Listar atividades",
+      "method": "GET",
+      "url": "{{ base_url }}/atividades?turma=1A",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000124"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000125",
+      "_type": "request",
+      "parentId": "fld_000122",
+      "name": "Salvar atividades",
+      "method": "POST",
+      "url": "{{ base_url }}/atividades/salvar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"turma\": \"1A\",\n  \"data\": \"2026-03-29\",\n  \"atividades\": []\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000126"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000127",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "📊 Frequências",
+      "description": ""
+    },
+    {
+      "_id": "req_000128",
+      "_type": "request",
+      "parentId": "fld_000127",
+      "name": "Listar frequências",
+      "method": "GET",
+      "url": "{{ base_url }}/frequencias",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000129"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000130",
+      "_type": "request",
+      "parentId": "fld_000127",
+      "name": "Observações",
+      "method": "GET",
+      "url": "{{ base_url }}/observacoes",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000131"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000132",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "📍 Presença Diária",
+      "description": ""
+    },
+    {
+      "_id": "req_000133",
+      "_type": "request",
+      "parentId": "fld_000132",
+      "name": "Buscar presenças",
+      "method": "GET",
+      "url": "{{ base_url }}/presenca-diaria",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000134"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000135",
+      "_type": "request",
+      "parentId": "fld_000132",
+      "name": "Histórico",
+      "method": "GET",
+      "url": "{{ base_url }}/presenca-diaria/historico",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000136"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000137",
+      "_type": "request",
+      "parentId": "fld_000132",
+      "name": "Confirmar presença",
+      "method": "PUT",
+      "url": "{{ base_url }}/presenca-diaria/confirmar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"turma\": \"1A\",\n  \"data\": \"2026-03-29\",\n  \"alunos\": []\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000138"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000139",
+      "_type": "request",
+      "parentId": "fld_000132",
+      "name": "Seed inicial",
+      "method": "POST",
+      "url": "{{ base_url }}/presenca-diaria/seed",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000140"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000141",
+      "_type": "request",
+      "parentId": "fld_000132",
+      "name": "Sincronizar RCO",
+      "method": "POST",
+      "url": "{{ base_url }}/presenca-diaria/sync",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000142"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000143",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "⚠ Comportamento",
+      "description": "Ocorrências de comportamento"
+    },
+    {
+      "_id": "req_000144",
+      "_type": "request",
+      "parentId": "fld_000143",
+      "name": "Listar ocorrências",
+      "method": "GET",
+      "url": "{{ base_url }}/comportamento",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000145"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000146",
+      "_type": "request",
+      "parentId": "fld_000143",
+      "name": "Criar ocorrência",
+      "method": "POST",
+      "url": "{{ base_url }}/comportamento",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 123456,\n  \"tipo\": \"observacao\",\n  \"descricao\": \"Esqueceu o material.\",\n  \"turma\": \"1A\",\n  \"data\": \"2026-03-29\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000147"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000148",
+      "_type": "request",
+      "parentId": "fld_000143",
+      "name": "Excluir ocorrência",
+      "method": "DELETE",
+      "url": "{{ base_url }}/comportamento/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000149"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000150",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "📢 Comunicados",
+      "description": "Envio de comunicados aos responsáveis"
+    },
+    {
+      "_id": "req_000151",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Listar comunicados",
+      "method": "GET",
+      "url": "{{ base_url }}/comunicados",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000152"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000153",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Estatísticas",
+      "method": "GET",
+      "url": "{{ base_url }}/comunicados/stats",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000154"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000155",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Config de envio",
+      "method": "GET",
+      "url": "{{ base_url }}/comunicados/config",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000156"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000157",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Atualizar config",
+      "method": "PUT",
+      "url": "{{ base_url }}/comunicados/config",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"whatsappEnabled\": true,\n  \"emailEnabled\": false\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000158"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000159",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Gerar rascunho",
+      "method": "POST",
+      "url": "{{ base_url }}/comunicados/gerar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"turma\": \"1A\",\n  \"assunto\": \"Reunião de pais\",\n  \"mensagem\": \"Prezados responsáveis...\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000160"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000161",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Enviar comunicado",
+      "method": "POST",
+      "url": "{{ base_url }}/comunicados/enviar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ids\": [\n    1,\n    2\n  ],\n  \"canal\": \"whatsapp\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000162"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000163",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Atualizar status",
+      "method": "PUT",
+      "url": "{{ base_url }}/comunicados/:id/status",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": \"enviado\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000164"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000165",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Validar contato",
+      "method": "PUT",
+      "url": "{{ base_url }}/comunicados/:id/validar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"valido\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000166"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000167",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Atualizar contato",
+      "method": "PUT",
+      "url": "{{ base_url }}/comunicados/:id/contato",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"telefone\": \"(41) 9 9999-9999\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000168"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000169",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Registrar resposta",
+      "method": "POST",
+      "url": "{{ base_url }}/comunicados/resposta",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"comunicadoId\": 1,\n  \"resposta\": \"Confirmo presença.\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000170"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000171",
+      "_type": "request",
+      "parentId": "fld_000150",
+      "name": "Excluir comunicado",
+      "method": "DELETE",
+      "url": "{{ base_url }}/comunicados/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000172"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000173",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🍽️ Cozinha",
+      "description": "Cardápio e presença por refeição"
+    },
+    {
+      "_id": "req_000174",
+      "_type": "request",
+      "parentId": "fld_000173",
+      "name": "Dados do dia",
+      "method": "GET",
+      "url": "{{ base_url }}/cozinha",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000175"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000176",
+      "_type": "request",
+      "parentId": "fld_000173",
+      "name": "Histórico",
+      "method": "GET",
+      "url": "{{ base_url }}/cozinha/historico",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000177"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000178",
+      "_type": "request",
+      "parentId": "fld_000173",
+      "name": "Confirmar refeição",
+      "method": "POST",
+      "url": "{{ base_url }}/cozinha/confirmar",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-03-29\",\n  \"turma\": \"1A\",\n  \"presentes\": 25\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000179"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000180",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🚪 Circulação",
+      "description": "Controle de entrada e saída dos alunos"
+    },
+    {
+      "_id": "req_000181",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Acessos ativos",
+      "method": "GET",
+      "url": "{{ base_url }}/circulacao/ativos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000182"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000183",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Histórico",
+      "method": "GET",
+      "url": "{{ base_url }}/circulacao/historico",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000184"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000185",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Scan de entrada",
+      "method": "POST",
+      "url": "{{ base_url }}/circulacao/scan",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 123456,\n  \"ambiente\": \"Biblioteca\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000186"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000187",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Registrar saída",
+      "method": "POST",
+      "url": "{{ base_url }}/circulacao/saida/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000188"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000189",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Histórico do aluno",
+      "method": "GET",
+      "url": "{{ base_url }}/circulacao/aluno/:cod",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000190"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000191",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Listar ambientes",
+      "method": "GET",
+      "url": "{{ base_url }}/circulacao/ambientes",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000192"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000193",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Criar ambiente",
+      "method": "POST",
+      "url": "{{ base_url }}/circulacao/ambientes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Laboratório de Informática\",\n  \"icone\": \"💻\",\n  \"capacidade\": 30\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000194"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000195",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Atualizar ambiente",
+      "method": "PUT",
+      "url": "{{ base_url }}/circulacao/ambientes/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Lab. Info.\",\n  \"capacidade\": 25\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000196"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000197",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Excluir ambiente",
+      "method": "DELETE",
+      "url": "{{ base_url }}/circulacao/ambientes/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000198"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000199",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Quiosque — ativos",
+      "method": "GET",
+      "url": "{{ base_url }}/circulacao/quiosque/ativos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000200"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000201",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Quiosque — histórico",
+      "method": "GET",
+      "url": "{{ base_url }}/circulacao/quiosque/historico",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000202"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000203",
+      "_type": "request",
+      "parentId": "fld_000180",
+      "name": "Quiosque — scan",
+      "method": "POST",
+      "url": "{{ base_url }}/circulacao/quiosque/scan",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 123456\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000204"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000205",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🎓 Pedagógico",
+      "description": "Notas pedagógicas e observações"
+    },
+    {
+      "_id": "req_000206",
+      "_type": "request",
+      "parentId": "fld_000205",
+      "name": "Painel pedagógico",
+      "method": "GET",
+      "url": "{{ base_url }}/pedagogico",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000207"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000208",
+      "_type": "request",
+      "parentId": "fld_000205",
+      "name": "Observações do RCO",
+      "method": "GET",
+      "url": "{{ base_url }}/pedagogico/observacoes-rco",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000209"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000210",
+      "_type": "request",
+      "parentId": "fld_000205",
+      "name": "Salvar nota",
+      "method": "POST",
+      "url": "{{ base_url }}/pedagogico/nota",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 123456,\n  \"nota\": \"Aluno demonstrou melhora...\",\n  \"tipo\": \"positiva\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000211"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000212",
+      "_type": "request",
+      "parentId": "fld_000205",
+      "name": "Sincronizar com RCO",
+      "method": "POST",
+      "url": "{{ base_url }}/pedagogico/sincronizar-rco",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000213"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000214",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "📓 Google Classroom",
+      "description": "Integração com Google Classroom"
+    },
+    {
+      "_id": "req_000215",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Status da integração",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/status",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000216"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000217",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "URL de autorização OAuth",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/auth-url",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000218"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000219",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Callback OAuth",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/callback?code=AUTH_CODE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000220"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000221",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Desconectar",
+      "method": "POST",
+      "url": "{{ base_url }}/classroom/disconnect",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000222"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000223",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Listar turmas",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/courses",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000224"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000225",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Alunos da turma",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/courses/:courseId/students",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000226"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000227",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Atividades (coursework)",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000228"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000229",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Submissões de atividade",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework/:cwId/submissions",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000230"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000231",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Salvar nota de submissão",
+      "method": "PATCH",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"grade\": 8.5\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000232"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000233",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Devolver submissão",
+      "method": "POST",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000234"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000235",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Atualizar pontos máx",
+      "method": "PATCH",
+      "url": "{{ base_url }}/classroom/courses/:courseId/activities/:activityId/pontos_max",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"pontos_max\": 10\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000236"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000237",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Grupos",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/groups",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000238"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000239",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Sumário de grupo",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/groups/:id/summary",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000240"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000241",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Criar grupo",
+      "method": "POST",
+      "url": "{{ base_url }}/classroom/groups",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Grupo Vermelho\",\n  \"turma\": \"1A\",\n  \"membros\": []\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000242"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000243",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Atualizar grupo",
+      "method": "PUT",
+      "url": "{{ base_url }}/classroom/groups/:id",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Grupo Azul\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000244"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000245",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Excluir grupo",
+      "method": "DELETE",
+      "url": "{{ base_url }}/classroom/groups/:id",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000246"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000247",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Atualizar atividades do grupo",
+      "method": "PUT",
+      "url": "{{ base_url }}/classroom/groups/:id/activities",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"atividades\": []\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000248"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000249",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Ausências",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/ausencias",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000250"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000251",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Registrar ausência",
+      "method": "POST",
+      "url": "{{ base_url }}/classroom/ausencias",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 123456,\n  \"turma\": \"1A\",\n  \"data\": \"2026-03-29\",\n  \"motivo\": \"\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000252"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000253",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Excluir ausência",
+      "method": "DELETE",
+      "url": "{{ base_url }}/classroom/ausencias",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000254"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000255",
+      "_type": "request",
+      "parentId": "fld_000214",
+      "name": "Audit log",
+      "method": "GET",
+      "url": "{{ base_url }}/classroom/audit",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000256"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000257",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🔄 Sincronização",
+      "description": "Sincronização com RCO e Supabase"
+    },
+    {
+      "_id": "req_000258",
+      "_type": "request",
+      "parentId": "fld_000257",
+      "name": "Executar sync manual",
+      "method": "POST",
+      "url": "{{ base_url }}/sync",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000259"
+        }
+      ],
+      "description": "Sincroniza dados do RCO com o Supabase",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000260",
+      "_type": "request",
+      "parentId": "fld_000257",
+      "name": "Log do último sync",
+      "method": "GET",
+      "url": "{{ base_url }}/sync/log",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000261"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000262",
+      "_type": "request",
+      "parentId": "fld_000257",
+      "name": "Acessos RCO",
+      "method": "GET",
+      "url": "{{ base_url }}/acessos",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000263"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "fld_000264",
+      "_type": "request_group",
+      "parentId": "wrk_edusync",
+      "name": "🐛 Debug (somente dev)",
+      "description": "Diagnóstico — não usar em produção"
+    },
+    {
+      "_id": "req_000265",
+      "_type": "request",
+      "parentId": "fld_000264",
+      "name": "Alunos da classe",
+      "method": "GET",
+      "url": "{{ base_url }}/debug/alunos-classe",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000266"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000267",
+      "_type": "request",
+      "parentId": "fld_000264",
+      "name": "Alunos RCO",
+      "method": "GET",
+      "url": "{{ base_url }}/debug/alunos-rco",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000268"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000269",
+      "_type": "request",
+      "parentId": "fld_000264",
+      "name": "Raw RCO",
+      "method": "GET",
+      "url": "{{ base_url }}/debug/raw-rco",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000270"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000271",
+      "_type": "request",
+      "parentId": "fld_000264",
+      "name": "Debug RCO",
+      "method": "GET",
+      "url": "{{ base_url }}/debug/rco",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000272"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    },
+    {
+      "_id": "req_000273",
+      "_type": "request",
+      "parentId": "fld_000264",
+      "name": "Apagar seeds",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/seeds",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "hdr_000274"
+        }
+      ],
+      "description": "",
+      "authentication": {},
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "parameters": []
+    }
+  ]
+}
