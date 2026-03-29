@@ -6,3 +6,9 @@ id = "_hBL8cNfbGPnS80jh6yyM"
 uri = "file://edusync-insomnia.json"
 type = "unspecified"
 title = "EduSync API — Coleção Insomnia"
+
+[[outputs]]
+id = "c1LW17ADk0BzT7qB0SDWZ"
+uri = "file://EduSync_Insomnia.json"
+type = "unspecified"
+title = "EduSync_Insomnia.json — Coleção Insomnia completa"
