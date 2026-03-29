@@ -257,8 +257,8 @@ function renderTabelaFrequencias(data, codClasse) {
             const cellsFreq = codAulas.map(cod => {
                 const val = a.frequencias[cod];
                 if (!val)        return `<td class="fc-vazio" title="Não registrado">·</td>`;
-                if (val === 'C') return `<td class="fc-presente" title="Presente">P</td>`;
-                return `<td class="fc-falta" title="Falta">${val === 'F' ? 'F' : val}</td>`;
+                if (val === 'C') return `<td class="fc-presente" title="Presente"><span class="freq-badge freq-badge-p">P</span></td>`;
+                return `<td class="fc-falta" title="Falta"><span class="freq-badge freq-badge-f">${val === 'F' ? 'F' : val}</span></td>`;
             }).join('');
 
             const nomeEsc  = (a.nome || '').replace(/"/g, '&quot;');

@@ -347,19 +347,27 @@
     white-space: nowrap;
 }
 
-.fc-presente {
-    background: #d4edda;
-    color: #155724;
-    font-weight: 700;
-    border-radius: 3px;
-}
+.fc-presente,
 .fc-falta {
-    background: #f8d7da;
-    color: #721c24;
-    font-weight: 700;
-    border-radius: 3px;
+    text-align: center;
+    padding: 2px 1px;
 }
-.fc-vazio { color: #d1d5db; }
+.fc-vazio { color: #d1d5db; text-align: center; }
+
+.freq-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+}
+.freq-badge-p { background: #166534; }
+.freq-badge-f { background: #991b1b; }
 
 .col-presenca { color: #fff; font-weight: 800; font-size: 13px; background: #166534; width: 28px; }
 .col-falta    { color: #fff; font-weight: 800; font-size: 13px; background: #991b1b; width: 28px; }
@@ -786,6 +794,8 @@
 [data-theme="dark"] .leg-pct-critico { background: #991b1b; color: #fee2e2; }
 [data-theme="dark"] .leg-pct-ok      { background: #166534; color: #dcfce7; }
 [data-theme="dark"] .leg-presente    { background: #166534; color: #dcfce7; }
+[data-theme="dark"] .freq-badge-p    { background: #166534; color: #fff; }
+[data-theme="dark"] .freq-badge-f    { background: #991b1b; color: #fff; }
 
 [data-theme="dark"] .aluno-row-critico { background: var(--bg-secondary) !important; border-color: #dc2626 !important; }
 [data-theme="dark"] .freq-footer { background: var(--bg-secondary); border-color: var(--border); }
