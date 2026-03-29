@@ -228,6 +228,21 @@
         <div class="modal-box-livros">
             <button class="modal-close-livros" id="btnFecharModalLivro">✕</button>
             <h3 id="modalLivroTitulo">Cadastrar livro</h3>
+
+            <!-- Busca externa Open Library -->
+            <div class="livro-busca-ext">
+                <div class="livro-busca-row">
+                    <input type="text" id="livroSearchInput"
+                           placeholder="Buscar por ISBN ou título (ex: 9788572160735)"
+                           autocomplete="off">
+                    <button type="button" id="btnBuscarLivro" class="btn-buscar-livro">🔍 Buscar</button>
+                </div>
+                <div id="livroSearchResultados" class="livro-busca-resultados"></div>
+            </div>
+            <div class="livro-busca-divisor">
+                <span>ou preencha manualmente</span>
+            </div>
+
             <form id="formLivro" novalidate>
                 <input type="hidden" id="modalLivroId">
                 <div class="form-group-livros">

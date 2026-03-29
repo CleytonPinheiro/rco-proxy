@@ -387,11 +387,118 @@ function renderAcervo(lista) {
     </div>`;
 }
 
+/* ─── Busca externa Open Library ────────────────────────────────── */
+const OL_BASE = 'https://openlibrary.org';
+
+document.getElementById('btnBuscarLivro').addEventListener('click', buscarLivroExterno);
+document.getElementById('livroSearchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); buscarLivroExterno(); }
+});
+
+async function buscarLivroExterno() {
+    const query = document.getElementById('livroSearchInput').value.trim();
+    if (!query) return;
+    const btn = document.getElementById('btnBuscarLivro');
+    btn.disabled    = true;
+    btn.textContent = 'Buscando…';
+    try {
+        // ISBN: somente dígitos (10 ou 13)
+        const isbn = query.replace(/[\s\-]/g, '');
+        if (/^\d{10}$|^\d{13}$/.test(isbn)) {
+            await _buscarPorIsbn(isbn);
+        } else {
+            await _buscarPorTitulo(query);
+        }
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '🔍 Buscar';
+    }
+}
+
+async function _buscarPorIsbn(isbn) {
+    const div = document.getElementById('livroSearchResultados');
+    div.innerHTML = '<div class="livro-busca-status">Consultando Open Library…</div>';
+    try {
+        const r    = await fetch(`${OL_BASE}/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+        const data = await r.json();
+        const key  = `ISBN:${isbn}`;
+        if (!data[key]) {
+            div.innerHTML = '<div class="livro-busca-status">Nenhum resultado para este ISBN.</div>';
+            return;
+        }
+        const b = data[key];
+        _renderResultados([{
+            titulo:  b.title || '',
+            autores: (b.authors || []).map(a => a.name).join(', '),
+            editora: (b.publishers || [{}])[0]?.name || '',
+            ano:     b.publish_date ? parseInt(b.publish_date) || null : null,
+            isbn,
+        }]);
+    } catch {
+        div.innerHTML = '<div class="livro-busca-status erro">Falha ao consultar Open Library. Verifique a conexão.</div>';
+    }
+}
+
+async function _buscarPorTitulo(titulo) {
+    const div = document.getElementById('livroSearchResultados');
+    div.innerHTML = '<div class="livro-busca-status">Consultando Open Library…</div>';
+    try {
+        const url  = `${OL_BASE}/search.json?q=${encodeURIComponent(titulo)}&limit=10&fields=title,author_name,publisher,first_publish_year,isbn,language`;
+        const r    = await fetch(url);
+        const data = await r.json();
+        if (!data.docs?.length) {
+            div.innerHTML = '<div class="livro-busca-status">Nenhum resultado encontrado. Tente com ISBN ou outro termo.</div>';
+            return;
+        }
+        _renderResultados(data.docs.map(d => ({
+            titulo:  d.title || '',
+            autores: (d.author_name || []).join(', '),
+            editora: (d.publisher  || [])[0] || '',
+            ano:     d.first_publish_year || null,
+            isbn:    (d.isbn || [])[0] || '',
+        })));
+    } catch {
+        div.innerHTML = '<div class="livro-busca-status erro">Falha ao consultar Open Library. Verifique a conexão.</div>';
+    }
+}
+
+function _renderResultados(lista) {
+    const div = document.getElementById('livroSearchResultados');
+    div.innerHTML = lista.map((l, i) => `
+        <div class="livro-busca-item" data-idx="${i}">
+            <div class="livro-busca-item-titulo">${esc(l.titulo)}</div>
+            <div class="livro-busca-item-meta">
+                ${l.autores ? esc(l.autores) : ''}${l.editora ? ' · ' + esc(l.editora) : ''}${l.ano ? ' · ' + l.ano : ''}
+            </div>
+        </div>`).join('');
+
+    div.querySelectorAll('.livro-busca-item').forEach(el => {
+        el.addEventListener('click', () => {
+            _preencherFormLivro(lista[parseInt(el.dataset.idx)]);
+        });
+    });
+}
+
+function _preencherFormLivro({ titulo, autores, editora, ano, isbn }) {
+    if (titulo)  document.getElementById('modalLivroTituloInput').value = titulo;
+    if (autores) document.getElementById('modalLivroAutor').value       = autores;
+    if (editora) document.getElementById('modalLivroEditora').value     = editora;
+    if (ano)     document.getElementById('modalLivroAno').value         = ano;
+    if (isbn)    document.getElementById('modalLivroIsbn').value        = isbn;
+    document.getElementById('livroSearchResultados').innerHTML = '';
+    document.getElementById('livroSearchInput').value          = '';
+    // Foca no campo título para o usuário continuar
+    document.getElementById('modalLivroTituloInput').focus();
+}
+
 /* ─── Modal: Novo/Editar Livro ───────────────────────────────────── */
 document.getElementById('btnNovoLivro').addEventListener('click', () => abrirModalLivro());
 
 function abrirModalLivro(livro) {
     const m = document.getElementById('modalLivro');
+    // Limpa busca externa ao abrir
+    document.getElementById('livroSearchInput').value          = '';
+    document.getElementById('livroSearchResultados').innerHTML = '';
     document.getElementById('modalLivroTitulo').textContent = livro ? 'Editar livro' : 'Cadastrar livro';
     document.getElementById('modalLivroId').value           = livro?.id || '';
     document.getElementById('modalLivroTituloInput').value  = livro?.titulo || '';
