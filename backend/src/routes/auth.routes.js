@@ -256,6 +256,34 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         res.json({ sucesso: true });
     });
 
+    /* ── Atualizar perfil do próprio usuário ── */
+    router.put('/auth/perfil', requireAuth, async (req, res) => {
+        const { nome } = req.body;
+        if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' });
+
+        const userId = req.userSession.userId;
+        try {
+            const { rows } = await pool.query(
+                `UPDATE edusync_usuarios SET nome = $1 WHERE id = $2 RETURNING id, nome, perfil`,
+                [nome.trim(), userId],
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+
+            await auditLogger.registrar({
+                usuarioId:   userId,
+                usuarioNome: rows[0].nome,
+                acao:        'PERFIL_NOME_ATUALIZADO',
+                modulo:      'auth',
+                ip:          req.ip,
+            });
+
+            res.json({ sucesso: true, usuario: rows[0] });
+        } catch (err) {
+            console.error('[Auth] Erro ao atualizar perfil:', err.message);
+            res.status(500).json({ erro: 'Erro ao atualizar perfil.' });
+        }
+    });
+
     /* ── Compatibilidade: /configurar (requer autenticação) ── */
     router.post('/configurar', requireAuth, async (req, res) => {
         const { cpf, senha } = req.body;

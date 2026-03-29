@@ -71,9 +71,16 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Carrega o guard de autenticação em todas as páginas (exceto /login/) ── */
+/* ── Pré-carrega CSS de nav/perfil e guard de autenticação (exceto /login/) ── */
 (function () {
     if (location.pathname.startsWith('/login') || location.pathname === '/') return;
+
+    /* CSS de nav e perfil — carrega junto com o resto para evitar flash */
+    const cssLink = document.createElement('link');
+    cssLink.rel   = 'stylesheet';
+    cssLink.href  = '/shared/css/nav-profile.css';
+    document.head.appendChild(cssLink);
+
     const s  = document.createElement('script');
     s.src    = '/shared/js/auth.js';
     s.async  = false;
