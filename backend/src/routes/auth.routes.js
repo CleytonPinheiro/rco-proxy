@@ -229,16 +229,25 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         res.json({ sucesso: true, usuario: session.toPublic() });
     });
 
-    /* ── Logout ── */
-    router.post('/auth/logout', requireAuth, async (req, res) => {
-        await auditLogger.registrar({
-            usuarioId:   req.userSession.userId,
-            usuarioNome: req.userSession.nome,
-            acao:        'LOGOUT',
-            modulo:      'auth',
-            ip:          req.ip,
-        });
-        userSessionStore.destroy(req.cookies[COOKIE_NAME]);
+    /* ── Logout ── (sem requireAuth: deve sempre funcionar) */
+    router.post('/auth/logout', async (req, res) => {
+        const sessionId = req.cookies?.[COOKIE_NAME];
+        if (sessionId) {
+            const session = userSessionStore.get(sessionId);
+            if (session) {
+                try {
+                    await auditLogger.registrar({
+                        usuarioId:   session.userId,
+                        usuarioNome: session.nome,
+                        acao:        'LOGOUT',
+                        modulo:      'auth',
+                        ip:          req.ip,
+                    });
+                } catch (_) { /* não bloqueia o logout por falha no audit */ }
+                userSessionStore.destroy(sessionId);
+            }
+        }
+        // Sempre limpa o cookie, mesmo sem sessão válida
         res.clearCookie(COOKIE_NAME, {
             httpOnly: true,
             sameSite: 'lax',

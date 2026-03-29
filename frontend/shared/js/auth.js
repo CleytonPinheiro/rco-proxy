@@ -71,7 +71,16 @@
     }
 
     /* ── Aplicar visibilidade do menu após DOM carregado ── */
-    document.addEventListener('DOMContentLoaded', () => {
+    // auth.js é carregado dinamicamente: DOMContentLoaded pode já ter disparado
+    function onDomReady(fn) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+        } else {
+            fn();
+        }
+    }
+
+    onDomReady(() => {
         aplicarPermissoesNav(user);
         injetarUsuarioHeader(user);
         configurarLogout();
