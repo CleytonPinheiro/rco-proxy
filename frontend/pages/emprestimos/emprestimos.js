@@ -817,28 +817,28 @@ function imprimirEtiquetas() {
 body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .badges-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;padding:2mm}
 .badge-card{border:1.5px solid #d1d5db;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;break-inside:avoid;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.10)}
-.badge-topo{padding:5px 8px;display:flex;justify-content:space-between;align-items:center;min-height:14px}
-.badge-topo-serie{font-size:9px;color:white;font-weight:800;letter-spacing:.3px}
-.badge-topo-periodo{font-size:8px;color:rgba(255,255,255,.85);font-weight:600}
-.badge-livro-nome{font-size:8px;font-weight:800;color:#222;padding:3px 7px 2px;background:#f0f4ff;border-bottom:1px solid #e0e7ff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge-topo{padding:5px 8px;display:flex;justify-content:space-between;align-items:center;min-height:16px}
+.badge-topo-serie{font-size:11px;color:white;font-weight:800;letter-spacing:.3px}
+.badge-topo-periodo{font-size:10px;color:rgba(255,255,255,.85);font-weight:600}
+.badge-livro-nome{font-size:10px;font-weight:800;color:#222;padding:3px 7px 2px;background:#f0f4ff;border-bottom:1px solid #e0e7ff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .badge-main{display:flex;gap:6px;padding:6px 7px 5px;align-items:flex-start}
 .badge-foto-3x4{flex-shrink:0;width:22mm;height:29mm;border:1.5px dashed #aaa;border-radius:4px;background:#f9fafb;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .foto-placeholder{display:flex;flex-direction:column;align-items:center;gap:2px}
 .foto-icone{font-size:20px;line-height:1;opacity:.35}
-.foto-label{font-size:7px;color:#aaa;font-weight:700;letter-spacing:.5px}
-.badge-dados{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.badge-nome{font-size:9.5px;font-weight:800;color:#111;line-height:1.25;word-break:break-word}
-.badge-serie-txt{font-size:8px;color:#444;font-weight:700;margin-top:1px}
-.badge-turma-txt{font-size:7px;color:#777;line-height:1.3}
-.badge-periodo-txt{font-size:7.5px;font-weight:700;margin-top:1px}
+.foto-label{font-size:8px;color:#aaa;font-weight:700;letter-spacing:.5px}
+.badge-dados{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.badge-nome{font-size:18px;font-weight:800;color:#111;line-height:1.2;white-space:nowrap;overflow:hidden;display:block}
+.badge-serie-txt{font-size:10px;color:#444;font-weight:700;margin-top:1px}
+.badge-turma-txt{font-size:9px;color:#777;line-height:1.3}
+.badge-periodo-txt{font-size:9px;font-weight:700;margin-top:1px}
 .badge-chamada-row{display:flex;flex-direction:column;align-items:flex-start;margin-top:4px;border-top:1px solid #e5e7eb;padding-top:3px}
-.badge-chamada-lbl{font-size:6.5px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px}
-.badge-chamada-num{font-size:16px;font-weight:900;line-height:1.1}
+.badge-chamada-lbl{font-size:8px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px}
+.badge-chamada-num{font-size:18px;font-weight:900;line-height:1.1}
 .badge-rodape{display:flex;align-items:center;gap:7px;padding:5px 7px 6px;background:#f9fafb}
 .badge-qr{flex-shrink:0;width:44px;height:44px;border:1px solid #e5e7eb;border-radius:4px;background:white}
 .badge-qr-info{display:flex;flex-direction:column;gap:2px;min-width:0}
-.badge-qr-nome{font-size:8px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.badge-qr-cod{font-size:7px;color:#6b7280;font-weight:600}
+.badge-qr-nome{font-size:9px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge-qr-cod{font-size:8px;color:#6b7280;font-weight:600}
 </style></head><body>
 <div class="badges-grid">${etiquetas}</div>
 <script>
@@ -847,6 +847,15 @@ window.onload = function() {
     data.forEach(d => {
         const el = document.getElementById(d.id);
         if (el) JsBarcode(el, d.value, {format:'CODE128',displayValue:false,height:24,margin:2});
+    });
+    // Auto-ajuste: reduz fonte do nome até caber em uma linha
+    document.querySelectorAll('.badge-nome').forEach(el => {
+        let size = 18;
+        el.style.fontSize = size + 'px';
+        while (el.scrollWidth > el.offsetWidth && size > 8) {
+            size -= 0.5;
+            el.style.fontSize = size + 'px';
+        }
     });
     setTimeout(() => window.print(), 600);
 };
