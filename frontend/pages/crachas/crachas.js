@@ -489,7 +489,7 @@ function abrirJanelaImpressao(alunos) {
         const nomeAbrev   = nomePartes.length > 2
             ? `${nomePartes[0]} ${nomePartes[nomePartes.length - 1]}`
             : a.nome;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(codigo)}&size=200x200&margin=4`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(codigo)}&size=300x300&margin=4`;
 
         return `
         <div class="badge-card">
@@ -644,8 +644,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     align-items: flex-end;
 }
 .badge-qr {
-    width: 58px;
-    height: 58px;
+    width: 76px;
+    height: 76px;
     border: 1px solid #d1d5db;
     border-radius: 5px;
     background: white;
@@ -654,7 +654,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
 
 /* ── Código de barras — rodapé largura total ── */
 .badge-barcode-area {
-    padding: 5px 8px 4px;
+    padding: 5px 8px 5px;
     background: #fafafa;
     display: flex;
     flex-direction: column;
@@ -662,7 +662,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
 }
 .barcode {
     width: 100%;
-    height: 52px;
+    height: 64px;
 }
 .badge-barcode-label {
     font-size: 7px;
@@ -687,8 +687,8 @@ window.onload = function() {
         try {
             JsBarcode(el, item.value, {
                 format: 'CODE128',
-                width: 1.8,
-                height: 52,
+                width: 2.2,
+                height: 64,
                 displayValue: false,
                 margin: 0,
             });
