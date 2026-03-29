@@ -737,6 +737,7 @@
 }
 
 [data-theme="dark"] .freq-tabela-wrapper { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela         { background: var(--bg-card); }
 [data-theme="dark"] .freq-tabela thead { background: var(--bg-secondary); border-color: var(--border); }
 [data-theme="dark"] .freq-tabela th { color: var(--text-muted); border-color: var(--border); }
 [data-theme="dark"] .freq-tabela tbody tr:hover { background: var(--bg-hover) !important; }
