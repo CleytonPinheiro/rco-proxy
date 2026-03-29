@@ -273,5 +273,59 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ════════════════════════════════════════════════════════
+       IMPERSONAÇÃO — visualizar o sistema como outro perfil
+       Segurança: requirePerfil usa o perfil REAL da sessão,
+       portanto o admin continua protegido mesmo enquanto impersona.
+    ════════════════════════════════════════════════════════ */
+
+    /* ── Ativar impersonação ── */
+    router.post('/admin/impersonar', async (req, res) => {
+        const { perfil } = req.body;
+        if (!perfil) {
+            return res.status(400).json({ erro: 'perfil é obrigatório.' });
+        }
+
+        const perfilConfig = LISTA_PERFIS.find(p => p.id === perfil);
+        if (!perfilConfig) {
+            return res.status(400).json({ erro: 'Perfil inválido.' });
+        }
+
+        if (perfil === 'admin') {
+            return res.status(400).json({ erro: 'Não é possível impersonar o perfil admin.' });
+        }
+
+        req.userSession.impersonar(perfil, perfilConfig.nome);
+
+        await auditLogger.registrar({
+            usuarioId:   req.userSession.userId,
+            usuarioNome: req.userSession.nome,
+            acao:        'IMPERSONACAO_INICIADA',
+            modulo:      'admin',
+            detalhes:    { perfilSimulado: perfil },
+            ip:          req.ip,
+        });
+
+        res.json({ sucesso: true, usuario: req.userSession.toPublic() });
+    });
+
+    /* ── Sair da impersonação ── */
+    router.post('/admin/impersonar/sair', async (req, res) => {
+        const estaImpersonando = req.userSession.isImpersonando;
+        req.userSession.sairImpersonacao();
+
+        if (estaImpersonando) {
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'IMPERSONACAO_ENCERRADA',
+                modulo:      'admin',
+                ip:          req.ip,
+            });
+        }
+
+        res.json({ sucesso: true, usuario: req.userSession.toPublic() });
+    });
+
     return router;
 }

@@ -1,6 +1,7 @@
 /**
  * Representa a sessão autenticada de um único usuário.
  * Encapsula credenciais e gerencia o token RCO de forma independente.
+ * Suporta modo impersonação: admin visualiza o sistema como outro perfil.
  */
 export class UserSession {
     #id;
@@ -16,6 +17,10 @@ export class UserSession {
     #lastActivity;
     #loginFn;
     #decodeFn;
+
+    /* ── Impersonação ── */
+    #impersonandoPerfil = null;
+    #impersonandoNome   = null;
 
     constructor({ id, userId, cpf, senha, nome, perfil, loginFn, decodeFn }) {
         this.#id           = id;
@@ -35,9 +40,30 @@ export class UserSession {
     get userId()       { return this.#userId; }
     get cpf()          { return this.#cpf; }
     get nome()         { return this.#nome; }
-    get perfil()       { return this.#perfil; }
+    get perfil()       { return this.#perfil; }          // perfil REAL (para auth backend)
     get lastActivity() { return this.#lastActivity; }
     get createdAt()    { return this.#createdAt; }
+
+    /* ── Impersonação: getters ── */
+    get isImpersonando()     { return this.#impersonandoPerfil !== null; }
+    get impersonandoPerfil() { return this.#impersonandoPerfil; }
+    get impersonandoNome()   { return this.#impersonandoNome; }
+
+    /**
+     * Ativa o modo impersonação. Apenas admins devem chamar este método.
+     * @param {string} perfil - perfil a simular
+     * @param {string} nome   - nome descritivo do perfil (ex: "Professor")
+     */
+    impersonar(perfil, nome) {
+        this.#impersonandoPerfil = perfil;
+        this.#impersonandoNome   = nome;
+    }
+
+    /** Desativa o modo impersonação, voltando ao perfil real. */
+    sairImpersonacao() {
+        this.#impersonandoPerfil = null;
+        this.#impersonandoNome   = null;
+    }
 
     /** Atualiza o timestamp de última atividade */
     touch() { this.#lastActivity = Date.now(); }
@@ -49,7 +75,6 @@ export class UserSession {
 
     /**
      * Retorna um token RCO válido, renovando automaticamente se necessário.
-     * Idêntico ao mecanismo do TokenService global, mas isolado por sessão.
      * @param {boolean} force - força renovação mesmo com token válido
      * @returns {Promise<string>}
      */
@@ -85,18 +110,36 @@ export class UserSession {
         return this.#rcoToken;
     }
 
-    /** Retorna dados públicos (sem credenciais) */
+    /**
+     * Retorna dados públicos (sem credenciais).
+     * Quando em modo impersonação, retorna o perfil simulado no campo `perfil`,
+     * mas mantém `perfilReal` e `impersonando: true` para o frontend exibir o banner.
+     */
     toPublic() {
         const cpf = this.#cpf;
         const cpfMask = cpf.length >= 11
             ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.***.***-$4')
             : cpf;
-        return {
-            userId:  this.#userId,
-            nome:    this.#nome,
-            cpf:     cpfMask,
-            perfil:  this.#perfil,
+
+        const base = {
+            userId:     this.#userId,
+            nome:       this.#nome,
+            cpf:        cpfMask,
+            perfil:     this.#perfil,           // perfil real sempre presente
+            perfilReal: this.#perfil,
         };
+
+        if (this.#impersonandoPerfil) {
+            return {
+                ...base,
+                perfil:              this.#impersonandoPerfil, // sobrescreve para o frontend
+                impersonando:        true,
+                impersonandoPerfil:  this.#impersonandoPerfil,
+                impersonandoNome:    this.#impersonandoNome,
+            };
+        }
+
+        return base;
     }
 
     /**
@@ -111,8 +154,8 @@ export class UserSession {
 
     /** Remove credenciais da memória ao encerrar a sessão */
     destroy() {
-        this.#senha        = null;
-        this.#rcoToken     = null;
+        this.#senha          = null;
+        this.#rcoToken       = null;
         this.#rcoTokenExpiry = null;
     }
 }

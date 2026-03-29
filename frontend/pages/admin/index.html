@@ -32,6 +32,30 @@
     </header>
 
     <div class="container" style="max-width:1100px;margin-top:32px">
+
+        <!-- Painel de Impersonação -->
+        <div class="card" id="cardImpersonacao" style="margin-bottom:16px;border:1.5px solid #b45309;background:#fffbeb">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                <div style="flex:1;min-width:200px">
+                    <div style="font-size:.8rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">👁 Visualizar como perfil</div>
+                    <div style="font-size:.8rem;color:#78350f">Simula a visão do sistema para outro perfil sem sair da sua conta de admin.</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <select id="selectPerfilImpersonar" style="padding:7px 10px;border:1.5px solid #d97706;border-radius:7px;background:#fff;font-size:.875rem;color:#111;cursor:pointer">
+                        <option value="">— Selecione um perfil —</option>
+                        <option value="professor">Professor</option>
+                        <option value="pedagogo">Pedagogo</option>
+                        <option value="secretaria">Secretaria</option>
+                        <option value="aux_turno">Aux. de Turno</option>
+                        <option value="cozinha">Cozinha</option>
+                    </select>
+                    <button id="btnImpersonar" style="padding:7px 18px;background:#d97706;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.875rem;cursor:pointer">
+                        Entrar na visualização
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div style="margin-bottom:20px">
                 <h2 style="font-size:1.4rem;font-weight:800">⚙ Administração</h2>

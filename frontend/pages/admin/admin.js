@@ -489,6 +489,38 @@ function esconderFormMsg() {
     document.getElementById('formMsg').style.display = 'none';
 }
 
+/* ════════════════════════════════════════════════════════════
+   IMPERSONAÇÃO
+════════════════════════════════════════════════════════════ */
+document.getElementById('btnImpersonar')?.addEventListener('click', async () => {
+    const perfil = document.getElementById('selectPerfilImpersonar').value;
+    if (!perfil) {
+        alert('Selecione um perfil antes de entrar na visualização.');
+        return;
+    }
+
+    const btn = document.getElementById('btnImpersonar');
+    btn.disabled    = true;
+    btn.textContent = 'Entrando…';
+
+    try {
+        const res  = await api('/admin/impersonar', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ perfil }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || 'Erro ao ativar visualização.');
+
+        // Redireciona para o dashboard como o perfil simulado
+        window.location.replace('/pages/dashboard/');
+    } catch (e) {
+        alert(`Erro: ${e.message}`);
+        btn.disabled    = false;
+        btn.textContent = 'Entrar na visualização';
+    }
+});
+
 /* ── Init ── */
 carregarUsuarios();
 carregarEscolas();
