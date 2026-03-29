@@ -198,6 +198,82 @@
 }
 .turma-tab:not(.active) .tab-count { background: var(--border); color: var(--text-muted); }
 
+/* ── Seções de período (Manhã / Tarde / Noite) ───────────────── */
+.periodo-secao {
+    margin-bottom: 24px;
+}
+
+.periodo-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: default;
+    user-select: none;
+}
+
+.btn-toggle-periodo {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    padding: 0;
+    transition: background 0.13s, color 0.13s;
+}
+.btn-toggle-periodo:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.btn-toggle-periodo svg {
+    display: block;
+    transition: transform 0.22s ease;
+}
+.btn-toggle-periodo.colapsado svg {
+    transform: rotate(-90deg);
+}
+
+.periodo-icone {
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.periodo-nome {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.periodo-count {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 2px;
+}
+
+.periodo-body {
+    padding-left: 6px;
+}
+
+[data-theme="dark"] .periodo-header {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
 /* ── Seções de turma ─────────────────────────────────────────── */
 .turma-secao {
     margin-bottom: 28px;

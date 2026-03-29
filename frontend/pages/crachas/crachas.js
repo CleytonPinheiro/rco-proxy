@@ -5,7 +5,8 @@ let todosAlunos     = [];    // [{codMatrizAluno, nome, codTurma, descrTurma, nu
 let statusMap       = {};    // codMatrizAluno → {status, data_impressao, data_entrega, obs}
 let turmaAtual      = 'todos';
 let selecionados    = new Set();
-let collapseState   = {};    // turma → bool (true = recolhido)
+let collapseState       = {};    // turma   → bool (true = recolhido)
+let collapseStatePeriodo = {};   // período → bool (true = recolhido)
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -89,6 +90,14 @@ function extrairSerie(descrTurma) {
 // Extrai o nome do curso (primeiro segmento) como chave de agrupamento
 function extrairCurso(descrTurma) {
     return descrTurma.split(' - ')[0].trim();
+}
+
+// Extrai o período do dia da descrição da turma
+function extrairPeriodo(descrTurma) {
+    const m = descrTurma.match(/\b(Manhã|Tarde|Noite)\b/i);
+    if (!m) return 'Outro';
+    const p = m[1].toLowerCase();
+    return p.charAt(0).toUpperCase() + p.slice(1);  // capitaliza
 }
 
 // Abrevia o nome da turma para exibição nos botões (série + período + classe)
@@ -191,41 +200,80 @@ function renderLista(lista) {
         return;
     }
 
-    // Agrupar por turma para exibir em seções
-    const grupos = {};
+    const ORDEM_PERIODO = { 'Manhã': 1, 'Tarde': 2, 'Noite': 3, 'Outro': 4 };
+    const ICONE_PERIODO = { 'Manhã': '☀️', 'Tarde': '🌤️', 'Noite': '🌙', 'Outro': '📋' };
+    const CHEVRON = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    // ── 1. Agrupar: período → turma → alunos ──────────────────────────────────
+    const porPeriodo = {};
     for (const a of lista) {
-        const key = a.descrTurma || 'Sem turma';
-        if (!grupos[key]) grupos[key] = [];
-        grupos[key].push(a);
+        const periodo = extrairPeriodo(a.descrTurma);
+        const turma   = a.descrTurma || 'Sem turma';
+        if (!porPeriodo[periodo])        porPeriodo[periodo] = {};
+        if (!porPeriodo[periodo][turma]) porPeriodo[periodo][turma] = [];
+        porPeriodo[periodo][turma].push(a);
     }
 
-    container.innerHTML = Object.entries(grupos).map(([turma, alunos]) => {
-        const todosSelTurma = alunos.every(a => selecionados.has(a.codMatrizAluno));
-        const cor = corTurma(turma);
-        const recolhido = !!collapseState[turma];
-        const turmaEsc  = turma.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const nPeriodos = Object.keys(porPeriodo).length;
+    const periodosOrdenados = Object.entries(porPeriodo)
+        .sort(([a], [b]) => (ORDEM_PERIODO[a] || 9) - (ORDEM_PERIODO[b] || 9));
+
+    // ── 2. Renderizar seções de turma (comum aos dois layouts) ────────────────
+    function renderTurmas(gruposTurma) {
+        return Object.entries(gruposTurma).map(([turma, alunos]) => {
+            const todosSelTurma = alunos.every(a => selecionados.has(a.codMatrizAluno));
+            const cor       = corTurma(turma);
+            const recolhido = !!collapseState[turma];
+            const turmaEsc  = turma.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            return `
+            <div class="turma-secao" data-turma="${turmaEsc}">
+                <div class="turma-secao-header" style="--cor-turma: ${cor}">
+                    <div class="turma-secao-left">
+                        <button class="btn-toggle-secao${recolhido ? ' colapsado' : ''}" onclick="toggleSecao(this)" title="${recolhido ? 'Expandir' : 'Recolher'} turma">
+                            ${CHEVRON}
+                        </button>
+                        <input type="checkbox" class="chk-turma"
+                            ${todosSelTurma ? 'checked' : ''}
+                            onchange="toggleTurma('${turma.replace(/'/g,"\\'")}','${turmaEsc}')" title="Selecionar todos da turma">
+                        <span class="turma-secao-nome">${turma}</span>
+                        <span class="turma-secao-count">${alunos.length} alunos</span>
+                    </div>
+                    <div class="turma-secao-acoes">
+                        <button class="btn-marcar-grupo" onclick="marcarGrupo('${turma.replace(/'/g,"\\'")}', 'impresso')">✅ Marcar impressos</button>
+                        <button class="btn-marcar-grupo" onclick="marcarGrupo('${turma.replace(/'/g,"\\'")}', 'entregue')">🤝 Marcar entregues</button>
+                    </div>
+                </div>
+                <div class="alunos-grid-crachas"${recolhido ? ' style="display:none"' : ''}>
+                    ${alunos.map(a => renderCardAluno(a)).join('')}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── 3. Montar HTML final ──────────────────────────────────────────────────
+    if (nPeriodos === 1) {
+        // Uma única faixa de período → sem wrapper de período
+        container.innerHTML = renderTurmas(periodosOrdenados[0][1]);
+        return;
+    }
+
+    container.innerHTML = periodosOrdenados.map(([periodo, gruposTurma]) => {
+        const total     = Object.values(gruposTurma).reduce((s, arr) => s + arr.length, 0);
+        const recolhido = !!collapseStatePeriodo[periodo];
         return `
-        <div class="turma-secao" data-turma="${turmaEsc}">
-            <div class="turma-secao-header" style="--cor-turma: ${cor}">
-                <div class="turma-secao-left">
-                    <button class="btn-toggle-secao${recolhido ? ' colapsado' : ''}" onclick="toggleSecao(this)" title="${recolhido ? 'Expandir' : 'Recolher'} turma">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                    <input type="checkbox" class="chk-turma"
-                        ${todosSelTurma ? 'checked' : ''}
-                        onchange="toggleTurma('${turma.replace(/'/g,"\\'")}','${turmaEsc}')" title="Selecionar todos da turma">
-                    <span class="turma-secao-nome">${turma}</span>
-                    <span class="turma-secao-count">${alunos.length} alunos</span>
-                </div>
-                <div class="turma-secao-acoes">
-                    <button class="btn-marcar-grupo" onclick="marcarGrupo('${turma.replace(/'/g,"\\'")}', 'impresso')">✅ Marcar impressos</button>
-                    <button class="btn-marcar-grupo" onclick="marcarGrupo('${turma.replace(/'/g,"\\'")}', 'entregue')">🤝 Marcar entregues</button>
-                </div>
+        <div class="periodo-secao" data-periodo="${periodo}">
+            <div class="periodo-header">
+                <button class="btn-toggle-periodo${recolhido ? ' colapsado' : ''}" onclick="togglePeriodo(this)" title="${recolhido ? 'Expandir' : 'Recolher'} período">
+                    ${CHEVRON}
+                </button>
+                <span class="periodo-icone">${ICONE_PERIODO[periodo] || '📋'}</span>
+                <span class="periodo-nome">${periodo}</span>
+                <span class="periodo-count">${total} alunos</span>
             </div>
-            <div class="alunos-grid-crachas"${recolhido ? ' style="display:none"' : ''}>
-                ${alunos.map(a => renderCardAluno(a)).join('')}
+            <div class="periodo-body"${recolhido ? ' style="display:none"' : ''}>
+                ${renderTurmas(gruposTurma)}
             </div>
         </div>`;
     }).join('');
@@ -290,11 +338,20 @@ function toggleSecao(btn) {
     const secao  = btn.closest('.turma-secao');
     const grid   = secao.querySelector('.alunos-grid-crachas');
     const turma  = secao.dataset.turma;
-    const estava = collapseState[turma];
-    collapseState[turma] = !estava;
+    collapseState[turma] = !collapseState[turma];
     grid.style.display   = collapseState[turma] ? 'none' : '';
     btn.classList.toggle('colapsado', !!collapseState[turma]);
     btn.title = collapseState[turma] ? 'Expandir turma' : 'Recolher turma';
+}
+
+function togglePeriodo(btn) {
+    const periodoEl = btn.closest('.periodo-secao');
+    const body      = periodoEl.querySelector('.periodo-body');
+    const periodo   = periodoEl.dataset.periodo;
+    collapseStatePeriodo[periodo] = !collapseStatePeriodo[periodo];
+    body.style.display = collapseStatePeriodo[periodo] ? 'none' : '';
+    btn.classList.toggle('colapsado', !!collapseStatePeriodo[periodo]);
+    btn.title = collapseStatePeriodo[periodo] ? 'Expandir período' : 'Recolher período';
 }
 
 function atualizarBtnImprimir() {
