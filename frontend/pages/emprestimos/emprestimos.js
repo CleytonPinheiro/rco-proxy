@@ -803,6 +803,9 @@ function imprimirEtiquetas() {
                     <div class="badge-qr-cod">ID: ${e.cod_matriz_aluno}</div>
                 </div>
             </div>
+            <div class="badge-barcode-wrap">
+                <svg id="bc-${idx}" class="badge-barcode"></svg>
+            </div>
         </div>`;
     }).join('');
 
@@ -839,6 +842,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;-webkit-print-color
 .badge-qr-info{display:flex;flex-direction:column;gap:2px;min-width:0}
 .badge-qr-nome{font-size:9px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .badge-qr-cod{font-size:8px;color:#6b7280;font-weight:600}
+.badge-barcode-wrap{padding:4px 6px 5px;background:#fff;border-top:1px solid #e5e7eb;display:flex;justify-content:center}
+.badge-barcode{width:100%;height:32px;display:block}
 </style></head><body>
 <div class="badges-grid">${etiquetas}</div>
 <script>
