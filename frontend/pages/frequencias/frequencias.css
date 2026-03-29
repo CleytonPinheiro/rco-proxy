@@ -232,11 +232,11 @@
     border-radius: 5px;
     padding: 3px 9px;
 }
-.leg-presente    { background: #bbf7d0; color: #14532d; }
-.leg-falta       { background: #fecaca; color: #7f1d1d; }
-.leg-pct-ok      { background: #bbf7d0; color: #14532d; }
-.leg-pct-alerta  { background: #fde68a; color: #78350f; }
-.leg-pct-critico { background: #fecaca; color: #7f1d1d; }
+.leg-presente    { background: #166534; color: #dcfce7; }
+.leg-falta       { background: #991b1b; color: #fee2e2; }
+.leg-pct-ok      { background: #166534; color: #dcfce7; }
+.leg-pct-alerta  { background: #92400e; color: #fef3c7; }
+.leg-pct-critico { background: #991b1b; color: #fee2e2; }
 
 /* ── Tabela de frequência ────────────────────────────────────────────────── */
 .freq-tabela-wrap { padding: 0 18px 16px; }
@@ -359,12 +359,12 @@
 }
 .fc-vazio { color: #d1d5db; }
 
-.col-presenca { color: #14532d; font-weight: 700; background: #bbf7d0; width: 28px; }
-.col-falta    { color: #7f1d1d; font-weight: 700; background: #fecaca; width: 28px; }
+.col-presenca { color: #dcfce7; font-weight: 700; background: #166534; width: 28px; }
+.col-falta    { color: #fee2e2; font-weight: 700; background: #991b1b; width: 28px; }
 .col-pct      { font-weight: 700; width: 40px; }
-.pct-ok       { color: #14532d; background: #bbf7d0; }
-.pct-alerta   { color: #78350f; background: #fde68a; }
-.pct-critico  { color: #7f1d1d; background: #fecaca; }
+.pct-ok       { color: #dcfce7; background: #166534; }
+.pct-alerta   { color: #fef3c7; background: #92400e; }
+.pct-critico  { color: #fee2e2; background: #991b1b; }
 
 .linha-totais td {
     background: #fafbfc;
