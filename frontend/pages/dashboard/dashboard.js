@@ -184,11 +184,15 @@ async function abrirModalStatus() {
                     <div class="status-card-label">Token RCO</div>
                     <div class="status-card-value">
                         <span class="status-badge ${tokenOk ? 'ok' : status.tokenEmCache ? 'warn' : 'error'}">
-                            ${tokenOk ? '✓ Válido' : status.tokenEmCache ? '⚠ Expirando' : '✗ Sem token'}
+                            ${tokenOk ? '✓ Válido' : status.tokenEmCache ? (exp ? '⚠ Expirado' : '⚠ Em cache') : '✗ Sem token'}
                         </span>
                     </div>
                     <div class="status-card-sub">
-                        ${exp ? `Expira: ${expStr}${tokenOk ? ` (em ${minutosRestantes} min)` : ''}` : 'Token não obtido'}
+                        ${tokenOk
+                            ? `Expira: ${expStr} (em ${minutosRestantes} min)`
+                            : status.tokenEmCache
+                                ? (exp ? `Expirou: ${expStr}` : 'Expiração não disponível — será renovado na próxima consulta')
+                                : 'Nenhum token obtido ainda'}
                     </div>
                 </div>
             </div>
