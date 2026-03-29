@@ -223,6 +223,24 @@
         </div>
     </div>
 
+    <!-- Modal: Confirmar Devolução / Perdido -->
+    <div class="modal-overlay-livros" id="modalConfirmAcao">
+        <div class="modal-box-livros modal-confirm-box">
+            <button class="modal-close-livros" id="btnFecharModalConfirm">✕</button>
+            <div class="confirm-icone" id="confirmIcone"></div>
+            <h3 id="confirmTitulo"></h3>
+            <p class="confirm-desc" id="confirmDesc"></p>
+            <div class="form-group-livros">
+                <label>Observações (opcional)</label>
+                <textarea id="confirmObs" rows="2" placeholder="Condição do livro, motivo, etc."></textarea>
+            </div>
+            <div class="modal-actions-livros">
+                <button type="button" class="btn-secondary-livros" id="btnCancelarConfirm">Cancelar</button>
+                <button type="button" id="btnConfirmarAcao">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Cadastrar/Editar Livro -->
     <div class="modal-overlay-livros" id="modalLivro">
         <div class="modal-box-livros">

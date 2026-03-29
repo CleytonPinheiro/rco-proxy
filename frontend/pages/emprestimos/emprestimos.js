@@ -233,23 +233,85 @@ function renderCardEmprestimo(e) {
     </div>`;
 }
 
-/* ─── Devolver / Perdido ─────────────────────────────────────────── */
-async function devolverEmprestimo(id, nome) {
-    if (!confirm(`Confirmar devolução do livro por ${nome}?`)) return;
-    try {
-        await apiFetch(`/livros-emprestimos/${id}/devolver`, { method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({}) });
-        toast(`${nome} — livro devolvido!`);
-        await recarregarEmprestimos();
-    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+/* ─── Modal de Confirmação ────────────────────────────────────────── */
+let _confirmPendente = null;
+
+const _modalConfirm    = () => document.getElementById('modalConfirmAcao');
+const _confirmObs      = () => document.getElementById('confirmObs');
+const _confirmTitulo   = () => document.getElementById('confirmTitulo');
+const _confirmDesc     = () => document.getElementById('confirmDesc');
+const _confirmIcone    = () => document.getElementById('confirmIcone');
+const _btnConfirmar    = () => document.getElementById('btnConfirmarAcao');
+
+function _abrirConfirm({ icone, titulo, desc, tipo, acao }) {
+    _confirmIcone().textContent   = icone;
+    _confirmTitulo().textContent  = titulo;
+    _confirmDesc().innerHTML      = desc;
+    _confirmObs().value           = '';
+    _btnConfirmar().className     = tipo === 'devolvido' ? 'confirmar-devolvido' : 'confirmar-perdido';
+    _btnConfirmar().textContent   = tipo === 'devolvido' ? '✅ Confirmar Devolução' : '❌ Confirmar Perda';
+    _confirmPendente              = acao;
+    _modalConfirm().classList.add('aberto');
+    _confirmObs().focus();
 }
 
-async function marcarPerdido(id, nome) {
-    if (!confirm(`Marcar o livro de ${nome} como PERDIDO?`)) return;
+function _fecharConfirm() {
+    _modalConfirm().classList.remove('aberto');
+    _confirmPendente = null;
+}
+
+document.getElementById('btnFecharModalConfirm').addEventListener('click', _fecharConfirm);
+document.getElementById('btnCancelarConfirm').addEventListener('click', _fecharConfirm);
+_modalConfirm().addEventListener('click', e => { if (e.target === _modalConfirm()) _fecharConfirm(); });
+
+document.getElementById('btnConfirmarAcao').addEventListener('click', async () => {
+    if (!_confirmPendente) return;
+    const obs = _confirmObs().value.trim() || null;
+    const btn = _btnConfirmar();
+    btn.disabled = true;
     try {
-        await apiFetch(`/livros-emprestimos/${id}/perdido`, { method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({}) });
-        toast(`${nome} — livro marcado como perdido.`, 'aviso');
-        await recarregarEmprestimos();
-    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+        await _confirmPendente(obs);
+    } finally {
+        btn.disabled = false;
+        _fecharConfirm();
+    }
+});
+
+/* ─── Devolver / Perdido ─────────────────────────────────────────── */
+function devolverEmprestimo(id, nome) {
+    _abrirConfirm({
+        icone: '📗',
+        titulo: 'Confirmar Devolução',
+        desc: `O livro de <strong>${nome}</strong> será marcado como devolvido.`,
+        tipo: 'devolvido',
+        acao: async (obs) => {
+            await apiFetch(`/livros-emprestimos/${id}/devolver`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ obs }),
+            });
+            toast(`${nome} — livro devolvido!`);
+            await recarregarEmprestimos();
+        },
+    });
+}
+
+function marcarPerdido(id, nome) {
+    _abrirConfirm({
+        icone: '📕',
+        titulo: 'Marcar como Perdido',
+        desc: `O livro de <strong>${nome}</strong> será marcado como <strong>perdido</strong>. Esta ação não pode ser desfeita.`,
+        tipo: 'perdido',
+        acao: async (obs) => {
+            await apiFetch(`/livros-emprestimos/${id}/perdido`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ obs }),
+            });
+            toast(`${nome} — livro marcado como perdido.`, 'aviso');
+            await recarregarEmprestimos();
+        },
+    });
 }
 
 async function recarregarEmprestimos() {
