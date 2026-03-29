@@ -998,14 +998,14 @@ body{font-family:'Times New Roman',Times,serif;background:#fff;color:#000}
 .lista-table th{padding:6px 8px;border:1pt solid #333;background:#e8e8f0;font-weight:700;text-align:left;font-size:9pt}
 .lista-table td{padding:5px 8px;border:1pt solid #ccc;vertical-align:middle;height:36px}
 .lista-table tr:nth-child(even) td{background:#fafafa}
-.col-num{width:36px;text-align:center}
-.col-nome{width:28%}
-.col-turma{width:auto}
-.col-data{width:88px;text-align:center;white-space:nowrap}
-.col-ass{width:160px}
-.ass-cell{display:flex;align-items:flex-end;gap:6px;padding-bottom:2px}
-.ass-num{font-size:10pt;font-weight:800;min-width:22px;text-align:right;flex-shrink:0;line-height:1}
-.ass-linha{flex:1;border-bottom:1pt solid #333;height:28px}
+.col-num{width:4%;text-align:center}
+.col-nome{width:22%}
+.col-turma{width:30%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.col-data{width:11%;text-align:center;white-space:nowrap}
+.col-ass{width:33%}
+.ass-cell{display:flex;align-items:flex-end;gap:8px;padding-bottom:2px}
+.ass-num{font-size:11pt;font-weight:800;min-width:24px;text-align:right;flex-shrink:0;line-height:1}
+.ass-linha{flex:1;border-bottom:1.5pt solid #333;height:30px}
 .lista-rodape{display:flex;align-items:flex-end;justify-content:space-between;margin-top:20px;gap:20px;flex-wrap:wrap}
 .lista-assinatura-campo{flex:1;min-width:160px}
 .lista-linha{border-bottom:1pt solid #333;margin-bottom:4px;height:24px}
