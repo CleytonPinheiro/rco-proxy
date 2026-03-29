@@ -110,6 +110,53 @@ function abreviarParaTab(descrTurma) {
     return parts.length > 1 ? parts.slice(1).join(' · ') : descrTurma.trim();
 }
 
+// Versão sem o período (usado quando o período já aparece como sub-cabeçalho)
+function abreviarSemPeriodo(descrTurma) {
+    return abreviarParaTab(descrTurma)
+        .split(' · ')
+        .filter(p => !/^(Manhã|Tarde|Noite)$/i.test(p.trim()))
+        .join(' · ');
+}
+
+// Agrupa lista de turmas por período, já ordenado Manhã→Tarde→Noite→Outro
+function agruparTabsPorPeriodo(turmas) {
+    const ORDEM = { 'Manhã': 1, 'Tarde': 2, 'Noite': 3, 'Outro': 4 };
+    const ICONE = { 'Manhã': '☀️', 'Tarde': '🌤️', 'Noite': '🌙', 'Outro': '📋' };
+    const map = {};
+    turmas.forEach(t => {
+        const p = extrairPeriodo(t);
+        if (!map[p]) map[p] = [];
+        map[p].push(t);
+    });
+    return Object.entries(map)
+        .sort(([a], [b]) => (ORDEM[a] || 9) - (ORDEM[b] || 9))
+        .map(([periodo, ts]) => ({ periodo, icone: ICONE[periodo] || '📋', turmas: ts }));
+}
+
+// Renderiza os botões de turma dentro de um grupo, sub-agrupados por período
+function renderBotoesPorPeriodo(turmas) {
+    const periodos = agruparTabsPorPeriodo(turmas);
+    const multiPeriodo = periodos.length > 1;
+
+    return periodos.map(({ periodo, icone, turmas: ts }) => {
+        const btns = ts.map(t => {
+            const count = todosAlunos.filter(a => a.descrTurma === t).length;
+            const label = multiPeriodo ? abreviarSemPeriodo(t) : abreviarParaTab(t);
+            const ativa = turmasAtivas.has(t);
+            return `<button class="turma-tab ${ativa ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
+                ${label} <span class="tab-count">${count}</span>
+            </button>`;
+        }).join('');
+
+        if (!multiPeriodo) return `<div class="tab-grupo-btns">${btns}</div>`;
+
+        return `<div class="tab-periodo-linha">
+            <span class="tab-periodo-label">${icone} ${periodo}</span>
+            <div class="tab-grupo-btns">${btns}</div>
+        </div>`;
+    }).join('');
+}
+
 // ── Tabs de turma ─────────────────────────────────────────────────────────────
 function renderTabs() {
     const container = document.getElementById('turmaTabs');
@@ -125,7 +172,6 @@ function renderTabs() {
 
     const totalGeral = todosAlunos.length;
     const nGrupos    = Object.keys(grupos).length;
-
     const todasAtivo = turmasAtivas.size === 0;
 
     // Botão "Todas"
@@ -136,34 +182,16 @@ function renderTabs() {
         ${!todasAtivo ? `<span class="tab-sel-hint">${turmasAtivas.size} selecionada${turmasAtivas.size > 1 ? 's' : ''} — clique em "Todas" para limpar</span>` : ''}
     </div>`;
 
-    // Grupos de turma
     if (nGrupos === 1) {
-        // Apenas um curso: não exibe agrupamento, botões em linha simples
-        html += `<div class="tab-grupo tab-grupo-unico"><div class="tab-grupo-btns">
-            ${turmasUnicas.map(t => {
-                const count = todosAlunos.filter(a => a.descrTurma === t).length;
-                const label = abreviarParaTab(t);
-                const ativa = turmasAtivas.has(t);
-                return `<button class="turma-tab ${ativa ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
-                    ${label} <span class="tab-count">${count}</span>
-                </button>`;
-            }).join('')}
-        </div></div>`;
+        html += `<div class="tab-grupo tab-grupo-unico">
+            ${renderBotoesPorPeriodo(turmasUnicas)}
+        </div>`;
     } else {
         Object.entries(grupos).forEach(([curso, turmas]) => {
             const labelCurso = curso.length > 45 ? curso.substring(0, 43) + '…' : curso;
             html += `<div class="tab-grupo">
                 <span class="tab-grupo-label">${labelCurso}</span>
-                <div class="tab-grupo-btns">
-                    ${turmas.map(t => {
-                        const count = todosAlunos.filter(a => a.descrTurma === t).length;
-                        const label = abreviarParaTab(t);
-                        const ativa = turmasAtivas.has(t);
-                        return `<button class="turma-tab ${ativa ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
-                            ${label} <span class="tab-count">${count}</span>
-                        </button>`;
-                    }).join('')}
-                </div>
+                ${renderBotoesPorPeriodo(turmas)}
             </div>`;
         });
     }

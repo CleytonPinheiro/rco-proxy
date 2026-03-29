@@ -177,6 +177,29 @@
     gap: 6px;
 }
 
+/* Sub-linha de período dentro de um grupo de curso */
+.tab-periodo-linha {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.tab-periodo-linha + .tab-periodo-linha {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+}
+
+/* Rótulo do período (☀️ Manhã) */
+.tab-periodo-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    padding-top: 5px;
+    min-width: 62px;
+}
+
 .turma-tab {
     padding: 6px 13px;
     border-radius: 20px;
