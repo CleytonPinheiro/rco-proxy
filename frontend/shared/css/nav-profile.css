@@ -24,36 +24,61 @@
 
 /* ── Avatar no header ────────────────────────────────────────────────────── */
 .nav-avatar-btn {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
     cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.nav-avatar-btn:hover { background: rgba(255,255,255,0.14); }
+.nav-avatar-btn.open   { background: rgba(255,255,255,0.2); }
+
+/* Círculo com iniciais / foto */
+.nav-avatar-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
     background: rgba(255,255,255,0.22);
     color: white;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s;
     flex-shrink: 0;
-    position: relative;
+    line-height: 1;
 }
-.nav-avatar-btn:hover {
-    border-color: rgba(255,255,255,0.9);
-    transform: scale(1.06);
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.18);
-}
-.nav-avatar-btn.open {
-    border-color: white;
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.25);
-}
-.nav-avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
-.nav-avatar-btn.impersonando {
+.nav-avatar-btn:hover .nav-avatar-circle { border-color: rgba(255,255,255,0.85); }
+.nav-avatar-btn.open  .nav-avatar-circle { border-color: white; }
+.nav-avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+.nav-avatar-btn.impersonando .nav-avatar-circle {
     border-color: #fde68a;
     background: #92400e;
 }
+
+/* Rótulo do perfil abaixo do círculo */
+.nav-avatar-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.82);
+    white-space: nowrap;
+    text-transform: capitalize;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-avatar-btn:hover .nav-avatar-label,
+.nav-avatar-btn.open  .nav-avatar-label { color: white; }
 
 /* Esconde o btn-theme e o user-badge originais do HTML */
 .auth-ready .btn-theme,

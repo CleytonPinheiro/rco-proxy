@@ -138,20 +138,33 @@
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
 
+        const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+        const perfilLabel   = PERFIL_LABEL[perfilEfetivo] || perfilEfetivo;
+
         const btn = document.createElement('button');
         btn.className = 'nav-avatar-btn' + (user.impersonando ? ' impersonando' : '');
-        btn.title = `${toTitleCase(user.nome)} · ${PERFIL_LABEL[user.impersonando ? user.impersonandoPerfil : user.perfil] || user.perfil}`;
-        btn.onclick = () => togglePerfilPanel();
+        btn.title     = `${toTitleCase(user.nome)} · ${perfilLabel}`;
+        btn.onclick   = () => togglePerfilPanel();
 
+        /* Círculo com iniciais ou foto */
+        const circle = document.createElement('span');
+        circle.className = 'nav-avatar-circle';
         const av = getAvatar();
         if (av) {
             const img = document.createElement('img');
             img.src = av; img.alt = 'Avatar';
-            btn.appendChild(img);
+            circle.appendChild(img);
         } else {
-            btn.textContent = user.impersonando ? '👁' : iniciais(user.nome);
+            circle.textContent = user.impersonando ? '👁' : iniciais(user.nome);
         }
 
+        /* Rótulo do perfil abaixo do círculo */
+        const label = document.createElement('span');
+        label.className   = 'nav-avatar-label';
+        label.textContent = perfilLabel;
+
+        btn.appendChild(circle);
+        btn.appendChild(label);
         headerActions.insertBefore(btn, headerActions.firstChild);
     }
 
@@ -512,7 +525,7 @@
 
     /* ── Sincroniza avatares no DOM ── */
     function sincronizarAvatares(b64) {
-        document.querySelectorAll('.nav-avatar-btn, .perfil-panel-avatar').forEach(el => {
+        document.querySelectorAll('.nav-avatar-circle, .perfil-panel-avatar').forEach(el => {
             el.innerHTML = `<img src="${b64}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
         });
     }
