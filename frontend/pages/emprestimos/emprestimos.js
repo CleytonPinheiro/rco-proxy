@@ -61,6 +61,7 @@ async function init() {
 
         popularSelectLivros();
         popularSelectTurmas();
+        popularSelectSerieModal();
         atualizarStats();
         renderEmprestimos();
         renderAcervo();
@@ -96,6 +97,29 @@ function popularSelectLivros() {
         });
         if (val) sel.value = val;
     });
+}
+
+function popularSelectSerieModal() {
+    const sel = document.getElementById('modalLivroSerie');
+    if (!sel) return;
+    const seriesSet = new Set();
+    todoAlunos.forEach(a => {
+        const m = a.descrTurma.match(/(\d+[ºaª°]?\s*(?:Ano|[Ss][eé]rie))/i);
+        if (m) seriesSet.add(m[1].trim());
+    });
+    const series = [...seriesSet].sort((a, b) => {
+        const na = parseInt(a), nb = parseInt(b);
+        return na !== nb ? na - nb : a.localeCompare(b, 'pt-BR');
+    });
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">— Selecione —</option>';
+    series.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        sel.appendChild(opt);
+    });
+    if (atual) sel.value = atual;
 }
 
 function popularSelectTurmas() {
@@ -362,7 +386,16 @@ function abrirModalLivro(livro) {
     document.getElementById('modalLivroEditora').value      = livro?.editora || '';
     document.getElementById('modalLivroAno').value          = livro?.ano_publicacao || '';
     document.getElementById('modalLivroDisciplina').value   = livro?.disciplina || '';
-    document.getElementById('modalLivroSerie').value        = livro?.serie || '';
+    const selSerie = document.getElementById('modalLivroSerie');
+    selSerie.value = livro?.serie || '';
+    // Se o valor salvo não existir nas opções, insere como opção avulsa
+    if (livro?.serie && selSerie.value !== livro.serie) {
+        const opt = document.createElement('option');
+        opt.value = livro.serie;
+        opt.textContent = livro.serie;
+        selSerie.insertBefore(opt, selSerie.children[1]);
+        selSerie.value = livro.serie;
+    }
     document.getElementById('modalLivroIsbn').value         = livro?.isbn || '';
     document.getElementById('modalLivroQtde').value         = livro?.quantidade || 1;
     document.getElementById('formLivroMsg').className       = 'form-msg-livros';
