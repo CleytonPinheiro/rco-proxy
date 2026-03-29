@@ -3,7 +3,7 @@
 const API = '';
 let todosAlunos     = [];    // [{codMatrizAluno, nome, codTurma, descrTurma, numChamada, serie}]
 let statusMap       = {};    // codMatrizAluno → {status, data_impressao, data_entrega, obs}
-let turmaAtual      = 'todos';
+let turmasAtivas    = new Set();  // vazio = todas; com itens = multi-seleção
 let selecionados    = new Set();
 let collapseState       = {};    // turma   → bool (true = recolhido)
 let collapseStatePeriodo = {};   // período → bool (true = recolhido)
@@ -126,11 +126,14 @@ function renderTabs() {
     const totalGeral = todosAlunos.length;
     const nGrupos    = Object.keys(grupos).length;
 
+    const todasAtivo = turmasAtivas.size === 0;
+
     // Botão "Todas"
     let html = `<div class="tab-geral-wrap">
-        <button class="turma-tab turma-tab-todas ${turmaAtual === 'todos' ? 'active' : ''}" onclick="selecionarTurma('todos')">
+        <button class="turma-tab turma-tab-todas ${todasAtivo ? 'active' : ''}" onclick="selecionarTurma('todos')">
             Todas <span class="tab-count">${totalGeral}</span>
         </button>
+        ${!todasAtivo ? `<span class="tab-sel-hint">${turmasAtivas.size} selecionada${turmasAtivas.size > 1 ? 's' : ''} — clique em "Todas" para limpar</span>` : ''}
     </div>`;
 
     // Grupos de turma
@@ -140,7 +143,8 @@ function renderTabs() {
             ${turmasUnicas.map(t => {
                 const count = todosAlunos.filter(a => a.descrTurma === t).length;
                 const label = abreviarParaTab(t);
-                return `<button class="turma-tab ${turmaAtual === t ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
+                const ativa = turmasAtivas.has(t);
+                return `<button class="turma-tab ${ativa ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
                     ${label} <span class="tab-count">${count}</span>
                 </button>`;
             }).join('')}
@@ -154,7 +158,8 @@ function renderTabs() {
                     ${turmas.map(t => {
                         const count = todosAlunos.filter(a => a.descrTurma === t).length;
                         const label = abreviarParaTab(t);
-                        return `<button class="turma-tab ${turmaAtual === t ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
+                        const ativa = turmasAtivas.has(t);
+                        return `<button class="turma-tab ${ativa ? 'active' : ''}" onclick="selecionarTurma('${t.replace(/'/g, "\\'")}')">
                             ${label} <span class="tab-count">${count}</span>
                         </button>`;
                     }).join('')}
@@ -167,8 +172,13 @@ function renderTabs() {
 }
 
 function selecionarTurma(turma) {
-    turmaAtual = turma;
-    selecionados.clear();
+    if (turma === 'todos') {
+        turmasAtivas.clear();
+    } else if (turmasAtivas.has(turma)) {
+        turmasAtivas.delete(turma);
+    } else {
+        turmasAtivas.add(turma);
+    }
     renderTabs();
     filtrar();
 }
@@ -179,7 +189,7 @@ function filtrar() {
     const status = document.getElementById('filtroStatus')?.value || '';
 
     let lista = todosAlunos;
-    if (turmaAtual !== 'todos') lista = lista.filter(a => a.descrTurma === turmaAtual);
+    if (turmasAtivas.size > 0) lista = lista.filter(a => turmasAtivas.has(a.descrTurma));
     if (busca)  lista = lista.filter(a => a.nome.toLowerCase().includes(busca));
     if (status) lista = lista.filter(a => (statusMap[a.codMatrizAluno]?.status || 'pendente') === status);
 
@@ -405,7 +415,7 @@ async function salvarStatus(ids, status) {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 function atualizarStats() {
-    const base     = turmaAtual === 'todos' ? todosAlunos : todosAlunos.filter(a => a.descrTurma === turmaAtual);
+    const base     = turmasAtivas.size === 0 ? todosAlunos : todosAlunos.filter(a => turmasAtivas.has(a.descrTurma));
     const total    = base.length;
     const pendente = base.filter(a => (statusMap[a.codMatrizAluno]?.status || 'pendente') === 'pendente').length;
     const impresso = base.filter(a => (statusMap[a.codMatrizAluno]?.status || 'pendente') === 'impresso').length;
@@ -424,7 +434,7 @@ function imprimirSelecionados() {
 }
 
 function imprimirTodos() {
-    const base = turmaAtual === 'todos' ? todosAlunos : todosAlunos.filter(a => a.descrTurma === turmaAtual);
+    const base = turmasAtivas.size === 0 ? todosAlunos : todosAlunos.filter(a => turmasAtivas.has(a.descrTurma));
     abrirJanelaImpressao(base);
 }
 
