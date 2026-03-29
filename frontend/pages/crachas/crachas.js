@@ -500,7 +500,7 @@ function abrirJanelaImpressao(alunos) {
                 <div class="badge-topo-periodo">${periodo || '2026'}</div>
             </div>
 
-            <!-- Área principal: foto 3×4 + dados + QR canto direito -->
+            <!-- Área principal: foto 3×4 + dados + QR coluna direita -->
             <div class="badge-main">
                 <div class="badge-foto-3x4">
                     <div class="foto-placeholder">
@@ -518,15 +518,16 @@ function abrirJanelaImpressao(alunos) {
                         <span class="badge-chamada-num" style="color:${cor}">${a.numChamada || '—'}</span>
                     </div>
                 </div>
+                <!-- QR deslocado à direita, acima do código de barras -->
+                <div class="badge-qr-col">
+                    <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}">
+                </div>
             </div>
 
-            <!-- Rodapé: código de barras (esq.) + QR code (dir.) -->
-            <div class="badge-footer" style="border-top:2px solid ${cor}30">
-                <div class="badge-barcode-area">
-                    <svg class="barcode" id="bc-${idx}"></svg>
-                    <div class="badge-barcode-label">${nomeAbrev} · ${codigo}</div>
-                </div>
-                <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}">
+            <!-- Rodapé: código de barras largura total -->
+            <div class="badge-barcode-area" style="border-top:2px solid ${cor}30">
+                <svg class="barcode" id="bc-${idx}"></svg>
+                <div class="badge-barcode-label">${nomeAbrev} · ${codigo}</div>
             </div>
 
         </div>`;
@@ -580,12 +581,13 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
 .badge-topo-serie  { font-size: 10px; color: white; font-weight: 800; letter-spacing: 0.3px; }
 .badge-topo-periodo { font-size: 9px; color: rgba(255,255,255,0.9); font-weight: 600; }
 
-/* ── Área principal: foto 3×4 + dados ── */
+/* ── Área principal: foto 3×4 + dados + QR coluna direita ── */
 .badge-main {
     display: flex;
     gap: 8px;
     padding: 8px 8px 6px;
-    align-items: flex-start;
+    align-items: stretch;
+    flex: 1;
 }
 
 /* ── Foto 3×4 real (30mm × 40mm) ── */
@@ -613,8 +615,6 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     display: flex;
     flex-direction: column;
     gap: 2px;
-    height: 40mm;
-    position: relative;
 }
 .badge-nome {
     font-size: 11px;
@@ -623,8 +623,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     line-height: 1.25;
     word-break: break-word;
 }
-.badge-serie-txt  { font-size: 9px;  color: #333; font-weight: 700; margin-top: 1px; }
-.badge-turma-txt  { font-size: 8px;  color: #666; line-height: 1.3; }
+.badge-serie-txt   { font-size: 9px;   color: #333; font-weight: 700; margin-top: 1px; }
+.badge-turma-txt   { font-size: 8px;   color: #666; line-height: 1.3; }
 .badge-periodo-txt { font-size: 8.5px; font-weight: 700; margin-top: 1px; }
 .badge-chamada-row {
     display: flex;
@@ -637,11 +637,11 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
 .badge-chamada-lbl { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
 .badge-chamada-num { font-size: 20px; font-weight: 900; line-height: 1.1; }
 
-/* ── QR Code — canto inferior direito dos dados ── */
-.badge-qr-wrap {
-    position: absolute;
-    bottom: 0;
-    right: 0;
+/* ── QR Code — coluna direita, alinhado ao fundo (acima do barcode) ── */
+.badge-qr-col {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-end;
 }
 .badge-qr {
     width: 58px;
@@ -652,7 +652,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     display: block;
 }
 
-/* ── Código de barras — rodapé do crachá ── */
+/* ── Código de barras — rodapé largura total ── */
 .badge-barcode-area {
     padding: 5px 8px 4px;
     background: #fafafa;
@@ -687,8 +687,8 @@ window.onload = function() {
         try {
             JsBarcode(el, item.value, {
                 format: 'CODE128',
-                width: 1.5,
-                height: 48,
+                width: 1.8,
+                height: 52,
                 displayValue: false,
                 margin: 0,
             });
