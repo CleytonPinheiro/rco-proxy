@@ -5,6 +5,7 @@ let todosAlunos     = [];    // [{codMatrizAluno, nome, codTurma, descrTurma, nu
 let statusMap       = {};    // codMatrizAluno → {status, data_impressao, data_entrega, obs}
 let turmaAtual      = 'todos';
 let selecionados    = new Set();
+let collapseState   = {};    // turma → bool (true = recolhido)
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -201,13 +202,20 @@ function renderLista(lista) {
     container.innerHTML = Object.entries(grupos).map(([turma, alunos]) => {
         const todosSelTurma = alunos.every(a => selecionados.has(a.codMatrizAluno));
         const cor = corTurma(turma);
+        const recolhido = !!collapseState[turma];
+        const turmaEsc  = turma.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return `
-        <div class="turma-secao">
+        <div class="turma-secao" data-turma="${turmaEsc}">
             <div class="turma-secao-header" style="--cor-turma: ${cor}">
                 <div class="turma-secao-left">
+                    <button class="btn-toggle-secao${recolhido ? ' colapsado' : ''}" onclick="toggleSecao(this)" title="${recolhido ? 'Expandir' : 'Recolher'} turma">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.5 4.5L7 9.5L11.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                     <input type="checkbox" class="chk-turma"
                         ${todosSelTurma ? 'checked' : ''}
-                        onchange="toggleTurma('${turma.replace(/'/g,"\\'")}')" title="Selecionar todos da turma">
+                        onchange="toggleTurma('${turma.replace(/'/g,"\\'")}','${turmaEsc}')" title="Selecionar todos da turma">
                     <span class="turma-secao-nome">${turma}</span>
                     <span class="turma-secao-count">${alunos.length} alunos</span>
                 </div>
@@ -216,7 +224,7 @@ function renderLista(lista) {
                     <button class="btn-marcar-grupo" onclick="marcarGrupo('${turma.replace(/'/g,"\\'")}', 'entregue')">🤝 Marcar entregues</button>
                 </div>
             </div>
-            <div class="alunos-grid-crachas">
+            <div class="alunos-grid-crachas"${recolhido ? ' style="display:none"' : ''}>
                 ${alunos.map(a => renderCardAluno(a)).join('')}
             </div>
         </div>`;
@@ -276,6 +284,17 @@ function toggleTurma(turma) {
     else alunosTurma.forEach(a => selecionados.add(a.codMatrizAluno));
     atualizarBtnImprimir();
     filtrar();
+}
+
+function toggleSecao(btn) {
+    const secao  = btn.closest('.turma-secao');
+    const grid   = secao.querySelector('.alunos-grid-crachas');
+    const turma  = secao.dataset.turma;
+    const estava = collapseState[turma];
+    collapseState[turma] = !estava;
+    grid.style.display   = collapseState[turma] ? 'none' : '';
+    btn.classList.toggle('colapsado', !!collapseState[turma]);
+    btn.title = collapseState[turma] ? 'Expandir turma' : 'Recolher turma';
 }
 
 function atualizarBtnImprimir() {

@@ -220,6 +220,34 @@
     align-items: center;
     gap: 10px;
 }
+
+/* ── Botão de expandir / recolher seção ── */
+.btn-toggle-secao {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    padding: 0;
+    transition: background 0.13s, color 0.13s;
+}
+.btn-toggle-secao:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.btn-toggle-secao svg {
+    display: block;
+    transition: transform 0.22s ease;
+}
+.btn-toggle-secao.colapsado svg {
+    transform: rotate(-90deg);
+}
 .chk-turma {
     width: 16px; height: 16px;
     cursor: pointer;
