@@ -66,3 +66,12 @@
         }
     });
 })();
+
+/* ── Carrega o guard de autenticação em todas as páginas (exceto /login/) ── */
+(function () {
+    if (location.pathname.startsWith('/login') || location.pathname === '/') return;
+    const s  = document.createElement('script');
+    s.src    = '/shared/js/auth.js';
+    s.async  = false;
+    document.head.appendChild(s);
+}());

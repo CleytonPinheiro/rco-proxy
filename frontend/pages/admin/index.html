@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Administração</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container" style="max-width:1100px;margin-top:32px">
+        <div class="card">
+            <div style="margin-bottom:20px">
+                <h2 style="font-size:1.4rem;font-weight:800">⚙ Administração</h2>
+                <p style="color:var(--text-muted);font-size:.875rem;margin-top:4px">Gerenciamento de usuários e log de auditoria</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="admin-tabs">
+                <button class="admin-tab admin-tab--ativo" data-tab="usuarios">Usuários</button>
+                <button class="admin-tab" data-tab="audit">Audit Log</button>
+            </div>
+
+            <!-- Painel Usuários -->
+            <div class="admin-panel admin-panel--ativo" id="panel-usuarios">
+                <div class="admin-section-header">
+                    <h3>Usuários cadastrados</h3>
+                    <button class="btn-novo-usuario" id="btnNovoUsuario">+ Novo usuário</button>
+                </div>
+                <div id="tabelaUsuariosWrap">
+                    <p style="color:var(--text-muted)">Carregando...</p>
+                </div>
+            </div>
+
+            <!-- Painel Audit Log -->
+            <div class="admin-panel" id="panel-audit">
+                <div class="admin-section-header">
+                    <h3>Log de auditoria</h3>
+                </div>
+                <div class="audit-filtros">
+                    <select id="filtroModulo">
+                        <option value="">Todos os módulos</option>
+                        <option value="auth">auth</option>
+                        <option value="admin">admin</option>
+                        <option value="frequencias">frequencias</option>
+                        <option value="classroom">classroom</option>
+                        <option value="comportamento">comportamento</option>
+                    </select>
+                    <button class="btn-filtrar" id="btnFiltrar">Filtrar</button>
+                </div>
+                <div id="tabelaAuditWrap">
+                    <p style="color:var(--text-muted)">Selecione um filtro e clique em Filtrar.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Criar/Editar usuário -->
+    <div class="modal-overlay" id="modalUsuario">
+        <div class="modal-box">
+            <h3 id="modalTitulo">Novo usuário</h3>
+            <form id="formUsuario" novalidate>
+                <input type="hidden" id="modalUserId">
+                <div class="form-group">
+                    <label>Nome completo</label>
+                    <input type="text" id="modalNome" placeholder="Nome do professor/funcionário" required>
+                </div>
+                <div class="form-group">
+                    <label>CPF (apenas números)</label>
+                    <input type="text" id="modalCpf" placeholder="00000000000" maxlength="11" required>
+                </div>
+                <div class="form-group">
+                    <label>Perfil de acesso</label>
+                    <select id="modalPerfil">
+                        <option value="professor">Professor</option>
+                        <option value="pedagogo">Pedagogo</option>
+                        <option value="secretaria">Secretaria</option>
+                        <option value="aux_turno">Aux. de Turno</option>
+                        <option value="cozinha">Cozinha</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div id="formMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancelar" id="btnCancelarModal">Cancelar</button>
+                    <button type="submit" class="btn-modal-salvar" id="btnSalvarModal">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="./admin.js"></script>
+</body>
+</html>

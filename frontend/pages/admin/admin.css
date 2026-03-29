@@ -1,0 +1,205 @@
+.admin-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.admin-tab {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+}
+
+.admin-tab--ativo {
+    color: #4285F4;
+    border-bottom-color: #4285F4;
+}
+
+.admin-panel { display: none; }
+.admin-panel--ativo { display: block; }
+
+/* ── Cabeçalho da seção ── */
+.admin-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.admin-section-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.btn-novo-usuario {
+    padding: 8px 18px;
+    background: #4285F4;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+}
+.btn-novo-usuario:hover { background: #3070db; }
+
+/* ── Tabela de usuários ── */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+}
+
+.admin-table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-light, var(--border));
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table tr:hover td { background: var(--bg-secondary); }
+
+/* ── Badges de perfil ── */
+.perfil-badge {
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.perfil-admin      { background: #ede9fe; color: #7c3aed; }
+.perfil-professor  { background: #dbeafe; color: #1d4ed8; }
+.perfil-pedagogo   { background: #fef3c7; color: #92400e; }
+.perfil-secretaria { background: #dcfce7; color: #166534; }
+.perfil-aux_turno  { background: #fce7f3; color: #9d174d; }
+.perfil-cozinha    { background: #ffedd5; color: #c2410c; }
+
+[data-theme="dark"] .perfil-admin      { background: rgba(124,58,237,.2); color: #a78bfa; }
+[data-theme="dark"] .perfil-professor  { background: rgba(29,78,216,.2);  color: #93c5fd; }
+[data-theme="dark"] .perfil-pedagogo   { background: rgba(146,64,14,.2);  color: #fcd34d; }
+[data-theme="dark"] .perfil-secretaria { background: rgba(22,101,52,.2);  color: #86efac; }
+[data-theme="dark"] .perfil-aux_turno  { background: rgba(157,23,77,.2);  color: #f9a8d4; }
+[data-theme="dark"] .perfil-cozinha    { background: rgba(194,65,12,.2);  color: #fdba74; }
+
+.status-ativo    { color: #16a34a; font-weight: 700; }
+.status-inativo  { color: #dc2626; font-weight: 700; }
+
+/* ── Ações ── */
+.btn-acao {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: .78rem;
+    cursor: pointer;
+    margin-right: 4px;
+    transition: background .12s;
+}
+.btn-acao:hover { background: var(--bg-secondary); }
+.btn-acao--danger { color: #dc2626; border-color: #fecaca; }
+.btn-acao--danger:hover { background: #fef2f2; }
+[data-theme="dark"] .btn-acao--danger:hover { background: rgba(220,38,38,.1); }
+
+/* ── Modal ── */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay--ativo { display: flex; }
+
+.modal-box {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.2);
+}
+
+.modal-box h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+
+.modal-box .form-group        { margin-bottom: 14px; }
+.modal-box .form-group label  { display: block; font-size: .8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+.modal-box .form-group input,
+.modal-box .form-group select {
+    width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
+    border-radius: 8px; background: var(--bg); color: var(--text-primary);
+    font-size: .9rem; outline: none;
+}
+.modal-box .form-group input:focus,
+.modal-box .form-group select:focus { border-color: #4285F4; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.btn-modal-salvar  { padding: 9px 20px; background: #4285F4; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; }
+.btn-modal-cancelar{ padding: 9px 20px; background: var(--bg); border:1px solid var(--border); border-radius:8px; font-weight:600; cursor:pointer; color:var(--text-primary); }
+
+/* ── Audit Log ── */
+.audit-filtros {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.audit-filtros select,
+.audit-filtros input {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: .85rem;
+    outline: none;
+}
+
+.btn-filtrar {
+    padding: 8px 18px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background .12s;
+}
+.btn-filtrar:hover { background: var(--bg); }
+
+.audit-row-acao  { font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.audit-row-acao.LOGIN    { color: #16a34a; }
+.audit-row-acao.LOGOUT   { color: #dc2626; }
+.audit-row-acao.USUARIO_CRIADO    { color: #7c3aed; }
+.audit-row-acao.USUARIO_ATUALIZADO{ color: #1d4ed8; }
+.audit-row-acao.USUARIO_DESATIVADO{ color: #dc2626; }

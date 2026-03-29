@@ -1,7 +1,16 @@
 # EduSync
 
 ## Visão Geral
-Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop, atividades de sala (checklist diário por turma/data) e **integração com Google Classroom** (disciplinas, atividades e notas).
+Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática via Puppeteer/Chromium. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop, atividades de sala (checklist diário por turma/data), Painel Pedagógico e **integração com Google Classroom**.
+
+### Autenticação Multi-usuário (RBAC)
+- Login via CPF + senha do RCO Digital (Puppeteer valida as credenciais)
+- Primeiro login cria automaticamente o administrador
+- Usuários subsequentes precisam ser cadastrados pelo admin
+- Perfis: `admin`, `professor`, `pedagogo`, `secretaria`, `aux_turno`, `cozinha`
+- Sessões em memória com cookie `edusync_sid` (HttpOnly, 8h)
+- Audit log completo em `edusync_audit_log` (PostgreSQL local)
+- Cada usuário tem sua própria sessão RCO (token isolado por `UserSession`)
 
 ### Classroom (Google Classroom API)
 - **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD
@@ -10,145 +19,125 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 - **Credenciais necessárias**: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (env secrets)
 - **Redirect URI** (registrar no Google Cloud Console): `https://{domínio}/api/classroom/callback`
 - **Escopos**: `classroom.courses.readonly`, `classroom.coursework.students`, `classroom.rosters.readonly`, `classroom.student-submissions.students.readonly`
-- **Auditoria de Frequência**: cruza dados de presença do RCO com atividades do Classroom; zera notas de ausentes automaticamente; registra na tabela `classroom_ausencias` (local PG)
-  - Endpoint: `GET /api/classroom/audit?courseId=X&codClasse=Y` — cruza frequência RCO + Classroom
-  - Endpoint: `POST /api/classroom/ausencias` — salva registro de ausência
-  - Endpoint: `GET/DELETE /api/classroom/ausencias` — consulta/remove registros
 
 ## Estado Atual
-- **Data**: 24/03/2026
-- **Status**: Funcional com login via navegador automatizado + arquitetura OOP refatorada
+- **Data**: 29/03/2026
+- **Status**: Funcional com autenticação multi-usuário RBAC + painel admin
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
-- **Banco de Dados**: Supabase (PostgreSQL)
-- **Automação**: Puppeteer (Chromium) para autenticação
+- **Banco de Dados**: Supabase (PostgreSQL remoto) + PostgreSQL local (tabelas locais)
+- **Automação**: Puppeteer (Chromium) para autenticação no RCO
 
 ## Arquitetura do Projeto
+
+### Bancos de Dados
+- **Supabase** (remoto): `estabelecimentos`, `turmas`, `disciplinas`, `classes`, `alunos`, `rco_sync_log`, `aluno_ocorrencias`, `rco_observacoes`
+- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `edusync_usuarios`, `edusync_audit_log`
 
 ### Estrutura de Pastas
 
 ```
 .
 ├── backend/
-│   ├── index.js                          # Entry point enxuto (~60 linhas)
+│   ├── index.js                          # Entry point (~70 linhas)
 │   ├── auth-puppeteer.js                 # Autenticação Puppeteer/Chromium
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── supabase.js               # Clientes Supabase (anon + admin)
-│   │   ├── services/                     # Camada de serviços (OOP)
-│   │   │   ├── TokenService.js           # Singleton: cache e renovação de JWT
+│   │   │   ├── supabase.js               # Clientes Supabase (anon + admin)
+│   │   │   ├── dbInit.js                 # Cria tabelas locais (edusync_*)
+│   │   │   └── permissions.js            # RBAC: perfis e permissões
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.js        # requireAuth, requirePerfil
+│   │   ├── services/
+│   │   │   ├── TokenService.js           # Singleton: cache e renovação de JWT (session-aware)
 │   │   │   ├── RcoApiService.js          # Singleton: chamadas à API RCO
 │   │   │   ├── SyncService.js            # Singleton: sincronização Supabase
-│   │   │   └── PresencaService.js        # Singleton: sync e agendamento de presença
-│   │   └── routes/                       # Rotas separadas por domínio
+│   │   │   ├── PresencaService.js        # Singleton: sync e agendamento de presença
+│   │   │   ├── RequestContext.js         # AsyncLocalStorage para contexto de request
+│   │   │   ├── UserSession.js            # Sessão RCO por usuário (token isolado)
+│   │   │   ├── UserSessionStore.js       # In-memory store de sessões ativas
+│   │   │   └── AuditLogger.js            # Registro de ações no audit log
+│   │   └── routes/
 │   │       ├── index.js                  # Agregador de rotas
-│   │       ├── auth.routes.js            # /api/status, /api/configurar
-│   │       ├── rco.routes.js             # /api/acessos, /api/frequencias, /api/alunos-rco, /api/observacoes
-│   │       ├── alunos.routes.js          # /api/alunos
-│   │       ├── materiais.routes.js       # /api/materiais, /api/emprestimos, /api/estatisticas
+│   │       ├── auth.routes.js            # /api/auth/login, /api/auth/logout, /api/me
+│   │       ├── admin.routes.js           # /api/admin/* (requer perfil admin)
+│   │       ├── rco.routes.js             # /api/acessos, /api/frequencias, etc.
+│   │       ├── alunos.routes.js          # /api/alunos, /api/students
+│   │       ├── materiais.routes.js       # /api/materiais, /api/emprestimos
 │   │       ├── grupos.routes.js          # /api/grupos
 │   │       ├── crachas.routes.js         # /api/crachas
 │   │       ├── comportamento.routes.js   # /api/comportamento
 │   │       ├── presenca.routes.js        # /api/presenca-diaria
 │   │       ├── cozinha.routes.js         # /api/cozinha
-│   │       ├── sync.routes.js            # /api/sync, /api/sync/log, /api/setup-status
+│   │       ├── sync.routes.js            # /api/sync
+│   │       ├── classroom.routes.js       # /api/classroom/*
+│   │       ├── mapa.routes.js            # /api/mapa-sala
+│   │       ├── atividades.routes.js      # /api/atividades-sala
+│   │       ├── pedagogico.routes.js      # /api/pedagogico
+│   │       ├── circulacao.routes.js      # /api/circulacao
 │   │       └── debug.routes.js           # /api/debug/*
-│   ├── database/
-│   │   ├── migrations/                   # SQL para configurar tabelas no Supabase Studio
-│   │   │   ├── 001_rco_tables.sql
-│   │   │   ├── 002_app_tables.sql
-│   │   │   ├── 003_grupos.sql
-│   │   │   ├── 004_comportamento.sql
-│   │   │   ├── 005_observacoes.sql
-│   │   │   ├── 006_crachas.sql
-│   │   │   ├── 007_presenca.sql
-│   │   │   └── 008_update_alunos_schema.sql
-│   │   └── seeds/                        # Dados iniciais
-│   │       ├── insert_alunos.sql
-│   │       └── insert_alunos_gerado.sql
-│   ├── package.json
-│   └── node_modules/
-├── frontend/                             # Arquivos estáticos (feature-based)
-│   ├── index.html                        # Login (raiz)
-│   ├── shared/                           # Recursos compartilhados
+├── frontend/
+│   ├── index.html                        # Redirect → /login/
+│   ├── login/
+│   │   ├── index.html                    # Página de login
+│   │   ├── login.css
+│   │   └── login.js
+│   ├── shared/
 │   │   ├── css/
 │   │   │   ├── layout.css               # Header, footer, nav, modais, side panel
-│   │   │   ├── theme.css                # Variáveis de tema claro/escuro
-│   │   │   └── base.css                 # Estilos base da página de login
+│   │   │   ├── theme.css                # Variáveis de tema + .user-badge
+│   │   │   └── base.css                 # Estilos base
 │   │   ├── js/
-│   │   │   ├── theme.js                 # Toggle claro/escuro
-│   │   │   └── app.js                   # Lógica da página de login
+│   │   │   ├── theme.js                 # Toggle claro/escuro + injeta auth.js
+│   │   │   └── auth.js                  # Guard: /api/me → RBAC nav → badge → logout
 │   │   └── assets/
 │   │       └── favicon.svg
-│   └── pages/                           # Uma pasta por página
-│       ├── dashboard/index.html + dashboard.css + dashboard.js
-│       ├── frequencias/index.html + frequencias.css + frequencias.js
-│       ├── crachas/index.html + crachas.css + crachas.js
-│       ├── comportamento/index.html + comportamento.css + comportamento.js
-│       ├── presenca/index.html + presenca.css + presenca.js
-│       ├── grupos/index.html + grupos.css + grupos.js
-│       ├── materiais/index.html + materiais.css + materiais.js
-│       ├── emprestimos/index.html + emprestimos.css + materiais.css + emprestimos.js
-│       ├── cozinha/index.html + cozinha.css + cozinha.js
-│       └── quiosque/index.html + quiosque.css + quiosque.js
-├── replit.md
-└── README.md
+│   └── pages/
+│       ├── admin/index.html + admin.css + admin.js   # Painel admin (usuários + audit)
+│       ├── dashboard/
+│       ├── frequencias/
+│       ├── crachas/
+│       ├── comportamento/
+│       ├── presenca/
+│       ├── grupos/
+│       ├── materiais/
+│       ├── emprestimos/
+│       ├── cozinha/
+│       ├── circulacao/
+│       ├── comunicados/
+│       ├── mapa-sala/
+│       ├── atividades/
+│       ├── pedagogico/
+│       └── classroom/
 ```
 
-### Padrão de Injeção de Dependências
-
-Cada módulo de rota exporta uma factory function que recebe suas dependências:
-```javascript
-export function createXRouter({ supabase, supabaseAdmin, tokenService, rcoApiService }) {
-    const router = Router();
-    // ... rotas
-    return router;
-}
-```
-
-Os serviços são singletons inicializados em `initializeApp()` no `index.js`.
+### Fluxo de Autenticação
+1. Usuário acessa qualquer página → `theme.js` injeta `auth.js` → `auth.js` chama `GET /api/me`
+2. Se 401 → redireciona para `/login/?next=<página>`
+3. Em `/login/`: `POST /api/auth/login` com CPF+senha → Puppeteer valida no RCO → cria `UserSession` → cookie `edusync_sid`
+4. Primeiro login cria admin automaticamente na tabela `edusync_usuarios`
+5. `auth.js` oculta links do nav que o perfil não pode acessar
 
 ### Endpoints da API
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/api/status` | Status das credenciais e token |
-| POST | `/api/configurar` | Salva CPF/senha e gera token |
-| GET | `/api/acessos` | Estabelecimentos/turmas/disciplinas RCO |
-| GET | `/api/frequencias` | Frequência por aula de uma classe |
-| GET | `/api/alunos-rco` | Alunos do RCO por codClasse |
-| GET | `/api/observacoes` | Observações de aula RCO → Supabase |
-| GET | `/api/alunos` | Alunos do Supabase |
-| GET/POST/PUT/DELETE | `/api/materiais` | CRUD de materiais |
-| GET/POST | `/api/emprestimos` | Empréstimos |
-| PUT | `/api/emprestimos/:id/devolver` | Devolução |
-| GET/POST/PUT/DELETE | `/api/grupos` | Grupos de trabalho |
-| GET/POST | `/api/crachas` | Status dos crachás |
-| GET/POST/DELETE | `/api/comportamento` | Ocorrências de comportamento |
-| GET/POST/PUT | `/api/presenca-diaria` | Presença diária |
-| GET | `/api/cozinha` | Painel da cozinha |
-| POST | `/api/sync` | Sync manual RCO → Supabase |
-| GET | `/api/sync/log` | Logs de sincronização |
-
-## Funcionalidades
-
-### Login Automático (Puppeteer)
-- Chromium headless navega até a Central de Segurança PR
-- Preenche CPF/senha automaticamente
-- Captura token JWT do localStorage
-- Token é cacheado e renovado automaticamente antes de expirar (5min de antecedência)
-- Semáforo (`refreshPromise`) evita renovações simultâneas
-- `TokenService` é um singleton com campos privados (`#cachedToken`, etc.)
-
-### Sincronização com Supabase (SyncService)
-- Sync automático na inicialização e a cada 6 horas
-- Upsert de estabelecimentos → turmas → disciplinas → classes → alunos
-- Registro de log em `rco_sync_log`
-
-### Presença Diária (PresencaService)
-- Sync agendado nos horários 09:00, 13:30 e 20:00
-- Conta presenças por turma via frequenciaAulas RCO
-- Integração com painel da cozinha
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| POST | `/api/auth/login` | ✗ | Login CPF+senha |
+| POST | `/api/auth/logout` | ✓ | Logout + destroy sessão |
+| GET | `/api/me` | ✓ | Dados do usuário logado |
+| GET | `/api/admin/usuarios` | admin | Lista usuários |
+| POST | `/api/admin/usuarios` | admin | Criar usuário |
+| PUT | `/api/admin/usuarios/:id` | admin | Editar usuário |
+| DELETE | `/api/admin/usuarios/:id` | admin | Desativar usuário |
+| GET | `/api/admin/audit-log` | admin | Log de auditoria |
+| GET | `/api/acessos` | ✓ | Estabelecimentos/turmas/disciplinas RCO |
+| GET | `/api/frequencias` | ✓ | Frequência por aula de uma classe |
+| GET | `/api/alunos` | ✓ | Alunos do Supabase |
+| GET | `/api/students` | ✓ | Alunos com numChamada |
+| GET/POST/PUT/DELETE | `/api/materiais` | ✓ | CRUD de materiais |
+| GET/POST | `/api/emprestimos` | ✓ | Empréstimos |
+| GET/POST/PUT/DELETE | `/api/grupos` | ✓ | Grupos de trabalho |
+| POST | `/api/sync` | ✓ | Sync manual RCO → Supabase |
 
 ## Configuração
 
@@ -158,35 +147,33 @@ Os serviços são singletons inicializados em `initializeApp()` no `index.js`.
 - **Porta**: 5000 (webview)
 
 ### Secrets
-- `RCO_CPF`: CPF para login no RCO
-- `RCO_SENHA`: Senha para login no RCO
-- `SUPABASE_URL`: URL do projeto Supabase
-- `SUPABASE_ANON_KEY`: Chave anon do Supabase
-- `SUPABASE_SERVICE_ROLE_KEY`: Chave service role (bypass de RLS)
+- `RCO_CPF`: CPF da conta de serviço para sync em background
+- `RCO_SENHA`: Senha da conta de serviço
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL`: PostgreSQL local (tabelas locais EduSync)
 
 ## Decisões Técnicas
 
-1. **Servidor sobe antes das dependências**: Health check funciona imediatamente; módulos pesados (Puppeteer, Supabase) carregam em background via `initializeApp()`
-2. **OOP com classes ES2022**: Campos privados (`#field`) nos serviços para encapsulamento real
-3. **Injeção de dependências**: Route factories recebem serviços como parâmetro, sem globals
-4. **Frontend feature-based**: Cada página tem sua própria pasta `pages/[page]/` com `index.html`, CSS e JS. Recursos compartilhados (tema, layout, assets) ficam em `shared/`. URLs sem `.html` — `/pages/dashboard/` etc. servidas pelo `express.static`. Redirects 301 de URLs antigas (`/dashboard.html`) para novas.
-5. **codPeriodoLetivo=261** (2026-1), **codPeriodoAvaliacao=9** (1º Trimestre)
-
-## Notas de Segurança
-- Token JWT nunca enviado ao frontend
-- Supabase admin client usa service role key separada
-- Credenciais RCO armazenadas apenas em memória (environment secrets)
+1. **Token RCO por usuário**: Cada `UserSession` mantém seu próprio token RCO; renovação lazy (Puppeteer só roda quando o token expira)
+2. **seedToken()**: Evita Puppeteer duplo no login — o token obtido durante o login é injetado direto na sessão
+3. **TokenService session-aware**: Usa `AsyncLocalStorage` (RequestContext) — se há uma `UserSession` no contexto, delega para ela; caso contrário usa a conta de serviço (env vars) para jobs de sync
+4. **auth.js injetado via theme.js**: Uma linha em `theme.js` injeta `auth.js` em TODAS as páginas automaticamente, sem editar cada HTML
+5. **Primeiro login = admin**: Se `edusync_usuarios` está vazia, o primeiro login bem-sucedido cria o usuário como `admin`
+6. **Soft delete**: Usuários são desativados (`ativo = false`), nunca deletados fisicamente
+7. **OOP com ES Modules**: Campos privados (`#field`) nos serviços; zero `require()`
+8. **codPeriodoLetivo=261** (2026-1), **codPeriodoAvaliacao=9** (1º Trimestre)
+9. **RCO scale**: API usa escala ×10 internamente; display sempre `/10`
 
 ## Mudanças Recentes
 
-- **24/03/2026**: Refatoração OOP completa do backend
-  - `backend/index.js` de 1783 linhas → 60 linhas (entry point)
-  - Criados 4 services (TokenService, RcoApiService, SyncService, PresencaService)
-  - Criados 11 arquivos de rotas separados por domínio
-  - SQL movidos para `backend/database/migrations/` e `backend/database/seeds/`
-  - Pattern de injeção de dependências em todas as rotas
+- **29/03/2026**: Multi-user RBAC + Painel Admin
+  - Tabelas `edusync_usuarios` e `edusync_audit_log` no PostgreSQL local
+  - Serviços: `RequestContext`, `UserSession`, `UserSessionStore`, `AuditLogger`
+  - Middleware: `auth.middleware.js` (requireAuth, requirePerfil)
+  - Rotas: `auth.routes.js` reescrito, `admin.routes.js` novo
+  - Frontend: `/login/` com auto-redirect, `shared/js/auth.js` (guard+RBAC+badge)
+  - `theme.js` injeta `auth.js` em todas as páginas automaticamente
+  - Painel admin: listagem de usuários, criar/editar/desativar, audit log com filtros
+  - `frontend/index.html` agora é redirect puro para `/login/`
 
-- **24/03/2026**: Drawer de detalhes do aluno em Frequências
-  - Busca paralela de todas as disciplinas ao clicar no aluno
-  - Cache `disciplinaCache` por codClasse
-  - Exibe % geral + cards por disciplina com status Pé-de-Meia
+- **24/03/2026**: Refatoração OOP completa + Classroom + numChamada + grouping de turmas

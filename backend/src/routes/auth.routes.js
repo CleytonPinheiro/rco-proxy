@@ -1,4 +1,15 @@
-import { Router } from 'express';
+/**
+ * Rotas de autenticação multi-usuário.
+ * Cada usuário faz login com seu próprio CPF + senha do RCO.
+ * O sistema valida no RCO e cria uma sessão independente.
+ */
+import { Router }           from 'express';
+import pg                   from 'pg';
+import { userSessionStore } from '../services/UserSessionStore.js';
+import { auditLogger }      from '../services/AuditLogger.js';
+import { requireAuth, COOKIE_NAME } from '../middleware/auth.middleware.js';
+
+const { Pool } = pg;
 
 function decodeJwtPayload(token) {
     try {
@@ -8,77 +19,160 @@ function decodeJwtPayload(token) {
     } catch { return null; }
 }
 
-export function createAuthRouter({ tokenService, syncService }) {
+export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer, decodeJwtExpiration }) {
+    const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
     const router = Router();
 
+    /* ── Status da conexão global (compatibilidade) ── */
     router.get('/status', (req, res) => {
-        res.json(tokenService.getStatus());
-    });
+        const session = req.cookies?.[COOKIE_NAME]
+            ? userSessionStore.get(req.cookies[COOKIE_NAME])
+            : null;
 
-    // Dados básicos do professor logado (decodificados do JWT)
-    router.get('/me', async (req, res) => {
-        try {
-            const token   = await tokenService.getValidToken();
-            const payload = decodeJwtPayload(token);
-
-            const nome = payload?.nome
-                || payload?.name
-                || payload?.preferred_username
-                || payload?.sub
-                || null;
-
-            const cpf = tokenService.getCpf() || '';
-            const cpfMask = cpf.length >= 11
-                ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.***.***-$4')
-                : cpf;
-
+        if (session) {
             res.json({
-                nome:     nome || 'Professor(a)',
-                cpfMask,
-                claims:   payload || {},
+                credenciaisConfiguradas: true,
+                tokenEmCache:   true,
+                tokenExpiracao: null,
+                usuarioLogado:  session.toPublic(),
             });
-        } catch (e) {
-            res.status(500).json({ erro: e.message });
+        } else {
+            res.json(tokenService.getStatus());
         }
     });
 
+    /* ── Dados do usuário autenticado ── */
+    router.get('/me', requireAuth, (req, res) => {
+        res.json(req.userSession.toPublic());
+    });
+
+    /* ── Login ── */
+    router.post('/auth/login', async (req, res) => {
+        const { cpf, senha } = req.body;
+        if (!cpf || !senha) {
+            return res.status(400).json({ erro: 'CPF e senha são obrigatórios.' });
+        }
+
+        const cpfLimpo = cpf.replace(/\D/g, '');
+
+        // 1. Verificar se o usuário existe e está ativo
+        const { rows } = await pool.query(
+            `SELECT id, nome, perfil, ativo FROM edusync_usuarios WHERE cpf = $1`,
+            [cpfLimpo],
+        );
+
+        const primeiroAcesso = rows.length === 0;
+
+        if (!primeiroAcesso && !rows[0].ativo) {
+            return res.status(403).json({ erro: 'Usuário desativado. Contate o administrador.' });
+        }
+
+        // 2. Autenticar no RCO
+        let rcoToken;
+        try {
+            rcoToken = await loginWithPuppeteer(cpfLimpo, senha);
+        } catch (e) {
+            return res.status(401).json({ erro: 'CPF ou senha incorretos (RCO).' });
+        }
+
+        // 3. Extrair nome do JWT
+        const payload = decodeJwtPayload(rcoToken);
+        const nomeRco = payload?.nome || payload?.name || payload?.preferred_username || 'Usuário';
+
+        let userId;
+        let perfil;
+        let nome;
+
+        if (primeiroAcesso) {
+            // Bootstrap: primeiro usuário vira admin automaticamente
+            const totalUsuarios = await pool.query('SELECT COUNT(*) FROM edusync_usuarios');
+            const isFirst = parseInt(totalUsuarios.rows[0].count, 10) === 0;
+
+            perfil = isFirst ? 'admin' : 'professor';
+            nome   = nomeRco;
+
+            const inserted = await pool.query(
+                `INSERT INTO edusync_usuarios (nome, cpf, perfil)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (cpf) DO UPDATE SET nome = EXCLUDED.nome
+                 RETURNING id, nome, perfil`,
+                [nome, cpfLimpo, perfil],
+            );
+            userId = inserted.rows[0].id;
+            nome   = inserted.rows[0].nome;
+            perfil = inserted.rows[0].perfil;
+            console.log(`[Auth] ${isFirst ? 'Primeiro usuário criado como admin' : 'Novo usuário criado'}: ${nome}`);
+        } else {
+            userId = rows[0].id;
+            nome   = rows[0].nome;
+            perfil = rows[0].perfil;
+        }
+
+        // 4. Criar sessão e injetar o token já obtido (evita Puppeteer duplo)
+        const { sessionId, session } = userSessionStore.create({
+            userId, cpf: cpfLimpo, senha, nome, perfil,
+            loginFn:  loginWithPuppeteer,
+            decodeFn: decodeJwtExpiration,
+        });
+        session.seedToken(rcoToken, decodeJwtExpiration(rcoToken));
+
+        // 5. Cookie de sessão (HttpOnly, 8h)
+        res.cookie(COOKIE_NAME, sessionId, {
+            httpOnly: true,
+            sameSite: 'lax',
+            maxAge:   8 * 60 * 60 * 1000,
+            secure:   process.env.NODE_ENV === 'production',
+        });
+
+        // 6. Audit log
+        await auditLogger.registrar({
+            usuarioId:   userId,
+            usuarioNome: nome,
+            acao:        'LOGIN',
+            modulo:      'auth',
+            ip:          req.ip,
+        });
+
+        // 7. Sync em background para este usuário
+        syncService.sincronizarComSupabase()
+            .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
+
+        res.json({ sucesso: true, usuario: session.toPublic() });
+    });
+
+    /* ── Logout ── */
+    router.post('/auth/logout', requireAuth, async (req, res) => {
+        await auditLogger.registrar({
+            usuarioId:   req.userSession.userId,
+            usuarioNome: req.userSession.nome,
+            acao:        'LOGOUT',
+            modulo:      'auth',
+            ip:          req.ip,
+        });
+        userSessionStore.destroy(req.cookies[COOKIE_NAME]);
+        res.clearCookie(COOKIE_NAME);
+        res.json({ sucesso: true });
+    });
+
+    /* ── Compatibilidade: /configurar (redireciona para novo login) ── */
     router.post('/configurar', async (req, res) => {
         const { cpf, senha } = req.body;
         if (!cpf || !senha) {
             return res.status(400).json({ erro: 'CPF e Senha são obrigatórios' });
         }
 
-        const cpfAnterior = tokenService.getCpf();
-        const trocouUsuario = cpfAnterior && cpfAnterior !== cpf;
-
-        tokenService.setCredentials(cpf, senha);
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        tokenService.setCredentials(cpfLimpo, senha);
 
         try {
             await tokenService.getValidToken(true);
             const status = tokenService.getStatus();
 
-            // Disparar sincronização em background após login bem-sucedido
-            if (trocouUsuario) {
-                console.log(`[Auth] Troca de usuário detectada (${cpfAnterior.slice(-4)} → ${cpf.slice(-4)}), limpando dados anteriores e re-sincronizando...`);
-                // Limpa turmas/classes/obs RCO do usuário anterior antes de re-sincronizar
-                // Preserva aluno_ocorrencias (registros do professor, não re-sincronizáveis)
-                syncService.limparParaTroca()
-                    .then(() => syncService.sincronizarComSupabase())
-                    .then(r => console.log('[Auth] Re-sync pós-troca concluído:', r.status))
-                    .catch(e => console.warn('[Auth] Re-sync pós-troca falhou:', e.message));
-            } else {
-                console.log('[Auth] Login bem-sucedido, iniciando sync em background...');
-                syncService.sincronizarComSupabase()
-                    .then(r => console.log('[Auth] Sync pós-login concluído:', r.status))
-                    .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
-            }
+            syncService.sincronizarComSupabase()
+                .then(r  => console.log('[Auth] Sync pós-login:', r.status))
+                .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
 
-            res.json({
-                sucesso: true,
-                mensagem: 'Credenciais salvas e token gerado com sucesso',
-                expiracao: status.tokenExpiracao,
-                trocouUsuario,
-            });
+            res.json({ sucesso: true, mensagem: 'Credenciais salvas', expiracao: status.tokenExpiracao });
         } catch (error) {
             res.status(500).json({ sucesso: false, erro: error.message });
         }

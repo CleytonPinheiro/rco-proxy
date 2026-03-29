@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { createAuthRouter }          from './auth.routes.js';
-import { createRcoRouter }           from './rco.routes.js';
-import { createAlunosRouter }        from './alunos.routes.js';
+import { Router }               from 'express';
+import { createAuthRouter }     from './auth.routes.js';
+import { createRcoRouter }      from './rco.routes.js';
+import { createAlunosRouter }   from './alunos.routes.js';
 import { createMateriaisRouter }     from './materiais.routes.js';
 import { createGruposRouter }        from './grupos.routes.js';
 import { createCrachasRouter }       from './crachas.routes.js';
@@ -14,8 +14,9 @@ import { createSyncRouter }          from './sync.routes.js';
 import { createDebugRouter }         from './debug.routes.js';
 import { createMapaSalaRouter }      from './mapa-sala.routes.js';
 import { createAtividadesRouter }    from './atividades.routes.js';
-import { createPedagogicoRouter }   from './pedagogico.routes.js';
-import { createClassroomRouter }    from './classroom.routes.js';
+import { createPedagogicoRouter }    from './pedagogico.routes.js';
+import { createClassroomRouter }     from './classroom.routes.js';
+import { createAdminRouter }         from './admin.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -37,6 +38,7 @@ export function createApiRouter(deps) {
     router.use('/', createAtividadesRouter());
     router.use('/', createPedagogicoRouter(deps));
     router.use('/', createClassroomRouter(deps));
+    router.use('/', createAdminRouter());
 
     return router;
 }

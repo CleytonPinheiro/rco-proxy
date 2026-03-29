@@ -1,22 +1,23 @@
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
+import express    from 'express';
+import cors       from 'cors';
+import path       from 'path';
 import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
 const app = express();
 
-// Health checks — registrados antes de qualquer middleware pesado
-app.get('/health', (req, res) => res.status(200).send('OK'));
-app.get('/', (req, res) => res.redirect('/app'));
+// Health checks registrados antes de qualquer middleware pesado
+app.get('/health', (_req, res) => res.status(200).send('OK'));
+app.get('/',       (_req, res) => res.redirect('/login/'));
 
 // Servidor sobe imediatamente para não travar o health check
 const PORT = 5000;
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor rodando na porta ${PORT}`);
-    console.log(`Frontend: http://localhost:${PORT}/app`);
+    console.log(`Frontend: http://localhost:${PORT}/login/`);
     console.log(`API: http://localhost:${PORT}/api`);
     initializeApp();
 });
@@ -25,7 +26,11 @@ async function initializeApp() {
     try {
         console.log('Carregando dependências...');
 
-        // Configurações e serviços (lazy import para não atrasar o boot)
+        // Inicializar banco de dados (tabelas de usuários e audit log)
+        const { initializeDatabase }    = await import('./src/config/dbInit.js');
+        await initializeDatabase();
+
+        // Serviços e configurações
         const { supabase, supabaseAdmin }                     = await import('./src/config/supabase.js');
         const { loginWithPuppeteer, decodeJwtExpiration }     = await import('./auth-puppeteer.js');
         const { tokenService }                                = await import('./src/services/TokenService.js');
@@ -41,10 +46,15 @@ async function initializeApp() {
 
         // Registro de rotas com dependências injetadas
         const { createApiRouter } = await import('./src/routes/index.js');
-        const deps = { supabase, supabaseAdmin, tokenService, rcoApiService, syncService, presencaService };
+        const deps = {
+            supabase, supabaseAdmin,
+            tokenService, rcoApiService, syncService, presencaService,
+            loginWithPuppeteer, decodeJwtExpiration,   // necessário para UserSession nas rotas de auth
+        };
 
         app.use(cors());
         app.use(express.json());
+        app.use(cookieParser());
 
         // Impedir cache de respostas da API no navegador
         app.use('/api', (req, res, next) => {
@@ -56,23 +66,32 @@ async function initializeApp() {
         // Redirecionar URLs antigas (.html) para nova estrutura de pastas
         const paginasRedirect = [
             'dashboard', 'frequencias', 'crachas', 'comportamento',
-            'presenca', 'grupos', 'materiais', 'emprestimos', 'cozinha', 'quiosque'
+            'presenca', 'grupos', 'materiais', 'emprestimos', 'cozinha', 'quiosque',
         ];
         paginasRedirect.forEach(p => {
             app.get(`/${p}.html`, (req, res) => res.redirect(301, `/pages/${p}/`));
         });
 
-        app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
+        // Rota raiz do app redireciona para login
+        app.get('/app', (_req, res) => res.redirect('/login/'));
+
         app.use(express.static(path.join(__dirname, '../frontend')));
         app.use('/api', createApiRouter(deps));
-        app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
+
+        // SPA fallback
+        app.get('*', (req, res) => {
+            // Se a rota começa com /pages/ serve as páginas normalmente
+            res.sendFile(path.join(__dirname, '../frontend/index.html'));
+        });
 
         console.log('Dependências e rotas carregadas com sucesso!');
 
         // Sync inicial e agendamento
-        await syncService.sincronizarComSupabase().catch(e => console.warn('[SYNC] Falha no sync inicial:', e.message));
+        await syncService.sincronizarComSupabase()
+            .catch(e => console.warn('[SYNC] Falha no sync inicial:', e.message));
         setInterval(() => {
-            syncService.sincronizarComSupabase().catch(e => console.warn('[SYNC] Falha no sync periódico:', e.message));
+            syncService.sincronizarComSupabase()
+                .catch(e => console.warn('[SYNC] Falha no sync periódico:', e.message));
         }, 6 * 60 * 60 * 1000);
 
         // Agendar sync de presença nos horários fixos
