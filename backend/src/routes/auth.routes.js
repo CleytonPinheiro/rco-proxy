@@ -205,12 +205,14 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         });
         session.seedToken(rcoToken, decodeJwtExpiration(rcoToken));
 
-        // 5. Cookie de sessão — HttpOnly, 8h, secure via trust proxy
+        // 5. Cookie de sessão — session cookie (sem maxAge/expires).
+        //    O browser apaga automaticamente ao fechar; não persiste em disco.
+        //    Expiração server-side por inatividade é controlada pelo UserSessionStore (8h).
         res.cookie(COOKIE_NAME, sessionId, {
             httpOnly: true,
             sameSite: 'lax',
-            maxAge:   8 * 60 * 60 * 1000,
             secure:   req.secure,
+            // sem maxAge → session cookie → deletado ao fechar o browser
         });
 
         // 6. Audit log
