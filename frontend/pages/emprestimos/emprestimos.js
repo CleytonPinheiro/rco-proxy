@@ -283,15 +283,45 @@ function fecharModalEmprestimo() {
 document.getElementById('modalEmpTurma').addEventListener('change', function () {
     const turma = this.value;
     const sel   = document.getElementById('modalEmpAluno');
+    const label = document.getElementById('modalEmpAlunoLabel');
     sel.innerHTML = '<option value="">— Selecione o aluno —</option>';
-    const lista   = todoAlunos.filter(a => a.descrTurma === turma);
+    label.textContent = '';
+
+    if (!turma) return;
+
+    const lista = todoAlunos.filter(a => a.descrTurma === turma);
     lista.sort((a, b) => (a.numChamada || 0) - (b.numChamada || 0));
-    lista.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = JSON.stringify({ cod: a.codMatrizAluno, nome: a.nome, numChamada: a.numChamada });
-        opt.text  = `${a.numChamada ? a.numChamada + '. ' : ''}${a.nome}`;
-        sel.appendChild(opt);
-    });
+
+    // Opção para toda a turma de uma vez
+    if (lista.length > 0) {
+        const optTodos = document.createElement('option');
+        optTodos.value = '__TODOS__';
+        optTodos.text  = `📋 Todos os alunos da turma (${lista.length})`;
+        sel.appendChild(optTodos);
+
+        // Separador visual
+        const grp = document.createElement('optgroup');
+        grp.label = '── Aluno individual ──';
+        lista.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = JSON.stringify({ cod: a.codMatrizAluno, nome: a.nome, numChamada: a.numChamada });
+            opt.text  = `${a.numChamada ? a.numChamada + '. ' : ''}${a.nome}`;
+            grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+    }
+});
+
+/* Atualiza label ao mudar aluno */
+document.getElementById('modalEmpAluno').addEventListener('change', function () {
+    const label = document.getElementById('modalEmpAlunoLabel');
+    if (this.value === '__TODOS__') {
+        label.textContent = '— lote';
+        label.style.color = '#1d4ed8';
+        label.style.fontWeight = '700';
+    } else {
+        label.textContent = '';
+    }
 });
 
 document.getElementById('formEmprestimo').addEventListener('submit', async (ev) => {
@@ -308,8 +338,69 @@ document.getElementById('formEmprestimo').addEventListener('submit', async (ev) 
         msg.className   = 'form-msg-livros erro';
         return;
     }
+
+    btn.disabled = true;
+
+    /* ── Modo lote: todos os alunos da turma ── */
+    if (alunoJson === '__TODOS__') {
+        const alunos = todoAlunos
+            .filter(a => a.descrTurma === turma)
+            .sort((a, b) => (a.numChamada || 0) - (b.numChamada || 0));
+
+        let ok = 0, jaEmprestado = 0, semEstoque = 0, outrosErros = 0;
+
+        for (let i = 0; i < alunos.length; i++) {
+            const a = alunos[i];
+            msg.textContent = `Registrando ${i + 1} / ${alunos.length} — ${a.nome}…`;
+            msg.className   = 'form-msg-livros ok';
+            try {
+                await apiFetch('/livros-emprestimos', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        livro_id:         parseInt(livroId),
+                        cod_matriz_aluno: a.codMatrizAluno,
+                        nome_aluno:       a.nome,
+                        turma,
+                        num_chamada:      a.numChamada || null,
+                        ano_letivo:       new Date().getFullYear(),
+                        obs:              obs || null,
+                    }),
+                });
+                ok++;
+            } catch (e) {
+                if (e.message.includes('já possui'))       jaEmprestado++;
+                else if (e.message.includes('cópias'))     semEstoque++;
+                else                                       outrosErros++;
+            }
+        }
+
+        btn.disabled    = false;
+        btn.textContent = 'Registrar';
+
+        const partes = [];
+        if (ok > 0)           partes.push(`✅ ${ok} registrado(s)`);
+        if (jaEmprestado > 0) partes.push(`⚠️ ${jaEmprestado} já tinham este livro`);
+        if (semEstoque > 0)   partes.push(`❌ ${semEstoque} sem estoque`);
+        if (outrosErros > 0)  partes.push(`❌ ${outrosErros} erro(s)`);
+
+        const resumo = partes.join(' · ');
+        if (ok > 0) {
+            toast(resumo);
+            fecharModalEmprestimo();
+            livros = await apiFetch('/livros');
+            await recarregarEmprestimos();
+            renderAcervo();
+        } else {
+            msg.textContent = resumo || 'Nenhum empréstimo registrado.';
+            msg.className   = 'form-msg-livros erro';
+        }
+        return;
+    }
+
+    /* ── Modo individual (comportamento original) ── */
+    btn.textContent = 'Salvando…';
     const { cod, nome, numChamada } = JSON.parse(alunoJson);
-    btn.disabled = true; btn.textContent = 'Salvando…';
     try {
         await apiFetch('/livros-emprestimos', {
             method:  'POST',
