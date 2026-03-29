@@ -97,12 +97,22 @@
                     <button class="empty-state-btn-primary" id="btnSyncFreq" onclick="forcarSyncFreq()">
                         🔄 Sincronizar agora
                     </button>
+                    <button class="empty-state-btn-secondary" id="btnUltimoDiaLetivo" onclick="consultarUltimoDiaLetivo()">
+                        📅 Último dia letivo
+                    </button>
                     <button class="empty-state-btn-secondary" onclick="abrirModalRcoFreq()">
                         📡 Ver dados do RCO
                     </button>
                 </div>
                 <div class="empty-state-sync-info" id="emptySyncInfoFreq"></div>
             </div>
+        </div>
+
+        <!-- Banner: exibindo dados de data anterior -->
+        <div id="bannerDataHistorica" style="display:none;" class="banner-hist">
+            <span class="banner-hist-icon">📅</span>
+            <span id="bannerDataHistoricaTexto"></span>
+            <button class="banner-hist-close" onclick="document.getElementById('bannerDataHistorica').style.display='none'">✕</button>
         </div>
 
         <div id="content" class="content" style="display: none;">

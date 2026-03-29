@@ -482,6 +482,41 @@ body {
 .sync-info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 .sync-info-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 
+/* ── Banner de data histórica ─────────────────────────────────────────────── */
+.banner-hist {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 16px 0;
+    padding: 10px 16px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #7c5a00;
+    box-shadow: 0 2px 6px rgba(255, 193, 7, 0.15);
+}
+:root[data-theme="dark"] .banner-hist {
+    background: #2a2200;
+    border-color: #665300;
+    color: #ffd54f;
+}
+.banner-hist-icon { font-size: 16px; flex-shrink: 0; }
+.banner-hist span:not(.banner-hist-icon) { flex: 1; }
+.banner-hist-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+    font-size: 14px;
+    padding: 0 4px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.banner-hist-close:hover { opacity: 1; }
+
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 .loading { text-align: center; padding: 80px 20px; }
 

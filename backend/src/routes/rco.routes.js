@@ -6,7 +6,7 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
 
     router.get('/acessos', async (req, res) => {
         try {
-            const hoje = dataBrasilia();
+            const hoje = req.query.data || dataBrasilia();
             console.log(`Consultando estabelecimentos para ${hoje} (BRT)...`);
             const response = await rcoApiService.get(`/educador/estabelecimentos/v2/${hoje}`);
             console.log('RCO API status:', response.status, '| bytes:', JSON.stringify(response.data).length);

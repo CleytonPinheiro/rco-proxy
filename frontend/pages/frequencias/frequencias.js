@@ -51,13 +51,13 @@ async function init() {
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
-
-    // Delegação global: clique em linha de aluno abre drawer
-    document.getElementById('content').addEventListener('click', e => {
-        const row = e.target.closest('tr.freq-aluno-row');
-        if (row) abrirDrawerAluno(row.dataset.nome, row.dataset.chamada);
-    });
 }
+
+// Delegação global: clique em linha de aluno abre drawer (fora do init para funcionar com dados históricos)
+document.getElementById('content').addEventListener('click', e => {
+    const row = e.target.closest('tr.freq-aluno-row');
+    if (row) abrirDrawerAluno(row.dataset.nome, row.dataset.chamada);
+});
 
 // ── Coletar turmas com suas disciplinas ──────────────────────────────────────
 function coletarTurmas(acessos) {
@@ -569,6 +569,63 @@ async function forcarSyncFreq() {
         btn.textContent = '❌ Erro na sincronização';
         setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Sincronizar agora'; }, 3000);
     }
+}
+
+// ── Consultar último dia letivo disponível ────────────────────────────────────
+async function consultarUltimoDiaLetivo() {
+    const btn = document.getElementById('btnUltimoDiaLetivo');
+    btn.disabled = true;
+    btn.textContent = '🔍 Buscando...';
+
+    const testarData = async (dataStr) => {
+        try {
+            const r = await fetch(`${API}/api/acessos?data=${dataStr}`);
+            if (!r.ok) return null;
+            const d = await r.json();
+            if (!d) return null;
+            if (Array.isArray(d) && d.length === 0) return null;
+            if (typeof d === 'object' && !Array.isArray(d) && Object.keys(d).length === 0) return null;
+            const turmas = coletarTurmas(d);
+            return turmas.length > 0 ? { dados: d, turmas, dataStr } : null;
+        } catch { return null; }
+    };
+
+    let resultado = null;
+    const cursor = new Date();
+
+    for (let i = 1; i <= 14 && !resultado; i++) {
+        cursor.setDate(cursor.getDate() - 1);
+        const ano  = cursor.getFullYear();
+        const mes  = String(cursor.getMonth() + 1).padStart(2, '0');
+        const dia  = String(cursor.getDate()).padStart(2, '0');
+        const str  = `${ano}-${mes}-${dia}`;
+        btn.textContent = `🔍 Testando ${dia}/${mes}...`;
+        resultado = await testarData(str);
+    }
+
+    if (!resultado) {
+        btn.textContent = '❌ Nenhum dado nos últimos 14 dias';
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = '📅 Último dia letivo';
+        }, 3000);
+        return;
+    }
+
+    acessosCache = resultado.dados;
+    renderCards(resultado.turmas);
+
+    document.getElementById('emptyStateFreq').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    const [a, m, d2] = resultado.dataStr.split('-');
+    const dtFmt = new Date(Number(a), Number(m) - 1, Number(d2))
+        .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const banner = document.getElementById('bannerDataHistorica');
+    document.getElementById('bannerDataHistoricaTexto').textContent =
+        `Exibindo dados de ${dtFmt} — último dia letivo disponível no RCO`;
+    banner.style.display = 'flex';
 }
 
 // ── Rodapé: Status do Serviço ─────────────────────────────────────────────────
