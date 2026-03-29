@@ -36,6 +36,17 @@ export async function initializeDatabase() {
             CREATE INDEX IF NOT EXISTS idx_audit_log_criado  ON edusync_audit_log(criado_em DESC);
         `);
 
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_escolas (
+                id                     SERIAL PRIMARY KEY,
+                nome                   VARCHAR(200) NOT NULL,
+                codigo_estabelecimento INTEGER NOT NULL UNIQUE,
+                permite_auto_cadastro  BOOLEAN NOT NULL DEFAULT true,
+                ativo                  BOOLEAN NOT NULL DEFAULT true,
+                criado_em              TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        `);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

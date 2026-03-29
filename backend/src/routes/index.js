@@ -38,7 +38,7 @@ export function createApiRouter(deps) {
     router.use('/', createAtividadesRouter());
     router.use('/', createPedagogicoRouter(deps));
     router.use('/', createClassroomRouter(deps));
-    router.use('/', createAdminRouter());
+    router.use('/', createAdminRouter(deps));
 
     return router;
 }

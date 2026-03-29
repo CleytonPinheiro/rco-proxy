@@ -10,7 +10,7 @@ import { LISTA_PERFIS }    from '../config/permissions.js';
 
 const { Pool } = pg;
 
-export function createAdminRouter() {
+export function createAdminRouter({ supabaseAdmin } = {}) {
     const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
     const router = Router();
 
@@ -144,6 +144,130 @@ export function createAdminRouter() {
                 offset:    parseInt(offset, 10) || 0,
             });
             res.json(logs);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════
+       ESCOLAS — whitelist de estabelecimentos autorizados
+    ════════════════════════════════════════════════════════ */
+
+    /* ── Listar escolas da whitelist ── */
+    router.get('/admin/escolas', async (_req, res) => {
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, nome, codigo_estabelecimento, permite_auto_cadastro, ativo, criado_em
+                 FROM edusync_escolas ORDER BY nome`,
+            );
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Lookup de estabelecimentos sincronizados do RCO (para preencher o formulário) ── */
+    router.get('/admin/rco-estabelecimentos', async (_req, res) => {
+        if (!supabaseAdmin) return res.json([]);
+        try {
+            const { data, error } = await supabaseAdmin
+                .from('rco_estabelecimentos')
+                .select('cod_estabelecimento, nome_estabelecimento')
+                .order('nome_estabelecimento');
+            if (error) return res.status(500).json({ erro: error.message });
+            res.json(data || []);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Adicionar escola à whitelist ── */
+    router.post('/admin/escolas', async (req, res) => {
+        const { nome, codigo_estabelecimento, permite_auto_cadastro = true } = req.body;
+        if (!nome || !codigo_estabelecimento) {
+            return res.status(400).json({ erro: 'nome e codigo_estabelecimento são obrigatórios.' });
+        }
+        const codigo = parseInt(codigo_estabelecimento, 10);
+        if (isNaN(codigo)) {
+            return res.status(400).json({ erro: 'codigo_estabelecimento deve ser numérico.' });
+        }
+        try {
+            const { rows } = await pool.query(
+                `INSERT INTO edusync_escolas (nome, codigo_estabelecimento, permite_auto_cadastro)
+                 VALUES ($1, $2, $3)
+                 RETURNING id, nome, codigo_estabelecimento, permite_auto_cadastro, ativo, criado_em`,
+                [nome.trim(), codigo, permite_auto_cadastro],
+            );
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'ESCOLA_ADICIONADA',
+                modulo:      'admin',
+                detalhes:    { escola: rows[0] },
+                ip:          req.ip,
+            });
+            res.status(201).json(rows[0]);
+        } catch (e) {
+            if (e.code === '23505') return res.status(409).json({ erro: 'Escola já cadastrada (código duplicado).' });
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Atualizar escola ── */
+    router.put('/admin/escolas/:id', async (req, res) => {
+        const id = parseInt(req.params.id, 10);
+        const { nome, permite_auto_cadastro, ativo } = req.body;
+        try {
+            const sets   = [];
+            const params = [];
+            if (typeof nome === 'string')                { params.push(nome.trim());            sets.push(`nome                  = $${params.length}`); }
+            if (typeof permite_auto_cadastro === 'boolean') { params.push(permite_auto_cadastro); sets.push(`permite_auto_cadastro = $${params.length}`); }
+            if (typeof ativo === 'boolean')              { params.push(ativo);                  sets.push(`ativo                 = $${params.length}`); }
+
+            if (!sets.length) return res.status(400).json({ erro: 'Nada para atualizar.' });
+
+            params.push(id);
+            const { rows } = await pool.query(
+                `UPDATE edusync_escolas SET ${sets.join(', ')} WHERE id = $${params.length}
+                 RETURNING id, nome, codigo_estabelecimento, permite_auto_cadastro, ativo`,
+                params,
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Escola não encontrada.' });
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'ESCOLA_ATUALIZADA',
+                modulo:      'admin',
+                detalhes:    { escolaId: id, alteracoes: req.body },
+                ip:          req.ip,
+            });
+            res.json(rows[0]);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Remover escola da whitelist (soft delete) ── */
+    router.delete('/admin/escolas/:id', async (req, res) => {
+        const id = parseInt(req.params.id, 10);
+        try {
+            const { rows } = await pool.query(
+                `UPDATE edusync_escolas SET ativo = false WHERE id = $1
+                 RETURNING id, nome, codigo_estabelecimento`,
+                [id],
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Escola não encontrada.' });
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'ESCOLA_REMOVIDA',
+                modulo:      'admin',
+                detalhes:    { escola: rows[0] },
+                ip:          req.ip,
+            });
+            res.json({ sucesso: true });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

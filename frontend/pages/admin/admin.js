@@ -16,7 +16,8 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         btn.classList.add('admin-tab--ativo');
         document.getElementById(`panel-${btn.dataset.tab}`).classList.add('admin-panel--ativo');
 
-        if (btn.dataset.tab === 'audit') carregarAuditLog();
+        if (btn.dataset.tab === 'audit')   carregarAuditLog();
+        if (btn.dataset.tab === 'escolas') carregarEscolas();
     });
 });
 
@@ -243,6 +244,225 @@ async function carregarAuditLog() {
 document.getElementById('btnFiltrar').addEventListener('click', carregarAuditLog);
 
 /* ════════════════════════════════════════════════════════════
+   ESCOLAS — whitelist de estabelecimentos autorizados
+════════════════════════════════════════════════════════════ */
+let escolas        = [];
+let rcoEstabs      = [];  // cache dos estabelecimentos do RCO (dropdown)
+
+async function carregarEscolas() {
+    const wrap = document.getElementById('tabelaEscolasWrap');
+    wrap.innerHTML = '<p style="color:var(--text-muted)">Carregando...</p>';
+
+    try {
+        const [resE, resR] = await Promise.all([
+            api('/admin/escolas'),
+            api('/admin/rco-estabelecimentos'),
+        ]);
+        escolas   = await resE.json();
+        rcoEstabs = await resR.json();
+        renderBannerEscolas(escolas);
+        renderTabelaEscolas(escolas);
+    } catch (e) {
+        wrap.innerHTML = `<p style="color:#dc2626">Erro: ${esc(e.message)}</p>`;
+    }
+}
+
+function renderBannerEscolas(lista) {
+    const banner  = document.getElementById('escolaBanner');
+    const ativas  = lista.filter(e => e.ativo && e.permite_auto_cadastro);
+
+    if (lista.length === 0 || ativas.length === 0) {
+        banner.className   = 'escola-info-banner escola-info-banner--aberta';
+        banner.innerHTML   = `<strong>⚠ Whitelist vazia — cadastro aberto</strong><br>
+            Qualquer professor com credenciais válidas no RCO Digital do Paraná pode se auto-cadastrar.
+            Adicione ao menos uma escola para restringir o acesso ao seu colégio.`;
+    } else {
+        banner.className   = 'escola-info-banner escola-info-banner--restrita';
+        banner.innerHTML   = `<strong>✓ Whitelist ativa — ${ativas.length} escola(s) autorizada(s)</strong><br>
+            Apenas professores vinculados às escolas abaixo podem se auto-cadastrar.`;
+    }
+}
+
+function renderTabelaEscolas(lista) {
+    const wrap = document.getElementById('tabelaEscolasWrap');
+    if (!lista.length) {
+        wrap.innerHTML = '<p style="color:var(--text-muted)">Nenhuma escola cadastrada. O sistema está com cadastro aberto.</p>';
+        return;
+    }
+
+    wrap.innerHTML = `
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Nome da escola</th>
+                <th>Código RCO</th>
+                <th>Auto-cadastro</th>
+                <th>Status</th>
+                <th>Adicionada em</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            ${lista.map(e => `
+            <tr data-id="${e.id}">
+                <td>${esc(e.nome)}</td>
+                <td style="font-family:monospace;font-size:.85rem">${e.codigo_estabelecimento}</td>
+                <td>
+                    <span class="badge-auto ${e.permite_auto_cadastro ? 'badge-auto--sim' : 'badge-auto--nao'}">
+                        ${e.permite_auto_cadastro ? 'Sim' : 'Não'}
+                    </span>
+                </td>
+                <td><span class="${e.ativo ? 'status-ativo' : 'status-inativo'}">${e.ativo ? 'Ativa' : 'Inativa'}</span></td>
+                <td style="color:var(--text-muted);font-size:.8rem">${formatData(e.criado_em)}</td>
+                <td>
+                    <button class="btn-acao" onclick="abrirModalEditarEscola(${e.id})">Editar</button>
+                    ${e.ativo
+                        ? `<button class="btn-acao btn-acao--danger" onclick="removerEscola(${e.id}, '${esc(e.nome)}')">Remover</button>`
+                        : `<button class="btn-acao" onclick="reativarEscola(${e.id})">Reativar</button>`
+                    }
+                </td>
+            </tr>`).join('')}
+        </tbody>
+    </table>`;
+}
+
+/* ── Modal: nova escola ── */
+document.getElementById('btnNovaEscola').addEventListener('click', () => {
+    document.getElementById('modalEscolaTitulo').textContent = 'Adicionar escola';
+    document.getElementById('modalEscolaId').value           = '';
+    document.getElementById('modalEscolaNome').value         = '';
+    document.getElementById('modalEscolaCodigo').value       = '';
+    document.getElementById('modalEscolaAutoCadastro').checked = true;
+    document.getElementById('modalEscolaCodigo').disabled    = false;
+    popularDropdownRco('');
+    esconderFormEscolaMsg();
+    document.getElementById('modalEscola').classList.add('modal-overlay--ativo');
+});
+
+/* ── Modal: editar escola ── */
+window.abrirModalEditarEscola = function (id) {
+    const e = escolas.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('modalEscolaTitulo').textContent       = 'Editar escola';
+    document.getElementById('modalEscolaId').value                 = e.id;
+    document.getElementById('modalEscolaNome').value               = e.nome;
+    document.getElementById('modalEscolaCodigo').value             = e.codigo_estabelecimento;
+    document.getElementById('modalEscolaCodigo').disabled          = true;
+    document.getElementById('modalEscolaAutoCadastro').checked     = e.permite_auto_cadastro;
+    popularDropdownRco(e.codigo_estabelecimento);
+    esconderFormEscolaMsg();
+    document.getElementById('modalEscola').classList.add('modal-overlay--ativo');
+};
+
+document.getElementById('btnCancelarModalEscola').addEventListener('click', fecharModalEscola);
+document.getElementById('modalEscola').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalEscola')) fecharModalEscola();
+});
+
+function fecharModalEscola() {
+    document.getElementById('modalEscola').classList.remove('modal-overlay--ativo');
+}
+
+/* ── Preenche o dropdown com escolas do RCO sincronizadas ── */
+function popularDropdownRco(codigoSelecionado) {
+    const sel = document.getElementById('modalEscolaRco');
+    sel.innerHTML = '<option value="">— Selecione para preencher —</option>';
+    rcoEstabs.forEach(e => {
+        const opt   = document.createElement('option');
+        opt.value   = e.cod_estabelecimento;
+        opt.text    = `${e.nome_estabelecimento} (${e.cod_estabelecimento})`;
+        if (String(e.cod_estabelecimento) === String(codigoSelecionado)) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+/* Ao selecionar no dropdown, preenche os campos */
+document.getElementById('modalEscolaRco').addEventListener('change', function () {
+    const cod = this.value;
+    if (!cod) return;
+    const estab = rcoEstabs.find(e => String(e.cod_estabelecimento) === String(cod));
+    if (estab) {
+        document.getElementById('modalEscolaNome').value   = estab.nome_estabelecimento;
+        document.getElementById('modalEscolaCodigo').value = estab.cod_estabelecimento;
+    }
+});
+
+/* ── Salvar escola ── */
+document.getElementById('formEscola').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id              = document.getElementById('modalEscolaId').value;
+    const nome            = document.getElementById('modalEscolaNome').value.trim();
+    const codigo          = document.getElementById('modalEscolaCodigo').value;
+    const autoCadastro    = document.getElementById('modalEscolaAutoCadastro').checked;
+    const btn             = document.getElementById('btnSalvarEscola');
+
+    if (!nome || (!id && !codigo)) {
+        mostrarFormEscolaMsg('Preencha nome e código do estabelecimento.', 'erro');
+        return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+        let res;
+        if (id) {
+            res = await api(`/admin/escolas/${id}`, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ nome, permite_auto_cadastro: autoCadastro }),
+            });
+        } else {
+            res = await api('/admin/escolas', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ nome, codigo_estabelecimento: parseInt(codigo, 10), permite_auto_cadastro: autoCadastro }),
+            });
+        }
+        const data = await res.json();
+        if (!res.ok) {
+            mostrarFormEscolaMsg(data.erro || 'Erro ao salvar.', 'erro');
+        } else {
+            fecharModalEscola();
+            await carregarEscolas();
+        }
+    } catch (err) {
+        mostrarFormEscolaMsg('Erro de conexão: ' + err.message, 'erro');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Salvar';
+    }
+});
+
+window.removerEscola = async function (id, nome) {
+    if (!confirm(`Remover "${nome}" da whitelist?\nProfessores desta escola não poderão mais se auto-cadastrar.`)) return;
+    const res = await api(`/admin/escolas/${id}`, { method: 'DELETE' });
+    if (res.ok) carregarEscolas();
+    else { const d = await res.json(); alert(d.erro || 'Erro.'); }
+};
+
+window.reativarEscola = async function (id) {
+    const res = await api(`/admin/escolas/${id}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ ativo: true }),
+    });
+    if (res.ok) carregarEscolas();
+    else { const d = await res.json(); alert(d.erro || 'Erro.'); }
+};
+
+function mostrarFormEscolaMsg(txt, tipo) {
+    const el = document.getElementById('formEscolaMsg');
+    el.textContent   = txt;
+    el.style.display = 'block';
+    el.style.background = tipo === 'erro' ? '#fef2f2' : '#f0fdf4';
+    el.style.color      = tipo === 'erro' ? '#dc2626' : '#16a34a';
+}
+function esconderFormEscolaMsg() {
+    document.getElementById('formEscolaMsg').style.display = 'none';
+}
+
+/* ════════════════════════════════════════════════════════════
    UTILS
 ════════════════════════════════════════════════════════════ */
 const PERFIL_LABELS = {
@@ -271,3 +491,4 @@ function esconderFormMsg() {
 
 /* ── Init ── */
 carregarUsuarios();
+carregarEscolas();
