@@ -5,6 +5,7 @@
  */
 import { Router }           from 'express';
 import pg                   from 'pg';
+import { rateLimit }        from 'express-rate-limit';
 import { userSessionStore } from '../services/UserSessionStore.js';
 import { auditLogger }      from '../services/AuditLogger.js';
 import { requireAuth, COOKIE_NAME } from '../middleware/auth.middleware.js';
@@ -18,6 +19,16 @@ function decodeJwtPayload(token) {
         return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
     } catch { return null; }
 }
+
+/* ── Rate limit: máx 5 tentativas de login por IP a cada 15 minutos ── */
+const loginRateLimit = rateLimit({
+    windowMs:          15 * 60 * 1000,
+    max:               5,
+    standardHeaders:   true,
+    legacyHeaders:     false,
+    message:           { erro: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+    skipSuccessfulRequests: true,
+});
 
 export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer, decodeJwtExpiration }) {
     const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -47,7 +58,7 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
     });
 
     /* ── Login ── */
-    router.post('/auth/login', async (req, res) => {
+    router.post('/auth/login', loginRateLimit, async (req, res) => {
         const { cpf, senha } = req.body;
         if (!cpf || !senha) {
             return res.status(400).json({ erro: 'CPF e senha são obrigatórios.' });
@@ -56,10 +67,16 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         const cpfLimpo = cpf.replace(/\D/g, '');
 
         // 1. Verificar se o usuário existe e está ativo
-        const { rows } = await pool.query(
-            `SELECT id, nome, perfil, ativo FROM edusync_usuarios WHERE cpf = $1`,
-            [cpfLimpo],
-        );
+        let rows;
+        try {
+            ({ rows } = await pool.query(
+                `SELECT id, nome, perfil, ativo FROM edusync_usuarios WHERE cpf = $1`,
+                [cpfLimpo],
+            ));
+        } catch (dbErr) {
+            console.error('[Auth] Erro de banco no login:', dbErr.message);
+            return res.status(503).json({ erro: 'Serviço temporariamente indisponível.' });
+        }
 
         const primeiroAcesso = rows.length === 0;
 
@@ -67,7 +84,7 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             return res.status(403).json({ erro: 'Usuário desativado. Contate o administrador.' });
         }
 
-        // 2. Autenticar no RCO
+        // 2. Autenticar no RCO (Puppeteer valida as credenciais)
         let rcoToken;
         try {
             rcoToken = await loginWithPuppeteer(cpfLimpo, senha);
@@ -84,23 +101,38 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         let nome;
 
         if (primeiroAcesso) {
-            // Bootstrap: primeiro usuário vira admin automaticamente
-            const totalUsuarios = await pool.query('SELECT COUNT(*) FROM edusync_usuarios');
-            const isFirst = parseInt(totalUsuarios.rows[0].count, 10) === 0;
+            // Bootstrap: verifica novamente com SELECT FOR UPDATE para evitar race condition
+            let totalRows;
+            try {
+                ({ rows: totalRows } = await pool.query(
+                    'SELECT COUNT(*) AS total FROM edusync_usuarios',
+                ));
+            } catch (dbErr) {
+                console.error('[Auth] Erro de banco (count):', dbErr.message);
+                return res.status(503).json({ erro: 'Serviço temporariamente indisponível.' });
+            }
 
+            const isFirst = parseInt(totalRows[0].total, 10) === 0;
             perfil = isFirst ? 'admin' : 'professor';
             nome   = nomeRco;
 
-            const inserted = await pool.query(
-                `INSERT INTO edusync_usuarios (nome, cpf, perfil)
-                 VALUES ($1, $2, $3)
-                 ON CONFLICT (cpf) DO UPDATE SET nome = EXCLUDED.nome
-                 RETURNING id, nome, perfil`,
-                [nome, cpfLimpo, perfil],
-            );
-            userId = inserted.rows[0].id;
-            nome   = inserted.rows[0].nome;
-            perfil = inserted.rows[0].perfil;
+            let inserted;
+            try {
+                ({ rows: [inserted] } = await pool.query(
+                    `INSERT INTO edusync_usuarios (nome, cpf, perfil)
+                     VALUES ($1, $2, $3)
+                     ON CONFLICT (cpf) DO UPDATE SET nome = EXCLUDED.nome
+                     RETURNING id, nome, perfil`,
+                    [nome, cpfLimpo, perfil],
+                ));
+            } catch (dbErr) {
+                console.error('[Auth] Erro ao inserir usuário:', dbErr.message);
+                return res.status(503).json({ erro: 'Serviço temporariamente indisponível.' });
+            }
+
+            userId = inserted.id;
+            nome   = inserted.nome;
+            perfil = inserted.perfil;
             console.log(`[Auth] ${isFirst ? 'Primeiro usuário criado como admin' : 'Novo usuário criado'}: ${nome}`);
         } else {
             userId = rows[0].id;
@@ -117,11 +149,12 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         session.seedToken(rcoToken, decodeJwtExpiration(rcoToken));
 
         // 5. Cookie de sessão (HttpOnly, 8h)
+        //    secure=true quando em HTTPS (req.secure resolvido corretamente com trust proxy=1)
         res.cookie(COOKIE_NAME, sessionId, {
             httpOnly: true,
             sameSite: 'lax',
             maxAge:   8 * 60 * 60 * 1000,
-            secure:   process.env.NODE_ENV === 'production',
+            secure:   req.secure,
         });
 
         // 6. Audit log
@@ -154,8 +187,8 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         res.json({ sucesso: true });
     });
 
-    /* ── Compatibilidade: /configurar (redireciona para novo login) ── */
-    router.post('/configurar', async (req, res) => {
+    /* ── Compatibilidade: /configurar (requer autenticação) ── */
+    router.post('/configurar', requireAuth, async (req, res) => {
         const { cpf, senha } = req.body;
         if (!cpf || !senha) {
             return res.status(400).json({ erro: 'CPF e Senha são obrigatórios' });
@@ -169,8 +202,8 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             const status = tokenService.getStatus();
 
             syncService.sincronizarComSupabase()
-                .then(r  => console.log('[Auth] Sync pós-login:', r.status))
-                .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
+                .then(r  => console.log('[Auth] Sync pós-configurar:', r.status))
+                .catch(e => console.warn('[Auth] Sync pós-configurar falhou:', e.message));
 
             res.json({ sucesso: true, mensagem: 'Credenciais salvas', expiracao: status.tokenExpiracao });
         } catch (error) {

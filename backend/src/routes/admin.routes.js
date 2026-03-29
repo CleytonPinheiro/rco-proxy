@@ -77,7 +77,7 @@ export function createAdminRouter() {
         try {
             const sets   = [];
             const params = [];
-            if (nome   !== undefined) { params.push(nome.trim());   sets.push(`nome   = $${params.length}`); }
+            if (typeof nome === 'string') { params.push(nome.trim()); sets.push(`nome   = $${params.length}`); }
             if (perfil !== undefined) { params.push(perfil);        sets.push(`perfil = $${params.length}`); }
             if (ativo  !== undefined) { params.push(ativo);         sets.push(`ativo  = $${params.length}`); }
 

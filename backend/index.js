@@ -1,8 +1,8 @@
 import express    from 'express';
-import cors       from 'cors';
 import path       from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
+import helmet       from 'helmet';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -52,7 +52,10 @@ async function initializeApp() {
             loginWithPuppeteer, decodeJwtExpiration,   // necessário para UserSession nas rotas de auth
         };
 
-        app.use(cors());
+        app.set('trust proxy', 1);
+        app.use(helmet({
+            contentSecurityPolicy: false, // CSP configurada separadamente abaixo
+        }));
         app.use(express.json());
         app.use(cookieParser());
 

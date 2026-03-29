@@ -17,6 +17,15 @@
         this.value = this.value.replace(/\D/g, '').slice(0, 11);
     });
 
+    /* Destino pós-login: usa ?next= se presente e é uma rota interna */
+    function destinoLogin() {
+        try {
+            const next = new URLSearchParams(location.search).get('next');
+            if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+        } catch { /* */ }
+        return '/pages/dashboard/';
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const cpf   = document.getElementById('cpf').value.replace(/\D/g, '');
@@ -42,7 +51,7 @@
 
             if (res.ok && data.sucesso) {
                 mostrarMsg('Login realizado! Redirecionando…', 'ok');
-                setTimeout(() => window.location.replace('/pages/dashboard/'), 800);
+                setTimeout(() => window.location.replace(destinoLogin()), 800);
             } else {
                 mostrarMsg(data.erro || 'Erro ao autenticar.', 'erro');
                 btnEntrar.disabled    = false;

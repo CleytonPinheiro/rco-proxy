@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 
 export function createDebugRouter({ tokenService, rcoApiService, supabaseAdmin }) {
     const router = Router();
+
+    /* Todos os endpoints de debug exigem autenticação e perfil admin */
+    router.use(requireAuth, requirePerfil('admin'));
 
     // Limpa alunos de seed (sem codmatrizaluno real)
     router.delete('/admin/seeds', async (req, res) => {
@@ -84,10 +88,8 @@ export function createDebugRouter({ tokenService, rcoApiService, supabaseAdmin }
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
-    router.get('/debug/alunos-rco', async (req, res) => {
-        try {
-            res.json({ mensagem: 'Endpoint de debug de alunos via puppeteer desativado nesta versão.' });
-        } catch (e) { res.status(500).json({ erro: e.message }); }
+    router.get('/debug/alunos-rco', async (_req, res) => {
+        res.json({ mensagem: 'Endpoint de debug de alunos via puppeteer desativado nesta versão.' });
     });
 
     return router;

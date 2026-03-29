@@ -64,6 +64,7 @@ export class UserSession {
 
         if (this.#refreshPromise) {
             await this.#refreshPromise;
+            if (!this.#rcoToken) throw new Error('[UserSession] Renovação de token falhou — token ainda nulo.');
             return this.#rcoToken;
         }
 

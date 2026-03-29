@@ -67,6 +67,10 @@
     });
 })();
 
+/* ── Side panel compartilhado (usado por todas as páginas) ──────────────── */
+window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
+window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
+
 /* ── Carrega o guard de autenticação em todas as páginas (exceto /login/) ── */
 (function () {
     if (location.pathname.startsWith('/login') || location.pathname === '/') return;
