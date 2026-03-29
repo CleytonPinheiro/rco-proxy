@@ -269,7 +269,8 @@
     font-weight: 700;
     padding: 8px 5px;
     text-align: center;
-    border-bottom: 2px solid #dce4f7;
+    border-bottom: 2px solid #b0bcd8;
+    border-right: 1px solid #b0bcd8;
     white-space: nowrap;
     position: sticky;
     top: 0;
@@ -285,7 +286,8 @@
 .freq-tabela td {
     padding: 6px 4px;
     text-align: center;
-    border-bottom: 1px solid #f0f2f8;
+    border-bottom: 1px solid #d1d9ee;
+    border-right: 1px solid #d1d9ee;
     font-size: 12px;
 }
 
