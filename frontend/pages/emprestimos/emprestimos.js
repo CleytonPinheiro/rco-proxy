@@ -102,24 +102,37 @@ function popularSelectLivros() {
 function popularSelectSerieModal() {
     const sel = document.getElementById('modalLivroSerie');
     if (!sel) return;
-    const seriesSet = new Set();
+
+    // Valores já presentes na lista estática do HTML
+    const existentes = new Set(
+        [...sel.querySelectorAll('option')].map(o => o.value).filter(Boolean),
+    );
+
+    // Séries encontradas nas turmas carregadas que não estão na lista estática
+    const extras = new Set();
     todoAlunos.forEach(a => {
         const m = a.descrTurma.match(/(\d+[ºaª°]?\s*(?:Ano|[Ss][eé]rie))/i);
-        if (m) seriesSet.add(m[1].trim());
+        if (m) {
+            const s = m[1].trim();
+            if (!existentes.has(s)) extras.add(s);
+        }
     });
-    const series = [...seriesSet].sort((a, b) => {
+
+    if (!extras.size) return;
+
+    // Agrupa as extras em um optgroup separado
+    const grp = document.createElement('optgroup');
+    grp.label = 'Outras séries (da escola)';
+    [...extras].sort((a, b) => {
         const na = parseInt(a), nb = parseInt(b);
         return na !== nb ? na - nb : a.localeCompare(b, 'pt-BR');
-    });
-    const atual = sel.value;
-    sel.innerHTML = '<option value="">— Selecione —</option>';
-    series.forEach(s => {
+    }).forEach(s => {
         const opt = document.createElement('option');
-        opt.value = s;
+        opt.value       = s;
         opt.textContent = s;
-        sel.appendChild(opt);
+        grp.appendChild(opt);
     });
-    if (atual) sel.value = atual;
+    sel.appendChild(grp);
 }
 
 function popularSelectTurmas() {
