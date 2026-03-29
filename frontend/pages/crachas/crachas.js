@@ -489,7 +489,7 @@ function abrirJanelaImpressao(alunos) {
         const nomeAbrev   = nomePartes.length > 2
             ? `${nomePartes[0]} ${nomePartes[nomePartes.length - 1]}`
             : a.nome;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(codigo)}&size=64x64&margin=2`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(codigo)}&size=200x200&margin=4`;
 
         return `
         <div class="badge-card">
@@ -549,11 +549,12 @@ function abrirJanelaImpressao(alunos) {
 @page { size: A4 portrait; margin: 8mm; }
 body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-/* ── Grid de crachás — 2 colunas em A4 ── */
+/* ── Grid de crachás — 2 colunas centralizadas, largura de crachá padrão ── */
 .badges-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 5mm;
+    grid-template-columns: repeat(2, 90mm);
+    justify-content: center;
+    gap: 6mm;
     padding: 2mm;
 }
 
@@ -644,17 +645,17 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     right: 0;
 }
 .badge-qr {
-    width: 38px;
-    height: 38px;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
+    width: 58px;
+    height: 58px;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
     background: white;
     display: block;
 }
 
 /* ── Código de barras — rodapé do crachá ── */
 .badge-barcode-area {
-    padding: 4px 8px 3px;
+    padding: 5px 8px 4px;
     background: #fafafa;
     display: flex;
     flex-direction: column;
@@ -662,13 +663,13 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
 }
 .barcode {
     width: 100%;
-    height: 32px;
+    height: 52px;
 }
 .badge-barcode-label {
-    font-size: 6.5px;
+    font-size: 7px;
     color: #9ca3af;
-    margin-top: 1px;
-    letter-spacing: 0.2px;
+    margin-top: 2px;
+    letter-spacing: 0.3px;
     text-align: center;
 }
 
@@ -687,8 +688,8 @@ window.onload = function() {
         try {
             JsBarcode(el, item.value, {
                 format: 'CODE128',
-                width: 1.2,
-                height: 28,
+                width: 1.8,
+                height: 52,
                 displayValue: false,
                 margin: 0,
             });
