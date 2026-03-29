@@ -626,6 +626,10 @@ async function consultarUltimoDiaLetivo() {
     document.getElementById('bannerDataHistoricaTexto').textContent =
         `Exibindo dados de ${dtFmt} — último dia letivo disponível no RCO`;
     banner.style.display = 'flex';
+
+    // Reabilita botão para uso futuro
+    btn.disabled = false;
+    btn.textContent = '📅 Último dia letivo';
 }
 
 // ── Rodapé: Status do Serviço ─────────────────────────────────────────────────
@@ -1365,8 +1369,12 @@ async function sincronizarFrequencias() {
 
         if (vazio) {
             loadingEl.style.display = 'none';
+            document.getElementById('bannerDataHistorica').style.display = 'none';
             await preencherEmptyStateFreq();
             emptyEl.style.display = 'block';
+            // Reabilita o botão "último dia letivo" caso estivesse travado
+            const btnHist = document.getElementById('btnUltimoDiaLetivo');
+            if (btnHist) { btnHist.disabled = false; btnHist.textContent = '📅 Último dia letivo'; }
             btn.innerHTML = '📅 Sem dados agora';
             setTimeout(() => {
                 btn.innerHTML  = '🔄 Sincronizar RCO';
