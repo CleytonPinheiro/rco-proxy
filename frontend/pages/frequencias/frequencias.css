@@ -702,25 +702,35 @@
 
 [data-theme="dark"] .turma-card { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .turma-card-header {
-    background: var(--bg-secondary) !important;
-    border-color: var(--border);
-}
-[data-theme="dark"] .turma-nome-freq { color: var(--text-primary) !important; }
-[data-theme="dark"] .turma-info-freq { color: var(--text-secondary) !important; }
-
-[data-theme="dark"] .disc-btn {
-    background: var(--bg-card) !important;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%) !important;
     border-color: var(--border) !important;
-    color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .turma-card-serie { color: var(--text-link) !important; }
+[data-theme="dark"] .turma-card-nome  { color: var(--text-secondary) !important; }
+[data-theme="dark"] .turma-card-badge {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-link) !important;
+    border: 1px solid var(--border) !important;
+}
+
+[data-theme="dark"] .disc-row { border-bottom-color: var(--border) !important; }
+[data-theme="dark"] .disc-btn {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
 }
 [data-theme="dark"] .disc-btn:hover { background: var(--bg-hover) !important; }
-[data-theme="dark"] .disc-btn.expandido {
+[data-theme="dark"] .disc-btn[aria-expanded="true"] {
     background: var(--bg-tertiary) !important;
     border-color: var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
 }
-[data-theme="dark"] .disc-nome { color: var(--text-primary) !important; }
-[data-theme="dark"] .disc-stats span { color: var(--text-secondary) !important; }
-[data-theme="dark"] .disc-periodo { color: var(--text-muted) !important; }
+[data-theme="dark"] .disc-btn-nome { color: var(--text-primary) !important; }
+[data-theme="dark"] .disc-btn-chevron { color: var(--text-muted) !important; }
+[data-theme="dark"] .disc-freq-panel {
+    background: var(--bg-card) !important;
+    border-top-color: var(--border) !important;
+}
 
 [data-theme="dark"] .freq-tabela-wrapper { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .freq-tabela thead { background: var(--bg-secondary); border-color: var(--border); }
