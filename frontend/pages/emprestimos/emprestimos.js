@@ -185,6 +185,9 @@ function filtrarEmprestimos() {
     renderEmprestimos(lista);
 }
 
+/* Mantém o estado de colapso entre re-renders */
+const _turmasColapsadas = new Set();
+
 function renderEmprestimos(lista) {
     if (!lista) lista = emprestimos;
     const container = document.getElementById('listaEmprestimos');
@@ -201,19 +204,38 @@ function renderEmprestimos(lista) {
         grupos[key].push(e);
     }
 
-    container.innerHTML = Object.entries(grupos).sort(([a],[b]) => a.localeCompare(b)).map(([turma, items]) => `
-    <div class="turma-secao-livros">
+    container.innerHTML = Object.entries(grupos).sort(([a],[b]) => a.localeCompare(b)).map(([turma, items]) => {
+        const collapsed = _turmasColapsadas.has(turma) ? 'collapsed' : '';
+        return `
+    <div class="turma-secao-livros ${collapsed}" data-turma-key="${esc(turma)}">
         <div class="turma-header-livros">
             <div style="display:flex;align-items:center;gap:10px;">
+                <span class="turma-chevron">▼</span>
                 <span class="turma-header-nome">${esc(turma)}</span>
                 <span class="turma-header-count">${items.length} empréstimo(s)</span>
             </div>
         </div>
-        <div class="emprestimos-grid">
-            ${items.map(e => renderCardEmprestimo(e)).join('')}
+        <div class="emp-grid-wrap">
+            <div class="emprestimos-grid">
+                ${items.map(e => renderCardEmprestimo(e)).join('')}
+            </div>
         </div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
 }
+
+/* Event delegation para colapso de grupos */
+document.getElementById('listaEmprestimos').addEventListener('click', e => {
+    const header = e.target.closest('.turma-header-livros');
+    if (!header) return;
+    // não fechar se clicou em botão interno
+    if (e.target.closest('button')) return;
+    const secao = header.closest('.turma-secao-livros');
+    const key   = secao.dataset.turmaKey;
+    secao.classList.toggle('collapsed');
+    if (secao.classList.contains('collapsed')) _turmasColapsadas.add(key);
+    else _turmasColapsadas.delete(key);
+});
 
 function renderCardEmprestimo(e) {
     const atrasado = e.status === 'emprestado' && new Date() > new Date(new Date(e.data_emprestimo).setFullYear(new Date(e.data_emprestimo).getFullYear() + 1));

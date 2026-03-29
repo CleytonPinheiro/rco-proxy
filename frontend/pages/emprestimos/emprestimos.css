@@ -91,12 +91,39 @@
     margin-bottom: 10px;
     gap: 12px;
     flex-wrap: wrap;
+    cursor: pointer;
+    user-select: none;
 }
+.turma-header-livros:hover { background: var(--bg-hover); }
 .turma-header-nome  { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .turma-header-count { font-size: 12px; color: var(--text-muted); background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; }
 .turma-header-acoes { display: flex; gap: 8px; }
+.turma-chevron {
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: transform .25s ease;
+    flex-shrink: 0;
+}
+.turma-secao-livros.collapsed .turma-chevron {
+    transform: rotate(-90deg);
+}
 
 /* ── Grid de cards de empréstimo ── */
+.emp-grid-wrap {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows .3s ease;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.emp-grid-wrap > .emprestimos-grid { min-height: 0; }
+.turma-secao-livros.collapsed .emp-grid-wrap {
+    grid-template-rows: 0fr;
+    margin-bottom: 6px;
+}
+.turma-secao-livros.collapsed .turma-header-livros {
+    margin-bottom: 8px;
+}
 .emprestimos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
