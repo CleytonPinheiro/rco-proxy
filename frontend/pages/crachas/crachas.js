@@ -500,7 +500,7 @@ function abrirJanelaImpressao(alunos) {
                 <div class="badge-topo-periodo">${periodo || '2026'}</div>
             </div>
 
-            <!-- Área principal: foto 3×4 + dados -->
+            <!-- Área principal: foto 3×4 + dados + QR canto direito -->
             <div class="badge-main">
                 <div class="badge-foto-3x4">
                     <div class="foto-placeholder">
@@ -517,22 +517,17 @@ function abrirJanelaImpressao(alunos) {
                         <span class="badge-chamada-lbl">Nº Chamada</span>
                         <span class="badge-chamada-num" style="color:${cor}">${a.numChamada || '—'}</span>
                     </div>
+                    <!-- QR no canto inferior direito dos dados -->
+                    <div class="badge-qr-wrap">
+                        <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}">
+                    </div>
                 </div>
             </div>
 
-            <!-- Código de barras -->
-            <div class="badge-barcode-area">
+            <!-- Código de barras — rodapé do crachá -->
+            <div class="badge-barcode-area" style="border-top:2px solid ${cor}30">
                 <svg class="barcode" id="bc-${idx}"></svg>
                 <div class="badge-barcode-label">${nomeAbrev} · ${codigo}</div>
-            </div>
-
-            <!-- Rodapé: QR + nome + código -->
-            <div class="badge-rodape" style="border-top:2px solid ${cor}40">
-                <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}" width="44" height="44">
-                <div class="badge-qr-info">
-                    <div class="badge-qr-nome">${nomeAbrev}</div>
-                    <div class="badge-qr-cod">ID: ${codigo}</div>
-                </div>
             </div>
 
         </div>`;
@@ -554,11 +549,11 @@ function abrirJanelaImpressao(alunos) {
 @page { size: A4 portrait; margin: 8mm; }
 body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-/* ── Grid de crachás ── */
+/* ── Grid de crachás — 2 colunas em A4 ── */
 .badges-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6mm;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5mm;
     padding: 2mm;
 }
 
@@ -576,40 +571,40 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
 
 /* ── Topo colorido ── */
 .badge-topo {
-    padding: 5px 8px;
+    padding: 6px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    min-height: 14px;
+    min-height: 16px;
 }
-.badge-topo-serie  { font-size: 9px; color: white; font-weight: 800; letter-spacing: 0.3px; }
-.badge-topo-periodo { font-size: 8px; color: rgba(255,255,255,0.85); font-weight: 600; }
+.badge-topo-serie  { font-size: 10px; color: white; font-weight: 800; letter-spacing: 0.3px; }
+.badge-topo-periodo { font-size: 9px; color: rgba(255,255,255,0.9); font-weight: 600; }
 
-/* ── Área principal: foto + dados ── */
+/* ── Área principal: foto 3×4 + dados ── */
 .badge-main {
     display: flex;
-    gap: 6px;
-    padding: 7px 7px 5px;
+    gap: 8px;
+    padding: 8px 8px 6px;
     align-items: flex-start;
 }
 
-/* ── Foto 3×4 ── */
+/* ── Foto 3×4 real (30mm × 40mm) ── */
 .badge-foto-3x4 {
     flex-shrink: 0;
-    width: 22mm;
-    height: 29mm;
-    border: 1.5px dashed #aaa;
+    width: 30mm;
+    height: 40mm;
+    border: 1.5px dashed #bbb;
     border-radius: 4px;
-    background: #f9fafb;
+    background: #f3f4f6;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
 }
-.foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.foto-icone  { font-size: 20px; line-height: 1; opacity: 0.35; }
-.foto-label  { font-size: 7px; color: #aaa; font-weight: 700; letter-spacing: 0.5px; }
+.foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.foto-icone  { font-size: 28px; line-height: 1; opacity: 0.30; }
+.foto-label  { font-size: 8px; color: #aaa; font-weight: 700; letter-spacing: 0.5px; }
 
 /* ── Dados do aluno ── */
 .badge-dados {
@@ -618,67 +613,64 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     display: flex;
     flex-direction: column;
     gap: 2px;
+    height: 40mm;
+    position: relative;
 }
 .badge-nome {
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 800;
     color: #111;
     line-height: 1.25;
     word-break: break-word;
 }
-.badge-serie-txt  { font-size: 8px;  color: #444; font-weight: 700; margin-top: 1px; }
-.badge-turma-txt  { font-size: 7px;  color: #777; line-height: 1.3; }
-.badge-periodo-txt { font-size: 7.5px; font-weight: 700; margin-top: 1px; }
+.badge-serie-txt  { font-size: 9px;  color: #333; font-weight: 700; margin-top: 1px; }
+.badge-turma-txt  { font-size: 8px;  color: #666; line-height: 1.3; }
+.badge-periodo-txt { font-size: 8.5px; font-weight: 700; margin-top: 1px; }
 .badge-chamada-row {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-top: 4px;
+    margin-top: 5px;
     border-top: 1px solid #e5e7eb;
     padding-top: 3px;
 }
-.badge-chamada-lbl { font-size: 6.5px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
-.badge-chamada-num { font-size: 16px; font-weight: 900; line-height: 1.1; }
+.badge-chamada-lbl { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
+.badge-chamada-num { font-size: 20px; font-weight: 900; line-height: 1.1; }
 
-/* ── Código de barras ── */
+/* ── QR Code — canto inferior direito dos dados ── */
+.badge-qr-wrap {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+}
+.badge-qr {
+    width: 38px;
+    height: 38px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: white;
+    display: block;
+}
+
+/* ── Código de barras — rodapé do crachá ── */
 .badge-barcode-area {
-    padding: 3px 6px 1px;
-    border-top: 1px solid #f0f0f0;
+    padding: 4px 8px 3px;
+    background: #fafafa;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 .barcode {
     width: 100%;
-    height: 28px;
+    height: 32px;
 }
 .badge-barcode-label {
-    font-size: 6px;
+    font-size: 6.5px;
     color: #9ca3af;
     margin-top: 1px;
     letter-spacing: 0.2px;
     text-align: center;
 }
-
-/* ── Rodapé QR ── */
-.badge-rodape {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 5px 7px 6px;
-    background: #f9fafb;
-}
-.badge-qr {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    background: white;
-}
-.badge-qr-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.badge-qr-nome { font-size: 8px;  font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.badge-qr-cod  { font-size: 7px;  color: #6b7280; font-weight: 600; }
 
 .page-break { break-before: page; }
 </style>
