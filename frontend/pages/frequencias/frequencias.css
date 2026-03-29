@@ -306,9 +306,7 @@
     background: #f4f6fc;
     z-index: 4;
 }
-.freq-tabela tbody tr:nth-child(even) td.col-chamada { background: #fafbfc; }
-.freq-tabela tbody tr:hover td.col-chamada            { background: #f9faff; }
-.freq-tabela tbody tr:nth-child(even):hover td.col-chamada { background: #f4f6ff; }
+.freq-tabela tbody tr:hover td.col-chamada { background: #f0f4ff; }
 
 /* ── Coluna Nome — sticky left (depois de #) ─────────────────────────────── */
 .col-nome {
@@ -334,9 +332,7 @@
     z-index: 4;
     box-shadow: 3px 0 6px -2px rgba(0,0,0,0.10);
 }
-.freq-tabela tbody tr:nth-child(even) td.col-nome { background: #fafbfc; }
-.freq-tabela tbody tr:hover td.col-nome            { background: #f9faff; }
-.freq-tabela tbody tr:nth-child(even):hover td.col-nome { background: #f4f6ff; }
+.freq-tabela tbody tr:hover td.col-nome { background: #f0f4ff; }
 
 .col-aula {
     width: 38px;
