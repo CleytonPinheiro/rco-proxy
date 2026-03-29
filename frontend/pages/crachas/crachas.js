@@ -517,17 +517,16 @@ function abrirJanelaImpressao(alunos) {
                         <span class="badge-chamada-lbl">Nº Chamada</span>
                         <span class="badge-chamada-num" style="color:${cor}">${a.numChamada || '—'}</span>
                     </div>
-                    <!-- QR no canto inferior direito dos dados -->
-                    <div class="badge-qr-wrap">
-                        <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}">
-                    </div>
                 </div>
             </div>
 
-            <!-- Código de barras — rodapé do crachá -->
-            <div class="badge-barcode-area" style="border-top:2px solid ${cor}30">
-                <svg class="barcode" id="bc-${idx}"></svg>
-                <div class="badge-barcode-label">${nomeAbrev} · ${codigo}</div>
+            <!-- Rodapé: código de barras (esq.) + QR code (dir.) -->
+            <div class="badge-footer" style="border-top:2px solid ${cor}30">
+                <div class="badge-barcode-area">
+                    <svg class="barcode" id="bc-${idx}"></svg>
+                    <div class="badge-barcode-label">${nomeAbrev} · ${codigo}</div>
+                </div>
+                <img class="badge-qr" src="${qrUrl}" alt="QR ${codigo}">
             </div>
 
         </div>`;
@@ -546,16 +545,15 @@ function abrirJanelaImpressao(alunos) {
 <title>Crachás</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-@page { size: A4 portrait; margin: 8mm; }
+@page { size: A4 portrait; margin: 4mm; }
 body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-/* ── Grid de crachás — 2 colunas centralizadas, largura de crachá padrão ── */
+/* ── Grid — 3 colunas em A4 (202mm úteis / 3 = ~64mm por crachá) ── */
 .badges-grid {
     display: grid;
-    grid-template-columns: repeat(2, 90mm);
-    justify-content: center;
-    gap: 6mm;
-    padding: 2mm;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4mm;
+    padding: 1mm;
 }
 
 /* ── Card do crachá ── */
@@ -589,11 +587,11 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     align-items: flex-start;
 }
 
-/* ── Foto 3×4 real (30mm × 40mm) ── */
+/* ── Foto 3×4 (25mm × 33mm — proporcional 3×4, cabe em 3 colunas) ── */
 .badge-foto-3x4 {
     flex-shrink: 0;
-    width: 30mm;
-    height: 40mm;
+    width: 25mm;
+    height: 33mm;
     border: 1.5px dashed #bbb;
     border-radius: 4px;
     background: #f3f4f6;
@@ -604,8 +602,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     gap: 3px;
 }
 .foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.foto-icone  { font-size: 28px; line-height: 1; opacity: 0.30; }
-.foto-label  { font-size: 8px; color: #aaa; font-weight: 700; letter-spacing: 0.5px; }
+.foto-icone  { font-size: 22px; line-height: 1; opacity: 0.30; }
+.foto-label  { font-size: 7.5px; color: #aaa; font-weight: 700; letter-spacing: 0.5px; }
 
 /* ── Dados do aluno ── */
 .badge-dados {
@@ -614,63 +612,67 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; -webkit-pri
     display: flex;
     flex-direction: column;
     gap: 2px;
-    height: 40mm;
-    position: relative;
+    height: 33mm;
 }
 .badge-nome {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 800;
     color: #111;
     line-height: 1.25;
     word-break: break-word;
 }
-.badge-serie-txt  { font-size: 9px;  color: #333; font-weight: 700; margin-top: 1px; }
-.badge-turma-txt  { font-size: 8px;  color: #666; line-height: 1.3; }
-.badge-periodo-txt { font-size: 8.5px; font-weight: 700; margin-top: 1px; }
+.badge-serie-txt  { font-size: 7.5px; color: #333; font-weight: 700; margin-top: 1px; }
+.badge-turma-txt  { font-size: 6.5px; color: #666; line-height: 1.3; }
+.badge-periodo-txt { font-size: 7px; font-weight: 700; margin-top: 1px; }
 .badge-chamada-row {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-top: 5px;
+    margin-top: 3px;
     border-top: 1px solid #e5e7eb;
-    padding-top: 3px;
+    padding-top: 2px;
 }
-.badge-chamada-lbl { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
-.badge-chamada-num { font-size: 20px; font-weight: 900; line-height: 1.1; }
+.badge-chamada-lbl { font-size: 6px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
+.badge-chamada-num { font-size: 15px; font-weight: 900; line-height: 1.1; }
 
-/* ── QR Code — canto inferior direito dos dados ── */
-.badge-qr-wrap {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-}
-.badge-qr {
-    width: 58px;
-    height: 58px;
-    border: 1px solid #d1d5db;
-    border-radius: 5px;
-    background: white;
-    display: block;
-}
-
-/* ── Código de barras — rodapé do crachá ── */
-.badge-barcode-area {
-    padding: 5px 8px 4px;
+/* ── Rodapé: código de barras (esq.) + QR (dir.) lado a lado ── */
+.badge-footer {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 5px 4px;
     background: #fafafa;
+}
+.badge-barcode-area {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 .barcode {
     width: 100%;
-    height: 52px;
+    height: 48px;
 }
 .badge-barcode-label {
-    font-size: 7px;
+    font-size: 6px;
     color: #9ca3af;
-    margin-top: 2px;
-    letter-spacing: 0.3px;
+    margin-top: 1px;
+    letter-spacing: 0.2px;
     text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.badge-qr {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    display: block;
 }
 
 .page-break { break-before: page; }
@@ -688,8 +690,8 @@ window.onload = function() {
         try {
             JsBarcode(el, item.value, {
                 format: 'CODE128',
-                width: 1.8,
-                height: 52,
+                width: 1.5,
+                height: 48,
                 displayValue: false,
                 margin: 0,
             });
