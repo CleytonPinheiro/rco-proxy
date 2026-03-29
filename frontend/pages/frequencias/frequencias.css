@@ -752,19 +752,37 @@
 [data-theme="dark"] .col-nome { box-shadow: 3px 0 6px -2px rgba(0,0,0,0.35); }
 [data-theme="dark"] .freq-scroll { scrollbar-color: var(--border) transparent; }
 
-[data-theme="dark"] .col-presenca { background: #0d3320; color: #4ade80; }
-[data-theme="dark"] .col-falta    { background: #2a0d0d; color: #f87171; }
-[data-theme="dark"] .pct-alerta   { background: #2a1e00; color: #fbbf24; }
-[data-theme="dark"] .pct-critico  { background: #2a0d0d; color: #f87171; }
+/* ── Células de presença/falta — dark harmonioso com paleta navy ─────────── */
+[data-theme="dark"] .col-presenca {
+    background: #1c2e25 !important;
+    color:      #86efac !important;
+}
+[data-theme="dark"] .col-falta {
+    background: #2e1c1e !important;
+    color:      #fca5a5 !important;
+}
+[data-theme="dark"] .pct-ok {
+    background: #1c2e25 !important;
+    color:      #86efac !important;
+}
+[data-theme="dark"] .pct-alerta {
+    background: #2c2515 !important;
+    color:      #fde68a !important;
+}
+[data-theme="dark"] .pct-critico {
+    background: #2e1c1e !important;
+    color:      #fca5a5 !important;
+}
 
 [data-theme="dark"] .freq-aluno-modal .modal-content { background: var(--bg-card); }
 [data-theme="dark"] .freq-aluno-topo { background: var(--bg-secondary); border-color: var(--border); }
 [data-theme="dark"] .freq-aluno-nome { color: var(--text-primary); }
 [data-theme="dark"] .freq-aluno-sub  { color: var(--text-secondary); }
 
-[data-theme="dark"] .leg-falta { background: #2a0d0d; color: #f87171; }
-[data-theme="dark"] .leg-pct-alerta { background: #2a1e00; color: #fbbf24; }
-[data-theme="dark"] .leg-pct-critico { background: #2a0d0d; color: #f87171; }
+[data-theme="dark"] .leg-falta       { background: #2e1c1e; color: #fca5a5; }
+[data-theme="dark"] .leg-pct-alerta  { background: #2c2515; color: #fde68a; }
+[data-theme="dark"] .leg-pct-critico { background: #2e1c1e; color: #fca5a5; }
+[data-theme="dark"] .leg-pct-ok      { background: #1c2e25; color: #86efac; }
 
 [data-theme="dark"] .aluno-row-critico { background: var(--bg-secondary) !important; border-color: #dc2626 !important; }
 [data-theme="dark"] .freq-footer { background: var(--bg-secondary); border-color: var(--border); }
