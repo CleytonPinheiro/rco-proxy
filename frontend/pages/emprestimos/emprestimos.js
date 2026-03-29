@@ -1,538 +1,698 @@
-let emprestimos = [];
-let alunos = [];
-let materiais = [];
-let alunoSelecionado = null;
-let materialSelecionado = null;
+/**
+ * Módulo de Livros Didáticos — Empréstimos Anuais
+ * Tabs: Empréstimos | Acervo (livros) | Imprimir (etiquetas + lista de responsabilidade)
+ */
 
-// ── QR Scanner state ──────────────────────────────────────────────────────────
-let scannerStream    = null;
-let scannerTarget    = null; // 'aluno' | 'material'
-let scannerAnimFrame = null;
-let dqrStream        = null;
-let dqrAnimFrame     = null;
+const API = '';
+let todoAlunos   = [];   // [{codMatrizAluno, nome, codTurma, descrTurma, numChamada}]
+let livros       = [];   // catálogo de livros
+let emprestimos  = [];   // registros de empréstimo ativos + histórico
+let tabAtual     = 'emprestimos';
 
-document.addEventListener('DOMContentLoaded', () => {
-    carregarDados();
-});
+/* ─── Helpers ─────────────────────────────────────────────────────── */
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-async function carregarDados() {
+function fmtData(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR');
+}
+
+function labelStatus(s) {
+    return { emprestado: '📖 Emprestado', devolvido: '✅ Devolvido', perdido: '❌ Perdido' }[s] || s;
+}
+
+function toast(msg, tipo) {
+    const el = document.getElementById('toastLivros');
+    el.textContent = msg;
+    el.className   = `toast-livros${tipo ? ' ' + tipo : ''}`;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+async function apiFetch(url, opts = {}) {
+    const r = await fetch(`${API}/api${url}`, { credentials: 'include', ...opts });
+    if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.erro || `HTTP ${r.status}`);
+    }
+    return r.json();
+}
+
+/* ─── Init ────────────────────────────────────────────────────────── */
+async function init() {
     try {
-        const [empResp, alunosResp, matResp] = await Promise.all([
-            fetch('/api/emprestimos'),
-            fetch('/api/alunos'),
-            fetch('/api/materiais')
+        const [alunosRaw, livrosRaw, empRaw] = await Promise.all([
+            apiFetch('/alunos'),
+            apiFetch('/livros'),
+            apiFetch('/livros-emprestimos'),
         ]);
 
-        if (!empResp.ok || !alunosResp.ok || !matResp.ok) throw new Error('Erro ao carregar dados');
+        todoAlunos  = alunosRaw.map(a => ({
+            codMatrizAluno: a.cod_matriz_aluno || a.codMatrizAluno || a.codmatrizaluno,
+            nome:           a.nome || '(sem nome)',
+            descrTurma:     a.descr_turma || a.descrTurma || a.turma || '',
+            numChamada:     a.num_chamada || a.numChamada || a.numchamada || '',
+        }));
+        todoAlunos.sort((a, b) => a.descrTurma.localeCompare(b.descrTurma) || (a.numChamada - b.numChamada));
 
-        emprestimos = await empResp.json();
-        alunos      = await alunosResp.json();
-        materiais   = await matResp.json();
+        livros      = livrosRaw;
+        emprestimos = empRaw;
 
-        renderizarEmprestimosAtivos();
-        renderizarHistorico();
-    } catch (erro) {
-        console.error('Erro:', erro);
-        document.getElementById('listaEmprestimosAtivos').innerHTML =
-            '<div class="empty-message">Erro ao carregar dados. Execute o SQL no Supabase.</div>';
+        popularSelectLivros();
+        popularSelectTurmas();
+        atualizarStats();
+        renderEmprestimos();
+        renderAcervo();
+    } catch (e) {
+        toast('Erro ao carregar dados: ' + e.message, 'erro');
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+}
+
+/* ─── Stats ─────────────────────────────────────────────────────── */
+function atualizarStats() {
+    document.getElementById('numEmprestados').textContent = emprestimos.filter(e => e.status === 'emprestado').length;
+    document.getElementById('numDevolvidos').textContent  = emprestimos.filter(e => e.status === 'devolvido').length;
+    document.getElementById('numPerdidos').textContent    = emprestimos.filter(e => e.status === 'perdido').length;
+    document.getElementById('numAcervo').textContent      = livros.length;
+}
+
+/* ─── Populate selects ───────────────────────────────────────────── */
+function popularSelectLivros() {
+    const ids = ['filtroLivro', 'modalEmpLivro', 'printFiltroLivro', 'printFiltroLivroLista'];
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const val = sel.value;
+        sel.innerHTML = '<option value="">— Todos os livros —</option>';
+        livros.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.id;
+            opt.text  = `${l.titulo}${l.disciplina ? ' — ' + l.disciplina : ''}${l.serie ? ' — ' + l.serie : ''}`;
+            sel.appendChild(opt);
+        });
+        if (val) sel.value = val;
+    });
+}
+
+function popularSelectTurmas() {
+    const turmas = [...new Set(todoAlunos.map(a => a.descrTurma))].sort();
+    const ids    = ['filtroTurma', 'printFiltroTurma', 'printFiltroTurmaLista'];
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const val = sel.value;
+        sel.innerHTML = '<option value="">— Todas as turmas —</option>';
+        turmas.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.text  = t;
+            sel.appendChild(opt);
+        });
+        if (val) sel.value = val;
+    });
+    // Modal de empréstimo: select de turma
+    const selModal = document.getElementById('modalEmpTurma');
+    if (selModal) {
+        selModal.innerHTML = '<option value="">— Selecione a turma —</option>';
+        turmas.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t; opt.text = t;
+            selModal.appendChild(opt);
+        });
     }
 }
 
-function trocarTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+/* ─── Tab: EMPRÉSTIMOS ───────────────────────────────────────────── */
+function filtrarEmprestimos() {
+    const busca  = (document.getElementById('filtroAluno')?.value  || '').toLowerCase();
+    const status = document.getElementById('filtroStatus')?.value  || '';
+    const turma  = document.getElementById('filtroTurma')?.value   || '';
+    const livroId= document.getElementById('filtroLivro')?.value   || '';
 
-    if (tab === 'ativos') {
-        document.querySelector('.tab:nth-child(1)').classList.add('active');
-        document.getElementById('tabAtivos').style.display = 'block';
-    } else {
-        document.querySelector('.tab:nth-child(2)').classList.add('active');
-        document.getElementById('tabHistorico').style.display = 'block';
-    }
+    let lista = [...emprestimos];
+    if (busca)   lista = lista.filter(e => e.nome_aluno.toLowerCase().includes(busca));
+    if (status)  lista = lista.filter(e => e.status === status);
+    if (turma)   lista = lista.filter(e => e.turma === turma);
+    if (livroId) lista = lista.filter(e => String(e.livro_id) === livroId);
+
+    renderEmprestimos(lista);
 }
 
-function formatarData(dataISO) {
-    if (!dataISO) return '';
-    const d = new Date(dataISO);
-    return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-}
-
-// Calcula dias de atraso (0 = hoje, 1 = ontem, etc.)
-function diasAtraso(emprestimo) {
-    if (!emprestimo.data_emprestimo) return 0;
-    const empData  = new Date(emprestimo.data_emprestimo);
-    const hoje     = new Date();
-    const empDia   = new Date(empData.getFullYear(), empData.getMonth(), empData.getDate());
-    const hojeDia  = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    return Math.floor((hojeDia - empDia) / 86400000);
-}
-
-function estaAtrasado(emprestimo) {
-    return emprestimo.status === 'ativo' && diasAtraso(emprestimo) > 0;
-}
-
-function renderizarEmprestimosAtivos() {
-    const container = document.getElementById('listaEmprestimosAtivos');
-    const ativos    = emprestimos.filter(e => e.status === 'ativo');
-
-    if (!ativos.length) {
-        container.innerHTML = '<div class="empty-message">Nenhum empréstimo ativo no momento</div>';
-        renderBannerAtraso([]);
+function renderEmprestimos(lista) {
+    if (!lista) lista = emprestimos;
+    const container = document.getElementById('listaEmprestimos');
+    if (!lista.length) {
+        container.innerHTML = `<div class="empty-livros"><div class="ei">📚</div><p>Nenhum empréstimo encontrado</p></div>`;
         return;
     }
 
-    // Ordena: atrasados (mais antigos) primeiro, depois os de hoje
-    ativos.sort((a, b) => diasAtraso(b) - diasAtraso(a));
-    const atrasados = ativos.filter(estaAtrasado);
+    // Agrupar por turma
+    const grupos = {};
+    for (const e of lista) {
+        const key = e.turma || 'Sem turma';
+        if (!grupos[key]) grupos[key] = [];
+        grupos[key].push(e);
+    }
 
-    renderBannerAtraso(atrasados);
+    container.innerHTML = Object.entries(grupos).sort(([a],[b]) => a.localeCompare(b)).map(([turma, items]) => `
+    <div class="turma-secao-livros">
+        <div class="turma-header-livros">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="turma-header-nome">${esc(turma)}</span>
+                <span class="turma-header-count">${items.length} empréstimo(s)</span>
+            </div>
+        </div>
+        <div class="emprestimos-grid">
+            ${items.map(e => renderCardEmprestimo(e)).join('')}
+        </div>
+    </div>`).join('');
+}
 
-    container.innerHTML = ativos.map(e => {
-        const dias      = diasAtraso(e);
-        const atrasado  = dias > 0;
-        const critico   = dias >= 3;
-        const cardClass = atrasado ? (critico ? 'emprestimo-card atrasado critico' : 'emprestimo-card atrasado') : 'emprestimo-card ativo';
+function renderCardEmprestimo(e) {
+    const atrasado = e.status === 'emprestado' && new Date() > new Date(new Date(e.data_emprestimo).setFullYear(new Date(e.data_emprestimo).getFullYear() + 1));
+    const statusReal = atrasado ? 'atrasado' : e.status;
+    return `
+    <div class="emp-card status-${statusReal}">
+        <div class="emp-card-top">
+            <div>
+                <div class="emp-aluno-nome">${esc(e.nome_aluno)}</div>
+                <div class="emp-livro-nome">${esc(e.livro_titulo)}</div>
+                <div class="emp-livro-detalhe">${esc(e.livro_disciplina || '')}${e.livro_serie ? ' · ' + esc(e.livro_serie) : ''}</div>
+            </div>
+            <div class="emp-chamada">${e.num_chamada || '—'}</div>
+        </div>
+        <div class="emp-status-badge badge-${e.status}">${labelStatus(e.status)}</div>
+        <div class="emp-data-info">Empréstimo: ${fmtData(e.data_emprestimo)} · Ano: ${e.ano_letivo}</div>
+        ${e.data_devolucao ? `<div class="emp-data-info">Devolvido: ${fmtData(e.data_devolucao)}</div>` : ''}
+        ${e.status === 'emprestado' ? `
+        <div class="emp-acoes">
+            <button class="btn-acao-livro btn-acao-livro--success" onclick="devolverEmprestimo(${e.id}, '${esc(e.nome_aluno)}')">✅ Devolvido</button>
+            <button class="btn-acao-livro btn-acao-livro--danger"  onclick="marcarPerdido(${e.id}, '${esc(e.nome_aluno)}')">❌ Perdido</button>
+        </div>` : ''}
+    </div>`;
+}
 
-        const badgeAtraso = atrasado
-            ? `<span class="badge-atraso ${critico ? 'critico' : ''}" title="Em atraso há ${dias} dia(s)">
-                   ${critico ? '🚨' : '⚠️'} ${dias === 1 ? 'Ontem' : `${dias} dias`}
-               </span>`
-            : '';
+/* ─── Devolver / Perdido ─────────────────────────────────────────── */
+async function devolverEmprestimo(id, nome) {
+    if (!confirm(`Confirmar devolução do livro por ${nome}?`)) return;
+    try {
+        await apiFetch(`/livros-emprestimos/${id}/devolver`, { method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({}) });
+        toast(`${nome} — livro devolvido!`);
+        await recarregarEmprestimos();
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+}
+
+async function marcarPerdido(id, nome) {
+    if (!confirm(`Marcar o livro de ${nome} como PERDIDO?`)) return;
+    try {
+        await apiFetch(`/livros-emprestimos/${id}/perdido`, { method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({}) });
+        toast(`${nome} — livro marcado como perdido.`, 'aviso');
+        await recarregarEmprestimos();
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+}
+
+async function recarregarEmprestimos() {
+    emprestimos = await apiFetch('/livros-emprestimos');
+    atualizarStats();
+    filtrarEmprestimos();
+}
+
+/* ─── Modal: Novo Empréstimo ─────────────────────────────────────── */
+document.getElementById('btnNovoEmprestimo').addEventListener('click', abrirModalEmprestimo);
+
+function abrirModalEmprestimo() {
+    document.getElementById('formEmpMsg').className     = 'form-msg-livros';
+    document.getElementById('formEmpMsg').textContent   = '';
+    document.getElementById('modalEmpAluno').innerHTML  = '<option value="">— Selecione a turma primeiro —</option>';
+    document.getElementById('modalEmpTurma').value      = '';
+    document.getElementById('modalEmpLivro').value      = '';
+    document.getElementById('modalEmpObs').value        = '';
+    document.getElementById('modalEmprestimo').classList.add('aberto');
+}
+
+document.getElementById('btnFecharModalEmp').addEventListener('click', fecharModalEmprestimo);
+document.getElementById('modalEmprestimo').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalEmprestimo')) fecharModalEmprestimo();
+});
+function fecharModalEmprestimo() {
+    document.getElementById('modalEmprestimo').classList.remove('aberto');
+}
+
+/* Filtrar alunos por turma no modal */
+document.getElementById('modalEmpTurma').addEventListener('change', function () {
+    const turma = this.value;
+    const sel   = document.getElementById('modalEmpAluno');
+    sel.innerHTML = '<option value="">— Selecione o aluno —</option>';
+    const lista   = todoAlunos.filter(a => a.descrTurma === turma);
+    lista.sort((a, b) => (a.numChamada || 0) - (b.numChamada || 0));
+    lista.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify({ cod: a.codMatrizAluno, nome: a.nome, numChamada: a.numChamada });
+        opt.text  = `${a.numChamada ? a.numChamada + '. ' : ''}${a.nome}`;
+        sel.appendChild(opt);
+    });
+});
+
+document.getElementById('formEmprestimo').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const alunoJson = document.getElementById('modalEmpAluno').value;
+    const livroId   = document.getElementById('modalEmpLivro').value;
+    const turma     = document.getElementById('modalEmpTurma').value;
+    const obs       = document.getElementById('modalEmpObs').value;
+    const msg       = document.getElementById('formEmpMsg');
+    const btn       = document.getElementById('btnSalvarEmp');
+
+    if (!alunoJson || !livroId) {
+        msg.textContent = 'Selecione o aluno e o livro.';
+        msg.className   = 'form-msg-livros erro';
+        return;
+    }
+    const { cod, nome, numChamada } = JSON.parse(alunoJson);
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+        await apiFetch('/livros-emprestimos', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                livro_id:         parseInt(livroId),
+                cod_matriz_aluno: cod,
+                nome_aluno:       nome,
+                turma,
+                num_chamada:      numChamada || null,
+                ano_letivo:       new Date().getFullYear(),
+                obs:              obs || null,
+            }),
+        });
+        toast(`Empréstimo registrado para ${nome}!`);
+        fecharModalEmprestimo();
+        livros      = await apiFetch('/livros');
+        await recarregarEmprestimos();
+        renderAcervo();
+    } catch (e) {
+        msg.textContent = e.message;
+        msg.className   = 'form-msg-livros erro';
+    } finally {
+        btn.disabled = false; btn.textContent = 'Registrar';
+    }
+});
+
+/* ─── Tab: ACERVO ────────────────────────────────────────────────── */
+function filtrarAcervo() {
+    const busca = (document.getElementById('buscaLivro')?.value || '').toLowerCase();
+    const lista = busca ? livros.filter(l =>
+        l.titulo.toLowerCase().includes(busca) ||
+        (l.disciplina || '').toLowerCase().includes(busca) ||
+        (l.autor || '').toLowerCase().includes(busca)
+    ) : livros;
+    renderAcervo(lista);
+}
+
+function renderAcervo(lista) {
+    if (!lista) lista = livros;
+    const wrap = document.getElementById('tabelaLivros');
+    if (!lista.length) {
+        wrap.innerHTML = `<div class="empty-livros"><div class="ei">📖</div><p>Nenhum livro cadastrado</p></div>`;
+        return;
+    }
+    wrap.innerHTML = `
+    <div class="livros-table-wrap">
+    <table class="livros-table">
+        <thead><tr>
+            <th>Título</th><th>Disciplina</th><th>Série</th><th>Editora</th>
+            <th>Qtde</th><th>Disponível</th><th></th>
+        </tr></thead>
+        <tbody>
+            ${lista.map(l => {
+                const emp   = parseInt(l.emprestados || 0);
+                const disp  = l.quantidade - emp;
+                const cls   = disp === 0 ? 'badge-disp--zero' : disp < l.quantidade ? 'badge-disp--parcial' : 'badge-disp--ok';
+                const label = disp === 0 ? 'Esgotado' : disp === l.quantidade ? 'Disponível' : `${disp}/${l.quantidade}`;
+                return `
+                <tr>
+                    <td class="td-titulo">${esc(l.titulo)}${l.autor ? `<br><span style="font-weight:400;font-size:11px;color:var(--text-muted)">${esc(l.autor)}</span>` : ''}</td>
+                    <td>${esc(l.disciplina || '—')}</td>
+                    <td>${esc(l.serie || '—')}</td>
+                    <td>${esc(l.editora || '—')}</td>
+                    <td style="text-align:center">${l.quantidade}</td>
+                    <td><span class="badge-disp ${cls}">${label}</span></td>
+                    <td style="white-space:nowrap">
+                        <button class="btn-acao-livro" onclick="abrirModalEditarLivro(${l.id})">Editar</button>
+                        <button class="btn-acao-livro btn-acao-livro--danger" onclick="excluirLivro(${l.id}, '${esc(l.titulo)}')">Remover</button>
+                    </td>
+                </tr>`;
+            }).join('')}
+        </tbody>
+    </table>
+    </div>`;
+}
+
+/* ─── Modal: Novo/Editar Livro ───────────────────────────────────── */
+document.getElementById('btnNovoLivro').addEventListener('click', () => abrirModalLivro());
+
+function abrirModalLivro(livro) {
+    const m = document.getElementById('modalLivro');
+    document.getElementById('modalLivroTitulo').textContent = livro ? 'Editar livro' : 'Cadastrar livro';
+    document.getElementById('modalLivroId').value           = livro?.id || '';
+    document.getElementById('modalLivroTituloInput').value  = livro?.titulo || '';
+    document.getElementById('modalLivroAutor').value        = livro?.autor || '';
+    document.getElementById('modalLivroEditora').value      = livro?.editora || '';
+    document.getElementById('modalLivroAno').value          = livro?.ano_publicacao || '';
+    document.getElementById('modalLivroDisciplina').value   = livro?.disciplina || '';
+    document.getElementById('modalLivroSerie').value        = livro?.serie || '';
+    document.getElementById('modalLivroIsbn').value         = livro?.isbn || '';
+    document.getElementById('modalLivroQtde').value         = livro?.quantidade || 1;
+    document.getElementById('formLivroMsg').className       = 'form-msg-livros';
+    document.getElementById('formLivroMsg').textContent     = '';
+    m.classList.add('aberto');
+}
+
+window.abrirModalEditarLivro = async function (id) {
+    const livro = livros.find(l => l.id === id);
+    if (livro) abrirModalLivro(livro);
+};
+
+document.getElementById('btnFecharModalLivro').addEventListener('click', () => {
+    document.getElementById('modalLivro').classList.remove('aberto');
+});
+document.getElementById('modalLivro').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalLivro'))
+        document.getElementById('modalLivro').classList.remove('aberto');
+});
+
+document.getElementById('formLivro').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const id   = document.getElementById('modalLivroId').value;
+    const msg  = document.getElementById('formLivroMsg');
+    const btn  = document.getElementById('btnSalvarLivro');
+    const body = {
+        titulo:         document.getElementById('modalLivroTituloInput').value.trim(),
+        autor:          document.getElementById('modalLivroAutor').value.trim() || null,
+        editora:        document.getElementById('modalLivroEditora').value.trim() || null,
+        ano_publicacao: parseInt(document.getElementById('modalLivroAno').value)    || null,
+        disciplina:     document.getElementById('modalLivroDisciplina').value.trim() || null,
+        serie:          document.getElementById('modalLivroSerie').value.trim() || null,
+        isbn:           document.getElementById('modalLivroIsbn').value.trim() || null,
+        quantidade:     parseInt(document.getElementById('modalLivroQtde').value) || 1,
+    };
+    if (!body.titulo) {
+        msg.textContent = 'Título é obrigatório.';
+        msg.className   = 'form-msg-livros erro';
+        return;
+    }
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+        if (id) {
+            await apiFetch(`/livros/${id}`, { method: 'PUT', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+        } else {
+            await apiFetch('/livros', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+        }
+        toast(id ? 'Livro atualizado.' : 'Livro cadastrado!');
+        document.getElementById('modalLivro').classList.remove('aberto');
+        livros = await apiFetch('/livros');
+        popularSelectLivros();
+        atualizarStats();
+        renderAcervo();
+    } catch (e) {
+        msg.textContent = e.message;
+        msg.className   = 'form-msg-livros erro';
+    } finally {
+        btn.disabled = false; btn.textContent = 'Salvar';
+    }
+});
+
+window.excluirLivro = async function (id, titulo) {
+    if (!confirm(`Remover "${titulo}" do acervo? Empréstimos existentes não serão apagados.`)) return;
+    try {
+        await apiFetch(`/livros/${id}`, { method: 'DELETE' });
+        toast('Livro removido.');
+        livros = await apiFetch('/livros');
+        popularSelectLivros();
+        atualizarStats();
+        renderAcervo();
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+};
+
+/* ─── Tab: IMPRIMIR ─────────────────────────────────────────────── */
+
+/* Etiquetas de livro (coladas na capa) — 3 colunas, estilo crachás */
+function imprimirEtiquetas() {
+    const turmaFiltro = document.getElementById('printFiltroTurma')?.value || '';
+    const livroFiltro = document.getElementById('printFiltroLivro')?.value || '';
+
+    let lista = emprestimos.filter(e => e.status === 'emprestado');
+    if (turmaFiltro) lista = lista.filter(e => e.turma === turmaFiltro);
+    if (livroFiltro) lista = lista.filter(e => String(e.livro_id) === livroFiltro);
+
+    if (!lista.length) { toast('Nenhum empréstimo encontrado para os filtros selecionados.', 'aviso'); return; }
+
+    const turmas     = [...new Set(lista.map(e => e.turma || ''))];
+    const coresMap   = {};
+    turmas.forEach((t, i) => {
+        const paleta = ['#1d4ed8','#059669','#d97706','#9333ea','#dc2626','#0891b2','#65a30d'];
+        coresMap[t] = paleta[i % paleta.length];
+    });
+
+    const etiquetas = lista.map((e, idx) => {
+        const cor        = coresMap[e.turma || ''] || '#1d4ed8';
+        const nomePartes = (e.nome_aluno || '').split(' ');
+        const nomeAbrev  = nomePartes.length > 2 ? `${nomePartes[0]} ${nomePartes[nomePartes.length-1]}` : e.nome_aluno;
+        const serie      = extrairSerie(e.turma || '');
+        const periodo    = (e.turma || '').match(/Manhã|Tarde|Noite/i)?.[0] || '';
+        const qrUrl      = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(e.cod_matriz_aluno)}&size=60x60&margin=2`;
 
         return `
-        <div class="${cardClass}">
-            <div class="emprestimo-aluno">
-                <div class="aluno-nome-linha">
-                    <h4>${e.aluno?.nome || 'Aluno'}</h4>
-                    ${badgeAtraso}
-                </div>
-                <p><strong>Registro:</strong> ${e.aluno?.registro || ''}</p>
-                <p><strong>Turma:</strong> ${e.aluno?.turma || ''}</p>
+        <div class="badge-card">
+            <div class="badge-topo" style="background:${cor}">
+                <div class="badge-topo-serie">${esc(serie)}</div>
+                <div class="badge-topo-periodo">${esc(periodo || e.ano_letivo)}</div>
             </div>
-            <div class="emprestimo-material">
-                <h4>${e.material?.codigo || ''} — ${e.material?.descricao || ''}</h4>
-                <p><strong>Professor:</strong> ${e.professor || 'Não informado'}</p>
-                <div class="emprestimo-aulas">
-                    ${[1,2,3,4,5,6].map(a => `
-                        <span class="aula-badge ${(e.aulas||[]).includes(a) ? 'ativa' : 'inativa'}">${a}</span>
-                    `).join('')}
+            <div class="badge-livro-nome">${esc(e.livro_titulo)}</div>
+            <div class="badge-main">
+                <div class="badge-foto-3x4">
+                    <div class="foto-placeholder">
+                        <div class="foto-icone">👤</div>
+                        <div class="foto-label">3×4</div>
+                    </div>
+                </div>
+                <div class="badge-dados">
+                    <div class="badge-nome">${esc(e.nome_aluno)}</div>
+                    <div class="badge-serie-txt">${esc(serie)}</div>
+                    <div class="badge-turma-txt">${esc(e.turma || '')}</div>
+                    ${periodo ? `<div class="badge-periodo-txt" style="color:${cor}">${esc(periodo)}</div>` : ''}
+                    <div class="badge-chamada-row" style="border-color:${cor}20">
+                        <span class="badge-chamada-lbl">Nº Chamada</span>
+                        <span class="badge-chamada-num" style="color:${cor}">${e.num_chamada || '—'}</span>
+                    </div>
                 </div>
             </div>
-            <div class="emprestimo-acoes">
-                <button class="btn-devolver ${atrasado ? 'btn-devolver-urgente' : ''}"
-                        onclick="abrirModalDevolucao(${e.id})">Devolver</button>
-                <span class="emprestimo-hora">${formatarData(e.data_emprestimo)}</span>
+            <div class="badge-rodape" style="border-top:2px solid ${cor}40">
+                <img class="badge-qr" src="${qrUrl}" alt="QR" width="44" height="44">
+                <div class="badge-qr-info">
+                    <div class="badge-qr-nome" style="font-size:7px">${esc(e.livro_disciplina || '')}${e.livro_serie ? ' · '+esc(e.livro_serie) : ''}</div>
+                    <div class="badge-qr-nome">${esc(nomeAbrev)}</div>
+                    <div class="badge-qr-cod">ID: ${e.cod_matriz_aluno}</div>
+                </div>
             </div>
         </div>`;
     }).join('');
-}
 
-function renderBannerAtraso(atrasados) {
-    const existing = document.getElementById('bannerAtraso');
-    if (existing) existing.remove();
+    const barcodeData = lista.map((e, idx) => ({ id: `bc-${idx}`, value: String(e.cod_matriz_aluno) }));
 
-    if (!atrasados.length) return;
-
-    const criticos = atrasados.filter(e => diasAtraso(e) >= 3);
-    const cor      = criticos.length ? '#dc2626' : '#d97706';
-    const icone    = criticos.length ? '🚨' : '⚠️';
-    const msg      = atrasados.length === 1
-        ? `1 empréstimo não devolvido de dia(s) anterior(es)`
-        : `${atrasados.length} empréstimos não devolvidos de dias anteriores`;
-
-    const nomes = atrasados.slice(0, 4).map(e => {
-        const nome = (e.aluno?.nome || '').split(' ')[0];
-        const dias = diasAtraso(e);
-        return `<strong>${nome}</strong> (${dias}d)`;
-    }).join(', ') + (atrasados.length > 4 ? ` e mais ${atrasados.length - 4}` : '');
-
-    const banner = document.createElement('div');
-    banner.id = 'bannerAtraso';
-    banner.className = 'banner-atraso';
-    banner.style.borderColor = cor;
-    banner.innerHTML = `
-        <div class="banner-atraso-icone">${icone}</div>
-        <div class="banner-atraso-texto">
-            <strong>${msg}</strong>
-            <span>${nomes}</span>
-        </div>
-        <button class="banner-atraso-fechar" onclick="this.parentElement.remove()" title="Fechar aviso">✕</button>`;
-
-    const tabAtivos = document.getElementById('tabAtivos');
-    tabAtivos.insertBefore(banner, tabAtivos.firstChild);
-}
-
-function renderizarHistorico() {
-    const container = document.getElementById('listaHistorico');
-    const historico = emprestimos.filter(e => e.status === 'devolvido').reverse();
-
-    if (!historico.length) {
-        container.innerHTML = '<div class="empty-message">Nenhum empréstimo no histórico</div>';
-        return;
-    }
-
-    container.innerHTML = historico.map(e => `
-        <div class="emprestimo-card devolvido">
-            <div class="emprestimo-aluno">
-                <h4>${e.aluno?.nome || 'Aluno'}</h4>
-                <p><strong>Registro:</strong> ${e.aluno?.registro || ''}</p>
-                <p><strong>Turma:</strong> ${e.aluno?.turma || ''}</p>
-            </div>
-            <div class="emprestimo-material">
-                <h4>${e.material?.codigo || ''} — ${e.material?.descricao || ''}</h4>
-                <p><strong>Professor:</strong> ${e.professor || 'Não informado'}</p>
-            </div>
-            <div class="emprestimo-acoes">
-                <span class="emprestimo-hora">
-                    <strong>Empréstimo:</strong> ${formatarData(e.data_emprestimo)}<br>
-                    <strong>Devolução:</strong> ${formatarData(e.data_devolucao)}
-                </span>
-            </div>
-        </div>`).join('');
-}
-
-// ── Modal: Novo Empréstimo ─────────────────────────────────────────────────────
-function abrirModalEmprestimo() {
-    document.getElementById('formEmprestimo').reset();
-    ['alunoInfo','materialInfo'].forEach(id => {
-        const el = document.getElementById(id);
-        el.className = 'info-preview';
-        el.innerHTML = '';
+    const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8">
+<title>Etiquetas de Livros — EduSync</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+@page{size:A4 portrait;margin:8mm}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.badges-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm;padding:2mm}
+.badge-card{border:1.5px solid #d1d5db;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;break-inside:avoid;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.10)}
+.badge-topo{padding:5px 8px;display:flex;justify-content:space-between;align-items:center;min-height:14px}
+.badge-topo-serie{font-size:9px;color:white;font-weight:800;letter-spacing:.3px}
+.badge-topo-periodo{font-size:8px;color:rgba(255,255,255,.85);font-weight:600}
+.badge-livro-nome{font-size:8px;font-weight:800;color:#222;padding:3px 7px 2px;background:#f0f4ff;border-bottom:1px solid #e0e7ff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge-main{display:flex;gap:6px;padding:6px 7px 5px;align-items:flex-start}
+.badge-foto-3x4{flex-shrink:0;width:22mm;height:29mm;border:1.5px dashed #aaa;border-radius:4px;background:#f9fafb;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.foto-placeholder{display:flex;flex-direction:column;align-items:center;gap:2px}
+.foto-icone{font-size:20px;line-height:1;opacity:.35}
+.foto-label{font-size:7px;color:#aaa;font-weight:700;letter-spacing:.5px}
+.badge-dados{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.badge-nome{font-size:9.5px;font-weight:800;color:#111;line-height:1.25;word-break:break-word}
+.badge-serie-txt{font-size:8px;color:#444;font-weight:700;margin-top:1px}
+.badge-turma-txt{font-size:7px;color:#777;line-height:1.3}
+.badge-periodo-txt{font-size:7.5px;font-weight:700;margin-top:1px}
+.badge-chamada-row{display:flex;flex-direction:column;align-items:flex-start;margin-top:4px;border-top:1px solid #e5e7eb;padding-top:3px}
+.badge-chamada-lbl{font-size:6.5px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px}
+.badge-chamada-num{font-size:16px;font-weight:900;line-height:1.1}
+.badge-rodape{display:flex;align-items:center;gap:7px;padding:5px 7px 6px;background:#f9fafb}
+.badge-qr{flex-shrink:0;width:44px;height:44px;border:1px solid #e5e7eb;border-radius:4px;background:white}
+.badge-qr-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.badge-qr-nome{font-size:8px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge-qr-cod{font-size:7px;color:#6b7280;font-weight:600}
+</style></head><body>
+<div class="badges-grid">${etiquetas}</div>
+<script>
+window.onload = function() {
+    const data = ${JSON.stringify(barcodeData)};
+    data.forEach(d => {
+        const el = document.getElementById(d.id);
+        if (el) JsBarcode(el, d.value, {format:'CODE128',displayValue:false,height:24,margin:2});
     });
-    alunoSelecionado    = null;
-    materialSelecionado = null;
-    document.getElementById('modalEmprestimo').style.display = 'flex';
+    setTimeout(() => window.print(), 600);
+};
+<\/script></body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
 }
-function fecharModalEmprestimo() {
-    document.getElementById('modalEmprestimo').style.display = 'none';
+
+function extrairSerie(descrTurma) {
+    const m = descrTurma.match(/(\d+[ªa°]?\s*[Ss][ée]rie)/i);
+    return m ? m[1] : descrTurma.split(' - ')[0] || '';
 }
 
-async function buscarAluno() {
-    const registro = document.getElementById('alunoRegistro').value.trim();
-    const infoDiv  = document.getElementById('alunoInfo');
+/* Lista de responsabilidade — uma por turma ou por livro */
+function imprimirListaResponsabilidade() {
+    const turmaFiltro = document.getElementById('printFiltroTurmaLista')?.value || '';
+    const livroFiltro = document.getElementById('printFiltroLivroLista')?.value || '';
 
-    if (!registro) {
-        infoDiv.className = 'info-preview show erro';
-        infoDiv.innerHTML = 'Digite o registro do aluno';
-        return;
-    }
+    let lista = emprestimos.filter(e => e.status === 'emprestado');
+    if (turmaFiltro) lista = lista.filter(e => e.turma === turmaFiltro);
+    if (livroFiltro) lista = lista.filter(e => String(e.livro_id) === livroFiltro);
 
-    try {
-        const r = await fetch(`/api/alunos/${registro}`);
-        if (r.ok) {
-            const aluno = await r.json();
-            alunoSelecionado = aluno;
-            infoDiv.className = 'info-preview show sucesso';
-            infoDiv.innerHTML = `<strong>${aluno.nome}</strong><br>Turma: ${aluno.turma}`;
-        } else {
-            alunoSelecionado = null;
-            infoDiv.className = 'info-preview show erro';
-            infoDiv.innerHTML = 'Aluno não encontrado';
+    if (!lista.length) { toast('Nenhum empréstimo encontrado para os filtros selecionados.', 'aviso'); return; }
+
+    // Agrupar por livro
+    const grupos = {};
+    for (const e of lista) {
+        if (!grupos[e.livro_id]) {
+            grupos[e.livro_id] = {
+                titulo: e.livro_titulo,
+                autor:  e.livro_autor || '',
+                editora:e.livro_editora || '',
+                disciplina: e.livro_disciplina || '',
+                serie:  e.livro_serie || '',
+                itens:  [],
+            };
         }
-    } catch {
-        alunoSelecionado = null;
-        infoDiv.className = 'info-preview show erro';
-        infoDiv.innerHTML = 'Erro ao buscar aluno';
-    }
-}
-
-async function buscarMaterial() {
-    const codigo  = document.getElementById('materialCodigo').value.trim().toUpperCase();
-    const infoDiv = document.getElementById('materialInfo');
-
-    if (!codigo) {
-        infoDiv.className = 'info-preview show erro';
-        infoDiv.innerHTML = 'Digite o código do material';
-        return;
+        grupos[e.livro_id].itens.push(e);
     }
 
-    try {
-        const r = await fetch(`/api/materiais/${codigo}`);
-        if (r.ok) {
-            const material = await r.json();
-            if (material.status !== 'disponivel') {
-                materialSelecionado = null;
-                infoDiv.className = 'info-preview show erro';
-                infoDiv.innerHTML = `${material.descricao}<br><strong>Indisponível</strong>`;
-                return;
-            }
-            materialSelecionado = material;
-            infoDiv.className = 'info-preview show sucesso';
-            infoDiv.innerHTML = `<strong>${material.descricao}</strong><br>Código: ${material.codigo}`;
-        } else {
-            materialSelecionado = null;
-            infoDiv.className = 'info-preview show erro';
-            infoDiv.innerHTML = 'Material não encontrado';
-        }
-    } catch {
-        materialSelecionado = null;
-        infoDiv.className = 'info-preview show erro';
-        infoDiv.innerHTML = 'Erro ao buscar material';
-    }
-}
+    const anoLetivo   = new Date().getFullYear();
+    const dataFormato = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
-function selecionarTodasAulas() { for (let i = 1; i <= 6; i++) document.getElementById(`aula${i}`).checked = true; }
-function limparAulas()          { for (let i = 1; i <= 6; i++) document.getElementById(`aula${i}`).checked = false; }
+    const secoes = Object.values(grupos).map(g => {
+        const linhas = g.itens.map(e => `
+            <tr>
+                <td style="text-align:center">${e.num_chamada || '—'}</td>
+                <td>${e.nome_aluno}</td>
+                <td>${e.turma || ''}</td>
+                <td>${new Date(e.data_emprestimo).toLocaleDateString('pt-BR')}</td>
+                <td style="text-align:center">
+                    <div style="width:80px;border-bottom:1px solid #333;margin:0 auto;height:24px;"></div>
+                </td>
+            </tr>`).join('');
 
-async function registrarEmprestimo(e) {
-    e.preventDefault();
-
-    if (!alunoSelecionado) { await buscarAluno(); }
-    if (!alunoSelecionado) { alert('Busque e selecione um aluno válido'); return; }
-    if (!materialSelecionado) { await buscarMaterial(); }
-    if (!materialSelecionado) { alert('Busque e selecione um material disponível'); return; }
-
-    const aulas = [];
-    for (let i = 1; i <= 6; i++) {
-        if (document.getElementById(`aula${i}`).checked) aulas.push(i);
-    }
-    if (!aulas.length) { alert('Selecione pelo menos uma aula'); return; }
-
-    try {
-        const r = await fetch('/api/emprestimos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                aluno_registro:  alunoSelecionado.registro,
-                material_codigo: materialSelecionado.codigo,
-                professor:       document.getElementById('professorResponsavel').value,
-                aulas,
-                observacoes:     document.getElementById('observacoes').value
-            })
-        });
-
-        if (!r.ok) { const err = await r.json(); throw new Error(err.erro || 'Erro ao registrar'); }
-
-        fecharModalEmprestimo();
-        await carregarDados();
-        alert(`Empréstimo registrado!\n\n${alunoSelecionado.nome}\n${materialSelecionado.codigo}`);
-    } catch (err) { alert('Erro: ' + err.message); }
-}
-
-// ── Modal: Devolução manual ────────────────────────────────────────────────────
-function abrirModalDevolucao(id) {
-    const e = emprestimos.find(x => x.id === id);
-    if (!e) return;
-    document.getElementById('emprestimoIdDevolucao').value = id;
-    document.getElementById('infoDevolucao').innerHTML = `
-        <div class="devolucao-info">
-            <p><strong>Aluno:</strong> ${e.aluno?.nome || ''}</p>
-            <p><strong>Material:</strong> ${e.material?.codigo || ''} — ${e.material?.descricao || ''}</p>
-            <p><strong>Emprestado em:</strong> ${formatarData(e.data_emprestimo)}</p>
-        </div>`;
-    document.getElementById('estadoDevolucao').value = 'otimo';
-    document.getElementById('obsDevolucao').value    = '';
-    document.getElementById('modalDevolucao').style.display = 'flex';
-}
-function fecharModalDevolucao() {
-    document.getElementById('modalDevolucao').style.display = 'none';
-}
-
-async function confirmarDevolucao(e) {
-    e.preventDefault();
-    const id = document.getElementById('emprestimoIdDevolucao').value;
-    try {
-        const r = await fetch(`/api/emprestimos/${id}/devolver`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                estado_devolucao:     document.getElementById('estadoDevolucao').value,
-                observacoes_devolucao: document.getElementById('obsDevolucao').value
-            })
-        });
-        if (!r.ok) { const err = await r.json(); throw new Error(err.erro || 'Erro'); }
-        fecharModalDevolucao();
-        await carregarDados();
-        alert('Devolução registrada com sucesso!');
-    } catch (err) { alert('Erro: ' + err.message); }
-}
-
-// ── QR Scanner (câmera) ───────────────────────────────────────────────────────
-async function iniciarCamera(videoEl, onDecode) {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
-        });
-        videoEl.srcObject = stream;
-        await videoEl.play();
-        return stream;
-    } catch (err) {
-        alert('Não foi possível acessar a câmera: ' + err.message);
-        return null;
-    }
-}
-
-function pararStream(stream, animFrame) {
-    if (animFrame) cancelAnimationFrame(animFrame);
-    if (stream) stream.getTracks().forEach(t => t.stop());
-}
-
-function scanFrameLoop(videoEl, canvasEl, onDecode, getAnimRef, setAnimRef) {
-    if (videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) {
-        setAnimRef(requestAnimationFrame(() => scanFrameLoop(videoEl, canvasEl, onDecode, getAnimRef, setAnimRef)));
-        return;
-    }
-    const ctx = canvasEl.getContext('2d');
-    canvasEl.width  = videoEl.videoWidth;
-    canvasEl.height = videoEl.videoHeight;
-    ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-    const imgData = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
-    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
-    if (code && code.data) {
-        onDecode(code.data);
-        return;
-    }
-    setAnimRef(requestAnimationFrame(() => scanFrameLoop(videoEl, canvasEl, onDecode, getAnimRef, setAnimRef)));
-}
-
-// ── Scanner modal (para Novo Empréstimo) ──────────────────────────────────────
-async function abrirScanner(target) {
-    scannerTarget = target;
-    const titulo = target === 'aluno' ? '📷 Escanear QR do Aluno' : '📷 Escanear QR do Material';
-    document.getElementById('qrModalTitle').textContent = titulo;
-    document.getElementById('qrStatus').textContent = target === 'aluno'
-        ? 'Aponte para o QR Code do crachá do aluno'
-        : 'Aponte para o QR Code do material';
-    document.getElementById('qrResultado').style.display = 'none';
-    document.getElementById('modalQR').style.display = 'flex';
-
-    const video  = document.getElementById('qrVideo');
-    const canvas = document.getElementById('qrCanvas');
-
-    scannerStream = await iniciarCamera(video, () => {});
-    if (!scannerStream) { fecharScanner(); return; }
-
-    const onDecode = (data) => {
-        pararStream(scannerStream, scannerAnimFrame);
-        scannerStream = null;
-        onQRDetectado(data, target);
-    };
-
-    const loop = () => scanFrameLoop(
-        video, canvas, onDecode,
-        () => scannerAnimFrame,
-        (id) => { scannerAnimFrame = id; }
-    );
-    scannerAnimFrame = requestAnimationFrame(loop);
-}
-
-function fecharScanner() {
-    pararStream(scannerStream, scannerAnimFrame);
-    scannerStream    = null;
-    scannerAnimFrame = null;
-    document.getElementById('modalQR').style.display = 'none';
-}
-
-async function onQRDetectado(data, target) {
-    const res = document.getElementById('qrResultado');
-    res.style.display = 'block';
-    res.textContent   = '✅ QR detectado: ' + data;
-    document.getElementById('qrStatus').textContent = 'QR lido com sucesso!';
-
-    // Aguarda 800ms para o usuário ver o feedback e fecha
-    setTimeout(async () => {
-        document.getElementById('modalQR').style.display = 'none';
-
-        if (target === 'aluno') {
-            document.getElementById('alunoRegistro').value = data;
-            await buscarAluno();
-        } else {
-            document.getElementById('materialCodigo').value = data.toUpperCase();
-            await buscarMaterial();
-        }
-    }, 800);
-}
-
-// ── Devolução Rápida por QR ───────────────────────────────────────────────────
-async function abrirDevolucaoQR() {
-    document.getElementById('dqrResultados').style.display = 'none';
-    document.getElementById('dqrScanArea').style.display   = 'block';
-    document.getElementById('dqrStatus').textContent = 'Aponte para o QR Code do crachá do aluno';
-    document.getElementById('modalDevolucaoQR').style.display = 'flex';
-
-    const video  = document.getElementById('dqrVideo');
-    const canvas = document.getElementById('dqrCanvas');
-
-    dqrStream = await iniciarCamera(video, () => {});
-    if (!dqrStream) { fecharDevolucaoQR(); return; }
-
-    const onDecode = async (data) => {
-        pararStream(dqrStream, dqrAnimFrame);
-        dqrStream    = null;
-        dqrAnimFrame = null;
-        document.getElementById('dqrStatus').textContent = '✅ QR lido — buscando empréstimos...';
-        await mostrarEmprestimosAluno(data);
-    };
-
-    const loop = () => scanFrameLoop(
-        video, canvas, onDecode,
-        () => dqrAnimFrame,
-        (id) => { dqrAnimFrame = id; }
-    );
-    dqrAnimFrame = requestAnimationFrame(loop);
-}
-
-async function mostrarEmprestimosAluno(registro) {
-    // Tenta buscar aluno pelo registro lido no QR
-    let aluno = null;
-    try {
-        const r = await fetch(`/api/alunos/${encodeURIComponent(registro)}`);
-        if (r.ok) aluno = await r.json();
-    } catch { /* ignora */ }
-
-    // Filtra empréstimos ativos pelo registro
-    const ativos = emprestimos.filter(e =>
-        e.status === 'ativo' &&
-        (e.aluno?.registro === registro || (aluno && e.aluno?.registro === aluno.registro))
-    );
-
-    document.getElementById('dqrScanArea').style.display   = 'none';
-    document.getElementById('dqrResultados').style.display = 'block';
-
-    const nomeAluno = aluno?.nome || registro;
-    document.getElementById('dqrAlunoInfo').innerHTML =
-        `👤 <span>${nomeAluno}</span>` + (aluno?.turma ? ` &nbsp;·&nbsp; Turma ${aluno.turma}` : '');
-
-    const lista = document.getElementById('dqrLista');
-    if (!ativos.length) {
-        lista.innerHTML = '<div class="empty-message" style="background:#f0fdf4;border-radius:10px;padding:18px;text-align:center;">✅ Nenhum empréstimo ativo para este aluno</div>';
-        return;
-    }
-
-    lista.innerHTML = ativos.map(e => `
-        <div class="dqr-emprestimo-card" id="dqr-card-${e.id}">
-            <div class="dqr-material">
-                <strong>${e.material?.codigo || ''} — ${e.material?.descricao || 'Material'}</strong>
-                <span>Emprestado em ${formatarData(e.data_emprestimo)}</span>
+        return `
+        <div class="lista-secao">
+            <div class="lista-header">
+                <div class="lista-escola">EduSync — Lista de Responsabilidade de Livros Didáticos</div>
+                <div class="lista-livro">
+                    <span class="lista-livro-titulo">${g.titulo}</span>
+                    ${g.autor    ? `<span class="lista-livro-detalhe">Autor: ${g.autor}</span>` : ''}
+                    ${g.editora  ? `<span class="lista-livro-detalhe">Editora: ${g.editora}</span>` : ''}
+                    ${g.disciplina ? `<span class="lista-livro-detalhe">Disciplina: ${g.disciplina}</span>` : ''}
+                    ${g.serie    ? `<span class="lista-livro-detalhe">Série/Ano: ${g.serie}</span>` : ''}
+                    <span class="lista-livro-detalhe">Ano Letivo: ${anoLetivo}</span>
+                </div>
+                <div class="lista-aviso">
+                    <strong>TERMO DE RESPONSABILIDADE</strong><br>
+                    Eu, abaixo assinado(a), declaro ter recebido em perfeitas condições o livro didático acima identificado,
+                    cedido pelo Estado do Paraná para uso durante o ano letivo de <strong>${anoLetivo}</strong>.
+                    Comprometo-me a zelar pela sua conservação e devolvê-lo ao término do ano letivo, ciente de que
+                    danos ou extravio poderão resultar em ressarcimento ou substituição.
+                </div>
             </div>
-            <button class="btn-devolver-qr" onclick="devolucaoRapida(${e.id})">Devolver</button>
-        </div>`).join('');
+            <table class="lista-table">
+                <thead>
+                    <tr>
+                        <th style="width:50px">Nº</th>
+                        <th>Nome do Aluno</th>
+                        <th>Turma</th>
+                        <th>Data Entrega</th>
+                        <th style="width:100px">Assinatura</th>
+                    </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+            </table>
+            <div class="lista-rodape">
+                <div class="lista-assinatura-campo">
+                    <div class="lista-linha"></div>
+                    <div class="lista-assinatura-label">Professor(a) Responsável</div>
+                </div>
+                <div class="lista-assinatura-campo">
+                    <div class="lista-linha"></div>
+                    <div class="lista-assinatura-label">Direção / Secretaria</div>
+                </div>
+                <div class="lista-data">${dataFormato}</div>
+            </div>
+        </div>`;
+    }).join('<div class="page-break"></div>');
+
+    const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8">
+<title>Lista de Responsabilidade — EduSync</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+@page{size:A4 portrait;margin:15mm}
+body{font-family:'Times New Roman',Times,serif;background:#fff;color:#000}
+.lista-secao{margin-bottom:16mm}
+.page-break{break-before:page}
+.lista-escola{font-size:11pt;font-weight:bold;text-align:center;margin-bottom:10px;letter-spacing:.5px}
+.lista-livro{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;padding:8px 12px;border:1pt solid #333;border-radius:4px;background:#f9f9f9}
+.lista-livro-titulo{font-size:12pt;font-weight:900;color:#1a1a6e}
+.lista-livro-detalhe{font-size:9pt;color:#444;background:#e8e8e8;padding:2px 6px;border-radius:3px}
+.lista-aviso{font-size:9pt;line-height:1.6;padding:10px 12px;border:1pt solid #bbb;border-radius:4px;margin-bottom:12px;background:#fffef0;text-align:justify}
+.lista-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt}
+.lista-table th{padding:6px 8px;border:1pt solid #333;background:#e8e8f0;font-weight:700;text-align:left;font-size:9pt}
+.lista-table td{padding:5px 8px;border:1pt solid #ccc;vertical-align:middle;height:28px}
+.lista-table tr:nth-child(even) td{background:#fafafa}
+.lista-rodape{display:flex;align-items:flex-end;justify-content:space-between;margin-top:20px;gap:20px;flex-wrap:wrap}
+.lista-assinatura-campo{flex:1;min-width:160px}
+.lista-linha{border-bottom:1pt solid #333;margin-bottom:4px;height:24px}
+.lista-assinatura-label{font-size:8pt;text-align:center;color:#555}
+.lista-data{font-size:9pt;color:#444;white-space:nowrap;align-self:flex-end}
+</style></head><body>
+${secoes}
+<script>setTimeout(() => window.print(), 400);<\/script>
+</body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
 }
 
-async function devolucaoRapida(id) {
-    if (!confirm('Confirmar devolução em estado "Ótimo"?')) return;
-    try {
-        const r = await fetch(`/api/emprestimos/${id}/devolver`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ estado_devolucao: 'otimo', observacoes_devolucao: 'Devolução via QR' })
-        });
-        if (!r.ok) throw new Error('Erro ao devolver');
-        // Remove o card da lista
-        const card = document.getElementById(`dqr-card-${id}`);
-        if (card) { card.style.opacity = '0.3'; card.innerHTML = '<div style="padding:10px;color:#16a34a;font-weight:600;">✅ Devolvido com sucesso</div>'; }
-        await carregarDados();
-    } catch (err) { alert('Erro: ' + err.message); }
-}
+/* ─── Navegação por tabs ─────────────────────────────────────────── */
+document.querySelectorAll('.livros-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        tabAtual = btn.dataset.tab;
+        document.querySelectorAll('.livros-tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.livros-panel').forEach(p => p.style.display = 'none');
+        document.getElementById(`panel-${tabAtual}`).style.display = 'block';
+    });
+});
 
-function reiniciarDevolucaoQR() {
-    fecharDevolucaoQR();
-    setTimeout(abrirDevolucaoQR, 100);
-}
+/* ─── Expor funções para HTML ────────────────────────────────────── */
+window.devolverEmprestimo     = devolverEmprestimo;
+window.marcarPerdido          = marcarPerdido;
+window.filtrarEmprestimos     = filtrarEmprestimos;
+window.filtrarAcervo          = filtrarAcervo;
+window.imprimirEtiquetas      = imprimirEtiquetas;
+window.imprimirListaResponsabilidade = imprimirListaResponsabilidade;
 
-function fecharDevolucaoQR() {
-    pararStream(dqrStream, dqrAnimFrame);
-    dqrStream    = null;
-    dqrAnimFrame = null;
-    document.getElementById('modalDevolucaoQR').style.display = 'none';
-}
+/* ─── Start ─────────────────────────────────────────────────────── */
+init();

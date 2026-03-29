@@ -16,6 +16,7 @@ import { createMapaSalaRouter }      from './mapa-sala.routes.js';
 import { createAtividadesRouter }    from './atividades.routes.js';
 import { createPedagogicoRouter }    from './pedagogico.routes.js';
 import { createClassroomRouter }     from './classroom.routes.js';
+import { createLivrosRouter }         from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
 
 export function createApiRouter(deps) {
@@ -38,6 +39,7 @@ export function createApiRouter(deps) {
     router.use('/', createAtividadesRouter());
     router.use('/', createPedagogicoRouter(deps));
     router.use('/', createClassroomRouter(deps));
+    router.use('/', createLivrosRouter());
     router.use('/', createAdminRouter(deps));
 
     return router;

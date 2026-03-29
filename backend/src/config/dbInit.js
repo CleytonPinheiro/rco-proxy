@@ -47,6 +47,43 @@ export async function initializeDatabase() {
             );
         `);
 
+        /* ── Livros Didáticos ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS livros_didaticos (
+                id              SERIAL PRIMARY KEY,
+                titulo          VARCHAR(200) NOT NULL,
+                autor           VARCHAR(200),
+                editora         VARCHAR(150),
+                ano_publicacao  INTEGER,
+                disciplina      VARCHAR(100),
+                serie           VARCHAR(80),
+                isbn            VARCHAR(20),
+                quantidade      INTEGER NOT NULL DEFAULT 1,
+                ativo           BOOLEAN NOT NULL DEFAULT true,
+                criado_em       TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS livros_emprestimos (
+                id                 SERIAL PRIMARY KEY,
+                livro_id           INTEGER NOT NULL REFERENCES livros_didaticos(id),
+                cod_matriz_aluno   INTEGER NOT NULL,
+                nome_aluno         VARCHAR(200),
+                turma              VARCHAR(150),
+                num_chamada        INTEGER,
+                ano_letivo         INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM NOW()),
+                status             VARCHAR(20) NOT NULL DEFAULT 'emprestado',
+                data_emprestimo    TIMESTAMP NOT NULL DEFAULT NOW(),
+                data_devolucao     TIMESTAMP,
+                obs                TEXT,
+                criado_em          TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_emp_livro    ON livros_emprestimos(livro_id);
+            CREATE INDEX IF NOT EXISTS idx_emp_aluno    ON livros_emprestimos(cod_matriz_aluno);
+            CREATE INDEX IF NOT EXISTS idx_emp_status   ON livros_emprestimos(status);
+        `);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

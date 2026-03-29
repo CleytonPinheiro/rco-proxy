@@ -6,11 +6,9 @@
     <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
     <link rel="stylesheet" href="../../shared/css/theme.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduSync — Empréstimos</title>
+    <title>EduSync — Livros Didáticos</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
-    <link rel="stylesheet" href="./materiais.css">
     <link rel="stylesheet" href="./emprestimos.css">
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
     <header class="header">
@@ -28,194 +26,261 @@
             <a href="/pages/frequencias/">Frequências</a>
             <a href="/pages/comunicados/">Comunicados</a>
             <a href="/pages/crachas/">Crachás</a>
+            <a href="/pages/emprestimos/" class="active">Livros</a>
             <a href="/pages/circulacao/">Circulação</a>
             <a href="/pages/comportamento/">Comportamento</a>
             <a href="/pages/presenca/">Presença</a>
         </nav>
         <div class="header-actions">
             <button class="btn-theme" onclick="toggleTheme()">🌙</button>
-            <button id="btnLogout" class="btn-logout" onclick="window.location.href='/'">Sair</button>
+            <button id="btnLogout" class="btn-logout">Sair</button>
         </div>
         </div>
     </header>
 
     <main class="container">
-        <div class="page-header">
-            <h2>Gerenciamento de Empréstimos</h2>
-            <div style="display:flex;gap:10px;">
-                <a href="/pages/quiosque/" class="btn-secondary" style="text-decoration:none;" title="Abrir modo quiosque para monitoramento">
-                    🖥 Modo Quiosque
-                </a>
-                <button class="btn-secondary" onclick="abrirDevolucaoQR()" title="Escanear QR do aluno para devolução rápida">
-                    📷 Devolução por QR
-                </button>
-                <button class="btn-primary" onclick="abrirModalEmprestimo()">+ Novo Empréstimo</button>
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+
+            <!-- Cabeçalho -->
+            <div class="livros-header">
+                <div>
+                    <h2 class="livros-titulo">📚 Livros Didáticos</h2>
+                    <p class="livros-sub">Gerenciamento de empréstimos anuais de livros</p>
+                </div>
+                <div class="livros-actions-top">
+                    <button class="btn-primary-livros" id="btnNovoEmprestimo">+ Registrar empréstimo</button>
+                </div>
             </div>
-        </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="trocarTab('ativos')">Empréstimos Ativos</button>
-            <button class="tab" onclick="trocarTab('historico')">Histórico</button>
-        </div>
+            <!-- Stats -->
+            <div class="stats-livros">
+                <div class="stat-livro emprestado">
+                    <span class="sn" id="numEmprestados">0</span>
+                    <span class="sl">Emprestados</span>
+                </div>
+                <div class="stat-livro devolvido">
+                    <span class="sn" id="numDevolvidos">0</span>
+                    <span class="sl">Devolvidos</span>
+                </div>
+                <div class="stat-livro perdido">
+                    <span class="sn" id="numPerdidos">0</span>
+                    <span class="sl">Perdidos</span>
+                </div>
+                <div class="stat-livro" style="border-color:#7c3aed">
+                    <span class="sn" id="numAcervo" style="color:#7c3aed">0</span>
+                    <span class="sl">No Acervo</span>
+                </div>
+            </div>
 
-        <div id="tabAtivos" class="tab-content">
-            <div id="listaEmprestimosAtivos" class="lista-emprestimos"></div>
-        </div>
+            <!-- Tabs -->
+            <div class="livros-tabs">
+                <button class="livros-tab active" data-tab="emprestimos">Empréstimos</button>
+                <button class="livros-tab" data-tab="acervo">Acervo de Livros</button>
+                <button class="livros-tab" data-tab="imprimir">Impressão</button>
+            </div>
 
-        <div id="tabHistorico" class="tab-content" style="display: none;">
-            <div id="listaHistorico" class="lista-emprestimos"></div>
-        </div>
+            <!-- ── Painel: Empréstimos ── -->
+            <div class="livros-panel" id="panel-emprestimos">
+                <div class="livros-filtros">
+                    <input type="search" id="filtroAluno" placeholder="🔍 Buscar aluno..." oninput="filtrarEmprestimos()">
+                    <select id="filtroStatus" onchange="filtrarEmprestimos()">
+                        <option value="">Todos os status</option>
+                        <option value="emprestado">Emprestados</option>
+                        <option value="devolvido">Devolvidos</option>
+                        <option value="perdido">Perdidos</option>
+                    </select>
+                    <select id="filtroTurma" onchange="filtrarEmprestimos()">
+                        <option value="">Todas as turmas</option>
+                    </select>
+                    <select id="filtroLivro" onchange="filtrarEmprestimos()">
+                        <option value="">Todos os livros</option>
+                    </select>
+                </div>
+                <div id="listaEmprestimos"></div>
+            </div>
+
+            <!-- ── Painel: Acervo ── -->
+            <div class="livros-panel" id="panel-acervo" style="display:none;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+                    <input type="search" id="buscaLivro" placeholder="🔍 Buscar livro..." oninput="filtrarAcervo()" style="padding:9px 12px;border-radius:8px;border:1.5px solid var(--input-border);background:var(--input-bg);color:var(--input-color);font-size:13px;outline:none;min-width:220px;">
+                    <button class="btn-primary-livros" id="btnNovoLivro">+ Cadastrar livro</button>
+                </div>
+                <div id="tabelaLivros"></div>
+            </div>
+
+            <!-- ── Painel: Impressão ── -->
+            <div class="livros-panel" id="panel-imprimir" style="display:none;">
+                <div class="print-options">
+                    <!-- Etiquetas -->
+                    <div class="print-card">
+                        <div class="print-card-icon">🏷️</div>
+                        <div class="print-card-title">Etiquetas de Identificação</div>
+                        <div class="print-card-desc">
+                            Etiquetas para colar na capa do livro. Layout 3 colunas por página,
+                            com nome do aluno, turma, número de chamada, QR Code e foto 3×4.
+                        </div>
+                        <div class="print-filter-area" style="margin-top:8px;margin-bottom:0">
+                            <div class="print-filter-row">
+                                <div class="print-filter-group">
+                                    <label>Turma</label>
+                                    <select id="printFiltroTurma">
+                                        <option value="">Todas as turmas</option>
+                                    </select>
+                                </div>
+                                <div class="print-filter-group">
+                                    <label>Livro</label>
+                                    <select id="printFiltroLivro">
+                                        <option value="">Todos os livros</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-print-livros" style="margin-top:12px" onclick="imprimirEtiquetas()">
+                            🖨️ Imprimir etiquetas
+                        </button>
+                    </div>
+
+                    <!-- Lista de responsabilidade -->
+                    <div class="print-card">
+                        <div class="print-card-icon">📋</div>
+                        <div class="print-card-title">Lista de Responsabilidade</div>
+                        <div class="print-card-desc">
+                            Documento com termo de compromisso e campo de assinatura do aluno.
+                            O aluno declara ter recebido o livro e se compromete a devolvê-lo
+                            ao final do ano letivo.
+                        </div>
+                        <div class="print-filter-area" style="margin-top:8px;margin-bottom:0">
+                            <div class="print-filter-row">
+                                <div class="print-filter-group">
+                                    <label>Turma</label>
+                                    <select id="printFiltroTurmaLista">
+                                        <option value="">Todas as turmas</option>
+                                    </select>
+                                </div>
+                                <div class="print-filter-group">
+                                    <label>Livro</label>
+                                    <select id="printFiltroLivroLista">
+                                        <option value="">Todos os livros</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-print-livros" style="margin-top:12px" onclick="imprimirListaResponsabilidade()">
+                            🖨️ Imprimir lista
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /content -->
     </main>
 
-    <!-- Modal: Novo Empréstimo -->
-    <div id="modalEmprestimo" class="modal" style="display: none;">
-        <div class="modal-content modal-lg">
-            <div class="modal-header">
-                <h2>Novo Empréstimo</h2>
-                <button class="modal-close" onclick="fecharModalEmprestimo()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="formEmprestimo" onsubmit="registrarEmprestimo(event)">
-                    <div class="form-row">
-                        <div class="form-group flex-1">
-                            <label for="alunoRegistro">Registro do Aluno</label>
-                            <div class="input-with-btn">
-                                <input type="text" id="alunoRegistro" placeholder="Digite ou escaneie o QR" required>
-                                <button type="button" class="btn-scan" title="Escanear QR do aluno" onclick="abrirScanner('aluno')">📷</button>
-                                <button type="button" class="btn-scan" onclick="buscarAluno()">🔍</button>
-                            </div>
-                            <div id="alunoInfo" class="info-preview"></div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group flex-1">
-                            <label for="materialCodigo">Código do Material</label>
-                            <div class="input-with-btn">
-                                <input type="text" id="materialCodigo" placeholder="Digite ou escaneie o QR" required>
-                                <button type="button" class="btn-scan" title="Escanear QR do material" onclick="abrirScanner('material')">📷</button>
-                                <button type="button" class="btn-scan" onclick="buscarMaterial()">🔍</button>
-                            </div>
-                            <div id="materialInfo" class="info-preview"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="professorResponsavel">Professor Responsável</label>
-                        <input type="text" id="professorResponsavel" placeholder="Nome do professor">
-                    </div>
-                    <div class="form-group">
-                        <label>Período de Uso</label>
-                        <div class="periodo-grid">
-                            <div class="periodo-item"><input type="checkbox" id="aula1" value="1"><label for="aula1">1ª Aula<br><small>07:30 - 08:20</small></label></div>
-                            <div class="periodo-item"><input type="checkbox" id="aula2" value="2"><label for="aula2">2ª Aula<br><small>08:20 - 09:10</small></label></div>
-                            <div class="periodo-item"><input type="checkbox" id="aula3" value="3"><label for="aula3">3ª Aula<br><small>09:30 - 10:20</small></label></div>
-                            <div class="periodo-item"><input type="checkbox" id="aula4" value="4"><label for="aula4">4ª Aula<br><small>10:20 - 11:10</small></label></div>
-                            <div class="periodo-item"><input type="checkbox" id="aula5" value="5"><label for="aula5">5ª Aula<br><small>11:10 - 12:00</small></label></div>
-                            <div class="periodo-item"><input type="checkbox" id="aula6" value="6"><label for="aula6">6ª Aula<br><small>12:00 - 12:50</small></label></div>
-                        </div>
-                        <div class="periodo-acoes">
-                            <button type="button" class="btn-link" onclick="selecionarTodasAulas()">Selecionar todas</button>
-                            <button type="button" class="btn-link" onclick="limparAulas()">Limpar</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="observacoes">Observações</label>
-                        <textarea id="observacoes" rows="3" placeholder="Observações adicionais..."></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="fecharModalEmprestimo()">Cancelar</button>
-                        <button type="submit" class="btn-primary">Registrar Empréstimo</button>
-                    </div>
-                </form>
-            </div>
+    <!-- Toast -->
+    <div id="toastLivros" class="toast-livros"></div>
+
+    <!-- Modal: Registrar Empréstimo -->
+    <div class="modal-overlay-livros" id="modalEmprestimo">
+        <div class="modal-box-livros">
+            <button class="modal-close-livros" id="btnFecharModalEmp">✕</button>
+            <h3>Registrar Empréstimo</h3>
+            <form id="formEmprestimo" novalidate>
+                <div class="form-group-livros">
+                    <label>Turma</label>
+                    <select id="modalEmpTurma" required>
+                        <option value="">— Selecione a turma —</option>
+                    </select>
+                </div>
+                <div class="form-group-livros">
+                    <label>Aluno</label>
+                    <select id="modalEmpAluno" required>
+                        <option value="">— Selecione a turma primeiro —</option>
+                    </select>
+                </div>
+                <div class="form-group-livros">
+                    <label>Livro</label>
+                    <select id="modalEmpLivro" required>
+                        <option value="">— Selecione o livro —</option>
+                    </select>
+                </div>
+                <div class="form-group-livros">
+                    <label>Observações (opcional)</label>
+                    <textarea id="modalEmpObs" rows="2" placeholder="Estado do livro, número de exemplar, etc."></textarea>
+                </div>
+                <div class="form-msg-livros" id="formEmpMsg"></div>
+                <div class="modal-actions-livros">
+                    <button type="button" class="btn-secondary-livros" id="btnCancelarEmp"
+                        onclick="document.getElementById('modalEmprestimo').classList.remove('aberto')">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary-livros" id="btnSalvarEmp">Registrar</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Modal: Devolução -->
-    <div id="modalDevolucao" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Registrar Devolução</h2>
-                <button class="modal-close" onclick="fecharModalDevolucao()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="infoDevolucao"></div>
-                <form id="formDevolucao" onsubmit="confirmarDevolucao(event)">
-                    <input type="hidden" id="emprestimoIdDevolucao">
-                    <div class="form-group">
-                        <label for="estadoDevolucao">Estado do Material na Devolução</label>
-                        <select id="estadoDevolucao" required>
-                            <option value="otimo">Ótimo</option>
-                            <option value="bom">Bom</option>
-                            <option value="regular">Regular</option>
-                            <option value="danificado">Danificado</option>
-                        </select>
+    <!-- Modal: Cadastrar/Editar Livro -->
+    <div class="modal-overlay-livros" id="modalLivro">
+        <div class="modal-box-livros">
+            <button class="modal-close-livros" id="btnFecharModalLivro">✕</button>
+            <h3 id="modalLivroTitulo">Cadastrar livro</h3>
+            <form id="formLivro" novalidate>
+                <input type="hidden" id="modalLivroId">
+                <div class="form-group-livros">
+                    <label>Título *</label>
+                    <input type="text" id="modalLivroTituloInput" placeholder="Ex: Matemática — Volume 1" required>
+                </div>
+                <div class="form-row-livros">
+                    <div class="form-group-livros">
+                        <label>Disciplina</label>
+                        <input type="text" id="modalLivroDisciplina" placeholder="Ex: Matemática">
                     </div>
-                    <div class="form-group">
-                        <label for="obsDevolucao">Observações da Devolução</label>
-                        <textarea id="obsDevolucao" rows="3" placeholder="Algum problema encontrado?"></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="fecharModalDevolucao()">Cancelar</button>
-                        <button type="submit" class="btn-primary">Confirmar Devolução</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Scanner de QR via câmera -->
-    <div id="modalQR" class="modal" style="display:none;">
-        <div class="modal-content qr-scanner-modal">
-            <div class="modal-header">
-                <h2 id="qrModalTitle">📷 Escanear QR Code</h2>
-                <button class="modal-close" onclick="fecharScanner()">&times;</button>
-            </div>
-            <div class="modal-body qr-body">
-                <div class="qr-viewport">
-                    <video id="qrVideo" autoplay playsinline muted></video>
-                    <canvas id="qrCanvas" style="display:none;"></canvas>
-                    <div class="qr-frame">
-                        <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
-                        <div class="qr-corner bl"></div><div class="qr-corner br"></div>
-                        <div class="qr-line"></div>
+                    <div class="form-group-livros">
+                        <label>Série / Ano</label>
+                        <input type="text" id="modalLivroSerie" placeholder="Ex: 1º Ano">
                     </div>
                 </div>
-                <div id="qrStatus" class="qr-status">Aponte a câmera para o QR Code do aluno</div>
-                <div id="qrResultado" class="qr-resultado" style="display:none;"></div>
-                <button class="btn-secondary" style="margin-top:12px;" onclick="fecharScanner()">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Devolução Rápida por QR -->
-    <div id="modalDevolucaoQR" class="modal" style="display:none;">
-        <div class="modal-content modal-lg">
-            <div class="modal-header">
-                <h2>📷 Devolução Rápida por QR</h2>
-                <button class="modal-close" onclick="fecharDevolucaoQR()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="dqrScanArea">
-                    <div class="qr-viewport">
-                        <video id="dqrVideo" autoplay playsinline muted></video>
-                        <canvas id="dqrCanvas" style="display:none;"></canvas>
-                        <div class="qr-frame">
-                            <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
-                            <div class="qr-corner bl"></div><div class="qr-corner br"></div>
-                            <div class="qr-line"></div>
-                        </div>
+                <div class="form-group-livros">
+                    <label>Autor(es)</label>
+                    <input type="text" id="modalLivroAutor" placeholder="Ex: João Silva">
+                </div>
+                <div class="form-row-livros">
+                    <div class="form-group-livros">
+                        <label>Editora</label>
+                        <input type="text" id="modalLivroEditora" placeholder="Ex: FTD">
                     </div>
-                    <div id="dqrStatus" class="qr-status">Aponte a câmera para o QR Code do aluno</div>
+                    <div class="form-group-livros">
+                        <label>Ano de Publicação</label>
+                        <input type="number" id="modalLivroAno" placeholder="Ex: 2023" min="1990" max="2030">
+                    </div>
                 </div>
-                <div id="dqrResultados" style="display:none;">
-                    <div id="dqrAlunoInfo" class="dqr-aluno-info"></div>
-                    <div id="dqrLista" class="lista-emprestimos" style="margin-top:12px;"></div>
-                    <button class="btn-secondary" style="margin-top:16px;" onclick="reiniciarDevolucaoQR()">📷 Escanear outro aluno</button>
+                <div class="form-row-livros">
+                    <div class="form-group-livros">
+                        <label>ISBN</label>
+                        <input type="text" id="modalLivroIsbn" placeholder="ISBN-13">
+                    </div>
+                    <div class="form-group-livros">
+                        <label>Quantidade de exemplares</label>
+                        <input type="number" id="modalLivroQtde" value="1" min="1">
+                    </div>
                 </div>
-            </div>
+                <div class="form-msg-livros" id="formLivroMsg"></div>
+                <div class="modal-actions-livros">
+                    <button type="button" class="btn-secondary-livros"
+                        onclick="document.getElementById('modalLivro').classList.remove('aberto')">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary-livros" id="btnSalvarLivro">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 
+    <script src="../../shared/js/auth.js"></script>
     <script src="./emprestimos.js"></script>
 
     <!-- ── Painel Lateral ───────────────────────────────────────────────── -->
@@ -244,7 +309,7 @@
                     <span class="side-nav-desc">Arranjo de carteiras por turma</span>
                 </div>
             </a>
-                        <a href="/pages/atividades/" class="side-nav-item">
+            <a href="/pages/atividades/" class="side-nav-item">
                 <span class="side-nav-icon side-nav-icon-svg">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 11l3 3L22 4"/>
@@ -263,7 +328,7 @@
                     <span class="side-nav-desc">Organize alunos em equipes</span>
                 </div>
             </a>
-                        <a href="/pages/classroom/" class="side-nav-item">
+            <a href="/pages/classroom/" class="side-nav-item">
                 <span class="side-nav-icon side-nav-icon-svg">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -290,10 +355,10 @@
                 </div>
             </a>
             <a href="/pages/emprestimos/" class="side-nav-item">
-                <span class="side-nav-icon">📋</span>
+                <span class="side-nav-icon">📚</span>
                 <div class="side-nav-info">
-                    <span class="side-nav-nome">Empréstimos</span>
-                    <span class="side-nav-desc">Controle de empréstimos</span>
+                    <span class="side-nav-nome">Livros Didáticos</span>
+                    <span class="side-nav-desc">Empréstimos e etiquetas</span>
                 </div>
             </a>
             <a href="/pages/cozinha/" class="side-nav-item">
@@ -307,8 +372,6 @@
         <div class="side-panel-footer">EduSync © 2026</div>
     </nav>
     <script>
-    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
-    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
     (function(){
         var p = location.pathname;
