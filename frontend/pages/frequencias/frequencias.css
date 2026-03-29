@@ -754,24 +754,24 @@
 
 /* ── Células de presença/falta — dark harmonioso com paleta navy ─────────── */
 [data-theme="dark"] .col-presenca {
-    background: #1c2e25 !important;
-    color:      #86efac !important;
+    background: #172a30 !important;  /* teal escuro */
+    color:      #67e8f9 !important;  /* ciano suave */
 }
 [data-theme="dark"] .col-falta {
-    background: #2e1c1e !important;
-    color:      #fca5a5 !important;
+    background: #2c1f10 !important;  /* âmbar escuro */
+    color:      #fdba74 !important;  /* laranja suave */
 }
 [data-theme="dark"] .pct-ok {
-    background: #1c2e25 !important;
-    color:      #86efac !important;
+    background: #172a30 !important;
+    color:      #67e8f9 !important;
 }
 [data-theme="dark"] .pct-alerta {
     background: #2c2515 !important;
-    color:      #fde68a !important;
+    color:      #fde68a !important;  /* amarelo dourado */
 }
 [data-theme="dark"] .pct-critico {
-    background: #2e1c1e !important;
-    color:      #fca5a5 !important;
+    background: #2c1f10 !important;
+    color:      #fdba74 !important;
 }
 
 [data-theme="dark"] .freq-aluno-modal .modal-content { background: var(--bg-card); }
@@ -779,10 +779,10 @@
 [data-theme="dark"] .freq-aluno-nome { color: var(--text-primary); }
 [data-theme="dark"] .freq-aluno-sub  { color: var(--text-secondary); }
 
-[data-theme="dark"] .leg-falta       { background: #2e1c1e; color: #fca5a5; }
+[data-theme="dark"] .leg-falta       { background: #2c1f10; color: #fdba74; }
 [data-theme="dark"] .leg-pct-alerta  { background: #2c2515; color: #fde68a; }
-[data-theme="dark"] .leg-pct-critico { background: #2e1c1e; color: #fca5a5; }
-[data-theme="dark"] .leg-pct-ok      { background: #1c2e25; color: #86efac; }
+[data-theme="dark"] .leg-pct-critico { background: #2c1f10; color: #fdba74; }
+[data-theme="dark"] .leg-pct-ok      { background: #172a30; color: #67e8f9; }
 
 [data-theme="dark"] .aluno-row-critico { background: var(--bg-secondary) !important; border-color: #dc2626 !important; }
 [data-theme="dark"] .freq-footer { background: var(--bg-secondary); border-color: var(--border); }
