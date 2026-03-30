@@ -84,12 +84,21 @@
         try { localStorage.removeItem(NAV_CACHE_KEY); } catch {}
     }
 
+    /* Revela os menus após aplicar permissões (remove o anti-flash do theme.js) */
+    function marcarNavPronto() {
+        document.querySelector('.nav-menu')  ?.setAttribute('data-perms-ready', 'true');
+        document.querySelector('.side-panel')?.setAttribute('data-perms-ready', 'true');
+    }
+
     /* Aplica permissões imediatamente da cache — sem esperar o fetch.
-       Isso elimina o flash de menus proibidos durante a navegação entre páginas. */
+       Com o <style> anti-flash do theme.js, os menus ficam invisíveis até aqui.
+       Após este IIFE, apenas os itens permitidos ficam visíveis.
+       Se não há cache (primeiro login), menus ficam invisíveis até o fetch. */
     (function aplicarCacheImediato() {
         try {
             const cached = JSON.parse(localStorage.getItem(NAV_CACHE_KEY) || 'null');
-            if (!cached) return;
+            if (!cached) return; // sem cache: permanece invisível até fetch + aplicarPermissoesNav
+
             const p = cached.impersonando ? cached.impersonandoPerfil : cached.perfil;
             document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
                 const modulo = MODULO_URLS[link.getAttribute('href')];
@@ -99,7 +108,12 @@
                     link.style.display = 'none';
                 }
             });
-        } catch {}
+
+            /* Revela menus apenas dentro do try — só depois de aplicar permissões com sucesso */
+            marcarNavPronto();
+        } catch {
+            /* Erro de localStorage ou parse: mantém invisível, fetch assumirá o controle */
+        }
     })();
 
     /* ── Verificar autenticação (confirma sessão no servidor) ── */
@@ -199,6 +213,9 @@
                 link.style.display = '';
             }
         });
+
+        /* Revela os menus (caso o cache estivesse vazio e o anti-flash ainda ativo) */
+        marcarNavPronto();
     }
 
     /* ══════════════════════════════════════════════════════════════════════

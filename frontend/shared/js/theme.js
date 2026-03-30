@@ -75,6 +75,20 @@ window.fecharSidePanel = function () { document.body.removeAttribute('data-side'
 (function () {
     if (location.pathname.startsWith('/login') || location.pathname === '/') return;
 
+    /* ── ANTI-FLASH: oculta todos os itens de nav antes da primeira pintura.
+       Este <style> é injetado sincronicamente no <head> enquanto o browser
+       ainda está a analisar o HTML, garantindo que se aplica antes de qualquer render.
+       Os itens ficam invisíveis (mas mantêm espaço no layout) até que auth.js
+       defina data-perms-ready após aplicar as permissões do perfil.          ── */
+    const styleAntiFlash = document.createElement('style');
+    styleAntiFlash.id = 'anti-flash-nav';
+    styleAntiFlash.textContent =
+        '.nav-menu:not([data-perms-ready]) a,' +
+        '.side-panel:not([data-perms-ready]) a {' +
+        '  visibility: hidden !important;' +
+        '}';
+    document.head.appendChild(styleAntiFlash);
+
     /* CSS de nav e perfil — carrega junto com o resto para evitar flash */
     const cssLink = document.createElement('link');
     cssLink.rel   = 'stylesheet';
