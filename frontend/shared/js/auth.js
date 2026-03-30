@@ -15,6 +15,7 @@
     const LOGIN_PATH = '/login/';
     const DASH_PATH  = '/pages/dashboard/';
 
+    /* ── Mapeamento URL → módulo (ordem importa: define prioridade de redirecionamento) ── */
     const MODULO_URLS = {
         '/pages/dashboard/':     'dashboard',
         '/pages/frequencias/':   'frequencias',
@@ -34,6 +35,7 @@
         '/pages/admin/':         'admin',
     };
 
+    /* ── Permissões por perfil — espelho exato de backend/src/config/permissions.js ── */
     const PERFIL_MODULOS = {
         admin:      ['*'],
         professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico'],
@@ -44,13 +46,25 @@
     };
 
     const PERFIL_LABEL = {
-        admin: 'Administrador', professor: 'Professor', pedagogo: 'Pedagogo',
-        secretaria: 'Secretaria', aux_turno: 'Aux. de Turno', cozinha: 'Cozinha',
+        admin:      'Administrador',
+        professor:  'Professor',
+        pedagogo:   'Pedagogo',
+        secretaria: 'Secretaria',
+        aux_turno:  'Aux. de Turno',
+        cozinha:    'Cozinha',
     };
 
     function podeAcessar(perfil, modulo) {
         const lista = PERFIL_MODULOS[perfil] || [];
         return lista.includes('*') || lista.includes(modulo);
+    }
+
+    /** Retorna a primeira URL acessível para o perfil (evita loop de redirecionamento) */
+    function primeiraUrlPermitida(perfil) {
+        for (const [url, modulo] of Object.entries(MODULO_URLS)) {
+            if (podeAcessar(perfil, modulo)) return url;
+        }
+        return LOGIN_PATH;
     }
 
     /* ── Verificar autenticação ── */
@@ -67,9 +81,13 @@
 
     window.__edusync = { user };
 
+    /* Perfil efetivo: ao impersonar, usa o perfil do alvo */
+    const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+
+    /* Bloqueia acesso a páginas não permitidas e redireciona para a primeira URL acessível */
     const paginaAtual = MODULO_URLS[location.pathname] || null;
-    if (paginaAtual && !podeAcessar(user.perfil, paginaAtual)) {
-        window.location.replace(DASH_PATH);
+    if (paginaAtual && !podeAcessar(perfilEfetivo, paginaAtual)) {
+        window.location.replace(primeiraUrlPermitida(perfilEfetivo));
         return;
     }
 
@@ -122,11 +140,24 @@
        1. Permissões de navegação
     ══════════════════════════════════════════════════════════════════════ */
     function aplicarPermissoesNav(user) {
+        const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+
         document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
             const href   = link.getAttribute('href');
             const modulo = MODULO_URLS[href];
-            if (modulo && !podeAcessar(user.perfil, modulo)) {
+
+            if (!modulo) return; // link sem mapeamento: deixa visível
+
+            if (!podeAcessar(perfilEfetivo, modulo)) {
+                /* Marca com atributo para que o CSS !important mantenha oculto
+                   mesmo que o nav adaptativo limpe o inline-style */
+                link.setAttribute('data-perm-hidden', 'true');
                 link.style.display = 'none';
+            } else {
+                /* Garante que um reload de permissões (ex: sair de impersonação)
+                   desoculte itens que voltaram a ser permitidos */
+                link.removeAttribute('data-perm-hidden');
+                link.style.display = '';
             }
         });
     }

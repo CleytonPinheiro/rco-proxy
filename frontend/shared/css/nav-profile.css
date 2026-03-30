@@ -406,5 +406,8 @@
 /* ── Input file hidden ───────────────────────────────────────────────────── */
 #perfilAvatarInput { display: none; }
 
-/* ── Nav overflow: itens ocultos ─────────────────────────────────────────── */
+/* ── Itens proibidos por perfil — imutável por JS ───────────────────────── */
+[data-perm-hidden="true"] { display: none !important; }
+
+/* ── Nav overflow: itens ocultos para caber no topo ─────────────────────── */
 .nav-menu a[data-nav-hidden="true"] { display: none !important; }
