@@ -168,10 +168,36 @@ export function createAlunosPortalRouter() {
         if (!oauth2) return res.redirect('/alunos/?erro=sem_credenciais');
         try {
             const { tokens } = await oauth2.getToken(code);
-            oauth2.setCredentials(tokens);
-            const userApi      = google.oauth2({ version: 'v2', auth: oauth2 });
-            const { data }     = await userApi.userinfo.get();
-            const email        = data.email || '';
+
+            /* Decodifica o id_token JWT diretamente — mais robusto que userinfo API */
+            let email = '', nome = '', foto = null;
+            if (tokens.id_token) {
+                try {
+                    const payload = JSON.parse(
+                        Buffer.from(tokens.id_token.split('.')[1], 'base64').toString('utf8')
+                    );
+                    email = payload.email   || '';
+                    nome  = payload.name    || '';
+                    foto  = payload.picture || null;
+                } catch (decodeErr) {
+                    console.warn('[ALUNOS-PORTAL] Falha ao decodificar id_token:', decodeErr.message);
+                }
+            }
+
+            /* Fallback: tenta access_token via userinfo endpoint */
+            if (!email && tokens.access_token) {
+                try {
+                    const uResp = await fetch(
+                        'https://www.googleapis.com/oauth2/v3/userinfo',
+                        { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+                    );
+                    const ud = await uResp.json();
+                    email = ud.email   || '';
+                    nome  = ud.name    || nome;
+                    foto  = ud.picture || foto;
+                } catch (_) {}
+            }
+
             if (!email) return res.redirect('/alunos/?erro=sem_email');
 
             const sessionId = crypto.randomBytes(32).toString('hex');

@@ -1,11 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Portal do Aluno</title>
     <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
     <link rel="stylesheet" href="./alunos.css">
+    <!-- Anti-flash: aplica tema salvo antes de renderizar -->
+    <script>
+        (function(){
+            const t = localStorage.getItem('aluno_tema');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
 </head>
 <body>
 
@@ -17,11 +24,51 @@
                 <span class="pa-logo-edu">Edu</span><span class="pa-logo-sync">Sync</span>
                 <span class="pa-logo-sub">Portal do Aluno</span>
             </div>
+
+            <!-- Área do usuário (visível após login) -->
             <div id="paUserArea" class="pa-user-area" style="display:none">
-                <img id="paUserFoto" class="pa-avatar" src="" alt="foto" style="display:none">
-                <span id="paUserNome" class="pa-user-nome"></span>
-                <button class="pa-btn-sair" onclick="fazerLogout()">Sair</button>
+
+                <!-- Botão de tema -->
+                <button class="pa-theme-btn" id="paThemeBtn" onclick="toggleTema()" title="Alternar tema claro/escuro">
+                    <span id="paThemeIcon" class="pa-theme-icon"></span>
+                </button>
+
+                <!-- Perfil com dropdown -->
+                <div class="pa-perfil-wrap" id="paPerfilWrap">
+                    <button class="pa-perfil-trigger" onclick="toggleDropdown(event)">
+                        <img id="paUserFoto" class="pa-avatar" src="" alt="foto" style="display:none">
+                        <span class="pa-avatar-placeholder" id="paAvatarPlaceholder"></span>
+                        <span id="paUserNome" class="pa-user-nome"></span>
+                        <svg class="pa-caret" viewBox="0 0 10 6" fill="none">
+                            <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown -->
+                    <div class="pa-dropdown" id="paDropdown">
+                        <div class="pa-drop-header">
+                            <img id="paDropFoto" class="pa-drop-avatar" src="" alt="" style="display:none">
+                            <span class="pa-drop-avatar-placeholder" id="paDropPlaceholder"></span>
+                            <div class="pa-drop-info">
+                                <div class="pa-drop-nome" id="paDropNome"></div>
+                                <div class="pa-drop-email" id="paDropEmail"></div>
+                            </div>
+                        </div>
+                        <div class="pa-drop-divider"></div>
+                        <button class="pa-drop-sair" onclick="fazerLogout()">
+                            <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                                <path d="M13 7l3 3-3 3M16 10H8M10 4H5a1 1 0 00-1 1v10a1 1 0 001 1h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Sair da conta
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            <!-- Tema (visível antes do login também) -->
+            <button class="pa-theme-btn pa-theme-btn--pre" id="paThemeBtnPre" onclick="toggleTema()" title="Alternar tema">
+                <span class="pa-theme-icon" id="paThemeIconPre"></span>
+            </button>
         </div>
     </header>
 
@@ -65,7 +112,7 @@
             <p class="pa-vazio-sub">Você está em dia com todas as suas atividades no Google Classroom.</p>
         </div>
 
-        <!-- Erro do professor não conectado -->
+        <!-- Aviso professor não conectado -->
         <div id="paSemConexao" class="pa-aviso-info" style="display:none">
             <span class="pa-aviso-icon">ℹ️</span>
             <span id="paSemConexaoMsg"></span>
