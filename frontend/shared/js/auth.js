@@ -67,7 +67,42 @@
         return LOGIN_PATH;
     }
 
-    /* ── Verificar autenticação ── */
+    /* ── Cache de perfil no localStorage (evita flash de menus proibidos) ── */
+    const NAV_CACHE_KEY = 'edusync_nav_cache';
+
+    function salvarCacheNav(u) {
+        try {
+            localStorage.setItem(NAV_CACHE_KEY, JSON.stringify({
+                perfil:             u.perfil,
+                impersonando:       u.impersonando       || false,
+                impersonandoPerfil: u.impersonandoPerfil || null,
+            }));
+        } catch {}
+    }
+
+    function limparCacheNav() {
+        try { localStorage.removeItem(NAV_CACHE_KEY); } catch {}
+    }
+
+    /* Aplica permissões imediatamente da cache — sem esperar o fetch.
+       Isso elimina o flash de menus proibidos durante a navegação entre páginas. */
+    (function aplicarCacheImediato() {
+        try {
+            const cached = JSON.parse(localStorage.getItem(NAV_CACHE_KEY) || 'null');
+            if (!cached) return;
+            const p = cached.impersonando ? cached.impersonandoPerfil : cached.perfil;
+            document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+                const modulo = MODULO_URLS[link.getAttribute('href')];
+                if (!modulo) return;
+                if (!podeAcessar(p, modulo)) {
+                    link.setAttribute('data-perm-hidden', 'true');
+                    link.style.display = 'none';
+                }
+            });
+        } catch {}
+    })();
+
+    /* ── Verificar autenticação (confirma sessão no servidor) ── */
     let user = null;
     try {
         const res = await fetch('/api/me', { credentials: 'include' });
@@ -75,9 +110,13 @@
     } catch { /* sem conexão */ }
 
     if (!user) {
+        limparCacheNav();
         window.location.replace(LOGIN_PATH + '?next=' + encodeURIComponent(location.pathname));
         return;
     }
+
+    /* Atualiza cache com dados frescos do servidor */
+    salvarCacheNav(user);
 
     window.__edusync = { user };
 
@@ -220,6 +259,7 @@
         try {
             await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
         } finally {
+            limparCacheNav(); // garante que o próximo login não herde permissões do anterior
             window.location.replace(LOGIN_PATH);
         }
     }

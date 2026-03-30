@@ -50,6 +50,17 @@
             const data = await res.json();
 
             if (res.ok && data.sucesso) {
+                /* Grava perfil no cache para que auth.js aplique permissões de nav
+                   de forma síncrona (sem fetch) na primeira página após o login */
+                if (data.usuario) {
+                    try {
+                        localStorage.setItem('edusync_nav_cache', JSON.stringify({
+                            perfil:             data.usuario.perfil,
+                            impersonando:       data.usuario.impersonando       || false,
+                            impersonandoPerfil: data.usuario.impersonandoPerfil || null,
+                        }));
+                    } catch {}
+                }
                 mostrarMsg('Login realizado! Redirecionando…', 'ok');
                 setTimeout(() => window.location.replace(destinoLogin()), 800);
             } else {
