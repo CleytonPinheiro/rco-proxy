@@ -1373,3 +1373,39 @@ body {
     display: flex;
     align-items: center;
 }
+
+/* ── Modal de Confirmação ─────────────────────────────────────────── */
+.cl-confirm-modal {
+    max-width: 400px;
+    text-align: center;
+    border-top: 4px solid var(--cl-accent, #4285f4);
+}
+.cl-confirm-modal.cl-confirm--danger { border-top-color: #dc2626; }
+.cl-confirm-modal.cl-confirm--danger #clConfirmOk { background: #dc2626; border-color: #dc2626; }
+.cl-confirm-modal.cl-confirm--danger #clConfirmOk:hover { background: #b91c1c; }
+
+.cl-confirm-icon {
+    font-size: 2.4rem;
+    line-height: 1;
+    padding: 28px 24px 0;
+}
+.cl-confirm-content { padding: 14px 28px 0; }
+.cl-confirm-titulo  {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+}
+.cl-confirm-msg {
+    font-size: .9rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+.cl-confirm-foot {
+    justify-content: center;
+    gap: 10px;
+    padding: 20px 24px 24px;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+}

@@ -1,5 +1,51 @@
 'use strict';
 
+/* ══════════════════════════════════════════════════════════════════
+   Modal de confirmação — substitui confirm() nativo
+   Uso: await confirmar('Mensagem', { titulo, confirmLabel, tipo, icone })
+   Retorna: true (confirmou) | false (cancelou)
+══════════════════════════════════════════════════════════════════ */
+function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Confirmar', tipo = 'info', icone } = {}) {
+    return new Promise(resolve => {
+        const overlay  = document.getElementById('clConfirmModal');
+        const elTitulo = document.getElementById('clConfirmTitulo');
+        const elMsg    = document.getElementById('clConfirmMsg');
+        const elIcone  = document.getElementById('clConfirmIcone');
+        const elOk     = document.getElementById('clConfirmOk');
+        const elCancel = document.getElementById('clConfirmCancelar');
+        const elModal  = overlay.querySelector('.cl-confirm-modal');
+
+        elTitulo.textContent = titulo;
+        elMsg.textContent    = mensagem;
+        elOk.textContent     = confirmLabel;
+
+        const iconeDefault = tipo === 'danger' ? '⚠️' : '❓';
+        elIcone.textContent = icone || iconeDefault;
+
+        elModal.classList.toggle('cl-confirm--danger', tipo === 'danger');
+        overlay.classList.add('cl-modal-overlay--visivel');
+        elOk.focus();
+
+        function fechar(resultado) {
+            overlay.classList.remove('cl-modal-overlay--visivel');
+            elOk.removeEventListener('click', onOk);
+            elCancel.removeEventListener('click', onCancel);
+            overlay.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+            resolve(resultado);
+        }
+        function onOk()      { fechar(true); }
+        function onCancel()  { fechar(false); }
+        function onBackdrop(e) { if (e.target === overlay) fechar(false); }
+        function onKey(e)    { if (e.key === 'Escape') fechar(false); if (e.key === 'Enter' && document.activeElement === elOk) { e.preventDefault(); fechar(true); } }
+
+        elOk.addEventListener('click', onOk);
+        elCancel.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+    });
+}
+
 /* ── Estado global ── */
 let cursoAtivo      = null;   // { id, nome, link }
 let ativAtiva       = null;   // { id, titulo, pontos }
@@ -157,7 +203,7 @@ elBtnConectar.addEventListener('click', async () => {
 
 /* ── Desconectar ── */
 document.getElementById('clBtnDesconectar').addEventListener('click', async () => {
-    if (!confirm('Desconectar a conta Google? Você precisará autorizar novamente para usar o Classroom.')) return;
+    if (!await confirmar('Você precisará autorizar novamente para usar o Classroom.', { titulo: 'Desconectar conta Google?', confirmLabel: 'Desconectar', tipo: 'danger', icone: '🔌' })) return;
     await api('/disconnect', { method: 'POST' });
     location.reload();
 });
@@ -605,7 +651,7 @@ async function devolverEntrega(btn) {
     const subId  = btn.dataset.sub;
     const userId = btn.dataset.user;
     const aluno  = alunos[userId];
-    if (!confirm(`Devolver entrega de ${aluno?.nome || 'aluno'} para revisão?`)) return;
+    if (!await confirmar(`Devolver a entrega de ${aluno?.nome || 'aluno'} para revisão?`, { titulo: 'Devolver entrega', confirmLabel: 'Devolver', tipo: 'danger', icone: '↩️' })) return;
     btn.disabled    = true;
     btn.textContent = '...';
     try {
@@ -1403,7 +1449,7 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
 });
 
 async function excluirGrupo(grupo) {
-    if (!confirm(`Excluir o grupo "${grupo.nome}"? As atividades do Classroom não serão afetadas.`)) return;
+    if (!await confirmar(`Excluir o grupo "${grupo.nome}"? As atividades do Classroom não serão afetadas.`, { titulo: 'Excluir grupo', confirmLabel: 'Excluir', tipo: 'danger', icone: '🗑️' })) return;
     try {
         await api(`/groups/${grupo.id}`, { method: 'DELETE' });
         if (grupoAtivo?.id === grupo.id) { grupoAtivo = null; resetColuna3(); }
@@ -1716,7 +1762,7 @@ function renderAuditRow(l, ativ) {
 }
 
 async function aplicarZeroIndividual(userId, subId, nome, ativ) {
-    if (!confirm(`Registrar ${nome} como AUSENTE na atividade "${ativ.titulo}"?`)) return;
+    if (!await confirmar(`Registrar ${nome} como ausente na atividade "${ativ.titulo}"?`, { titulo: 'Registrar ausência', confirmLabel: 'Registrar', icone: '📋' })) return;
 
     try {
         await apiRaw('/classroom/ausencias', {
@@ -1741,7 +1787,7 @@ async function aplicarZeroIndividual(userId, subId, nome, ativ) {
 async function aplicarZerosTodos(ausentesLista, ativ) {
     const pendentes = ausentesLista.filter(l => !l.sub?.ausente);
     if (!pendentes.length) { toast('Todos os ausentes já foram registrados.', 'ok'); return; }
-    if (!confirm(`Registrar ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`)) return;
+    if (!await confirmar(`Registrar ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`, { titulo: 'Registrar todos os ausentes', confirmLabel: 'Registrar todos', icone: '📋' })) return;
 
     const btn = document.getElementById('clBtnAplicarTodos');
     if (btn) { btn.disabled = true; btn.textContent = 'Registrando...'; }
