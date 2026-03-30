@@ -73,7 +73,7 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 │   │       ├── classroom.routes.js       # /api/classroom/*
 │   │       ├── mapa.routes.js            # /api/mapa-sala
 │   │       ├── atividades.routes.js      # /api/atividades-sala
-│   │       ├── pedagogico.routes.js      # /api/pedagogico
+│   │       ├── pedagogico.routes.js      # /api/pedagogico + /api/pedagogico/retorno
 │   │       ├── circulacao.routes.js      # /api/circulacao
 │   │       └── debug.routes.js           # /api/debug/*
 ├── frontend/
@@ -108,6 +108,7 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 │       ├── mapa-sala/
 │       ├── atividades/
 │       ├── pedagogico/
+│       ├── retorno-pedagogico/               # Retorno da equipe (professor/pedagogo)
 │       └── classroom/
 ```
 

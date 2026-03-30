@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Retorno Pedagógico</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./retorno.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/comportamento/">Comportamento</a>
+            <a href="/pages/pedagogico/">Painel Pedagógico</a>
+            <a href="/pages/retorno-pedagogico/">💬 Retorno Pedagógico</a>
+            <a href="/pages/atividades/">Atividades</a>
+            <a href="/pages/grupos/">Grupos</a>
+            <a href="/pages/mapa-sala/">Mapa de Sala</a>
+            <a href="/pages/classroom/">Classroom</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav id="sidePanel" class="side-panel">
+        <div class="side-panel-header">
+            <span class="side-panel-title">Menu</span>
+            <button class="side-panel-close" onclick="fecharSidePanel()">✕</button>
+        </div>
+        <div class="side-nav side-panel-nav">
+            <a href="/pages/dashboard/" class="side-nav-item">
+                <span class="side-nav-icon">🏠</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Turmas</span>
+                    <span class="side-nav-desc">Visão geral das turmas</span>
+                </div>
+            </a>
+            <a href="/pages/frequencias/" class="side-nav-item">
+                <span class="side-nav-icon">📅</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Frequências</span>
+                    <span class="side-nav-desc">Lance e consulte faltas</span>
+                </div>
+            </a>
+            <a href="/pages/comportamento/" class="side-nav-item">
+                <span class="side-nav-icon">⭐</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Comportamento</span>
+                    <span class="side-nav-desc">Pontuação e ocorrências</span>
+                </div>
+            </a>
+            <a href="/pages/pedagogico/" class="side-nav-item">
+                <span class="side-nav-icon">🎓</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Painel Pedagógico</span>
+                    <span class="side-nav-desc">Avisos e ocorrências para a equipe</span>
+                </div>
+            </a>
+            <a href="/pages/retorno-pedagogico/" class="side-nav-item side-nav-item--active">
+                <span class="side-nav-icon">💬</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Retorno Pedagógico</span>
+                    <span class="side-nav-desc">Respostas da equipe às suas ocorrências</span>
+                </div>
+            </a>
+            <a href="/pages/atividades/" class="side-nav-item">
+                <span class="side-nav-icon side-nav-icon-svg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
+                </span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Atividades de Sala</span>
+                    <span class="side-nav-desc">Checklist diário de atividades</span>
+                </div>
+            </a>
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/mapa-sala/" class="side-nav-item">
+                <span class="side-nav-icon side-nav-icon-svg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                </span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Mapa de Sala</span>
+                    <span class="side-nav-desc">Arranjo de carteiras por turma</span>
+                </div>
+            </a>
+            <a href="/pages/classroom/" class="side-nav-item">
+                <span class="side-nav-icon side-nav-icon-svg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                </span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Classroom</span>
+                    <span class="side-nav-desc">Atividades e notas do Google</span>
+                </div>
+            </a>
+            <a href="/pages/comunicados/" class="side-nav-item">
+                <span class="side-nav-icon">📢</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Comunicados de Falta</span>
+                    <span class="side-nav-desc">Imprima comunicados de falta</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+
+    <main class="container">
+        <!-- Cabeçalho da página -->
+        <div class="ret-page-header">
+            <div class="ret-page-title-row">
+                <div class="ret-page-icon">💬</div>
+                <div>
+                    <h1 class="ret-page-title">Retorno Pedagógico</h1>
+                    <p class="ret-page-sub">Respostas e encaminhamentos da equipe pedagógica às suas ocorrências</p>
+                </div>
+            </div>
+
+            <!-- Cards de resumo -->
+            <div class="ret-stats" id="retStats">
+                <div class="ret-stat-card ret-stat-total">
+                    <span class="ret-stat-num" id="statTotal">—</span>
+                    <span class="ret-stat-label">Total de registros</span>
+                </div>
+                <div class="ret-stat-card ret-stat-retorno">
+                    <span class="ret-stat-num" id="statComRetorno">—</span>
+                    <span class="ret-stat-label">Com retorno</span>
+                </div>
+                <div class="ret-stat-card ret-stat-aguardando">
+                    <span class="ret-stat-num" id="statAguardando">—</span>
+                    <span class="ret-stat-label">Aguardando</span>
+                </div>
+                <div class="ret-stat-card ret-stat-novo">
+                    <span class="ret-stat-num" id="statNovos">—</span>
+                    <span class="ret-stat-label">Novos retornos</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="ret-filtros">
+            <div class="ret-filtros-row">
+                <div class="ret-filtro-group">
+                    <label class="ret-filtro-label">Tipo</label>
+                    <div class="ret-tipo-btns">
+                        <button class="ret-tipo-btn ret-tipo-btn--all ret-tipo-btn--active" data-tipo="todos">Todos</button>
+                        <button class="ret-tipo-btn ret-tipo-btn--grave" data-tipo="grave">⛔ Grave</button>
+                        <button class="ret-tipo-btn ret-tipo-btn--atencao" data-tipo="atencao">⚠️ Atenção</button>
+                        <button class="ret-tipo-btn ret-tipo-btn--positivo" data-tipo="positivo">✅ Positivo</button>
+                        <button class="ret-tipo-btn ret-tipo-btn--rco" data-tipo="rco_obs">📝 Obs. RCO</button>
+                    </div>
+                </div>
+                <div class="ret-filtro-group">
+                    <label class="ret-filtro-label" for="filtroTurma">Turma</label>
+                    <select id="filtroTurma" class="ret-select">
+                        <option value="">Todas as turmas</option>
+                    </select>
+                </div>
+                <div class="ret-filtro-group">
+                    <label class="ret-filtro-label" for="filtroStatus">Status do retorno</label>
+                    <select id="filtroStatus" class="ret-select">
+                        <option value="todos">Todos</option>
+                        <option value="com_retorno">Com retorno</option>
+                        <option value="aguardando">Aguardando retorno</option>
+                        <option value="novo">Novos (não lidos)</option>
+                    </select>
+                </div>
+                <div class="ret-filtro-group">
+                    <label class="ret-filtro-label" for="filtroPeriodo">Período</label>
+                    <select id="filtroPeriodo" class="ret-select">
+                        <option value="0" selected>Todo o período</option>
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30">Últimos 30 dias</option>
+                        <option value="90">Últimos 3 meses</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado loading / vazio -->
+        <div id="retLoading" class="ret-empty">
+            <div class="ret-empty-icon">⏳</div>
+            <p class="ret-empty-texto">Carregando registros...</p>
+        </div>
+        <div id="retVazio" class="ret-empty" style="display:none">
+            <div class="ret-empty-icon">📋</div>
+            <p class="ret-empty-texto">Nenhum registro encontrado com os filtros selecionados.</p>
+        </div>
+
+        <!-- Grid de cards -->
+        <div id="retGrid" class="ret-grid" style="display:none"></div>
+    </main>
+
+    <script src="./retorno.js"></script>
+    <script>
+        function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+        function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+        document.getElementById('sidePanel').addEventListener('click', function(e){
+            if(e.target === this) fecharSidePanel();
+        });
+    </script>
+</body>
+</html>

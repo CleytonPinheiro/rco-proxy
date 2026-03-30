@@ -1,0 +1,299 @@
+/* ═══════════════════════════════════════════════════════════════════
+   RETORNO PEDAGÓGICO — retorno.css
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+    --ret-grave:      #ef4444;
+    --ret-atencao:    #f59e0b;
+    --ret-positivo:   #22c55e;
+    --ret-rco:        #0ea5e9;
+    --ret-retorno:    #6366f1;
+    --ret-aguardando: #9ca3af;
+    --ret-novo:       #f97316;
+    --ret-radius:     14px;
+}
+[data-theme="dark"] {
+    --ret-grave:      #f87171;
+    --ret-atencao:    #fbbf24;
+    --ret-positivo:   #4ade80;
+    --ret-rco:        #38bdf8;
+    --ret-retorno:    #818cf8;
+    --ret-novo:       #fb923c;
+}
+
+/* ── Cabeçalho da página ─────────────────────────────────────────── */
+.ret-page-header    { margin-bottom: 24px; }
+.ret-page-title-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.ret-page-icon  { font-size: 2.2rem; line-height: 1; flex-shrink: 0; }
+.ret-page-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+    letter-spacing: -.02em;
+}
+.ret-page-sub   { color: var(--text-muted); font-size: .9rem; margin: 0; }
+
+/* ── Cards de resumo ─────────────────────────────────────────────── */
+.ret-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.ret-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--ret-radius);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ret-stat-num   { font-size: 2rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.ret-stat-label { font-size: .75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.ret-stat-total     .ret-stat-num { color: var(--text-primary); }
+.ret-stat-retorno   .ret-stat-num { color: var(--ret-retorno); }
+.ret-stat-aguardando .ret-stat-num { color: var(--ret-aguardando); }
+.ret-stat-novo      .ret-stat-num { color: var(--ret-novo); }
+
+/* ── Filtros ─────────────────────────────────────────────────────── */
+.ret-filtros        { margin-bottom: 24px; }
+.ret-filtros-row    { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.ret-filtro-group   { display: flex; flex-direction: column; gap: 6px; }
+.ret-filtro-label   { font-size: .75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.ret-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: .875rem;
+    padding: 8px 12px;
+    cursor: pointer;
+    min-width: 160px;
+}
+.ret-select:focus { outline: 2px solid var(--ret-retorno); outline-offset: 1px; }
+
+/* Botões de tipo */
+.ret-tipo-btns  { display: flex; gap: 6px; flex-wrap: wrap; }
+.ret-tipo-btn {
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: .8rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+}
+.ret-tipo-btn:hover { border-color: var(--ret-retorno); color: var(--ret-retorno); }
+.ret-tipo-btn--active { background: var(--ret-retorno); border-color: var(--ret-retorno); color: #fff; }
+.ret-tipo-btn--grave.ret-tipo-btn--active   { background: var(--ret-grave); border-color: var(--ret-grave); }
+.ret-tipo-btn--atencao.ret-tipo-btn--active { background: var(--ret-atencao); border-color: var(--ret-atencao); color: #1a1a1a; }
+.ret-tipo-btn--positivo.ret-tipo-btn--active { background: var(--ret-positivo); border-color: var(--ret-positivo); color: #1a1a1a; }
+.ret-tipo-btn--rco.ret-tipo-btn--active     { background: var(--ret-rco); border-color: var(--ret-rco); }
+
+/* ── Grid de cards ───────────────────────────────────────────────── */
+.ret-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 16px;
+}
+
+/* ── Card ────────────────────────────────────────────────────────── */
+.ret-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--ret-aguardando);
+    border-radius: var(--ret-radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow .15s, transform .15s;
+}
+.ret-card:hover     { box-shadow: 0 4px 20px rgba(0,0,0,.12); transform: translateY(-1px); }
+.ret-card--grave    { border-left-color: var(--ret-grave); }
+.ret-card--atencao  { border-left-color: var(--ret-atencao); }
+.ret-card--positivo { border-left-color: var(--ret-positivo); }
+.ret-card--rco_obs  { border-left-color: var(--ret-rco); }
+.ret-card--com-retorno { border-left-color: var(--ret-retorno); }
+
+/* Card header */
+.ret-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px 10px;
+}
+.ret-card-left      { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ret-aluno-nome     { font-size: 1rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ret-aluno-meta     { display: flex; flex-wrap: wrap; gap: 5px; }
+.ret-meta-chip {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    padding: 2px 8px;
+}
+.ret-card-right     { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+.ret-tipo-badge {
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+.ret-tipo-badge--grave    { background: color-mix(in srgb, var(--ret-grave) 15%, transparent); color: var(--ret-grave); }
+.ret-tipo-badge--atencao  { background: color-mix(in srgb, var(--ret-atencao) 15%, transparent); color: var(--ret-atencao); }
+.ret-tipo-badge--positivo { background: color-mix(in srgb, var(--ret-positivo) 15%, transparent); color: var(--ret-positivo); }
+.ret-tipo-badge--rco_obs  { background: color-mix(in srgb, var(--ret-rco) 15%, transparent); color: var(--ret-rco); }
+.ret-data-chip      { font-size: .72rem; color: var(--text-muted); }
+
+/* Card body */
+.ret-card-body      { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.ret-ocorr-label    { font-size: .72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.ret-ocorr-texto    {
+    font-size: .88rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0;
+    line-height: 1.5;
+}
+.ret-categoria-row  { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ret-categoria-label { font-size: .8rem; font-weight: 600; color: var(--text-secondary); }
+.ret-pontos-badge {
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.ret-pontos--pos  { background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a; }
+.ret-pontos--neg  { background: color-mix(in srgb, #ef4444 15%, transparent); color: #dc2626; }
+.ret-pontos--zero { background: var(--bg-secondary); color: var(--text-muted); }
+
+/* Divisor */
+.ret-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 16px;
+    opacity: .6;
+}
+
+/* ── Seção de retorno pedagógico ─────────────────────────────────── */
+.ret-pedagogo {
+    padding: 12px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ret-pedagogo-titulo { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+
+/* Aguardando */
+.ret-aguardando-bloco {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ret-aguardando);
+    font-size: .85rem;
+    font-weight: 600;
+    padding: 8px 10px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+}
+
+/* Com retorno */
+.ret-encaminhamento-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .78rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--ret-retorno) 12%, transparent);
+    color: var(--ret-retorno);
+    border: 1px solid color-mix(in srgb, var(--ret-retorno) 30%, transparent);
+    width: fit-content;
+}
+.ret-nota-bloco {
+    background: color-mix(in srgb, var(--ret-retorno) 7%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--ret-retorno) 20%, var(--border));
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+.ret-nota-label { font-size: .7rem; font-weight: 700; color: var(--ret-retorno); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.ret-nota-texto { font-size: .88rem; color: var(--text-secondary); line-height: 1.5; margin: 0; white-space: pre-line; }
+.ret-retorno-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.ret-retorno-data { font-size: .75rem; color: var(--text-muted); }
+.ret-confirmar-btn {
+    font-size: .78rem;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--ret-retorno);
+    background: transparent;
+    color: var(--ret-retorno);
+    cursor: pointer;
+    transition: all .15s;
+}
+.ret-confirmar-btn:hover  { background: var(--ret-retorno); color: #fff; }
+.ret-confirmar-btn:disabled { opacity: .5; cursor: default; }
+.ret-lido-tag {
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--ret-positivo);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Badge novo */
+.ret-novo-badge {
+    display: inline-block;
+    font-size: .65rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--ret-novo);
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    animation: ret-pulse 2s ease-in-out infinite;
+}
+@keyframes ret-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .7; }
+}
+
+/* ── Estado vazio/loading ────────────────────────────────────────── */
+.ret-empty      { text-align: center; padding: 60px 20px; }
+.ret-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.ret-empty-texto { color: var(--text-muted); font-size: 1rem; }
+
+/* ── Responsivo ──────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+    .ret-stats { grid-template-columns: repeat(2, 1fr); }
+    .ret-grid  { grid-template-columns: 1fr; }
+    .ret-filtros-row { flex-direction: column; align-items: stretch; }
+    .ret-select { min-width: unset; width: 100%; }
+}

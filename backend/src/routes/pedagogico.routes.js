@@ -8,15 +8,23 @@ async function migrarTabela() {
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS pedagogo_notas (
-                id_ocorrencia   TEXT        PRIMARY KEY,
-                nota            TEXT        NOT NULL DEFAULT '',
-                encaminhamento  TEXT        NOT NULL DEFAULT '',
-                visto           BOOLEAN     NOT NULL DEFAULT FALSE,
-                visto_em        TIMESTAMPTZ,
-                criado_em       TIMESTAMPTZ DEFAULT NOW(),
-                updated_at      TIMESTAMPTZ DEFAULT NOW()
+                id_ocorrencia    TEXT        PRIMARY KEY,
+                nota             TEXT        NOT NULL DEFAULT '',
+                encaminhamento   TEXT        NOT NULL DEFAULT '',
+                visto            BOOLEAN     NOT NULL DEFAULT FALSE,
+                visto_em         TIMESTAMPTZ,
+                visto_professor  BOOLEAN     NOT NULL DEFAULT FALSE,
+                visto_prof_em    TIMESTAMPTZ,
+                criado_em        TIMESTAMPTZ DEFAULT NOW(),
+                updated_at       TIMESTAMPTZ DEFAULT NOW()
             )
         `);
+        // Adiciona colunas de retorno ao professor caso a tabela já exista sem elas
+        await pool.query(`
+            ALTER TABLE pedagogo_notas
+                ADD COLUMN IF NOT EXISTS visto_professor BOOLEAN NOT NULL DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS visto_prof_em   TIMESTAMPTZ
+        `).catch(() => {});
         console.log('[PEDAGOGICO] Tabela pedagogo_notas OK');
     } catch (e) {
         console.warn('[PEDAGOGICO] Erro na migração:', e.message);
@@ -262,6 +270,117 @@ export function createPedagogicoRouter({ supabaseAdmin, rcoApiService }) {
             });
 
             res.json(resultado);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    // GET /api/pedagogico/retorno — ocorrências das turmas do professor com respostas pedagógicas
+    router.get('/pedagogico/retorno', async (req, res) => {
+        const { tipo, codTurma, dataInicio, dataFim } = req.query;
+        try {
+            const turmasDoUsuario = await getTurmasDoUsuario(supabaseAdmin);
+
+            // ── 1. Ocorrências normais (aluno_ocorrencias) ─────────────────
+            let qOcorr = supabaseAdmin
+                .from('aluno_ocorrencias')
+                .select('*')
+                .order('data', { ascending: false })
+                .order('criado_em', { ascending: false });
+
+            if (tipo && tipo !== 'todos' && tipo !== 'rco_obs') qOcorr = qOcorr.eq('tipo', tipo);
+            if (codTurma) {
+                const cn = parseInt(codTurma, 10);
+                if (!isNaN(cn)) qOcorr = qOcorr.eq('cod_turma', cn);
+            } else if (turmasDoUsuario?.length > 0) {
+                qOcorr = qOcorr.in('cod_turma', turmasDoUsuario);
+            }
+            if (dataInicio) qOcorr = qOcorr.gte('data', dataInicio);
+            if (dataFim)    qOcorr = qOcorr.lte('data', dataFim);
+
+            const { data: ocorrencias } = tipo === 'rco_obs' ? { data: [] } : await qOcorr;
+
+            // ── 2. Observações RCO ─────────────────────────────────────────
+            let obsRco = [];
+            if (!tipo || tipo === 'todos' || tipo === 'rco_obs') {
+                const [classesRes, turmasRes] = await Promise.all([
+                    supabaseAdmin.from('rco_classes').select('cod_classe, cod_turma'),
+                    supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma'),
+                ]);
+                const turmaDescMap = {};
+                (turmasRes.data || []).forEach(t => { turmaDescMap[t.cod_turma] = t.descr_turma || ''; });
+                const classeParaTurmaMap = {};
+                (classesRes.data || []).forEach(c => {
+                    classeParaTurmaMap[c.cod_classe] = {
+                        cod_turma: c.cod_turma,
+                        nome_turma: turmaDescMap[c.cod_turma] || '',
+                    };
+                });
+
+                let qObs = supabaseAdmin.from('rco_observacoes').select('*').order('data_aula', { ascending: false });
+                if (dataInicio) qObs = qObs.gte('data_aula', dataInicio);
+                if (dataFim)    qObs = qObs.lte('data_aula', dataFim);
+                if (codTurma) {
+                    const classesDestaTurma = (classesRes.data || [])
+                        .filter(c => c.cod_turma === parseInt(codTurma, 10))
+                        .map(c => c.cod_classe);
+                    if (classesDestaTurma.length > 0) qObs = qObs.in('cod_classe', classesDestaTurma);
+                    else qObs = null;
+                } else if ((classesRes.data || []).length > 0) {
+                    qObs = qObs.in('cod_classe', (classesRes.data || []).map(c => c.cod_classe));
+                }
+
+                if (qObs) {
+                    const { data: rawObs } = await qObs;
+                    obsRco = (rawObs || []).map(o => {
+                        const info = classeParaTurmaMap[o.cod_classe] || {};
+                        return { ...o, cod_turma: info.cod_turma || null, nome_turma: info.nome_turma || '', tipo: 'rco_obs', _rco_id: `rco_${o.cod_aula}_${o.cod_matriz_aluno}` };
+                    });
+                }
+            }
+
+            // ── 3. Notas pedagógicas para todos os IDs ─────────────────────
+            const ocorrIds = (ocorrencias || []).map(o => o.id);
+            const rcoIds   = obsRco.map(o => o._rco_id);
+            const todosIds = [...ocorrIds, ...rcoIds];
+
+            let notasMap = {};
+            let metaMap  = {};
+            if (todosIds.length > 0) {
+                const [notasRes, metaRes] = await Promise.all([
+                    pool.query('SELECT * FROM pedagogo_notas WHERE id_ocorrencia = ANY($1)', [todosIds]),
+                    pool.query('SELECT * FROM ocorrencia_meta WHERE id_ocorrencia = ANY($1)', [ocorrIds]).catch(() => ({ rows: [] })),
+                ]);
+                notasRes.rows.forEach(r => { notasMap[r.id_ocorrencia] = r; });
+                metaRes.rows.forEach(r => { metaMap[r.id_ocorrencia] = r; });
+            }
+
+            const ocorrComNota = (ocorrencias || []).map(o => ({ ...o, pedagogo: notasMap[o.id] || null, meta: metaMap[o.id] || null }));
+            const obsComNota   = obsRco.map(o => ({ ...o, pedagogo: notasMap[o._rco_id] || null }));
+
+            res.json([...ocorrComNota, ...obsComNota]);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    // POST /api/pedagogico/retorno/confirmar — professor confirma leitura do retorno
+    router.post('/pedagogico/retorno/confirmar', async (req, res) => {
+        const { id_ocorrencia } = req.body;
+        if (!id_ocorrencia) return res.status(400).json({ erro: 'id_ocorrencia é obrigatório' });
+        try {
+            // Só confirma se existir um registro com nota ou encaminhamento
+            const { rows } = await pool.query(
+                `UPDATE pedagogo_notas
+                    SET visto_professor = TRUE, visto_prof_em = NOW(), updated_at = NOW()
+                  WHERE id_ocorrencia = $1
+                    AND (nota <> '' OR encaminhamento <> '')
+                    AND visto_professor = FALSE
+                  RETURNING *`,
+                [id_ocorrencia]
+            );
+            if (rows.length === 0) {
+                // Já estava confirmado ou sem retorno — retorna estado atual
+                const cur = await pool.query('SELECT * FROM pedagogo_notas WHERE id_ocorrencia = $1', [id_ocorrencia]);
+                return res.json(cur.rows[0] || { id_ocorrencia, visto_professor: false });
+            }
+            res.json(rows[0]);
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 

@@ -17,29 +17,30 @@
 
     /* ── Mapeamento URL → módulo (ordem importa: define prioridade de redirecionamento) ── */
     const MODULO_URLS = {
-        '/pages/dashboard/':     'dashboard',
-        '/pages/frequencias/':   'frequencias',
-        '/pages/comunicados/':   'comunicados',
-        '/pages/crachas/':       'crachas',
-        '/pages/circulacao/':    'circulacao',
-        '/pages/comportamento/': 'comportamento',
-        '/pages/presenca/':      'presenca',
-        '/pages/atividades/':    'atividades',
-        '/pages/classroom/':     'classroom',
-        '/pages/grupos/':        'grupos',
-        '/pages/mapa-sala/':     'mapa-sala',
-        '/pages/pedagogico/':    'pedagogico',
-        '/pages/materiais/':     'materiais',
-        '/pages/emprestimos/':   'emprestimos',
-        '/pages/cozinha/':       'cozinha',
-        '/pages/admin/':         'admin',
+        '/pages/dashboard/':              'dashboard',
+        '/pages/frequencias/':            'frequencias',
+        '/pages/comunicados/':            'comunicados',
+        '/pages/crachas/':                'crachas',
+        '/pages/circulacao/':             'circulacao',
+        '/pages/comportamento/':          'comportamento',
+        '/pages/presenca/':               'presenca',
+        '/pages/atividades/':             'atividades',
+        '/pages/classroom/':              'classroom',
+        '/pages/grupos/':                 'grupos',
+        '/pages/mapa-sala/':              'mapa-sala',
+        '/pages/pedagogico/':             'pedagogico',
+        '/pages/retorno-pedagogico/':     'retorno-pedagogico',
+        '/pages/materiais/':              'materiais',
+        '/pages/emprestimos/':            'emprestimos',
+        '/pages/cozinha/':                'cozinha',
+        '/pages/admin/':                  'admin',
     };
 
     /* ── Permissões por perfil — espelho exato de backend/src/config/permissions.js ── */
     const PERFIL_MODULOS = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','frequencias','comunicados'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados'],
         secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao'],
         aux_turno:  ['circulacao','presenca'],
         cozinha:    ['cozinha'],
@@ -180,6 +181,7 @@
         injetarAvatarHeader(user);
         atualizarBotaoLogout();
         configurarLogout();
+        injetarLinkRetorno(user);
         injetarLinkAdmin(user);
         if (user.impersonando) {
             document.body.setAttribute('data-impersonando', '1');
@@ -282,7 +284,29 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════════
-       4. Link Admin no nav
+       4a. Link Retorno Pedagógico no nav (professor e pedagogo)
+    ══════════════════════════════════════════════════════════════════════ */
+    function injetarLinkRetorno(user) {
+        const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+        if (!podeAcessar(perfilEfetivo, 'retorno-pedagogico')) return;
+        const nav = document.querySelector('.nav-menu');
+        if (!nav || nav.querySelector('a[href="/pages/retorno-pedagogico/"]')) return;
+
+        const link = document.createElement('a');
+        link.href        = '/pages/retorno-pedagogico/';
+        link.textContent = '💬 Retorno Pedagógico';
+        if (location.pathname.startsWith('/pages/retorno-pedagogico/')) link.classList.add('active');
+        // Insere logo após o link do Painel Pedagógico se existir, senão appenda
+        const pedLink = nav.querySelector('a[href="/pages/pedagogico/"]');
+        if (pedLink && pedLink.nextSibling) {
+            nav.insertBefore(link, pedLink.nextSibling);
+        } else {
+            nav.appendChild(link);
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       4b. Link Admin no nav
     ══════════════════════════════════════════════════════════════════════ */
     function injetarLinkAdmin(user) {
         if (user.perfilReal !== 'admin' && user.perfil !== 'admin') return;
@@ -404,15 +428,17 @@
 
     function _navIcon(href) {
         const m = {
-            '/pages/dashboard/':     '🏠',
-            '/pages/frequencias/':   '📋',
-            '/pages/comunicados/':   '📢',
-            '/pages/crachas/':       '🪪',
-            '/pages/emprestimos/':   '📚',
-            '/pages/circulacao/':    '🚪',
-            '/pages/comportamento/': '⚡',
-            '/pages/presenca/':      '✅',
-            '/pages/admin/':         '⚙️',
+            '/pages/dashboard/':              '🏠',
+            '/pages/frequencias/':            '📋',
+            '/pages/comunicados/':            '📢',
+            '/pages/crachas/':                '🪪',
+            '/pages/emprestimos/':            '📚',
+            '/pages/circulacao/':             '🚪',
+            '/pages/comportamento/':          '⚡',
+            '/pages/presenca/':               '✅',
+            '/pages/pedagogico/':             '🎓',
+            '/pages/retorno-pedagogico/':     '💬',
+            '/pages/admin/':                  '⚙️',
         };
         return m[href] || '🔗';
     }
