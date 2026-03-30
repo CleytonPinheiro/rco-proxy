@@ -179,6 +179,7 @@
         document.body.classList.add('auth-ready');
         aplicarPermissoesNav(user);
         injetarAvatarHeader(user);
+        injetarBadgeEscola();
         atualizarBotaoLogout();
         configurarLogout();
         injetarLinkRetorno(user);
@@ -258,6 +259,26 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════════
+       2b. Badge do colégio selecionado no header (exceto no dashboard)
+    ══════════════════════════════════════════════════════════════════════ */
+    function injetarBadgeEscola() {
+        const escola = localStorage.getItem('edusync_escola');
+        if (!escola) return;
+        /* No dashboard o seletor de colégio já está visível na página */
+        if (location.pathname.startsWith('/pages/dashboard/')) return;
+        const headerActions = document.querySelector('.header-actions');
+        if (!headerActions) return;
+        if (headerActions.querySelector('.escola-badge-nav')) return; // evita duplicata
+        const badge = document.createElement('span');
+        badge.className = 'escola-badge-nav';
+        badge.title = escola;
+        const max = 28;
+        const nome = escola.length > max ? escola.slice(0, max) + '…' : escola;
+        badge.textContent = '🏫 ' + nome;
+        headerActions.insertBefore(badge, headerActions.firstChild);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
        3. Logout no header — ícone + texto
     ══════════════════════════════════════════════════════════════════════ */
     function atualizarBotaoLogout() {
@@ -278,7 +299,9 @@
         try {
             await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
         } finally {
-            limparCacheNav(); // garante que o próximo login não herde permissões do anterior
+            limparCacheNav();
+            localStorage.removeItem('edusync_escola');
+            localStorage.removeItem('edusync_escola_codturmas');
             window.location.replace(LOGIN_PATH);
         }
     }

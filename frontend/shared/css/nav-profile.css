@@ -411,3 +411,32 @@
 
 /* ── Nav overflow: itens ocultos para caber no topo ─────────────────────── */
 .nav-menu a[data-nav-hidden="true"] { display: none !important; }
+
+/* ── Badge do colégio selecionado no header ─────────────────────────────── */
+.escola-badge-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--badge-escola-bg, rgba(99,102,241,0.12));
+    color: var(--badge-escola-text, #6366f1);
+    border: 1px solid var(--badge-escola-border, rgba(99,102,241,0.3));
+    cursor: default;
+    user-select: none;
+    margin-right: 6px;
+}
+[data-theme="dark"] .escola-badge-nav {
+    background: rgba(99,102,241,0.18);
+    color: #a5b4fc;
+    border-color: rgba(99,102,241,0.35);
+}
+@media (max-width: 768px) {
+    .escola-badge-nav { display: none; }
+}

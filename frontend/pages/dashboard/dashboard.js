@@ -48,7 +48,13 @@ async function carregarDados() {
     content.style.display  = 'block';
 
     const colegios = extrairColegios(dadosGlobais);
-    colegioSelecionado = colegios[0] || null;
+    /* Restaura escola salva ou usa a primeira disponível */
+    const escolaSalva = localStorage.getItem('edusync_escola');
+    colegioSelecionado = (escolaSalva && colegios.includes(escolaSalva))
+        ? escolaSalva
+        : (colegios[0] || null);
+    /* Persiste o contexto (necessário quando há um único colégio) */
+    if (colegioSelecionado) persistirEscolaContexto(colegioSelecionado);
 
     configurarSeletorColegio(colegios);
     renderizarTudo();
@@ -480,10 +486,24 @@ function configurarSeletorColegio(colegios) {
 
 function selecionarColegio(colegio) {
     colegioSelecionado = colegio;
+    persistirEscolaContexto(colegio);
     document.querySelectorAll('.colegio-tab').forEach(btn => {
         btn.classList.toggle('active', btn.textContent === colegio);
     });
     renderizarTudo();
+}
+
+/* Salva o colégio selecionado e os codTurmas correspondentes no localStorage
+   para que os outros menus usem o mesmo contexto de escola. */
+function persistirEscolaContexto(colegio) {
+    localStorage.setItem('edusync_escola', colegio);
+    const codTurmas = [...new Set(
+        (dadosGlobais?.turmas || [])
+            .filter(t => (t.escola || '') === colegio)
+            .map(t => t.codTurma)
+            .filter(Boolean)
+    )];
+    localStorage.setItem('edusync_escola_codturmas', JSON.stringify(codTurmas));
 }
 
 // ── Renderizar tudo com filtro de colégio ─────────────────────────────────────

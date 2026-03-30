@@ -49,7 +49,16 @@ async function carregarTurmas() {
     try {
         const res = await fetch('/api/alunos/turmas/lista');
         if (!res.ok) return;
-        const turmas = await res.json();
+        let turmas = await res.json();
+        /* Filtra pelo contexto de escola salvo no dashboard */
+        try {
+            const raw = localStorage.getItem('edusync_escola_codturmas');
+            if (raw) {
+                const validos = JSON.parse(raw);
+                if (validos.length > 0)
+                    turmas = turmas.filter(t => validos.includes(t.codturma));
+            }
+        } catch (_) {}
         turmas.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.codturma;

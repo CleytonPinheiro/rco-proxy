@@ -101,8 +101,12 @@ async function init() {
 }
 
 function extrairTurmas(acessos) {
-    const mapa = {};
-    const root = Array.isArray(acessos) ? acessos[0] : acessos;
+    const mapa   = {};
+    const estabs = Array.isArray(acessos) ? acessos : [acessos];
+    const filtro = localStorage.getItem('edusync_escola');
+    const root   = (filtro
+        ? estabs.find(e => (e.nomeCompletoEstab || e.nmEstabelecimento || '') === filtro)
+        : null) || estabs[0] || {};
     for (const periodo of (root.periodoLetivos || [])) {
         for (const livro of (periodo.livros || [])) {
             const classe = livro.classe; if (!classe) continue;
