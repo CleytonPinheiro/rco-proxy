@@ -20,6 +20,16 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 - **Redirect URI** (registrar no Google Cloud Console): `https://{domínio}/api/classroom/callback`
 - **Escopos**: `classroom.courses.readonly`, `classroom.coursework.students`, `classroom.rosters.readonly`, `classroom.student-submissions.students.readonly`
 
+### Portal do Aluno (Google OAuth — público)
+- **URL pública**: `/alunos/` — sem login EduSync, acessível por alunos
+- **Backend**: `backend/src/routes/alunos-portal.routes.js` — montado ANTES do `requireAuth`
+- **Frontend**: `frontend/alunos/` — HTML/CSS/JS standalone (sem dependência de shared/)
+- **Sessão do aluno**: cookie `aluno_sid` + tabela `aluno_portal_sessions` (PostgreSQL local, TTL 24h)
+- **Fluxo OAuth**: escopo mínimo (`openid email profile`) — só para obter o email do aluno
+- **Consulta**: usa o **token do professor** (já armazenado) para buscar cursos/submissions do aluno via Classroom API
+- **Redirect URI adicional** (registrar no Google Cloud Console): `https://{domínio}/api/alunos-portal/callback`
+- **Dados exibidos**: atividades pendentes (estado CREATED/RECLAIMED) agrupadas por disciplina, com prazo e link direto ao GC
+
 ## Estado Atual
 - **Data**: 29/03/2026
 - **Status**: Funcional com autenticação multi-usuário RBAC + painel admin
@@ -32,7 +42,7 @@ Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Dig
 
 ### Bancos de Dados
 - **Supabase** (remoto): `estabelecimentos`, `turmas`, `disciplinas`, `classes`, `alunos`, `rco_sync_log`, `aluno_ocorrencias`, `rco_observacoes`
-- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `edusync_usuarios`, `edusync_audit_log`
+- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `edusync_usuarios`, `edusync_audit_log`, `aluno_portal_sessions`
 
 ### Estrutura de Pastas
 

@@ -19,12 +19,16 @@ import { createPedagogicoRouter }    from './pedagogico.routes.js';
 import { createClassroomRouter }     from './classroom.routes.js';
 import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
+import { createAlunosPortalRouter }  from './alunos-portal.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
 
     /* ── Rotas públicas (login, logout, /me, status) ── */
     router.use('/', createAuthRouter(deps));
+
+    /* ── Portal do Aluno (público — sem sessão EduSync) ── */
+    router.use('/', createAlunosPortalRouter());
 
     /* ══════════════════════════════════════════════════════════════════
      * BARREIRA DE AUTENTICAÇÃO GLOBAL

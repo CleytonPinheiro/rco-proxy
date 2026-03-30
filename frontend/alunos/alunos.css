@@ -1,0 +1,372 @@
+/* ══════════════════════════════════════════════════════
+   Portal do Aluno — EduSync
+   Página standalone, sem dependência dos CSS internos
+   ══════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --pa-primary:      #1a73e8;
+    --pa-primary-dark: #1558b0;
+    --pa-accent:       #34a853;
+    --pa-danger:       #d93025;
+    --pa-warn:         #f29900;
+    --pa-bg:           #f0f4f9;
+    --pa-card:         #ffffff;
+    --pa-border:       #dadce0;
+    --pa-text:         #202124;
+    --pa-sub:          #5f6368;
+    --pa-muted:        #9aa0a6;
+    --pa-shadow:       rgba(60,64,67,.12);
+    --pa-radius:       12px;
+    --pa-header-h:     60px;
+}
+
+html, body {
+    min-height: 100vh;
+    background: var(--pa-bg);
+    font-family: 'Google Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+    color: var(--pa-text);
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.pa-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--pa-card);
+    border-bottom: 1px solid var(--pa-border);
+    height: var(--pa-header-h);
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 4px var(--pa-shadow);
+}
+.pa-header-inner {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.pa-logo {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+    font-size: 1.15rem;
+}
+.pa-logo-icon { font-size: 1.2rem; }
+.pa-logo-edu  { color: var(--pa-primary); }
+.pa-logo-sync { color: var(--pa-text); }
+.pa-logo-sub  {
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--pa-sub);
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #e8f0fe;
+    border-radius: 20px;
+    color: var(--pa-primary);
+}
+.pa-user-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.pa-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--pa-border);
+}
+.pa-user-nome {
+    font-size: .9rem;
+    color: var(--pa-sub);
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pa-btn-sair {
+    background: none;
+    border: 1px solid var(--pa-border);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: .82rem;
+    color: var(--pa-sub);
+    cursor: pointer;
+    transition: background .15s;
+}
+.pa-btn-sair:hover { background: #f1f3f4; }
+
+/* ── Sections ────────────────────────────────────────── */
+.pa-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+}
+
+/* ── Tela de login ───────────────────────────────────── */
+.pa-login-screen {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 80px;
+}
+.pa-login-card {
+    background: var(--pa-card);
+    border-radius: var(--pa-radius);
+    padding: 48px 40px;
+    text-align: center;
+    box-shadow: 0 2px 12px var(--pa-shadow);
+    width: 100%;
+    max-width: 420px;
+}
+.pa-login-icon { font-size: 3rem; margin-bottom: 12px; }
+.pa-login-titulo {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+.pa-login-desc {
+    font-size: .95rem;
+    color: var(--pa-sub);
+    line-height: 1.5;
+    margin-bottom: 28px;
+}
+.pa-btn-google {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--pa-card);
+    border: 1px solid var(--pa-border);
+    border-radius: 8px;
+    padding: 11px 22px;
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--pa-text);
+    cursor: pointer;
+    transition: box-shadow .15s, background .15s;
+    box-shadow: 0 1px 3px var(--pa-shadow);
+}
+.pa-btn-google:hover { box-shadow: 0 2px 8px var(--pa-shadow); background: #f8f9fa; }
+.pa-btn-google:disabled { opacity: .6; cursor: not-allowed; }
+.pa-google-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.pa-login-erro {
+    margin-top: 16px;
+    color: var(--pa-danger);
+    font-size: .88rem;
+    background: #fce8e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+.pa-login-hint {
+    margin-top: 20px;
+    font-size: .8rem;
+    color: var(--pa-muted);
+}
+
+/* ── Resumo ──────────────────────────────────────────── */
+.pa-resumo {
+    margin-bottom: 24px;
+}
+.pa-resumo-inner {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.pa-resumo-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--pa-primary);
+    line-height: 1;
+}
+.pa-resumo-label {
+    font-size: 1.05rem;
+    color: var(--pa-sub);
+}
+
+/* ── Cards de disciplinas ────────────────────────────── */
+.pa-cursos-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.pa-curso-card {
+    background: var(--pa-card);
+    border-radius: var(--pa-radius);
+    box-shadow: 0 1px 6px var(--pa-shadow);
+    overflow: hidden;
+    border: 1px solid var(--pa-border);
+}
+.pa-curso-header {
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #1a73e8 0%, #1558b0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.pa-curso-info { flex: 1; min-width: 0; }
+.pa-curso-nome {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pa-curso-secao {
+    font-size: .8rem;
+    color: rgba(255,255,255,.75);
+    margin-top: 2px;
+}
+.pa-curso-badge {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: .8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.pa-atividade-lista {
+    list-style: none;
+    padding: 0;
+}
+.pa-atividade-item {
+    padding: 14px 20px;
+    border-top: 1px solid var(--pa-border);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: background .12s;
+}
+.pa-atividade-item:hover { background: #f8f9fa; }
+.pa-ativ-left { flex: 1; min-width: 0; }
+.pa-ativ-titulo {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--pa-text);
+    margin-bottom: 4px;
+    line-height: 1.35;
+}
+.pa-ativ-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+.pa-tipo-badge {
+    font-size: .72rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.pa-tipo-ASSIGNMENT       { background: #e8f0fe; color: var(--pa-primary); }
+.pa-tipo-SHORT_ANSWER_QUESTION,
+.pa-tipo-MULTIPLE_CHOICE_QUESTION { background: #e6f4ea; color: var(--pa-accent); }
+.pa-tipo-MATERIAL         { background: #fce8e6; color: var(--pa-danger); }
+
+.pa-prazo {
+    font-size: .82rem;
+    color: var(--pa-sub);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.pa-prazo.vencida { color: var(--pa-danger); font-weight: 600; }
+.pa-prazo-icon { font-size: .85rem; }
+
+.pa-devolvida-badge {
+    font-size: .72rem;
+    background: #fef7e0;
+    color: #b45309;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-weight: 600;
+}
+.pa-pontos {
+    font-size: .82rem;
+    color: var(--pa-muted);
+}
+.pa-ativ-right {
+    flex-shrink: 0;
+}
+.pa-link-ativ {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--pa-primary);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 7px;
+    padding: 7px 14px;
+    font-size: .82rem;
+    font-weight: 600;
+    transition: background .15s;
+    white-space: nowrap;
+}
+.pa-link-ativ:hover { background: var(--pa-primary-dark); }
+
+/* ── Vazio ───────────────────────────────────────────── */
+.pa-vazio {
+    text-align: center;
+    padding: 80px 20px;
+}
+.pa-vazio-icon { font-size: 3.5rem; margin-bottom: 16px; }
+.pa-vazio-titulo { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+.pa-vazio-sub { font-size: .95rem; color: var(--pa-sub); }
+
+/* ── Aviso info ──────────────────────────────────────── */
+.pa-aviso-info {
+    background: #e8f0fe;
+    border-radius: var(--pa-radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: .92rem;
+    color: var(--pa-primary);
+    margin-bottom: 16px;
+}
+.pa-aviso-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+/* ── Loading ─────────────────────────────────────────── */
+.pa-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(240,244,249,.85);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-size: .95rem;
+    color: var(--pa-sub);
+}
+.pa-spinner {
+    width: 42px; height: 42px;
+    border: 4px solid var(--pa-border);
+    border-top-color: var(--pa-primary);
+    border-radius: 50%;
+    animation: pa-spin .7s linear infinite;
+}
+@keyframes pa-spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile ──────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .pa-login-card { padding: 36px 24px; }
+    .pa-atividade-item { flex-direction: column; gap: 10px; }
+    .pa-ativ-right { width: 100%; }
+    .pa-link-ativ { width: 100%; justify-content: center; }
+    .pa-user-nome { display: none; }
+}
