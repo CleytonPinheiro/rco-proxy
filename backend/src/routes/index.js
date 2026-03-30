@@ -1,4 +1,5 @@
 import { Router }               from 'express';
+import { requireAuth }          from '../middleware/auth.middleware.js';
 import { createAuthRouter }     from './auth.routes.js';
 import { createRcoRouter }      from './rco.routes.js';
 import { createAlunosRouter }   from './alunos.routes.js';
@@ -16,13 +17,27 @@ import { createMapaSalaRouter }      from './mapa-sala.routes.js';
 import { createAtividadesRouter }    from './atividades.routes.js';
 import { createPedagogicoRouter }    from './pedagogico.routes.js';
 import { createClassroomRouter }     from './classroom.routes.js';
-import { createLivrosRouter }         from './livros.routes.js';
+import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
 
+    /* ── Rotas públicas (login, logout, /me, status) ── */
     router.use('/', createAuthRouter(deps));
+
+    /* ══════════════════════════════════════════════════════════════════
+     * BARREIRA DE AUTENTICAÇÃO GLOBAL
+     * Todas as rotas abaixo exigem sessão válida.
+     * requireAuth injeta req.userSession E popula o requestContext
+     * (AsyncLocalStorage), garantindo que TokenService.getValidToken()
+     * use o token RCO do usuário correto e não o token global (env vars).
+     * Isso corrige o bug de dados do login anterior aparecendo para o
+     * próximo usuário.
+     * ══════════════════════════════════════════════════════════════════ */
+    router.use(requireAuth);
+
+    /* ── Rotas de dados (todas protegidas pela barreira acima) ── */
     router.use('/', createRcoRouter(deps));
     router.use('/', createAlunosRouter(deps));
     router.use('/', createMateriaisRouter(deps));
