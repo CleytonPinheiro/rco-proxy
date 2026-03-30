@@ -529,16 +529,72 @@
 [data-theme="dark"] .stat-sub,
 [data-theme="dark"] .ranking-nivel { color: var(--text-muted); }
 
+/* ── Cards de aluno — dark mode ─────────────────────────────────────────── */
+[data-theme="dark"] .aluno-comp-card {
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+[data-theme="dark"] .aluno-comp-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    border-color: #4f46e5;
+}
+
+/* Cabeçalhos por nível — cores dedicadas ao invés de filter */
+[data-theme="dark"] .card-nivel-0 .card-nivel-header { background: #1b2030; color: #94a3b8; }
+[data-theme="dark"] .card-nivel-1 .card-nivel-header { background: #0a2818; color: #4ade80; }
+[data-theme="dark"] .card-nivel-2 .card-nivel-header { background: #0a1d3a; color: #60a5fa; }
+[data-theme="dark"] .card-nivel-3 .card-nivel-header { background: #251c00; color: #fbbf24; }
+[data-theme="dark"] .card-nivel-4 .card-nivel-header { background: #280d1e; color: #f9a8d4; }
+[data-theme="dark"] .card-nivel-5 .card-nivel-header {
+    background: linear-gradient(135deg, #2d1a00, #3d2500);
+    color: #fcd34d;
+}
+
+/* Bordas laterais — um pouco mais saturadas no dark */
+[data-theme="dark"] .card-nivel-0 { border-color: #2e3a52; }
+[data-theme="dark"] .card-nivel-1 { border-color: #16532a; }
+[data-theme="dark"] .card-nivel-2 { border-color: #1d3d7a; }
+[data-theme="dark"] .card-nivel-3 { border-color: #7c5a00; }
+[data-theme="dark"] .card-nivel-4 { border-color: #7c2d55; }
+[data-theme="dark"] .card-nivel-5 { border-color: #b45309; box-shadow: none; }
+
+/* Conteúdo interno */
+[data-theme="dark"] .card-nome    { color: var(--text-primary); }
+[data-theme="dark"] .card-pontos  { color: var(--text-secondary); }
+[data-theme="dark"] .card-ultima  { color: var(--text-muted); }
+[data-theme="dark"] .estrelas-label { color: var(--text-muted); }
+[data-theme="dark"] .estrela-empty  { color: #374151; }
+
+/* Rodapé */
+[data-theme="dark"] .card-footer { border-top-color: var(--border); }
+[data-theme="dark"] .btn-card-registrar {
+    background: #1e2030;
+    color: #a5b4fc;
+    border-color: #3730a3;
+}
+[data-theme="dark"] .btn-card-registrar:hover {
+    background: #2d2f50;
+    border-color: #4f46e5;
+}
+
+/* Legenda de níveis */
+[data-theme="dark"] .niveis-legenda {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+[data-theme="dark"] .legenda-hint { color: var(--text-muted); }
+[data-theme="dark"] .nivel-0 { background: #1b2030; color: #94a3b8; }
+[data-theme="dark"] .nivel-1 { background: #0a2818; color: #4ade80; }
+[data-theme="dark"] .nivel-2 { background: #0a1d3a; color: #60a5fa; }
+[data-theme="dark"] .nivel-3 { background: #251c00; color: #fbbf24; }
+[data-theme="dark"] .nivel-4 { background: #280d1e; color: #f9a8d4; }
+[data-theme="dark"] .nivel-5 { background: #2d1a00; color: #fcd34d; border-color: #b45309; }
+
 [data-theme="dark"] .card-aluno {
     background: var(--bg-card); border-color: var(--border);
 }
 [data-theme="dark"] .card-aluno:hover { border-color: #4338ca; }
-[data-theme="dark"] .card-nome { color: var(--text-primary); }
 [data-theme="dark"] .card-sub { color: var(--text-secondary); }
-
-[data-theme="dark"] .card-nivel-header { filter: brightness(0.4) saturate(0.6); }
-
-[data-theme="dark"] .nivel-0 { background: var(--bg-secondary); color: var(--text-secondary); }
 
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] .modal-body-comp { background: var(--bg-card); border-color: var(--border); }
