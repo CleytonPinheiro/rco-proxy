@@ -81,11 +81,11 @@ html, body {
 
 /* ── Left column ─────────────────────────────────────────── */
 .kq-left {
-    width: 320px;
+    width: 300px;
     flex-shrink: 0;
     background: var(--surface);
     border-right: 1px solid var(--border);
-    padding: 20px 18px;
+    padding: 20px 16px;
     display: flex; flex-direction: column; gap: 10px;
     overflow-y: auto;
 }
@@ -151,48 +151,21 @@ html, body {
 }
 .kq-btn-confirm:hover { background: var(--brand2); }
 
-/* ── Camera ─────────────────────────────────────────────── */
-.kq-camera-area {
-    position: relative; width: 100%;
-    border-radius: var(--radius); overflow: hidden;
-    background: #000; aspect-ratio: 1;
-}
-.kq-camera-area video { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-.kq-cam-frame {
-    position: absolute; inset: 0;
-    pointer-events: none;
-}
-.qr-corner {
-    position: absolute; width: 26px; height: 26px;
-    border-color: var(--brand2); border-style: solid;
-}
-.qr-corner.tl { top: 16px; left: 16px; border-width: 3px 0 0 3px; }
-.qr-corner.tr { top: 16px; right: 16px; border-width: 3px 3px 0 0; }
-.qr-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 3px 3px; }
-.qr-corner.br { bottom: 16px; right: 16px; border-width: 0 3px 3px 0; }
-
-.qr-scan-line {
-    position: absolute; left: 16px; right: 16px; height: 2px;
-    background: var(--brand2); opacity: .8;
-    animation: scanline 2s ease-in-out infinite;
-    top: 16px;
-}
-@keyframes scanline {
-    0%   { top: 16px;       opacity: .8; }
-    50%  { top: calc(100% - 16px); opacity: .8; }
-    100% { top: 16px;       opacity: .8; }
-}
-
+/* ── Botão câmera na coluna esquerda ─────────────────────── */
 .kq-btn-camera {
-    width: 100%; padding: 10px;
+    width: 100%; padding: 14px;
     border-radius: var(--radius);
-    border: 1px solid var(--border); background: transparent;
-    color: var(--muted); font-size: 13px; cursor: pointer;
-    transition: all .15s;
+    border: 2px solid var(--border); background: var(--card);
+    color: var(--muted); font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.kq-btn-camera:hover { color: var(--text); border-color: var(--brand); }
-.kq-btn-camera.ativa { color: var(--saida); border-color: var(--saida); }
+.kq-btn-camera:hover { color: var(--text); border-color: var(--brand); background: var(--card2); }
+.kq-btn-camera.ativa {
+    color: var(--brand2); border-color: var(--brand2);
+    background: rgba(14,165,233,.12);
+    box-shadow: 0 0 0 1px var(--brand2) inset;
+}
 
 /* ── Feedback ─────────────────────────────────────────────── */
 .kq-feedback {
@@ -314,6 +287,129 @@ html, body {
 /* ── Última atualização ──────────────────────────────────── */
 .kq-ultima { font-size: 10px; color: var(--muted); text-align: right; }
 
+/* ═══════════════════════════════════════════════════════════
+   MODAL DE CÂMERA — centralizado na tela, otimizado tablet
+═══════════════════════════════════════════════════════════ */
+.kq-cam-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 12, 28, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: modalIn .2s ease;
+}
+
+@keyframes modalIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.kq-cam-modal-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    padding: 24px;
+}
+
+.kq-cam-modal-title {
+    font-size: 13px; font-weight: 800; letter-spacing: .18em;
+    color: var(--brand2); text-transform: uppercase;
+}
+
+/* ── Viewport da câmera: quadrado responsivo, grande no tablet ── */
+.kq-cam-viewport {
+    position: relative;
+
+    /* Quadrado que ocupa o menor entre 72vh e 72vw, máximo 600px */
+    width:  min(72vw, 72vh, 600px);
+    height: min(72vw, 72vh, 600px);
+
+    border-radius: 20px;
+    overflow: hidden;
+    background: #000;
+
+    /* Brilho azul ao redor do viewfinder */
+    box-shadow:
+        0 0 0 3px var(--brand),
+        0 0 60px rgba(14, 165, 233, 0.35),
+        0 0 120px rgba(14, 165, 233, 0.12);
+}
+
+.kq-cam-viewport video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ── Moldura de mira com cantos animados ────────────────── */
+.kq-cam-frame {
+    position: absolute; inset: 0;
+    pointer-events: none;
+}
+
+.qr-corner {
+    position: absolute;
+    width: 48px; height: 48px;
+    border-color: var(--brand2); border-style: solid;
+    border-radius: 3px;
+}
+.qr-corner.tl { top: 24px; left: 24px; border-width: 4px 0 0 4px; }
+.qr-corner.tr { top: 24px; right: 24px; border-width: 4px 4px 0 0; }
+.qr-corner.bl { bottom: 24px; left: 24px; border-width: 0 0 4px 4px; }
+.qr-corner.br { bottom: 24px; right: 24px; border-width: 0 4px 4px 0; }
+
+/* Linha de scan animada */
+.qr-scan-line {
+    position: absolute; left: 24px; right: 24px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--brand2), transparent);
+    opacity: .85;
+    animation: scanline 2.2s ease-in-out infinite;
+    top: 24px;
+    border-radius: 2px;
+    box-shadow: 0 0 12px var(--brand2);
+}
+@keyframes scanline {
+    0%   { top: 24px;            opacity: .85; }
+    50%  { top: calc(100% - 24px); opacity: .85; }
+    100% { top: 24px;            opacity: .85; }
+}
+
+/* Dica sobreposta na parte inferior do vídeo */
+.kq-cam-hint {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(5,12,28,.7));
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,.7);
+    letter-spacing: .04em;
+}
+
+/* ── Botão fechar câmera ─────────────────────────────────── */
+.kq-cam-close-btn {
+    padding: 14px 40px;
+    border-radius: 12px;
+    border: 2px solid var(--danger);
+    background: rgba(239, 68, 68, .1);
+    color: #fca5a5;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .04em;
+}
+.kq-cam-close-btn:hover {
+    background: rgba(239, 68, 68, .22);
+    color: #fff;
+}
+
 /* ── Modal aviso ─────────────────────────────────────────── */
 .kq-modal {
     position: fixed; inset: 0; background: rgba(0,0,0,.6);
@@ -340,3 +436,26 @@ html, body {
 .kq-ativos::-webkit-scrollbar { width: 4px; }
 .kq-left::-webkit-scrollbar-thumb,
 .kq-ativos::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Responsivo para tablets ─────────────────────────────── */
+@media (max-width: 768px) {
+    .kq-left { width: 240px; }
+
+    .kq-cam-viewport {
+        width:  min(88vw, 80vh);
+        height: min(88vw, 80vh);
+    }
+
+    .kq-cam-modal-inner { gap: 16px; padding: 16px; }
+}
+
+@media (max-width: 520px) {
+    .kq-body { flex-direction: column; }
+    .kq-left { width: 100%; height: auto; flex-shrink: 0; overflow-y: unset; }
+    .kq-right { flex: 1; }
+
+    .kq-cam-viewport {
+        width:  92vw;
+        height: 92vw;
+    }
+}

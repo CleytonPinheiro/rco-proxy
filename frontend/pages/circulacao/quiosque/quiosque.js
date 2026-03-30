@@ -19,10 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarMonitor();
     autoTimer = setInterval(carregarMonitor, AUTO_MS);
 
-    // Sempre foca o input ao clicar em qualquer lugar
+    // Foca o input ao clicar em qualquer lugar (exceto controles e o modal de câmera)
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.kq-amb-btn') &&
-            !e.target.closest('.kq-camera-area') &&
+            !e.target.closest('.kq-cam-modal') &&
             !e.target.closest('.kq-btn-camera') &&
             !e.target.closest('.kq-modal-btn') &&
             !e.target.closest('#btnConfirmar') &&
@@ -31,9 +31,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Enter no input dispara scan
+    // Enter no input dispara scan; Escape fecha câmera
     document.getElementById('inputScanHidden').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') processarScan();
+    });
+
+    // Escape fecha o modal de câmera
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && cameraAberta) fecharCamera();
+    });
+
+    // Clique no fundo escuro do modal de câmera fecha a câmera
+    document.getElementById('cameraModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('cameraModal')) fecharCamera();
     });
 });
 
@@ -273,23 +283,34 @@ function mostrarFeedback(tipo, icone, acao, nome, sub) {
     el._timer = setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 
-// ── Câmera QR ─────────────────────────────────────────────────────────────────
+// ── Câmera QR — abre modal centralizado na tela ────────────────────────────────
 async function toggleCamera() {
     if (cameraAberta) {
         fecharCamera(); return;
     }
-    const area = document.getElementById('cameraArea');
-    const btn  = document.getElementById('btnCamera');
+
+    if (!ambienteSel) {
+        document.getElementById('modalAviso').style.display = 'flex';
+        return;
+    }
+
+    const modal = document.getElementById('cameraModal');
+    const btn   = document.getElementById('btnCamera');
     const video = document.getElementById('kqVideo');
 
     try {
         scanStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+            video: {
+                facingMode: 'environment',
+                width:  { ideal: 1280 },
+                height: { ideal: 1280 },
+            }
         });
         video.srcObject = scanStream;
         await video.play();
-        area.style.display = 'block';
-        btn.textContent    = '✕ Fechar câmera';
+
+        modal.style.display = 'flex';
+        btn.textContent = '✕ Fechar câmera';
         btn.classList.add('ativa');
         cameraAberta = true;
         loopCamScan();
@@ -302,10 +323,12 @@ function fecharCamera() {
     if (scanAnimFrame) { cancelAnimationFrame(scanAnimFrame); scanAnimFrame = null; }
     if (scanStream)    { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
     cameraAberta = false;
-    document.getElementById('cameraArea').style.display = 'none';
+
+    document.getElementById('cameraModal').style.display = 'none';
     const btn = document.getElementById('btnCamera');
     btn.textContent = '📷 Câmera QR';
     btn.classList.remove('ativa');
+    document.getElementById('inputScanHidden')?.focus();
 }
 
 function loopCamScan() {
@@ -316,7 +339,8 @@ function loopCamScan() {
         return;
     }
     const ctx = canvas.getContext('2d');
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });

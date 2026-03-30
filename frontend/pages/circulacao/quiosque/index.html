@@ -33,7 +33,7 @@
                 <div class="kq-loading-txt">Carregando...</div>
             </div>
 
-            <div class="kq-section-title" style="margin-top:24px;">ESCANEAR CRACHÁ</div>
+            <div class="kq-section-title" style="margin-top:20px;">ESCANEAR CRACHÁ</div>
 
             <!-- Input hidden para scanner USB (sempre focado) -->
             <input
@@ -47,17 +47,10 @@
             >
             <button class="kq-btn-confirm" id="btnConfirmar" onclick="processarScan()">↵ Confirmar</button>
 
-            <div class="kq-camera-area" id="cameraArea" style="display:none;">
-                <video id="kqVideo" autoplay playsinline muted></video>
-                <canvas id="kqCanvas" style="display:none;"></canvas>
-                <div class="kq-cam-frame">
-                    <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
-                    <div class="qr-corner bl"></div><div class="qr-corner br"></div>
-                    <div class="qr-scan-line"></div>
-                </div>
-            </div>
-
-            <button class="kq-btn-camera" id="btnCamera" onclick="toggleCamera()">📷 Câmera QR</button>
+            <!-- Botão que abre o modal de câmera -->
+            <button class="kq-btn-camera" id="btnCamera" onclick="toggleCamera()">
+                📷 Câmera QR
+            </button>
 
             <!-- Feedback do scan -->
             <div class="kq-feedback" id="kqFeedback" style="display:none;">
@@ -90,6 +83,31 @@
 
             <div class="kq-ultima" id="kqUltima"></div>
         </section>
+    </div>
+
+    <!-- ── MODAL CÂMERA — centralizado na tela (otimizado para tablet) ───── -->
+    <div id="cameraModal" class="kq-cam-modal" style="display:none;">
+        <div class="kq-cam-modal-inner">
+
+            <div class="kq-cam-modal-title">APROXIME O CRACHÁ</div>
+
+            <div class="kq-cam-viewport">
+                <video id="kqVideo" autoplay playsinline muted></video>
+                <canvas id="kqCanvas" style="display:none;"></canvas>
+
+                <!-- Moldura de mira -->
+                <div class="kq-cam-frame">
+                    <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+                    <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+                    <div class="qr-scan-line"></div>
+                </div>
+
+                <!-- Instrução sobreposta na parte inferior do vídeo -->
+                <div class="kq-cam-hint">Enquadre o QR code dentro da moldura</div>
+            </div>
+
+            <button class="kq-cam-close-btn" onclick="fecharCamera()">✕ Fechar câmera</button>
+        </div>
     </div>
 
     <!-- Modal: Selecione um ambiente primeiro -->
