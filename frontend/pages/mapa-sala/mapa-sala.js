@@ -395,8 +395,8 @@ function mostrarToast(msg, tipo) {
 
 // Logout
 document.getElementById('btnLogout').addEventListener('click', async () => {
-    await fetch(`${API}/logout`, { method: 'POST' }).catch(() => {});
-    window.location.href = '/';
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+    window.location.replace('/login/');
 });
 
 // Avisar sobre alterações não salvas ao sair da página (F5, fechar aba, URL manual)

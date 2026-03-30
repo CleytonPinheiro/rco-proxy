@@ -16,8 +16,8 @@ async function checkAuth() {
 }
 
 document.getElementById('btnLogout').addEventListener('click', async () => {
-    await fetch(`${API}/api/logout`, { method: 'POST' });
-    window.location.href = '/';
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+    window.location.replace('/login/');
 });
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────

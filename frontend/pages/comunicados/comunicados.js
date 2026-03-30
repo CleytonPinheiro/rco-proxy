@@ -40,10 +40,9 @@ function dataHojeBrasilia() {
 // ── Auth ──────────────────────────────────────────────────────────────
 
 function verificarAuth() {
-    fetch(`${API}/alunos`).then(r => { if (r.status === 401) location.href = '/'; }).catch(() => {});
     document.getElementById('btnLogout').onclick = async () => {
-        await fetch(`${API}/logout`, { method: 'POST' });
-        location.href = '/';
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+        window.location.replace('/login/');
     };
 }
 
