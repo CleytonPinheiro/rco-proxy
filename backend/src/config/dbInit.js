@@ -47,11 +47,17 @@ export async function initializeDatabase() {
             );
         `);
 
-        /* Migração incremental: colunas de assinatura (ignoradas se já existirem) */
+        /* Migração incremental: colunas de assinatura — escolas */
         await client.query(`ALTER TABLE edusync_escolas ADD COLUMN IF NOT EXISTS plano            VARCHAR(20)  DEFAULT NULL`);
         await client.query(`ALTER TABLE edusync_escolas ADD COLUMN IF NOT EXISTS plano_inicio     TIMESTAMP   DEFAULT NULL`);
         await client.query(`ALTER TABLE edusync_escolas ADD COLUMN IF NOT EXISTS plano_renovacao  TIMESTAMP   DEFAULT NULL`);
         await client.query(`ALTER TABLE edusync_escolas ADD COLUMN IF NOT EXISTS plano_obs        TEXT        DEFAULT NULL`);
+
+        /* Migração incremental: colunas de assinatura — usuários individuais */
+        await client.query(`ALTER TABLE edusync_usuarios ADD COLUMN IF NOT EXISTS plano            VARCHAR(30)  DEFAULT NULL`);
+        await client.query(`ALTER TABLE edusync_usuarios ADD COLUMN IF NOT EXISTS plano_inicio     TIMESTAMP   DEFAULT NULL`);
+        await client.query(`ALTER TABLE edusync_usuarios ADD COLUMN IF NOT EXISTS plano_renovacao  TIMESTAMP   DEFAULT NULL`);
+        await client.query(`ALTER TABLE edusync_usuarios ADD COLUMN IF NOT EXISTS plano_obs        TEXT        DEFAULT NULL`);
 
         /* ── Livros Didáticos ── */
         await client.query(`

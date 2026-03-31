@@ -40,6 +40,20 @@ async function carregarUsuarios() {
     }
 }
 
+const PLANO_BADGE_INFO = {
+    'classroom-individual': { icone: '👨‍🏫', label: 'Individual',  bg: '#ede9fe', cor: '#6d28d9' },
+    'inicial':              { icone: '🌱', label: 'Inicial',       bg: '#dcfce7', cor: '#15803d' },
+    'profissional':         { icone: '🚀', label: 'Profissional',  bg: '#dbeafe', cor: '#1d4ed8' },
+    'rede':                 { icone: '🏫', label: 'Rede Escolar',  bg: '#fef9c3', cor: '#854d0e' },
+};
+
+function badgePlanoUsuario(plano) {
+    if (!plano) return '';
+    const info = PLANO_BADGE_INFO[plano];
+    if (!info) return `<span style="font-size:.72rem;padding:2px 6px;border-radius:4px;background:var(--bg-hover);color:var(--text-muted)">${plano}</span>`;
+    return `<span style="font-size:.72rem;padding:2px 6px;border-radius:4px;background:${info.bg};color:${info.cor};font-weight:600">${info.icone} ${info.label}</span>`;
+}
+
 function renderTabelaUsuarios(lista) {
     const wrap = document.getElementById('tabelaUsuariosWrap');
     if (!lista.length) {
@@ -53,6 +67,7 @@ function renderTabelaUsuarios(lista) {
                 <th>Nome</th>
                 <th>CPF</th>
                 <th>Perfil</th>
+                <th>Plano</th>
                 <th>Status</th>
                 <th>Cadastrado em</th>
                 <th></th>
@@ -64,6 +79,7 @@ function renderTabelaUsuarios(lista) {
                 <td>${esc(u.nome)}</td>
                 <td style="font-family:monospace;font-size:.8rem">${formatCpf(u.cpf)}</td>
                 <td><span class="perfil-badge perfil-${u.perfil}">${labelPerfil(u.perfil)}</span></td>
+                <td>${badgePlanoUsuario(u.plano)}</td>
                 <td><span class="${u.ativo ? 'status-ativo' : 'status-inativo'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
                 <td style="color:var(--text-muted);font-size:.8rem">${formatData(u.criado_em)}</td>
                 <td>

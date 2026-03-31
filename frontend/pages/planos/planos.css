@@ -828,3 +828,94 @@
     color: var(--text-muted);
     font-size: .875rem;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PLANO INDIVIDUAL (Professor)
+══════════════════════════════════════════════════════════════ */
+.pl-individual-section {
+    max-width: 1000px;
+    margin: 0 auto 48px;
+    padding: 0 24px;
+}
+
+.pl-individual-label {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.pl-individual-sep-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-color, #e5e7eb);
+}
+
+.pl-individual-sep-text {
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.pl-individual-card {
+    display: flex;
+    gap: 40px;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    align-items: flex-start;
+}
+
+.pl-individual-left  { flex: 1; }
+.pl-individual-right {
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.pl-individual-nome {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.pl-individual-desc {
+    font-size: .9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.pl-individual-nota {
+    font-size: .75rem;
+    color: var(--text-muted);
+    text-align: right;
+    margin-top: 12px;
+    line-height: 1.5;
+    max-width: 200px;
+}
+
+@media (max-width: 640px) {
+    .pl-individual-card {
+        flex-direction: column;
+        padding: 24px 20px;
+    }
+    .pl-individual-right {
+        align-items: flex-start;
+        min-width: unset;
+        width: 100%;
+    }
+    .pl-individual-nota { text-align: left; max-width: unset; }
+    .pl-price-cobranca  { text-align: left !important; }
+}
+
+/* Badge individual */
+.pl-plano-badge--individual { background: #ede9fe; color: #6d28d9; }
+
+[data-theme="dark"] .pl-plano-badge--individual { background: rgba(109,40,217,.18); color: #a78bfa; }

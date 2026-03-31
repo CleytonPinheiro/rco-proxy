@@ -26,10 +26,49 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     router.get('/admin/usuarios', async (req, res) => {
         try {
             const { rows } = await pool.query(
-                `SELECT id, nome, cpf, perfil, ativo, criado_em
+                `SELECT id, nome, cpf, perfil, ativo, criado_em,
+                        plano, plano_inicio, plano_renovacao, plano_obs
                  FROM edusync_usuarios ORDER BY nome`,
             );
             res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Atualizar plano individual de um professor ── */
+    router.patch('/admin/usuarios/:id/plano', async (req, res) => {
+        const id = parseInt(req.params.id, 10);
+        const { plano, plano_inicio, plano_renovacao, plano_obs } = req.body;
+
+        const planosValidos = ['classroom-individual', null];
+        if (!planosValidos.includes(plano)) {
+            return res.status(400).json({ erro: `Plano inválido. Valor aceito: classroom-individual ou null.` });
+        }
+
+        try {
+            const { rows } = await pool.query(
+                `UPDATE edusync_usuarios
+                    SET plano           = $1,
+                        plano_inicio    = $2,
+                        plano_renovacao = $3,
+                        plano_obs       = $4
+                  WHERE id = $5
+                  RETURNING id, nome, plano, plano_inicio, plano_renovacao, plano_obs`,
+                [plano ?? null, plano_inicio ?? null, plano_renovacao ?? null, plano_obs ?? null, id],
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'USUARIO_PLANO_ALTERADO',
+                modulo:      'admin',
+                detalhes:    { usuarioId: id, planoNovo: plano },
+                ip:          req.ip,
+            });
+
+            res.json(rows[0]);
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
