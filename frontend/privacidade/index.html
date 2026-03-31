@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidade — EduSync</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-alt);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 40px 24px 80px;
+        }
+        .doc-wrapper { max-width: 760px; margin: 0 auto; }
+        .doc-header  { margin-bottom: 40px; }
+        .doc-brand {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 32px; text-decoration: none;
+        }
+        .doc-brand-icon { font-size: 1.6rem; }
+        .doc-brand-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; }
+        .brand-edu  { color: var(--text-primary); }
+        .brand-sync { color: #4285F4; }
+        h1 { font-size: 1.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+        .doc-meta { font-size: .85rem; color: var(--text-muted); }
+        .doc-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 40px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.06);
+        }
+        h2 {
+            font-size: 1.05rem; font-weight: 700; color: var(--text-primary);
+            margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+        }
+        h2:first-child { margin-top: 0; }
+        p { font-size: .92rem; line-height: 1.7; color: var(--text-secondary); margin-bottom: 12px; }
+        ul { font-size: .92rem; line-height: 1.7; color: var(--text-secondary); padding-left: 20px; margin-bottom: 12px; }
+        ul li { margin-bottom: 6px; }
+        table {
+            width: 100%; border-collapse: collapse;
+            font-size: .88rem; margin: 16px 0;
+        }
+        th {
+            background: var(--bg-secondary); color: var(--text-primary);
+            padding: 10px 12px; text-align: left; font-weight: 700;
+            border: 1px solid var(--border);
+        }
+        td {
+            padding: 9px 12px; border: 1px solid var(--border);
+            color: var(--text-secondary); vertical-align: top;
+        }
+        tr:nth-child(even) td { background: var(--bg-alt); }
+        .lgpd-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(22,163,74,.1); color: #16a34a;
+            border: 1px solid rgba(22,163,74,.25); border-radius: 20px;
+            padding: 4px 12px; font-size: .8rem; font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .highlight-box {
+            background: rgba(66,133,244,.08); border-left: 3px solid #4285F4;
+            border-radius: 0 8px 8px 0; padding: 12px 16px;
+            margin: 16px 0; font-size: .9rem; color: var(--text-secondary);
+        }
+        .doc-footer {
+            margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);
+            font-size: .82rem; color: var(--text-muted);
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+        }
+        .btn-voltar {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-top: 32px; padding: 10px 20px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text-secondary);
+            font-size: .88rem; font-weight: 600; text-decoration: none;
+            cursor: pointer; transition: background .15s;
+        }
+        .btn-voltar:hover { background: var(--bg-secondary); }
+        a { color: #4285F4; }
+    </style>
+</head>
+<body>
+    <div class="doc-wrapper">
+        <div class="doc-header">
+            <a class="doc-brand" href="/login/">
+                <span class="doc-brand-icon">⚡</span>
+                <span class="doc-brand-name">
+                    <span class="brand-edu">Edu</span><span class="brand-sync">Sync</span>
+                </span>
+            </a>
+            <h1>Política de Privacidade</h1>
+            <p class="doc-meta">Última atualização: março de 2025 · Versão 1.0</p>
+        </div>
+
+        <div class="doc-card">
+            <div class="lgpd-badge">✓ Em conformidade com a LGPD — Lei nº 13.709/2018</div>
+
+            <h2>1. Quem somos</h2>
+            <p>O EduSync é um sistema de gestão escolar independente desenvolvido para professores e coordenadores de escolas do Paraná. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos seus dados pessoais.</p>
+            <p>Para dúvidas sobre privacidade, entre em contato com o administrador do sistema da sua instituição.</p>
+
+            <h2>2. Dados que coletamos</h2>
+            <p>O EduSync coleta e processa os seguintes dados:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Dado</th>
+                        <th>Origem</th>
+                        <th>Finalidade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Nome completo</strong></td>
+                        <td>RCO Digital (via autenticação)</td>
+                        <td>Identificação no sistema e exibição no perfil</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CPF</strong></td>
+                        <td>Fornecido pelo usuário</td>
+                        <td>Autenticação no sistema e no RCO Digital</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Perfil/Cargo</strong></td>
+                        <td>Definido pelo administrador</td>
+                        <td>Controle de permissões de acesso (RBAC)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dados de turmas e alunos</strong></td>
+                        <td>RCO Digital (carregados automaticamente)</td>
+                        <td>Funcionalidades pedagógicas do sistema</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dados do Google Classroom</strong></td>
+                        <td>API do Google (com autorização OAuth)</td>
+                        <td>Integração e exibição de atividades</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ocorrências e registros</strong></td>
+                        <td>Inseridos pelo professor no EduSync</td>
+                        <td>Gestão de comportamento e reconhecimento</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Logs de acesso</strong></td>
+                        <td>Gerados automaticamente</td>
+                        <td>Auditoria de segurança e rastreabilidade</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Foto de perfil</strong></td>
+                        <td>Enviada voluntariamente pelo usuário</td>
+                        <td>Identificação visual no sistema</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>3. Base legal para o tratamento (LGPD)</h2>
+            <p>O tratamento dos seus dados pelo EduSync é fundamentado nas seguintes bases legais previstas na LGPD:</p>
+            <ul>
+                <li><strong>Execução de contrato</strong> (art. 7º, V): para fornecer as funcionalidades do sistema que você contratou;</li>
+                <li><strong>Consentimento</strong> (art. 7º, I): para dados adicionais fornecidos voluntariamente, como foto de perfil;</li>
+                <li><strong>Legítimo interesse</strong> (art. 7º, IX): para logs de auditoria e segurança do sistema;</li>
+                <li><strong>Obrigação legal</strong> (art. 7º, II): quando aplicável à gestão escolar regulamentada.</li>
+            </ul>
+
+            <h2>4. Como usamos seus dados</h2>
+            <p>Utilizamos seus dados exclusivamente para:</p>
+            <ul>
+                <li>Autenticar e identificar você no sistema;</li>
+                <li>Automatizar ações no RCO Digital em seu nome (com sua autorização expressa);</li>
+                <li>Exibir informações de turmas, alunos e atividades;</li>
+                <li>Registrar ocorrências pedagógicas e de comportamento;</li>
+                <li>Gerar relatórios e visualizações para suporte ao trabalho docente;</li>
+                <li>Garantir a segurança e rastreabilidade das ações no sistema.</li>
+            </ul>
+            <p><strong>Nunca usamos seus dados para fins comerciais, publicidade ou venda a terceiros.</strong></p>
+
+            <h2>5. Onde os dados são armazenados</h2>
+            <div class="highlight-box">
+                Os dados são armazenados em servidores na nuvem (Replit e Supabase), localizados nos <strong>Estados Unidos</strong>. A transferência internacional é realizada com base em cláusulas contratuais padrão de proteção de dados.
+            </div>
+            <p>O EduSync não mantém cópias locais dos dados fora dessas plataformas, exceto temporariamente em memória durante o processamento.</p>
+
+            <h2>6. Retenção dos dados</h2>
+            <table>
+                <thead>
+                    <tr><th>Tipo de dado</th><th>Prazo de retenção</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Conta de usuário</td><td>Enquanto a conta estiver ativa + 90 dias após exclusão</td></tr>
+                    <tr><td>Dados de turmas e alunos (RCO)</td><td>Ano letivo corrente + 1 ano</td></tr>
+                    <tr><td>Ocorrências e registros pedagógicos</td><td>Até solicitação de exclusão pelo responsável</td></tr>
+                    <tr><td>Logs de auditoria</td><td>12 meses</td></tr>
+                    <tr><td>Sessões de acesso</td><td>8 horas de inatividade (automático)</td></tr>
+                </tbody>
+            </table>
+
+            <h2>7. Seus direitos (LGPD, art. 18)</h2>
+            <p>Como titular de dados, você tem os seguintes direitos:</p>
+            <ul>
+                <li><strong>Acesso</strong>: saber quais dados temos sobre você;</li>
+                <li><strong>Correção</strong>: corrigir dados incompletos, inexatos ou desatualizados;</li>
+                <li><strong>Anonimização ou exclusão</strong>: solicitar a remoção de dados desnecessários;</li>
+                <li><strong>Portabilidade</strong>: solicitar seus dados em formato estruturado;</li>
+                <li><strong>Revogação do consentimento</strong>: retirar o consentimento a qualquer momento;</li>
+                <li><strong>Exclusão da conta</strong>: solicitar a exclusão completa do seu cadastro.</li>
+            </ul>
+            <p>Para exercer qualquer desses direitos, entre em contato com o administrador do EduSync na sua instituição.</p>
+
+            <h2>8. Compartilhamento de dados</h2>
+            <p>Não vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros, exceto:</p>
+            <ul>
+                <li><strong>RCO Digital (SEED-PR)</strong>: para autenticação e automação em seu nome;</li>
+                <li><strong>Google (Classroom)</strong>: para integração de atividades com sua autorização OAuth;</li>
+                <li><strong>Provedores de infraestrutura</strong> (Replit, Supabase): exclusivamente para hospedagem e banco de dados, sob acordo de confidencialidade;</li>
+                <li><strong>Obrigação legal</strong>: quando exigido por autoridade competente.</li>
+            </ul>
+
+            <h2>9. Segurança</h2>
+            <p>O EduSync adota medidas técnicas e organizacionais para proteger seus dados, incluindo:</p>
+            <ul>
+                <li>Transmissão criptografada via HTTPS/TLS em todas as comunicações;</li>
+                <li>Senhas nunca armazenadas em texto puro;</li>
+                <li>Controle de acesso por perfis (RBAC);</li>
+                <li>Logs de auditoria de todas as ações sensíveis;</li>
+                <li>Sessões com expiração automática por inatividade.</li>
+            </ul>
+
+            <h2>10. Cookies e armazenamento local</h2>
+            <p>O EduSync utiliza:</p>
+            <ul>
+                <li><strong>Cookies de sessão</strong>: para manter você autenticado durante o uso;</li>
+                <li><strong>localStorage</strong>: para preferências de tema, escola selecionada e cache de permissões de navegação. Não contém dados sensíveis.</li>
+            </ul>
+            <p>Não utilizamos cookies de rastreamento, publicidade ou analytics de terceiros.</p>
+
+            <h2>11. Alterações nesta política</h2>
+            <p>Esta Política de Privacidade pode ser atualizada periodicamente. A data da última atualização sempre constará no topo do documento. Alterações significativas serão comunicadas via sistema com antecedência mínima de 15 dias.</p>
+
+            <div class="doc-footer">
+                <span>EduSync — Sistema de Gestão Escolar · Paraná</span>
+                <span>Versão 1.0 · Março de 2025</span>
+            </div>
+        </div>
+
+        <a class="btn-voltar" href="javascript:history.back()">← Voltar</a>
+    </div>
+</body>
+</html>

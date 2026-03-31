@@ -8,9 +8,21 @@
         }
     } catch { /* não autenticado, exibir form */ }
 
-    const form    = document.getElementById('loginForm');
-    const msg     = document.getElementById('loginMsg');
+    const form      = document.getElementById('loginForm');
+    const msg       = document.getElementById('loginMsg');
     const btnEntrar = document.getElementById('btnEntrar');
+    const chkAceite = document.getElementById('aceiteTermos');
+
+    /* Restaurar aceite prévio para conveniência em logins subsequentes */
+    if (localStorage.getItem('edusync_termos_aceitos') === '1') {
+        chkAceite.checked = true;
+        btnEntrar.disabled = false;
+    }
+
+    /* Habilitar/desabilitar botão conforme aceite */
+    chkAceite.addEventListener('change', () => {
+        btnEntrar.disabled = !chkAceite.checked;
+    });
 
     // Formatação automática do CPF
     document.getElementById('cpf').addEventListener('input', function () {
@@ -50,6 +62,9 @@
             const data = await res.json();
 
             if (res.ok && data.sucesso) {
+                /* Registra aceite dos termos para conveniência em logins futuros */
+                try { localStorage.setItem('edusync_termos_aceitos', '1'); } catch {}
+
                 /* Grava perfil no cache para que auth.js aplique permissões de nav
                    de forma síncrona (sem fetch) na primeira página após o login */
                 if (data.usuario) {

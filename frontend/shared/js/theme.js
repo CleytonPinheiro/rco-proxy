@@ -71,9 +71,10 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Pré-carrega CSS de nav/perfil e guard de autenticação (exceto /login/) ── */
+/* ── Pré-carrega CSS de nav/perfil e guard de autenticação (exceto páginas públicas) ── */
 (function () {
-    if (location.pathname.startsWith('/login') || location.pathname === '/') return;
+    const paginasPublicas = ['/login', '/termos', '/privacidade'];
+    if (paginasPublicas.some(p => location.pathname.startsWith(p)) || location.pathname === '/') return;
 
     /* ── ANTI-FLASH: oculta todos os itens de nav antes da primeira pintura.
        Este <style> é injetado sincronicamente no <head> enquanto o browser

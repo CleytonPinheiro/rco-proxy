@@ -36,13 +36,26 @@
                            autocomplete="current-password"
                            required>
                 </div>
-                <button type="submit" id="btnEntrar" class="btn-login">Entrar</button>
+                <div class="form-aceite">
+                    <input type="checkbox" id="aceiteTermos" name="aceiteTermos">
+                    <label for="aceiteTermos">
+                        Li e concordo com os
+                        <a href="/termos/" target="_blank">Termos de Uso</a>
+                        e a
+                        <a href="/privacidade/" target="_blank">Política de Privacidade</a>,
+                        incluindo o uso das minhas credenciais RCO para automação em meu nome.
+                    </label>
+                </div>
+
+                <button type="submit" id="btnEntrar" class="btn-login" disabled>Entrar</button>
             </form>
             <div id="loginMsg" class="login-msg"></div>
         </div>
 
         <p class="login-footer">
-            Autenticado via RCO Digital · Paraná
+            Autenticado via RCO Digital · Paraná ·
+            <a href="/termos/" target="_blank">Termos</a> ·
+            <a href="/privacidade/" target="_blank">Privacidade</a>
         </p>
     </div>
 
