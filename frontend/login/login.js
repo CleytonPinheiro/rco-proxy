@@ -1,5 +1,5 @@
 (async function () {
-    // Se já autenticado, redirecionar direto
+    // ── Se já autenticado, redirecionar direto ──────────────────────────────
     try {
         const r = await fetch('/api/me', { credentials: 'include' });
         if (r.ok) {
@@ -11,25 +11,44 @@
     const form      = document.getElementById('loginForm');
     const msg       = document.getElementById('loginMsg');
     const btnEntrar = document.getElementById('btnEntrar');
+    const btnTexto  = document.getElementById('btnTexto');
+    const btnSpin   = document.getElementById('btnSpinner');
     const chkAceite = document.getElementById('aceiteTermos');
 
-    /* Restaurar aceite prévio para conveniência em logins subsequentes */
+    // ── Restaurar aceite prévio ─────────────────────────────────────────────
     if (localStorage.getItem('edusync_termos_aceitos') === '1') {
-        chkAceite.checked = true;
+        chkAceite.checked  = true;
         btnEntrar.disabled = false;
     }
 
-    /* Habilitar/desabilitar botão conforme aceite */
     chkAceite.addEventListener('change', () => {
         btnEntrar.disabled = !chkAceite.checked;
     });
 
-    // Formatação automática do CPF
-    document.getElementById('cpf').addEventListener('input', function () {
-        this.value = this.value.replace(/\D/g, '').slice(0, 11);
+    // ── Formatação de CPF (000.000.000-00) ──────────────────────────────────
+    const inputCpf = document.getElementById('cpf');
+    inputCpf.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, '$1.$2.$3-$4');
+        else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{1,3})$/, '$1.$2.$3');
+        else if (v.length > 3) v = v.replace(/^(\d{3})(\d{1,3})$/, '$1.$2');
+        this.value = v;
     });
 
-    /* Destino pós-login: usa ?next= se presente e é uma rota interna */
+    // ── Mostrar/ocultar senha ───────────────────────────────────────────────
+    const inputSenha  = document.getElementById('senha');
+    const btnToggle   = document.getElementById('btnToggleSenha');
+    const eyeOpen     = document.getElementById('eyeOpen');
+    const eyeClosed   = document.getElementById('eyeClosed');
+
+    btnToggle.addEventListener('click', () => {
+        const visivel = inputSenha.type === 'text';
+        inputSenha.type   = visivel ? 'password' : 'text';
+        eyeOpen.style.display   = visivel ? ''     : 'none';
+        eyeClosed.style.display = visivel ? 'none' : '';
+    });
+
+    // ── Destino pós-login ───────────────────────────────────────────────────
     function destinoLogin() {
         try {
             const next = new URLSearchParams(location.search).get('next');
@@ -38,19 +57,22 @@
         return '/pages/dashboard/';
     }
 
+    // ── Submit ──────────────────────────────────────────────────────────────
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const cpf   = document.getElementById('cpf').value.replace(/\D/g, '');
-        const senha = document.getElementById('senha').value;
+        const cpf   = inputCpf.value.replace(/\D/g, '');
+        const senha = inputSenha.value;
 
         if (!cpf || !senha) {
             mostrarMsg('Preencha CPF e senha.', 'erro');
             return;
         }
+        if (cpf.length !== 11) {
+            mostrarMsg('CPF inválido. Digite os 11 dígitos.', 'erro');
+            return;
+        }
 
-        btnEntrar.disabled     = true;
-        btnEntrar.textContent  = 'Autenticando no RCO…';
-        msg.style.display      = 'none';
+        setCarregando(true);
 
         try {
             const res  = await fetch('/api/auth/login', {
@@ -62,11 +84,8 @@
             const data = await res.json();
 
             if (res.ok && data.sucesso) {
-                /* Registra aceite dos termos para conveniência em logins futuros */
                 try { localStorage.setItem('edusync_termos_aceitos', '1'); } catch {}
 
-                /* Grava perfil no cache para que auth.js aplique permissões de nav
-                   de forma síncrona (sem fetch) na primeira página após o login */
                 if (data.usuario) {
                     try {
                         localStorage.setItem('edusync_nav_cache', JSON.stringify({
@@ -80,19 +99,38 @@
                 setTimeout(() => window.location.replace(destinoLogin()), 800);
             } else {
                 mostrarMsg(data.erro || 'Erro ao autenticar.', 'erro');
-                btnEntrar.disabled    = false;
-                btnEntrar.textContent = 'Entrar';
+                setCarregando(false);
             }
         } catch (err) {
             mostrarMsg('Erro de conexão: ' + err.message, 'erro');
-            btnEntrar.disabled    = false;
-            btnEntrar.textContent = 'Entrar';
+            setCarregando(false);
         }
     });
 
+    function setCarregando(sim) {
+        btnEntrar.disabled       = sim;
+        btnTexto.style.display   = sim ? 'none' : '';
+        btnSpin.style.display    = sim ? ''     : 'none';
+        msg.style.display        = 'none';
+    }
+
     function mostrarMsg(texto, tipo) {
-        msg.textContent  = texto;
-        msg.className    = `login-msg login-msg--${tipo}`;
+        msg.textContent   = texto;
+        msg.className     = `login-msg login-msg--${tipo}`;
         msg.style.display = 'block';
     }
+
+    // ── Banner de Cookies ───────────────────────────────────────────────────
+    const banner = document.getElementById('cookieBanner');
+    const btnOk  = document.getElementById('btnCookieAceitar');
+
+    if (!localStorage.getItem('edusync_cookie_aceito')) {
+        setTimeout(() => { banner.style.display = ''; }, 800);
+    }
+
+    btnOk.addEventListener('click', () => {
+        localStorage.setItem('edusync_cookie_aceito', '1');
+        banner.style.animation = 'slideDown .25s ease forwards';
+        setTimeout(() => { banner.style.display = 'none'; }, 260);
+    });
 })();
