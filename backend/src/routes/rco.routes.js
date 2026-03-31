@@ -6,16 +6,50 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
 
     router.get('/acessos', async (req, res) => {
         try {
-            const hoje = req.query.data || dataBrasilia();
-            console.log(`Consultando estabelecimentos para ${hoje} (BRT)...`);
-            const response = await rcoApiService.get(`/educador/estabelecimentos/v2/${hoje}`);
-            console.log('RCO API status:', response.status, '| bytes:', JSON.stringify(response.data).length);
-            if (response.status !== 200) {
-                return res.status(response.status).json({ erro: 'Erro na API RCO', data: response.data });
+            /* Se o cliente passou uma data específica, usa ela sem fallback */
+            if (req.query.data) {
+                const response = await rcoApiService.get(`/educador/estabelecimentos/v2/${req.query.data}`);
+                console.log(`[ACESSOS] data fixa ${req.query.data} → status ${response.status} | bytes: ${JSON.stringify(response.data).length}`);
+                if (response.status !== 200) return res.status(response.status).json({ erro: 'Erro na API RCO' });
+                return res.json(response.data);
             }
-            res.json(response.data);
+
+            /* Fallback progressivo: tenta de hoje até 45 dias atrás
+               até encontrar uma resposta com pelo menos 1 estabelecimento */
+            const MAX_DIAS = 45;
+            const base = new Date();
+
+            for (let delta = 0; delta <= MAX_DIAS; delta++) {
+                const d = new Date(base);
+                d.setDate(base.getDate() - delta);
+                /* Formata em horário de Brasília (UTC-3) */
+                const brt = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+                const data = brt.toISOString().split('T')[0];
+
+                try {
+                    const response = await rcoApiService.get(`/educador/estabelecimentos/v2/${data}`);
+                    const bytes = JSON.stringify(response.data).length;
+                    console.log(`[ACESSOS] ${data} (delta -${delta}) → status ${response.status} | bytes: ${bytes}`);
+
+                    if (response.status !== 200) continue;
+
+                    const arr = Array.isArray(response.data) ? response.data : [];
+                    if (arr.length > 0) {
+                        if (delta > 0) {
+                            console.log(`[ACESSOS] Dados encontrados em ${data} (${delta} dia(s) atrás)`);
+                        }
+                        return res.json(response.data);
+                    }
+                } catch (e) {
+                    console.warn(`[ACESSOS] Erro ao tentar ${data}:`, e.message);
+                }
+            }
+
+            /* Nenhum dado encontrado em 45 dias */
+            console.warn('[ACESSOS] Nenhum dado encontrado nos últimos 45 dias.');
+            res.json([]);
         } catch (erro) {
-            console.error('Erro ao consultar API RCO:', erro.message);
+            console.error('[ACESSOS] Erro:', erro.message);
             res.status(500).json({ erro: 'Erro ao consultar a API', detalhes: erro.message });
         }
     });

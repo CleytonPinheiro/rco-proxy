@@ -47,16 +47,48 @@ export class SyncService {
         console.log(`[SYNC] Iniciando sincronização com Supabase em ${agora}...`);
 
         try {
-            const { dataBrasilia } = await import('../config/dateUtils.js');
-            const hoje = dataBrasilia();
-            const response = await this.#rcoApiService.get(`/educador/estabelecimentos/v2/${hoje}`);
+            /* Fallback progressivo: tenta de hoje até 45 dias atrás
+               até encontrar uma resposta com ao menos 1 estabelecimento */
+            const MAX_DIAS = 45;
+            const base = new Date();
+            let raw = [];
+            let dataUsada = null;
 
-            if (response.status !== 200) {
-                throw new Error(`API RCO retornou status ${response.status}`);
+            for (let delta = 0; delta <= MAX_DIAS; delta++) {
+                const d = new Date(base);
+                d.setDate(base.getDate() - delta);
+                const brt = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+                const data = brt.toISOString().split('T')[0];
+
+                try {
+                    const response = await this.#rcoApiService.get(`/educador/estabelecimentos/v2/${data}`);
+                    const bytes = JSON.stringify(response.data).length;
+                    console.log(`[SYNC] ${data} (delta -${delta}) → status ${response.status} | bytes: ${bytes}`);
+
+                    if (response.status !== 200) continue;
+
+                    const arr = Array.isArray(response.data) ? response.data : (response.data ? [response.data] : []);
+                    if (arr.length > 0) {
+                        raw = arr;
+                        dataUsada = data;
+                        if (delta > 0) console.log(`[SYNC] Dados encontrados em ${data} (${delta} dia(s) atrás)`);
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(`[SYNC] Erro ao tentar ${data}:`, e.message);
+                }
             }
 
-            const raw = response.data;
-            const estabs = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+            if (!dataUsada) {
+                console.warn('[SYNC] Nenhum dado encontrado nos últimos 45 dias. Abortando sync.');
+                return {
+                    status: 'sem_dados',
+                    estabelecimentos: 0, turmas: 0, disciplinas: 0, classes: 0, alunos: 0,
+                    executadoEm: agora,
+                };
+            }
+
+            const estabs = raw;
 
             const estabelecimentosPayload = [];
             const turmasPayload = [];
