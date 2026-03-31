@@ -152,6 +152,66 @@
             </div>
         </section>
 
+        <!-- ══════════════════════════════════════════════════════
+             GESTÃO DE ASSINATURAS (visível apenas ao admin)
+        ══════════════════════════════════════════════════════ -->
+        <section class="pl-gestao-section" id="plGestaoSection">
+            <div class="pl-gestao-header">
+                <div>
+                    <h2 class="pl-gestao-titulo">📋 Gestão de Assinaturas</h2>
+                    <p class="pl-gestao-sub">Gerencie o plano ativo de cada escola cadastrada no sistema.</p>
+                </div>
+                <button class="pl-btn-reload" id="plBtnReload" title="Atualizar lista">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    Atualizar
+                </button>
+            </div>
+            <div id="plGestaoWrap" class="pl-gestao-wrap">
+                <p class="pl-gestao-loading">Carregando escolas...</p>
+            </div>
+        </section>
+
+        <!-- Modal de edição de plano -->
+        <div class="pl-modal-overlay" id="plModalOverlay">
+            <div class="pl-modal-box">
+                <div class="pl-modal-header">
+                    <h3 id="plModalTitulo">Alterar plano</h3>
+                    <button class="pl-modal-fechar" id="plModalFechar">✕</button>
+                </div>
+                <div class="pl-modal-body">
+                    <input type="hidden" id="plModalEscolaId">
+                    <div class="pl-form-group">
+                        <label class="pl-form-label">Plano</label>
+                        <select class="pl-form-select" id="plModalPlano">
+                            <option value="">— Sem plano (trial/inativo) —</option>
+                            <option value="inicial">🌱 Inicial — R$ 89/mês</option>
+                            <option value="profissional">🚀 Profissional — R$ 179/mês</option>
+                            <option value="rede">🏫 Rede Escolar — R$ 349/mês</option>
+                        </select>
+                    </div>
+                    <div class="pl-form-row">
+                        <div class="pl-form-group">
+                            <label class="pl-form-label">Início da assinatura</label>
+                            <input type="date" class="pl-form-input" id="plModalInicio">
+                        </div>
+                        <div class="pl-form-group">
+                            <label class="pl-form-label">Renovação / Vencimento</label>
+                            <input type="date" class="pl-form-input" id="plModalRenovacao">
+                        </div>
+                    </div>
+                    <div class="pl-form-group">
+                        <label class="pl-form-label">Observações internas</label>
+                        <textarea class="pl-form-input pl-form-textarea" id="plModalObs" placeholder="Contato, forma de pagamento, condições especiais..."></textarea>
+                    </div>
+                    <div id="plModalMsg" class="pl-modal-msg" style="display:none"></div>
+                </div>
+                <div class="pl-modal-footer">
+                    <button class="pl-btn pl-btn--outline" id="plModalCancelar" style="width:auto;padding:10px 24px">Cancelar</button>
+                    <button class="pl-btn pl-btn--primary"  id="plModalSalvar"   style="width:auto;padding:10px 24px">Salvar plano</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Banner Enterprise -->
         <section class="pl-enterprise">
             <div class="pl-enterprise-inner">

@@ -283,6 +283,18 @@ function renderBannerEscolas(lista) {
     }
 }
 
+const ADMIN_PLANO_INFO = {
+    inicial:      { icone: '🌱', label: 'Inicial',      bg: '#dcfce7', color: '#15803d' },
+    profissional: { icone: '🚀', label: 'Profissional', bg: '#dbeafe', color: '#1d4ed8' },
+    rede:         { icone: '🏫', label: 'Rede',         bg: '#fef9c3', color: '#854d0e' },
+};
+
+function badgePlanoAdmin(plano) {
+    if (!plano) return `<span style="font-size:.75rem;color:var(--text-muted)">—</span>`;
+    const info = ADMIN_PLANO_INFO[plano] || { icone: '?', label: plano, bg: '#f3f4f6', color: '#6b7280' };
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${info.bg};color:${info.color};font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px">${info.icone} ${info.label}</span>`;
+}
+
 function renderTabelaEscolas(lista) {
     const wrap = document.getElementById('tabelaEscolasWrap');
     if (!lista.length) {
@@ -296,6 +308,7 @@ function renderTabelaEscolas(lista) {
             <tr>
                 <th>Nome da escola</th>
                 <th>Código RCO</th>
+                <th>Plano</th>
                 <th>Auto-cadastro</th>
                 <th>Status</th>
                 <th>Adicionada em</th>
@@ -307,6 +320,7 @@ function renderTabelaEscolas(lista) {
             <tr data-id="${e.id}">
                 <td>${esc(e.nome)}</td>
                 <td style="font-family:monospace;font-size:.85rem">${e.codigo_estabelecimento}</td>
+                <td>${badgePlanoAdmin(e.plano)}</td>
                 <td>
                     <span class="badge-auto ${e.permite_auto_cadastro ? 'badge-auto--sim' : 'badge-auto--nao'}">
                         ${e.permite_auto_cadastro ? 'Sim' : 'Não'}

@@ -157,10 +157,49 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     router.get('/admin/escolas', async (_req, res) => {
         try {
             const { rows } = await pool.query(
-                `SELECT id, nome, codigo_estabelecimento, permite_auto_cadastro, ativo, criado_em
+                `SELECT id, nome, codigo_estabelecimento, permite_auto_cadastro, ativo, criado_em,
+                        plano, plano_inicio, plano_renovacao, plano_obs
                  FROM edusync_escolas ORDER BY nome`,
             );
             res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Atualizar plano de uma escola ── */
+    router.patch('/admin/escolas/:id/plano', async (req, res) => {
+        const id = parseInt(req.params.id, 10);
+        const { plano, plano_inicio, plano_renovacao, plano_obs } = req.body;
+
+        const planosValidos = ['inicial', 'profissional', 'rede', null];
+        if (!planosValidos.includes(plano)) {
+            return res.status(400).json({ erro: `Plano inválido. Valores aceitos: ${planosValidos.filter(Boolean).join(', ')} ou null.` });
+        }
+
+        try {
+            const { rows } = await pool.query(
+                `UPDATE edusync_escolas
+                    SET plano           = $1,
+                        plano_inicio    = $2,
+                        plano_renovacao = $3,
+                        plano_obs       = $4
+                  WHERE id = $5
+                  RETURNING id, nome, plano, plano_inicio, plano_renovacao, plano_obs`,
+                [plano ?? null, plano_inicio ?? null, plano_renovacao ?? null, plano_obs ?? null, id],
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Escola não encontrada.' });
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'ESCOLA_PLANO_ALTERADO',
+                modulo:      'admin',
+                detalhes:    { escolaId: id, planoAnterior: null, planoNovo: plano },
+                ip:          req.ip,
+            });
+
+            res.json(rows[0]);
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
