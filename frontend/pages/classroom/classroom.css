@@ -1409,3 +1409,8 @@ body {
     border-top: 1px solid var(--border);
     margin-top: 20px;
 }
+
+@keyframes clSpinIcon {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}

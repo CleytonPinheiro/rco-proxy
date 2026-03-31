@@ -89,6 +89,8 @@ const elContaBadge     = document.getElementById('clContaBadge');
 const elAtivLink       = document.getElementById('clAtivLink');
 const elBtnExportar    = document.getElementById('clBtnExportar');
 const elBtnImprimir    = document.getElementById('clBtnImprimir');
+const elBtnAtualizar   = document.getElementById('clBtnAtualizar');
+const elBtnAtualizarIcon = document.getElementById('clBtnAtualizarIcon');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
 const elToast          = document.getElementById('clToast');
@@ -512,8 +514,9 @@ async function selecionarAtividade(ativ, itemEl) {
         elNotasCount.textContent     = `${todasNotas.length} aluno${todasNotas.length !== 1 ? 's' : ''}`;
         elNotasStats.style.display   = 'grid';
         elNotasFiltro.style.display  = 'flex';
-        elNotasActions.style.display = 'flex';
+        elNotasActions.style.display  = 'flex';
         elBtnImprimir.style.display  = 'none';
+        elBtnAtualizar.style.display = 'none';
 
         document.getElementById('clStEntreguesLabel').textContent = 'Entregues';
         document.getElementById('clStPendentesLabel').textContent = 'Pendentes';
@@ -673,6 +676,10 @@ elBtnImprimir.addEventListener('click', () => {
     if (grupoAtivo) imprimirRelatorioGrupo();
 });
 
+elBtnAtualizar.addEventListener('click', () => {
+    if (grupoAtivo) carregarResumoGrupo(grupoAtivo);
+});
+
 elBtnExportar.addEventListener('click', () => {
     if (grupoAtivo)      { exportarGrupoCSV();  return; }
     if (auditAtivAtiva)  { exportarAuditCSV();  return; }
@@ -769,6 +776,19 @@ async function selecionarGrupo(grupo, itemEl) {
         return;
     }
 
+    await carregarResumoGrupo(grupo);
+}
+
+async function carregarResumoGrupo(grupo) {
+    if (!grupo || !grupo.atividades.length) return;
+
+    elNotasLista.innerHTML     = '<div class="cl-loading">Calculando somas...</div>';
+    elNotasCount.textContent   = 'Carregando...';
+    elNotasStats.style.display = 'none';
+
+    elBtnAtualizar.disabled = true;
+    elBtnAtualizarIcon.style.animation = 'clSpinIcon 0.8s linear infinite';
+
     try {
         const resumo = await api(`/groups/${grupo.id}/summary?courseId=${cursoAtivo.id}`);
 
@@ -777,7 +797,6 @@ async function selecionarGrupo(grupo, itemEl) {
         const alunosResumo = resumo.alunos.map(a => ({
             ...a,
             aluno: alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
-            // soma proporcional: média dos índices (%) aplicada ao valor total do grupo
             soma: ((a.mediaIndice ?? 0) / 100) * meta,
         })).sort((a, b) => {
             const na = a.aluno.numChamada ?? 9999;
@@ -790,13 +809,13 @@ async function selecionarGrupo(grupo, itemEl) {
         const pend    = alunosResumo.filter(a => a.pendentes > 0).length;
         const media   = total ? rco(alunosResumo.reduce((s, a) => s + a.soma, 0) / total) : '—';
 
-        document.getElementById('clStTotal').textContent              = total;
-        document.getElementById('clStEntregues').textContent          = comTudo;
-        document.getElementById('clStEntreguesLabel').textContent     = 'Completos';
-        document.getElementById('clStPendentes').textContent          = pend;
-        document.getElementById('clStPendentesLabel').textContent     = 'Com pendências';
-        document.getElementById('clStMedia').textContent              = media;
-        elNotasCount.textContent = `${total} aluno${total !== 1 ? 's' : ''}`;
+        document.getElementById('clStTotal').textContent          = total;
+        document.getElementById('clStEntregues').textContent      = comTudo;
+        document.getElementById('clStEntreguesLabel').textContent = 'Completos';
+        document.getElementById('clStPendentes').textContent      = pend;
+        document.getElementById('clStPendentesLabel').textContent = 'Com pendências';
+        document.getElementById('clStMedia').textContent          = media;
+        elNotasCount.textContent   = `${total} aluno${total !== 1 ? 's' : ''}`;
         elNotasStats.style.display = 'grid';
 
         if (!alunosResumo.length) {
@@ -804,15 +823,18 @@ async function selecionarGrupo(grupo, itemEl) {
             return;
         }
 
-        // Salvar dados para o painel de detalhe e filtro
         grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta };
         filtrosGrupoAtivos = new Set(['todos']);
-
         renderListaFiltrada();
+
+        toast('Dados atualizados do Classroom', 'ok');
 
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
         toast(e.message, 'erro');
+    } finally {
+        elBtnAtualizar.disabled = false;
+        elBtnAtualizarIcon.style.animation = '';
     }
 }
 
