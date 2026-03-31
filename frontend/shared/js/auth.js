@@ -34,6 +34,7 @@
         '/pages/emprestimos/':            'emprestimos',
         '/pages/cozinha/':                'cozinha',
         '/pages/admin/':                  'admin',
+        '/pages/planos/':                 'planos',
     };
 
     /* ── Permissões por perfil — espelho exato de backend/src/config/permissions.js ── */
@@ -184,6 +185,7 @@
         configurarLogout();
         injetarLinkRetorno(user);
         injetarLinkAdmin(user);
+        injetarLinkPlanos(user);
         if (user.impersonando) {
             document.body.setAttribute('data-impersonando', '1');
             injetarBannerImpersonacao(user);
@@ -344,6 +346,19 @@
         nav.appendChild(link);
     }
 
+    function injetarLinkPlanos(user) {
+        if (user.perfilReal !== 'admin' && user.perfil !== 'admin') return;
+        if (user.impersonando) return;
+        const nav = document.querySelector('.nav-menu');
+        if (!nav || nav.querySelector('a[href="/pages/planos/"]')) return;
+
+        const link = document.createElement('a');
+        link.href        = '/pages/planos/';
+        link.textContent = '💎 Planos';
+        if (location.pathname === '/pages/planos/') link.classList.add('active');
+        nav.appendChild(link);
+    }
+
     /* ══════════════════════════════════════════════════════════════════════
        5. Nav Adaptativo — ResizeObserver
     ══════════════════════════════════════════════════════════════════════ */
@@ -462,6 +477,7 @@
             '/pages/pedagogico/':             '🎓',
             '/pages/retorno-pedagogico/':     '💬',
             '/pages/admin/':                  '⚙️',
+            '/pages/planos/':                 '💎',
         };
         return m[href] || '🔗';
     }

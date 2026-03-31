@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Planos</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./planos.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="pl-main">
+
+        <!-- Hero -->
+        <section class="pl-hero">
+            <div class="pl-hero-badge">💎 Planos &amp; Preços</div>
+            <h1 class="pl-hero-title">
+                Escolha o plano ideal<br>para a sua escola
+            </h1>
+            <p class="pl-hero-sub">
+                Automatize o RCO, acompanhe frequências, atividades e muito mais.<br>
+                Cancele a qualquer momento, sem multas.
+            </p>
+
+            <!-- Toggle mensal / anual -->
+            <div class="pl-toggle-wrap">
+                <span class="pl-toggle-label" id="labelMensal">Mensal</span>
+                <button class="pl-toggle" id="togglePeriodo" aria-pressed="false" title="Alternar período">
+                    <span class="pl-toggle-thumb"></span>
+                </button>
+                <span class="pl-toggle-label" id="labelAnual">
+                    Anual
+                    <span class="pl-badge-desc">20% off</span>
+                </span>
+            </div>
+        </section>
+
+        <!-- Cards de planos -->
+        <section class="pl-cards-section">
+            <div class="pl-cards">
+
+                <!-- Plano Inicial -->
+                <div class="pl-card" id="cardInicial">
+                    <div class="pl-card-top">
+                        <div class="pl-plan-icon">🌱</div>
+                        <div class="pl-plan-nome">Inicial</div>
+                        <div class="pl-plan-desc">Para experimentar e começar</div>
+                    </div>
+                    <div class="pl-card-price">
+                        <span class="pl-price-currency">R$</span>
+                        <span class="pl-price-valor" data-mensal="89" data-anual="71">89</span>
+                        <span class="pl-price-per">/mês</span>
+                    </div>
+                    <div class="pl-price-cobranca" id="cobrancaInicial">Cobrado mensalmente</div>
+                    <a href="https://wa.me/554199999999?text=Ol%C3%A1%2C+tenho+interesse+no+Plano+Inicial+do+EduSync." target="_blank" class="pl-btn pl-btn--outline">
+                        Falar com vendas
+                    </a>
+                    <ul class="pl-features">
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> 1 escola</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Até 5 professores</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Frequência e chamada</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Painel pedagógico</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Login automático RCO</li>
+                        <li class="pl-feat pl-feat--no"><span class="pl-feat-icon">✗</span> Google Classroom</li>
+                        <li class="pl-feat pl-feat--no"><span class="pl-feat-icon">✗</span> Retorno pedagógico</li>
+                        <li class="pl-feat pl-feat--no"><span class="pl-feat-icon">✗</span> Múltiplos perfis (RBAC)</li>
+                        <li class="pl-feat pl-feat--no"><span class="pl-feat-icon">✗</span> Suporte prioritário</li>
+                    </ul>
+                </div>
+
+                <!-- Plano Profissional (destaque) -->
+                <div class="pl-card pl-card--destaque" id="cardProfissional">
+                    <div class="pl-popular-badge">⭐ Mais popular</div>
+                    <div class="pl-card-top">
+                        <div class="pl-plan-icon">🚀</div>
+                        <div class="pl-plan-nome">Profissional</div>
+                        <div class="pl-plan-desc">Para escolas que querem o máximo</div>
+                    </div>
+                    <div class="pl-card-price">
+                        <span class="pl-price-currency">R$</span>
+                        <span class="pl-price-valor" data-mensal="179" data-anual="143">179</span>
+                        <span class="pl-price-per">/mês</span>
+                    </div>
+                    <div class="pl-price-cobranca" id="cobrancaProfissional">Cobrado mensalmente</div>
+                    <a href="https://wa.me/554199999999?text=Ol%C3%A1%2C+tenho+interesse+no+Plano+Profissional+do+EduSync." target="_blank" class="pl-btn pl-btn--primary">
+                        Assinar agora
+                    </a>
+                    <ul class="pl-features">
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> 1 escola</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Professores ilimitados</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Frequência e chamada</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Painel pedagógico</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Login automático RCO</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Google Classroom</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Retorno pedagógico</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Múltiplos perfis (RBAC)</li>
+                        <li class="pl-feat pl-feat--no"><span class="pl-feat-icon">✗</span> Suporte prioritário</li>
+                    </ul>
+                </div>
+
+                <!-- Plano Rede -->
+                <div class="pl-card" id="cardRede">
+                    <div class="pl-card-top">
+                        <div class="pl-plan-icon">🏫</div>
+                        <div class="pl-plan-nome">Rede Escolar</div>
+                        <div class="pl-plan-desc">Para redes e secretarias municipais</div>
+                    </div>
+                    <div class="pl-card-price">
+                        <span class="pl-price-currency">R$</span>
+                        <span class="pl-price-valor" data-mensal="349" data-anual="279">349</span>
+                        <span class="pl-price-per">/mês</span>
+                    </div>
+                    <div class="pl-price-cobranca" id="cobrancaRede">Cobrado mensalmente</div>
+                    <a href="https://wa.me/554199999999?text=Ol%C3%A1%2C+tenho+interesse+no+Plano+Rede+Escolar+do+EduSync." target="_blank" class="pl-btn pl-btn--outline">
+                        Falar com vendas
+                    </a>
+                    <ul class="pl-features">
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Até 5 escolas</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Professores ilimitados</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Frequência e chamada</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Painel pedagógico</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Login automático RCO</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Google Classroom</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Retorno pedagógico</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Múltiplos perfis (RBAC)</li>
+                        <li class="pl-feat pl-feat--ok"><span class="pl-feat-icon">✓</span> Suporte prioritário</li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Banner Enterprise -->
+        <section class="pl-enterprise">
+            <div class="pl-enterprise-inner">
+                <div>
+                    <div class="pl-enterprise-titulo">🏢 Secretaria Municipal ou Estadual?</div>
+                    <div class="pl-enterprise-desc">
+                        Para redes com mais de 5 escolas ou necessidades específicas,
+                        montamos um plano sob medida com SLA garantido e onboarding dedicado.
+                    </div>
+                </div>
+                <a href="https://wa.me/554199999999?text=Ol%C3%A1%2C+quero+saber+sobre+o+plano+Enterprise+do+EduSync." target="_blank" class="pl-btn pl-btn--enterprise">
+                    💬 Falar com a equipe
+                </a>
+            </div>
+        </section>
+
+        <!-- Tabela comparativa -->
+        <section class="pl-compare-section">
+            <h2 class="pl-compare-titulo">Comparativo completo de recursos</h2>
+            <div class="pl-table-wrap">
+                <table class="pl-table">
+                    <thead>
+                        <tr>
+                            <th class="pl-th-feature">Recurso</th>
+                            <th>Inicial</th>
+                            <th class="pl-th-destaque">Profissional</th>
+                            <th>Rede</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="pl-tr-section"><td colspan="4">Acesso e usuários</td></tr>
+                        <tr>
+                            <td>Escolas</td>
+                            <td>1</td>
+                            <td class="pl-td-destaque">1</td>
+                            <td>Até 5</td>
+                        </tr>
+                        <tr>
+                            <td>Professores</td>
+                            <td>Até 5</td>
+                            <td class="pl-td-destaque">Ilimitados</td>
+                            <td>Ilimitados</td>
+                        </tr>
+                        <tr>
+                            <td>Perfis de acesso (RBAC)</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr class="pl-tr-section"><td colspan="4">Módulos principais</td></tr>
+                        <tr>
+                            <td>Login automático RCO</td>
+                            <td class="pl-yes">✓</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Frequência e chamada</td>
+                            <td class="pl-yes">✓</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Painel pedagógico</td>
+                            <td class="pl-yes">✓</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Comportamento e ocorrências</td>
+                            <td class="pl-yes">✓</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Mapa de sala</td>
+                            <td class="pl-yes">✓</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr class="pl-tr-section"><td colspan="4">Módulos avançados</td></tr>
+                        <tr>
+                            <td>Google Classroom</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Retorno pedagógico</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Comunicados</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>Gestão de materiais</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-yes">✓</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr class="pl-tr-section"><td colspan="4">Suporte</td></tr>
+                        <tr>
+                            <td>Suporte via WhatsApp</td>
+                            <td>Horário comercial</td>
+                            <td class="pl-td-destaque">Horário comercial</td>
+                            <td>Prioritário 12h</td>
+                        </tr>
+                        <tr>
+                            <td>Onboarding dedicado</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-no">✗</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                        <tr>
+                            <td>SLA garantido</td>
+                            <td class="pl-no">✗</td>
+                            <td class="pl-td-destaque pl-no">✗</td>
+                            <td class="pl-yes">✓</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="pl-faq-section">
+            <h2 class="pl-compare-titulo">Dúvidas frequentes</h2>
+            <div class="pl-faqs">
+                <details class="pl-faq">
+                    <summary>O EduSync armazena a senha dos professores?</summary>
+                    <p>Não. As credenciais do RCO são utilizadas apenas no momento do login automático e nunca são armazenadas em texto simples. Toda a comunicação é criptografada.</p>
+                </details>
+                <details class="pl-faq">
+                    <summary>Posso mudar de plano a qualquer momento?</summary>
+                    <p>Sim. O upgrade é imediato e o downgrade ocorre no próximo ciclo de cobrança. Sem multas ou burocracia.</p>
+                </details>
+                <details class="pl-faq">
+                    <summary>O sistema funciona com o novo RCO Digital (2024)?</summary>
+                    <p>Sim. O EduSync foi desenvolvido especificamente para o RCO Digital da SEED-PR e mantido atualizado a cada mudança da plataforma.</p>
+                </details>
+                <details class="pl-faq">
+                    <summary>Os dados estão em conformidade com a LGPD?</summary>
+                    <p>Sim. O EduSync segue a LGPD (Lei nº 13.709/2018) e a Lei Estadual do Paraná nº 20.656/2021. Os dados são processados exclusivamente para operação do sistema.</p>
+                </details>
+                <details class="pl-faq">
+                    <summary>Preciso instalar algo no computador ou celular?</summary>
+                    <p>Não. O EduSync é 100% web. Funciona em qualquer navegador moderno, inclusive no celular, sem instalação de aplicativo.</p>
+                </details>
+            </div>
+        </section>
+
+        <!-- Rodapé da seção -->
+        <div class="pl-footer-note">
+            Dúvidas? Entre em contato:
+            <a href="https://wa.me/554199999999" target="_blank">WhatsApp</a>
+            &nbsp;·&nbsp;
+            <a href="mailto:contato@edusync.com.br">contato@edusync.com.br</a>
+        </div>
+
+    </main>
+
+    <script src="./planos.js"></script>
+</body>
+</html>
