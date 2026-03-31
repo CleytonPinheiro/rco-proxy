@@ -118,6 +118,23 @@
         <div id="content" class="content" style="display: none;">
             <div class="freq-layout" id="freqLayout">
 
+                <!-- ── Aside: Resumo Diário ───────────────────────────── -->
+                <aside class="fd-aside" id="fdAside" aria-label="Resumo diário de presença">
+                    <div class="fd-aside-header">
+                        <div class="fd-aside-titulo">
+                            <span class="fd-aside-icon">📅</span>
+                            <span>Resumo Diário</span>
+                        </div>
+                        <button class="fd-toggle-btn" id="fdToggleBtn" title="Recolher painel" onclick="toggleResumoDiario()">‹</button>
+                    </div>
+                    <div class="fd-aside-body" id="fdCorpo">
+                        <div class="fd-vazio">
+                            <div class="fd-vazio-icon">📊</div>
+                            <p>Abra uma disciplina no accordion para ver o resumo do dia.</p>
+                        </div>
+                    </div>
+                </aside>
+
                 <!-- ── Conteúdo principal ─────────────────────────────── -->
                 <div class="freq-main-content">
                     <div class="page-header-freq">

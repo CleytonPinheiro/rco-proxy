@@ -416,6 +416,8 @@
     flex: 1;
     min-width: 0;
     transition: flex 0.28s ease;
+    /* Margem de respiro em relação ao aside esquerdo */
+    padding-left: 16px;
 }
 
 /* ── Drawer container ────────────────────────────────────────────────────── */
@@ -1465,3 +1467,286 @@
 [data-theme="dark"] .ddn-sep                    { color: var(--border); }
 [data-theme="dark"] .ddn-p                      { color: #4ade80; }
 [data-theme="dark"] .ddn-f                      { color: #f87171; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ASIDE — Resumo Diário de Presença
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.fd-aside {
+    width: 232px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 58px;
+    max-height: calc(100vh - 58px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid #e8ecf4;
+    border-radius: 0 0 0 12px;
+    overflow: hidden;
+    transition: width 0.26s ease;
+}
+
+.fd-aside--recolhido {
+    width: 40px;
+}
+.fd-aside--recolhido .fd-aside-titulo,
+.fd-aside--recolhido .fd-aside-body {
+    display: none;
+}
+
+/* ── Cabeçalho do aside ───────────────────────────────────────────────────── */
+.fd-aside-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 10px 12px 12px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+    flex-shrink: 0;
+}
+.fd-aside--recolhido .fd-aside-header {
+    justify-content: center;
+    padding: 10px 6px;
+}
+
+.fd-aside-titulo {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.fd-aside-icon { font-size: 1rem; }
+
+.fd-toggle-btn {
+    background: rgba(255,255,255,.15);
+    border: none;
+    color: #fff;
+    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fd-toggle-btn:hover { background: rgba(255,255,255,.28); }
+
+/* ── Corpo scrollável ─────────────────────────────────────────────────────── */
+.fd-aside-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 12px 10px;
+    scrollbar-width: thin;
+    scrollbar-color: #dce4f7 transparent;
+}
+.fd-aside-body::-webkit-scrollbar { width: 4px; }
+.fd-aside-body::-webkit-scrollbar-thumb { background: #dce4f7; border-radius: 4px; }
+
+/* ── Placeholder vazio ────────────────────────────────────────────────────── */
+.fd-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px 8px;
+    gap: 10px;
+    color: #94a3b8;
+}
+.fd-vazio-icon { font-size: 1.7rem; }
+.fd-vazio p    { font-size: .75rem; line-height: 1.5; margin: 0; }
+
+/* ── Resumo global ────────────────────────────────────────────────────────── */
+.fd-global {
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    border-radius: 10px;
+    padding: 10px 10px 8px;
+    margin-bottom: 2px;
+}
+.fd-global-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+}
+.fd-global-label {
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #6366f1;
+}
+.fd-global-pct {
+    font-size: 1rem;
+    font-weight: 700;
+}
+.fd-bar-global-wrap { margin-bottom: 6px; }
+.fd-global-sub {
+    display: flex;
+    gap: 4px;
+    font-size: .72rem;
+    align-items: center;
+}
+
+/* ── Barra de progresso ───────────────────────────────────────────────────── */
+.fd-bar-wrap {
+    background: #e5e7eb;
+    border-radius: 99px;
+    height: 5px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+.fd-bar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .35s ease;
+    min-width: 2px;
+}
+
+/* ── Separador ────────────────────────────────────────────────────────────── */
+.fd-divider {
+    height: 1px;
+    background: #e8ecf4;
+    margin: 8px 0;
+}
+
+/* ── Label "Por dia" ──────────────────────────────────────────────────────── */
+.fd-dias-titulo {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.fd-dias-count {
+    background: #e0e7ff;
+    color: #6366f1;
+    border-radius: 99px;
+    padding: 0 6px;
+    font-size: .66rem;
+    font-weight: 700;
+}
+
+/* ── Bloco de dia ─────────────────────────────────────────────────────────── */
+.fd-dia {
+    border-radius: 9px;
+    padding: 8px 9px;
+    margin-bottom: 6px;
+    border: 1px solid #eef1f8;
+    background: #fafbff;
+    transition: background .15s;
+}
+.fd-dia:hover { background: #f0f4ff; }
+
+.fd-dia--hoje {
+    border-color: #c7d2fe;
+    background: #f0f4ff;
+}
+
+.fd-dia-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.fd-dia-data-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.fd-dia-data {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1;
+}
+
+.fd-dia-semana {
+    font-size: .66rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.fd-hoje-tag {
+    display: inline-block;
+    background: #6366f1;
+    color: #fff;
+    font-size: .6rem;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 5px;
+    letter-spacing: .04em;
+    margin-top: 2px;
+}
+
+.fd-dia-pct {
+    font-size: .88rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* ── Stats de presença / falta ────────────────────────────────────────────── */
+.fd-dia-stats {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .69rem;
+    margin-top: 2px;
+    flex-wrap: wrap;
+}
+
+.fd-stat-p   { color: #16a34a; font-weight: 600; }
+.fd-stat-f   { color: #dc2626; font-weight: 600; }
+.fd-stat-t   { color: #94a3b8; }
+.fd-stat-sep { color: #cbd5e1; }
+
+/* ── Percentuais coloridos ────────────────────────────────────────────────── */
+.fd-pct-ok      { color: #16a34a; }
+.fd-pct-alerta  { color: #d97706; }
+.fd-pct-critico { color: #dc2626; }
+
+/* ── Responsivo: em telas pequenas, aside fica no topo ───────────────────── */
+@media (max-width: 900px) {
+    .freq-main-content { padding-left: 0; }
+
+    .fd-aside {
+        display: none; /* ocultamos em mobile para não empilhar */
+    }
+}
+
+/* ── Dark mode ────────────────────────────────────────────────────────────── */
+[data-theme="dark"] .fd-aside {
+    background: var(--bg-card);
+    border-right-color: var(--border);
+}
+[data-theme="dark"] .fd-global {
+    background: rgba(99,102,241,.12);
+}
+[data-theme="dark"] .fd-global-label  { color: #a5b4fc; }
+[data-theme="dark"] .fd-divider       { background: var(--border); }
+[data-theme="dark"] .fd-dias-titulo   { color: var(--text-muted); }
+[data-theme="dark"] .fd-dias-count    { background: rgba(99,102,241,.2); color: #a5b4fc; }
+[data-theme="dark"] .fd-dia           { background: var(--bg-hover); border-color: var(--border); }
+[data-theme="dark"] .fd-dia:hover     { background: var(--bg-tertiary); }
+[data-theme="dark"] .fd-dia--hoje     { border-color: #6366f1; background: rgba(99,102,241,.1); }
+[data-theme="dark"] .fd-dia-data      { color: var(--text-primary); }
+[data-theme="dark"] .fd-bar-wrap      { background: var(--bg-tertiary); }
+[data-theme="dark"] .fd-vazio         { color: var(--text-muted); }
+[data-theme="dark"] .fd-aside-body { scrollbar-color: var(--border) transparent; }
+[data-theme="dark"] .fd-aside-body::-webkit-scrollbar-thumb { background: var(--border); }

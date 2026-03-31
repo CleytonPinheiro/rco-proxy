@@ -212,6 +212,9 @@ async function carregarFrequencias(panel, codClasse, ti, di) {
 
         panel.innerHTML = renderTabelaFrequencias(data, codClasse);
 
+        // Atualizar aside de resumo diário
+        atualizarResumoDiario();
+
         // Atualizar drawer se já há aluno selecionado
         if (alunoSelecionado) popularDrawer(alunoSelecionado.nome, alunoSelecionado.numChamada);
 
@@ -396,6 +399,9 @@ async function carregarTodasDisciplinas() {
             if (panel) panel.dataset.loaded = 'true';
         } catch { /* silencioso */ }
     }));
+
+    // Atualizar aside de resumo diário com todos os dados carregados
+    atualizarResumoDiario();
 }
 
 function fecharDrawerAluno() {
@@ -1457,6 +1463,135 @@ function mostrarNotificacaoSync(msg, erro = false) {
 function iniciais2(nome) {
     const p = String(nome).trim().split(/\s+/);
     return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ASIDE — Resumo Diário de Presença
+// Agrega TODOS os registros de TODAS as disciplinas carregadas por data,
+// sem distinção de turma ou disciplina — visão sintética do dia.
+// ══════════════════════════════════════════════════════════════════════════════
+
+let fdRecolhido = false;
+
+function toggleResumoDiario() {
+    fdRecolhido = !fdRecolhido;
+    const aside = document.getElementById('fdAside');
+    const btn   = document.getElementById('fdToggleBtn');
+    aside.classList.toggle('fd-aside--recolhido', fdRecolhido);
+    btn.textContent = fdRecolhido ? '›' : '‹';
+    btn.title       = fdRecolhido ? 'Expandir painel' : 'Recolher painel';
+}
+
+function atualizarResumoDiario() {
+    const corpo       = document.getElementById('fdCorpo');
+    if (!corpo) return;
+
+    const disciplinas = Object.values(disciplinaCache);
+    if (!disciplinas.length) return; // mantém placeholder
+
+    // ── Agregar por data (DD/MM) ───────────────────────────────────────────
+    // Conta presença e falta por "slot de aula" (aluno × aula × disciplina)
+    // isso dá a visão crua do dia sem classificar por turma/disciplina.
+    const porData = {}; // { 'DD/MM': { presencas, faltas, aulas, turmasSet } }
+
+    for (const disc of disciplinas) {
+        for (const codAula of (disc.codAulas || [])) {
+            const dataDia = (disc.aulaDatas || {})[codAula];
+            if (!dataDia) continue;
+
+            if (!porData[dataDia]) {
+                porData[dataDia] = { presencas: 0, faltas: 0, aulas: 0, turmasSet: new Set() };
+            }
+
+            porData[dataDia].turmasSet.add(disc.nomeTurma || disc.codTurma);
+            porData[dataDia].aulas++;
+
+            for (const aluno of (disc.alunos || [])) {
+                const val = (aluno.frequencias || {})[codAula];
+                if (val === 'C') {
+                    porData[dataDia].presencas++;
+                } else if (val) {
+                    porData[dataDia].faltas++;
+                }
+            }
+        }
+    }
+
+    const datas = Object.keys(porData);
+    if (!datas.length) return;
+
+    // Ordenar mais recente primeiro (formato DD/MM — mesmo ano)
+    datas.sort((a, b) => {
+        const [da, ma] = a.split('/').map(Number);
+        const [db, mb] = b.split('/').map(Number);
+        return mb !== ma ? mb - ma : db - da;
+    });
+
+    // ── Calcular totais globais para o resumo rápido ───────────────────────
+    let gtP = 0, gtF = 0;
+    datas.forEach(d => { gtP += porData[d].presencas; gtF += porData[d].faltas; });
+    const gtTotal  = gtP + gtF;
+    const gtPct    = gtTotal > 0 ? Math.round((gtP / gtTotal) * 100) : null;
+    const gtColor  = gtPct === null ? '#e5e7eb' : gtPct >= 80 ? '#22c55e' : gtPct >= 60 ? '#f59e0b' : '#ef4444';
+    const gtClass  = gtPct === null ? '' : gtPct >= 80 ? 'fd-pct-ok' : gtPct >= 60 ? 'fd-pct-alerta' : 'fd-pct-critico';
+
+    const diasHTML = datas.map((data, i) => {
+        const d      = porData[data];
+        const total  = d.presencas + d.faltas;
+        const pct    = total > 0 ? Math.round((d.presencas / total) * 100) : null;
+        const pctStr = pct !== null ? `${pct}%` : '—';
+        const barW   = pct !== null ? Math.min(100, pct) : 0;
+        const barC   = pct === null ? '#e5e7eb' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+        const pctCls = pct === null ? '' : pct >= 80 ? 'fd-pct-ok' : pct >= 60 ? 'fd-pct-alerta' : 'fd-pct-critico';
+        const turmas = d.turmasSet.size;
+
+        // Converter DD/MM para dia da semana
+        const [dia, mes] = data.split('/').map(Number);
+        const anoRef = new Date().getFullYear();
+        const dataObj = new Date(anoRef, mes - 1, dia);
+        const semana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dataObj.getDay()] || '';
+
+        return `
+        <div class="fd-dia${i === 0 ? ' fd-dia--hoje' : ''}">
+            <div class="fd-dia-topo">
+                <div class="fd-dia-data-wrap">
+                    <span class="fd-dia-data">${data}</span>
+                    <span class="fd-dia-semana">${semana}</span>
+                    ${i === 0 ? '<span class="fd-hoje-tag">Mais recente</span>' : ''}
+                </div>
+                <span class="fd-dia-pct ${pctCls}">${pctStr}</span>
+            </div>
+            <div class="fd-bar-wrap">
+                <div class="fd-bar" style="width:${barW}%;background:${barC}"></div>
+            </div>
+            <div class="fd-dia-stats">
+                <span class="fd-stat-p">✓ ${d.presencas}</span>
+                <span class="fd-stat-sep">·</span>
+                <span class="fd-stat-f">✗ ${d.faltas}</span>
+                <span class="fd-stat-sep">·</span>
+                <span class="fd-stat-t">${turmas} turma${turmas !== 1 ? 's' : ''}</span>
+            </div>
+        </div>`;
+    }).join('');
+
+    corpo.innerHTML = `
+        <div class="fd-global">
+            <div class="fd-global-row">
+                <span class="fd-global-label">Total geral</span>
+                <span class="fd-global-pct ${gtClass}">${gtPct !== null ? gtPct + '%' : '—'}</span>
+            </div>
+            <div class="fd-bar-wrap fd-bar-global-wrap">
+                <div class="fd-bar" style="width:${gtPct || 0}%;background:${gtColor}"></div>
+            </div>
+            <div class="fd-global-sub">
+                <span class="fd-stat-p">✓ ${gtP} pres.</span>
+                <span class="fd-stat-sep">·</span>
+                <span class="fd-stat-f">✗ ${gtF} falt.</span>
+            </div>
+        </div>
+        <div class="fd-divider"></div>
+        <div class="fd-dias-titulo">Por dia <span class="fd-dias-count">${datas.length}</span></div>
+        ${diasHTML}`;
 }
 
 init();
