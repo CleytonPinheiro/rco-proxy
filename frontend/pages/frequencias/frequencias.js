@@ -2,8 +2,9 @@
 
 const API = '';
 let acessosCache   = null;
-const disciplinaCache = {};   // { codClasse: { nomeDisciplina, cor, codClasse, alunos, codAulas, aulaDatas } }
-let alunoSelecionado = null;  // { nome, numChamada }
+const disciplinaCache   = {};        // { codClasse: { nomeDisciplina, cor, ... } }
+const disciplinasAbertas = new Set(); // codClasse dos painéis ABERTOS no momento
+let alunoSelecionado = null;          // { nome, numChamada }
 
 // ── Auth guard ───────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -165,24 +166,34 @@ function toggleDisc(btn, ti) {
     const panel     = document.getElementById(`freq-panel-${ti}-${di}`);
     const open      = btn.getAttribute('aria-expanded') === 'true';
 
+    // Fechar irmãos abertos no mesmo card e removê-los do Set
     const card = btn.closest('.turma-card');
     card.querySelectorAll('.disc-btn[aria-expanded="true"]').forEach(b => {
         if (b !== btn) {
             b.setAttribute('aria-expanded', 'false');
             const p = document.getElementById(`freq-panel-${ti}-${b.dataset.di}`);
             if (p) p.style.display = 'none';
+            disciplinasAbertas.delete(b.dataset.codclasse);
         }
     });
 
     if (!open) {
+        // Abrindo → adiciona ao Set (atualizarResumoDiario é chamado após load)
         btn.setAttribute('aria-expanded', 'true');
         panel.style.display = 'block';
+        disciplinasAbertas.add(codClasse);
         if (panel.dataset.loaded === 'false') {
             carregarFrequencias(panel, codClasse, ti, di);
+        } else {
+            // Dados já em cache: atualizar aside imediatamente
+            atualizarResumoDiario();
         }
     } else {
+        // Fechando → remove do Set e limpa o aside se ficou vazio
         btn.setAttribute('aria-expanded', 'false');
         panel.style.display = 'none';
+        disciplinasAbertas.delete(codClasse);
+        atualizarResumoDiario();
     }
 }
 
@@ -1483,11 +1494,22 @@ function toggleResumoDiario() {
 }
 
 function atualizarResumoDiario() {
-    const corpo       = document.getElementById('fdCorpo');
+    const corpo = document.getElementById('fdCorpo');
     if (!corpo) return;
 
-    const disciplinas = Object.values(disciplinaCache);
-    if (!disciplinas.length) return; // mantém placeholder
+    // Somente disciplinas cujo painel está ABERTO no momento
+    const disciplinas = Object.values(disciplinaCache)
+        .filter(d => disciplinasAbertas.has(String(d.codClasse)));
+
+    // Nenhuma disciplina aberta → volta ao placeholder
+    if (!disciplinas.length) {
+        corpo.innerHTML = `
+            <div class="fd-vazio">
+                <div class="fd-vazio-icon">📊</div>
+                <p>Abra uma disciplina no accordion para ver o resumo do dia.</p>
+            </div>`;
+        return;
+    }
 
     // ── Agregar por data (DD/MM) ───────────────────────────────────────────
     // Conta presença e falta por "slot de aula" (aluno × aula × disciplina)
