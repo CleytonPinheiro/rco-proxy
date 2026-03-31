@@ -12,3 +12,9 @@ id = "c1LW17ADk0BzT7qB0SDWZ"
 uri = "file://EduSync_Insomnia.json"
 type = "unspecified"
 title = "EduSync_Insomnia.json — Coleção Insomnia completa"
+
+[[outputs]]
+id = "dgS-kJSZHI0YSV-qx9k0B"
+uri = "file://insomnia_edusync.json"
+type = "unspecified"
+title = "EduSync — Coleção Insomnia"

@@ -1,0 +1,966 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-03-31T00:00:00.000Z",
+  "__export_source": "EduSync API Collection v1.0",
+  "resources": [
+
+    {
+      "_id": "wrk_edusync",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "EduSync API",
+      "description": "Coleção completa da API do EduSync — Sistema de Gestão Escolar"
+    },
+
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_edusync",
+      "name": "Ambiente Local",
+      "data": {
+        "base_url": "http://localhost:5000/api",
+        "cookie": ""
+      }
+    },
+
+    { "_id": "fld_auth",       "_type": "request_group", "parentId": "wrk_edusync", "name": "🔐 Auth",              "description": "Login, logout, perfil do usuário" },
+    { "_id": "fld_admin",      "_type": "request_group", "parentId": "wrk_edusync", "name": "⚙️ Admin",             "description": "Gerenciamento de usuários, escolas, audit log" },
+    { "_id": "fld_rco",        "_type": "request_group", "parentId": "wrk_edusync", "name": "📚 RCO / Pedagógico",  "description": "Dados do RCO Digital: turmas, frequências, notas" },
+    { "_id": "fld_alunos",     "_type": "request_group", "parentId": "wrk_edusync", "name": "🎓 Alunos",            "description": "Consulta de alunos, responsáveis" },
+    { "_id": "fld_comportamento","_type": "request_group","parentId": "wrk_edusync","name": "📋 Comportamento",     "description": "Registros de ocorrências e reconhecimentos" },
+    { "_id": "fld_crachas",    "_type": "request_group", "parentId": "wrk_edusync", "name": "🪪 Crachás",           "description": "Controle de crachás de alunos" },
+    { "_id": "fld_materiais",  "_type": "request_group", "parentId": "wrk_edusync", "name": "📦 Materiais",         "description": "Estoque e gestão de materiais" },
+    { "_id": "fld_livros",     "_type": "request_group", "parentId": "wrk_edusync", "name": "📖 Livros & Empréstimos","description": "Acervo bibliográfico e controle de empréstimos" },
+    { "_id": "fld_grupos",     "_type": "request_group", "parentId": "wrk_edusync", "name": "👥 Grupos & Atividades","description": "Grupos de alunos e atividades vinculadas" },
+    { "_id": "fld_presenca",   "_type": "request_group", "parentId": "wrk_edusync", "name": "✅ Presença Diária",   "description": "Controle de presença e ausência" },
+    { "_id": "fld_cozinha",    "_type": "request_group", "parentId": "wrk_edusync", "name": "🍽️ Cozinha",          "description": "Confirmação de refeições" },
+    { "_id": "fld_circulacao", "_type": "request_group", "parentId": "wrk_edusync", "name": "🚪 Circulação",        "description": "Controle de entrada/saída de alunos" },
+    { "_id": "fld_comunicados","_type": "request_group", "parentId": "wrk_edusync", "name": "💬 Comunicados",       "description": "Envio e gestão de comunicados" },
+    { "_id": "fld_mapa",       "_type": "request_group", "parentId": "wrk_edusync", "name": "🗺️ Mapa de Sala",     "description": "Configuração do mapa de sala" },
+    { "_id": "fld_classroom",  "_type": "request_group", "parentId": "wrk_edusync", "name": "🏫 Google Classroom",  "description": "Integração com Google Classroom" },
+    { "_id": "fld_portal",     "_type": "request_group", "parentId": "wrk_edusync", "name": "📱 Portal do Aluno",   "description": "Rotas do portal OAuth do aluno" },
+    { "_id": "fld_sync",       "_type": "request_group", "parentId": "wrk_edusync", "name": "🔄 Sincronização",     "description": "Sync com Supabase e RCO" },
+    { "_id": "fld_debug",      "_type": "request_group", "parentId": "wrk_edusync", "name": "🐛 Debug",             "description": "Rotas de diagnóstico (dev only)" },
+
+
+    {
+      "_id": "req_login", "_type": "request", "parentId": "fld_auth",
+      "name": "Login", "method": "POST",
+      "url": "{{ base_url }}/auth/login",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"cpf\": \"00000000000\",\n  \"senha\": \"sua_senha_rco\"\n}" }
+    },
+    {
+      "_id": "req_logout", "_type": "request", "parentId": "fld_auth",
+      "name": "Logout", "method": "POST",
+      "url": "{{ base_url }}/auth/logout",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_me", "_type": "request", "parentId": "fld_auth",
+      "name": "Usuário autenticado (/me)", "method": "GET",
+      "url": "{{ base_url }}/me",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_perfil_put", "_type": "request", "parentId": "fld_auth",
+      "name": "Atualizar perfil", "method": "PUT",
+      "url": "{{ base_url }}/auth/perfil",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Professor Exemplo\",\n  \"foto\": null\n}" }
+    },
+    {
+      "_id": "req_setup_status", "_type": "request", "parentId": "fld_auth",
+      "name": "Setup Status", "method": "GET",
+      "url": "{{ base_url }}/setup-status",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_status", "_type": "request", "parentId": "fld_auth",
+      "name": "Status do servidor", "method": "GET",
+      "url": "{{ base_url }}/status",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_configurar", "_type": "request", "parentId": "fld_auth",
+      "name": "Configurar (primeiro acesso)", "method": "POST",
+      "url": "{{ base_url }}/configurar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"cpf\": \"00000000000\",\n  \"senha\": \"sua_senha_rco\",\n  \"nomePerfil\": \"admin\"\n}" }
+    },
+
+
+    {
+      "_id": "req_admin_usuarios_list", "_type": "request", "parentId": "fld_admin",
+      "name": "Listar usuários", "method": "GET",
+      "url": "{{ base_url }}/admin/usuarios",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_usuarios_create", "_type": "request", "parentId": "fld_admin",
+      "name": "Criar usuário", "method": "POST",
+      "url": "{{ base_url }}/admin/usuarios",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"cpf\": \"00000000000\",\n  \"nome\": \"Professor Novo\",\n  \"perfil\": \"professor\",\n  \"ativo\": true\n}" }
+    },
+    {
+      "_id": "req_admin_usuarios_update", "_type": "request", "parentId": "fld_admin",
+      "name": "Atualizar usuário", "method": "PUT",
+      "url": "{{ base_url }}/admin/usuarios/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"perfil\": \"coordenador\",\n  \"ativo\": true\n}" }
+    },
+    {
+      "_id": "req_admin_usuarios_delete", "_type": "request", "parentId": "fld_admin",
+      "name": "Remover usuário", "method": "DELETE",
+      "url": "{{ base_url }}/admin/usuarios/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_perfis", "_type": "request", "parentId": "fld_admin",
+      "name": "Listar perfis disponíveis", "method": "GET",
+      "url": "{{ base_url }}/admin/perfis",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_audit", "_type": "request", "parentId": "fld_admin",
+      "name": "Audit log", "method": "GET",
+      "url": "{{ base_url }}/admin/audit-log",
+      "parameters": [
+        { "name": "limit", "value": "50" },
+        { "name": "offset", "value": "0" }
+      ],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_escolas_list", "_type": "request", "parentId": "fld_admin",
+      "name": "Listar escolas", "method": "GET",
+      "url": "{{ base_url }}/admin/escolas",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_escolas_create", "_type": "request", "parentId": "fld_admin",
+      "name": "Criar escola", "method": "POST",
+      "url": "{{ base_url }}/admin/escolas",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"C E EXEMPLO\",\n  \"codEstabelecimento\": \"12345\"\n}" }
+    },
+    {
+      "_id": "req_admin_escolas_update", "_type": "request", "parentId": "fld_admin",
+      "name": "Atualizar escola", "method": "PUT",
+      "url": "{{ base_url }}/admin/escolas/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"C E EXEMPLO ATUALIZADO\"\n}" }
+    },
+    {
+      "_id": "req_admin_escolas_delete", "_type": "request", "parentId": "fld_admin",
+      "name": "Remover escola", "method": "DELETE",
+      "url": "{{ base_url }}/admin/escolas/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_rco_estab", "_type": "request", "parentId": "fld_admin",
+      "name": "Estabelecimentos do RCO", "method": "GET",
+      "url": "{{ base_url }}/admin/rco-estabelecimentos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_impersonar", "_type": "request", "parentId": "fld_admin",
+      "name": "Impersonar usuário (admin)", "method": "POST",
+      "url": "{{ base_url }}/admin/impersonar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"cpf\": \"00000000000\"\n}" }
+    },
+    {
+      "_id": "req_admin_impersonar_sair", "_type": "request", "parentId": "fld_admin",
+      "name": "Sair da impersonação", "method": "POST",
+      "url": "{{ base_url }}/admin/impersonar/sair",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_admin_seeds_delete", "_type": "request", "parentId": "fld_admin",
+      "name": "Remover dados seed (dev)", "method": "DELETE",
+      "url": "{{ base_url }}/admin/seeds",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_acessos", "_type": "request", "parentId": "fld_rco",
+      "name": "Acessos / Turmas do usuário", "method": "GET",
+      "url": "{{ base_url }}/acessos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_alunos_rco", "_type": "request", "parentId": "fld_rco",
+      "name": "Alunos do RCO", "method": "GET",
+      "url": "{{ base_url }}/alunos-rco",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_frequencias", "_type": "request", "parentId": "fld_rco",
+      "name": "Frequências", "method": "GET",
+      "url": "{{ base_url }}/frequencias",
+      "parameters": [
+        { "name": "escola", "value": "C E EXEMPLO" }
+      ],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_pedagogico", "_type": "request", "parentId": "fld_rco",
+      "name": "Painel Pedagógico", "method": "GET",
+      "url": "{{ base_url }}/pedagogico",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_pedagogico_retorno", "_type": "request", "parentId": "fld_rco",
+      "name": "Retorno Pedagógico", "method": "GET",
+      "url": "{{ base_url }}/pedagogico/retorno",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_pedagogico_retorno_confirmar", "_type": "request", "parentId": "fld_rco",
+      "name": "Confirmar Retorno Pedagógico", "method": "POST",
+      "url": "{{ base_url }}/pedagogico/retorno/confirmar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\",\n  \"codAluno\": \"67890\"\n}" }
+    },
+    {
+      "_id": "req_pedagogico_obs_rco", "_type": "request", "parentId": "fld_rco",
+      "name": "Observações RCO", "method": "GET",
+      "url": "{{ base_url }}/pedagogico/observacoes-rco",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_pedagogico_nota", "_type": "request", "parentId": "fld_rco",
+      "name": "Lançar nota", "method": "POST",
+      "url": "{{ base_url }}/pedagogico/nota",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\",\n  \"codAluno\": \"67890\",\n  \"nota\": 85,\n  \"codDisciplina\": \"1\"\n}" }
+    },
+    {
+      "_id": "req_pedagogico_sync_rco", "_type": "request", "parentId": "fld_rco",
+      "name": "Sincronizar com RCO", "method": "POST",
+      "url": "{{ base_url }}/pedagogico/sincronizar-rco",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\"\n}" }
+    },
+    {
+      "_id": "req_observacoes", "_type": "request", "parentId": "fld_rco",
+      "name": "Observações gerais", "method": "GET",
+      "url": "{{ base_url }}/observacoes",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_alunos_list", "_type": "request", "parentId": "fld_alunos",
+      "name": "Listar alunos", "method": "GET",
+      "url": "{{ base_url }}/alunos",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_alunos_turmas", "_type": "request", "parentId": "fld_alunos",
+      "name": "Lista de turmas do usuário", "method": "GET",
+      "url": "{{ base_url }}/alunos/turmas/lista",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_alunos_get", "_type": "request", "parentId": "fld_alunos",
+      "name": "Buscar aluno por registro", "method": "GET",
+      "url": "{{ base_url }}/alunos/:registro",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_responsaveis_get", "_type": "request", "parentId": "fld_alunos",
+      "name": "Responsáveis do aluno", "method": "GET",
+      "url": "{{ base_url }}/responsaveis/:cod",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_responsaveis_put", "_type": "request", "parentId": "fld_alunos",
+      "name": "Atualizar responsável", "method": "PUT",
+      "url": "{{ base_url }}/responsaveis/:cod",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"telefone\": \"(41) 99999-9999\",\n  \"email\": \"responsavel@email.com\"\n}" }
+    },
+
+
+    {
+      "_id": "req_comportamento_list", "_type": "request", "parentId": "fld_comportamento",
+      "name": "Listar ocorrências", "method": "GET",
+      "url": "{{ base_url }}/comportamento",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_comportamento_create", "_type": "request", "parentId": "fld_comportamento",
+      "name": "Registrar ocorrência", "method": "POST",
+      "url": "{{ base_url }}/comportamento",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codAluno\": \"67890\",\n  \"tipo\": \"negativo\",\n  \"nivel\": 1,\n  \"descricao\": \"Descricao da ocorrência\",\n  \"codTurma\": \"12345\"\n}" }
+    },
+    {
+      "_id": "req_comportamento_delete", "_type": "request", "parentId": "fld_comportamento",
+      "name": "Remover ocorrência", "method": "DELETE",
+      "url": "{{ base_url }}/comportamento/:id",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_crachas_list", "_type": "request", "parentId": "fld_crachas",
+      "name": "Listar crachás", "method": "GET",
+      "url": "{{ base_url }}/crachas",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_crachas_status", "_type": "request", "parentId": "fld_crachas",
+      "name": "Atualizar status do crachá", "method": "POST",
+      "url": "{{ base_url }}/crachas/status",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codAluno\": \"67890\",\n  \"status\": \"entregue\"\n}" }
+    },
+
+
+    {
+      "_id": "req_materiais_list", "_type": "request", "parentId": "fld_materiais",
+      "name": "Listar materiais", "method": "GET",
+      "url": "{{ base_url }}/materiais",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_materiais_get", "_type": "request", "parentId": "fld_materiais",
+      "name": "Buscar material por código", "method": "GET",
+      "url": "{{ base_url }}/materiais/:codigo",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_materiais_create", "_type": "request", "parentId": "fld_materiais",
+      "name": "Cadastrar material", "method": "POST",
+      "url": "{{ base_url }}/materiais",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Pincel Atômico\",\n  \"codigo\": \"MAT001\",\n  \"quantidade\": 10,\n  \"categoria\": \"papelaria\"\n}" }
+    },
+    {
+      "_id": "req_materiais_update", "_type": "request", "parentId": "fld_materiais",
+      "name": "Atualizar material", "method": "PUT",
+      "url": "{{ base_url }}/materiais/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"quantidade\": 15\n}" }
+    },
+    {
+      "_id": "req_materiais_delete", "_type": "request", "parentId": "fld_materiais",
+      "name": "Remover material", "method": "DELETE",
+      "url": "{{ base_url }}/materiais/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_materiais_stats", "_type": "request", "parentId": "fld_materiais",
+      "name": "Estatísticas de materiais", "method": "GET",
+      "url": "{{ base_url }}/estatisticas/materiais",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_livros_list", "_type": "request", "parentId": "fld_livros",
+      "name": "Listar livros do acervo", "method": "GET",
+      "url": "{{ base_url }}/livros",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_livros_create", "_type": "request", "parentId": "fld_livros",
+      "name": "Cadastrar livro", "method": "POST",
+      "url": "{{ base_url }}/livros",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"titulo\": \"Dom Casmurro\",\n  \"autor\": \"Machado de Assis\",\n  \"isbn\": \"9788535902778\",\n  \"quantidade\": 3\n}" }
+    },
+    {
+      "_id": "req_livros_update", "_type": "request", "parentId": "fld_livros",
+      "name": "Atualizar livro", "method": "PUT",
+      "url": "{{ base_url }}/livros/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"quantidade\": 5\n}" }
+    },
+    {
+      "_id": "req_livros_delete", "_type": "request", "parentId": "fld_livros",
+      "name": "Remover livro", "method": "DELETE",
+      "url": "{{ base_url }}/livros/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_emprestimos_list", "_type": "request", "parentId": "fld_livros",
+      "name": "Listar empréstimos (legado)", "method": "GET",
+      "url": "{{ base_url }}/emprestimos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_emprestimos_create", "_type": "request", "parentId": "fld_livros",
+      "name": "Registrar empréstimo (legado)", "method": "POST",
+      "url": "{{ base_url }}/emprestimos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codAluno\": \"67890\",\n  \"livroId\": 1\n}" }
+    },
+    {
+      "_id": "req_emprestimos_devolver", "_type": "request", "parentId": "fld_livros",
+      "name": "Devolver empréstimo (legado)", "method": "PUT",
+      "url": "{{ base_url }}/emprestimos/:id/devolver",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_livros_emp_list", "_type": "request", "parentId": "fld_livros",
+      "name": "Listar empréstimos", "method": "GET",
+      "url": "{{ base_url }}/livros-emprestimos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_livros_emp_create", "_type": "request", "parentId": "fld_livros",
+      "name": "Registrar empréstimo", "method": "POST",
+      "url": "{{ base_url }}/livros-emprestimos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codAluno\": \"67890\",\n  \"livroId\": 1,\n  \"dataDevolucaoPrevista\": \"2025-04-30\"\n}" }
+    },
+    {
+      "_id": "req_livros_emp_devolver", "_type": "request", "parentId": "fld_livros",
+      "name": "Devolver empréstimo", "method": "PUT",
+      "url": "{{ base_url }}/livros-emprestimos/:id/devolver",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_livros_emp_perdido", "_type": "request", "parentId": "fld_livros",
+      "name": "Marcar como perdido", "method": "PUT",
+      "url": "{{ base_url }}/livros-emprestimos/:id/perdido",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_livros_emp_aluno", "_type": "request", "parentId": "fld_livros",
+      "name": "Empréstimos de um aluno", "method": "GET",
+      "url": "{{ base_url }}/livros-emprestimos/aluno/:cod",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_grupos_list", "_type": "request", "parentId": "fld_grupos",
+      "name": "Listar grupos", "method": "GET",
+      "url": "{{ base_url }}/grupos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_grupos_create", "_type": "request", "parentId": "fld_grupos",
+      "name": "Criar grupo", "method": "POST",
+      "url": "{{ base_url }}/grupos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Grupo de Reforço\",\n  \"descricao\": \"Alunos com dificuldade em matemática\"\n}" }
+    },
+    {
+      "_id": "req_grupos_update", "_type": "request", "parentId": "fld_grupos",
+      "name": "Atualizar grupo", "method": "PUT",
+      "url": "{{ base_url }}/grupos/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Nome Atualizado\"\n}" }
+    },
+    {
+      "_id": "req_grupos_delete", "_type": "request", "parentId": "fld_grupos",
+      "name": "Remover grupo", "method": "DELETE",
+      "url": "{{ base_url }}/grupos/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_grupos_add_aluno", "_type": "request", "parentId": "fld_grupos",
+      "name": "Adicionar aluno ao grupo", "method": "POST",
+      "url": "{{ base_url }}/grupos/:id/alunos",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codMatrizAluno\": \"67890\"\n}" }
+    },
+    {
+      "_id": "req_grupos_remove_aluno", "_type": "request", "parentId": "fld_grupos",
+      "name": "Remover aluno do grupo", "method": "DELETE",
+      "url": "{{ base_url }}/grupos/:id/alunos/:codMatrizAluno",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_grupos_add_ativ", "_type": "request", "parentId": "fld_grupos",
+      "name": "Adicionar atividade ao grupo", "method": "POST",
+      "url": "{{ base_url }}/grupos/:id/atividades",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"titulo\": \"Atividade 1\",\n  \"descricao\": \"Descrição da atividade\",\n  \"dataEntrega\": \"2025-04-15\"\n}" }
+    },
+    {
+      "_id": "req_grupos_update_ativ", "_type": "request", "parentId": "fld_grupos",
+      "name": "Atualizar atividade do grupo", "method": "PUT",
+      "url": "{{ base_url }}/grupos/:id/atividades/:ativId",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"titulo\": \"Atividade Atualizada\"\n}" }
+    },
+    {
+      "_id": "req_grupos_delete_ativ", "_type": "request", "parentId": "fld_grupos",
+      "name": "Remover atividade do grupo", "method": "DELETE",
+      "url": "{{ base_url }}/grupos/:id/atividades/:ativId",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_atividades_list", "_type": "request", "parentId": "fld_grupos",
+      "name": "Listar atividades", "method": "GET",
+      "url": "{{ base_url }}/atividades",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_atividades_salvar", "_type": "request", "parentId": "fld_grupos",
+      "name": "Salvar atividade", "method": "POST",
+      "url": "{{ base_url }}/atividades/salvar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"grupoId\": 1,\n  \"titulo\": \"Lista de exercícios\",\n  \"descricao\": \"Capítulos 1 a 5\"\n}" }
+    },
+
+
+    {
+      "_id": "req_presenca_get", "_type": "request", "parentId": "fld_presenca",
+      "name": "Presença do dia", "method": "GET",
+      "url": "{{ base_url }}/presenca-diaria",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_presenca_confirmar", "_type": "request", "parentId": "fld_presenca",
+      "name": "Confirmar presença", "method": "PUT",
+      "url": "{{ base_url }}/presenca-diaria/confirmar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\",\n  \"data\": \"2025-03-31\",\n  \"ausentes\": [\"67890\", \"67891\"]\n}" }
+    },
+    {
+      "_id": "req_presenca_historico", "_type": "request", "parentId": "fld_presenca",
+      "name": "Histórico de presença", "method": "GET",
+      "url": "{{ base_url }}/presenca-diaria/historico",
+      "parameters": [
+        { "name": "codTurma", "value": "12345" },
+        { "name": "mes", "value": "3" },
+        { "name": "ano", "value": "2025" }
+      ],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_presenca_sync", "_type": "request", "parentId": "fld_presenca",
+      "name": "Sincronizar presença", "method": "POST",
+      "url": "{{ base_url }}/presenca-diaria/sync",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_presenca_seed", "_type": "request", "parentId": "fld_presenca",
+      "name": "Seed de presença (dev)", "method": "POST",
+      "url": "{{ base_url }}/presenca-diaria/seed",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_cozinha_get", "_type": "request", "parentId": "fld_cozinha",
+      "name": "Turmas para refeição do dia", "method": "GET",
+      "url": "{{ base_url }}/cozinha",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cozinha_confirmar", "_type": "request", "parentId": "fld_cozinha",
+      "name": "Confirmar refeição", "method": "POST",
+      "url": "{{ base_url }}/cozinha/confirmar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\",\n  \"data\": \"2025-03-31\",\n  \"totalAlunos\": 28\n}" }
+    },
+    {
+      "_id": "req_cozinha_historico", "_type": "request", "parentId": "fld_cozinha",
+      "name": "Histórico de refeições", "method": "GET",
+      "url": "{{ base_url }}/cozinha/historico",
+      "parameters": [{ "name": "mes", "value": "3" }],
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_circ_ambientes", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Listar ambientes", "method": "GET",
+      "url": "{{ base_url }}/circulacao/ambientes",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_ambientes_create", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Criar ambiente", "method": "POST",
+      "url": "{{ base_url }}/circulacao/ambientes",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Biblioteca\",\n  \"tipo\": \"interno\"\n}" }
+    },
+    {
+      "_id": "req_circ_ambientes_update", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Atualizar ambiente", "method": "PUT",
+      "url": "{{ base_url }}/circulacao/ambientes/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Biblioteca Central\"\n}" }
+    },
+    {
+      "_id": "req_circ_ambientes_delete", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Remover ambiente", "method": "DELETE",
+      "url": "{{ base_url }}/circulacao/ambientes/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_ativos", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Alunos em circulação (ativos)", "method": "GET",
+      "url": "{{ base_url }}/circulacao/ativos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_historico", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Histórico de circulação", "method": "GET",
+      "url": "{{ base_url }}/circulacao/historico",
+      "parameters": [{ "name": "data", "value": "2025-03-31" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_scan", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Scan de entrada (QR/crachá)", "method": "POST",
+      "url": "{{ base_url }}/circulacao/scan",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codAluno\": \"67890\",\n  \"ambienteId\": 1\n}" }
+    },
+    {
+      "_id": "req_circ_saida", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Registrar saída", "method": "POST",
+      "url": "{{ base_url }}/circulacao/saida/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_quiosque_scan", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Scan quiosque (auto-atendimento)", "method": "POST",
+      "url": "{{ base_url }}/circulacao/quiosque/scan",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codAluno\": \"67890\"\n}" }
+    },
+    {
+      "_id": "req_circ_aluno", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Circulação de um aluno", "method": "GET",
+      "url": "{{ base_url }}/circulacao/aluno/:cod",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_quiosque_ativos", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Ativos no quiosque", "method": "GET",
+      "url": "{{ base_url }}/circulacao/quiosque/ativos",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_circ_quiosque_historico", "_type": "request", "parentId": "fld_circulacao",
+      "name": "Histórico do quiosque", "method": "GET",
+      "url": "{{ base_url }}/circulacao/quiosque/historico",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_com_list", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Listar comunicados", "method": "GET",
+      "url": "{{ base_url }}/comunicados",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_com_config_get", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Configuração de comunicados", "method": "GET",
+      "url": "{{ base_url }}/comunicados/config",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_com_config_put", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Atualizar configuração", "method": "PUT",
+      "url": "{{ base_url }}/comunicados/config",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"whatsappAtivo\": true,\n  \"emailAtivo\": false\n}" }
+    },
+    {
+      "_id": "req_com_stats", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Estatísticas de comunicados", "method": "GET",
+      "url": "{{ base_url }}/comunicados/stats",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_com_gerar", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Gerar comunicado", "method": "POST",
+      "url": "{{ base_url }}/comunicados/gerar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\",\n  \"tipo\": \"frequencia\",\n  \"codAluno\": \"67890\"\n}" }
+    },
+    {
+      "_id": "req_com_enviar", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Enviar comunicado", "method": "POST",
+      "url": "{{ base_url }}/comunicados/enviar",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"comunicadoId\": 1,\n  \"canal\": \"whatsapp\"\n}" }
+    },
+    {
+      "_id": "req_com_resposta", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Registrar resposta", "method": "POST",
+      "url": "{{ base_url }}/comunicados/resposta",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"comunicadoId\": 1,\n  \"resposta\": \"Ciente.\"\n}" }
+    },
+    {
+      "_id": "req_com_status", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Atualizar status do comunicado", "method": "PUT",
+      "url": "{{ base_url }}/comunicados/:id/status",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"status\": \"lido\"\n}" }
+    },
+    {
+      "_id": "req_com_contato", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Atualizar contato do comunicado", "method": "PUT",
+      "url": "{{ base_url }}/comunicados/:id/contato",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"telefone\": \"(41) 99999-9999\"\n}" }
+    },
+    {
+      "_id": "req_com_validar", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Validar comunicado", "method": "PUT",
+      "url": "{{ base_url }}/comunicados/:id/validar",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_com_delete", "_type": "request", "parentId": "fld_comunicados",
+      "name": "Remover comunicado", "method": "DELETE",
+      "url": "{{ base_url }}/comunicados/:id",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_mapa_get", "_type": "request", "parentId": "fld_mapa",
+      "name": "Mapa de sala da turma", "method": "GET",
+      "url": "{{ base_url }}/mapa-sala",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_mapa_save", "_type": "request", "parentId": "fld_mapa",
+      "name": "Salvar mapa de sala", "method": "POST",
+      "url": "{{ base_url }}/mapa-sala",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"codTurma\": \"12345\",\n  \"layout\": [\n    { \"codAluno\": \"67890\", \"linha\": 1, \"coluna\": 1 }\n  ]\n}" }
+    },
+
+
+    {
+      "_id": "req_cl_status", "_type": "request", "parentId": "fld_classroom",
+      "name": "Status da integração", "method": "GET",
+      "url": "{{ base_url }}/classroom/status",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_auth_url", "_type": "request", "parentId": "fld_classroom",
+      "name": "URL de autorização OAuth", "method": "GET",
+      "url": "{{ base_url }}/classroom/auth-url",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_callback", "_type": "request", "parentId": "fld_classroom",
+      "name": "Callback OAuth (não chamar manualmente)", "method": "GET",
+      "url": "{{ base_url }}/classroom/callback",
+      "parameters": [{ "name": "code", "value": "AUTH_CODE_AQUI" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_disconnect", "_type": "request", "parentId": "fld_classroom",
+      "name": "Desconectar Classroom", "method": "POST",
+      "url": "{{ base_url }}/classroom/disconnect",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_courses", "_type": "request", "parentId": "fld_classroom",
+      "name": "Listar cursos (turmas)", "method": "GET",
+      "url": "{{ base_url }}/classroom/courses",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_students", "_type": "request", "parentId": "fld_classroom",
+      "name": "Alunos de um curso", "method": "GET",
+      "url": "{{ base_url }}/classroom/courses/:courseId/students",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_coursework", "_type": "request", "parentId": "fld_classroom",
+      "name": "Atividades do curso", "method": "GET",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_submissions", "_type": "request", "parentId": "fld_classroom",
+      "name": "Entregas de uma atividade", "method": "GET",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework/:cwId/submissions",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_pontos_max", "_type": "request", "parentId": "fld_classroom",
+      "name": "Atualizar pontos máx. da atividade", "method": "PATCH",
+      "url": "{{ base_url }}/classroom/courses/:courseId/activities/:activityId/pontos_max",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"pontosMax\": 100\n}" }
+    },
+    {
+      "_id": "req_cl_grade_sub", "_type": "request", "parentId": "fld_classroom",
+      "name": "Atribuir nota a entrega", "method": "PATCH",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nota\": 90\n}" }
+    },
+    {
+      "_id": "req_cl_return_sub", "_type": "request", "parentId": "fld_classroom",
+      "name": "Retornar entrega ao aluno", "method": "POST",
+      "url": "{{ base_url }}/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_ausencias_get", "_type": "request", "parentId": "fld_classroom",
+      "name": "Ausências vinculadas ao Classroom", "method": "GET",
+      "url": "{{ base_url }}/classroom/ausencias",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_ausencias_post", "_type": "request", "parentId": "fld_classroom",
+      "name": "Registrar ausência via Classroom", "method": "POST",
+      "url": "{{ base_url }}/classroom/ausencias",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"courseId\": \"123456\",\n  \"codAluno\": \"67890\",\n  \"data\": \"2025-03-31\"\n}" }
+    },
+    {
+      "_id": "req_cl_ausencias_delete", "_type": "request", "parentId": "fld_classroom",
+      "name": "Remover ausência do Classroom", "method": "DELETE",
+      "url": "{{ base_url }}/classroom/ausencias",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"id\": 1\n}" }
+    },
+    {
+      "_id": "req_cl_groups_list", "_type": "request", "parentId": "fld_classroom",
+      "name": "Listar grupos do Classroom", "method": "GET",
+      "url": "{{ base_url }}/classroom/groups",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_groups_create", "_type": "request", "parentId": "fld_classroom",
+      "name": "Criar grupo no Classroom", "method": "POST",
+      "url": "{{ base_url }}/classroom/groups",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Grupo Reforço\",\n  \"courseId\": \"123456\"\n}" }
+    },
+    {
+      "_id": "req_cl_groups_update", "_type": "request", "parentId": "fld_classroom",
+      "name": "Atualizar grupo do Classroom", "method": "PUT",
+      "url": "{{ base_url }}/classroom/groups/:id",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"nome\": \"Nome Atualizado\"\n}" }
+    },
+    {
+      "_id": "req_cl_groups_delete", "_type": "request", "parentId": "fld_classroom",
+      "name": "Remover grupo do Classroom", "method": "DELETE",
+      "url": "{{ base_url }}/classroom/groups/:id",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_groups_activities", "_type": "request", "parentId": "fld_classroom",
+      "name": "Vincular atividades ao grupo", "method": "PUT",
+      "url": "{{ base_url }}/classroom/groups/:id/activities",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": { "mimeType": "application/json", "text": "{\n  \"activityIds\": [1, 2, 3]\n}" }
+    },
+    {
+      "_id": "req_cl_groups_summary", "_type": "request", "parentId": "fld_classroom",
+      "name": "Resumo do grupo", "method": "GET",
+      "url": "{{ base_url }}/classroom/groups/:id/summary",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_cl_audit", "_type": "request", "parentId": "fld_classroom",
+      "name": "Audit log do Classroom", "method": "GET",
+      "url": "{{ base_url }}/classroom/audit",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_portal_status", "_type": "request", "parentId": "fld_portal",
+      "name": "Status do Portal do Aluno", "method": "GET",
+      "url": "{{ base_url }}/alunos-portal/status",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_portal_auth_url", "_type": "request", "parentId": "fld_portal",
+      "name": "URL OAuth do Portal do Aluno", "method": "GET",
+      "url": "{{ base_url }}/alunos-portal/auth-url",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_portal_callback", "_type": "request", "parentId": "fld_portal",
+      "name": "Callback OAuth (não chamar manualmente)", "method": "GET",
+      "url": "{{ base_url }}/alunos-portal/callback",
+      "parameters": [{ "name": "code", "value": "AUTH_CODE_AQUI" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_portal_atividades", "_type": "request", "parentId": "fld_portal",
+      "name": "Atividades do aluno (portal)", "method": "GET",
+      "url": "{{ base_url }}/alunos-portal/atividades",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_portal_logout", "_type": "request", "parentId": "fld_portal",
+      "name": "Logout do portal do aluno", "method": "POST",
+      "url": "{{ base_url }}/alunos-portal/logout",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_sync_run", "_type": "request", "parentId": "fld_sync",
+      "name": "Forçar sincronização", "method": "POST",
+      "url": "{{ base_url }}/sync",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_sync_log", "_type": "request", "parentId": "fld_sync",
+      "name": "Log de sincronização", "method": "GET",
+      "url": "{{ base_url }}/sync/log",
+      "headers": [], "body": {}
+    },
+
+
+    {
+      "_id": "req_debug_raw_rco", "_type": "request", "parentId": "fld_debug",
+      "name": "Raw RCO response", "method": "GET",
+      "url": "{{ base_url }}/debug/raw-rco",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_debug_alunos_classe", "_type": "request", "parentId": "fld_debug",
+      "name": "Alunos por classe (debug)", "method": "GET",
+      "url": "{{ base_url }}/debug/alunos-classe",
+      "parameters": [{ "name": "codTurma", "value": "12345" }],
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_debug_alunos_rco", "_type": "request", "parentId": "fld_debug",
+      "name": "Alunos RCO raw (debug)", "method": "GET",
+      "url": "{{ base_url }}/debug/alunos-rco",
+      "headers": [], "body": {}
+    },
+    {
+      "_id": "req_debug_rco", "_type": "request", "parentId": "fld_debug",
+      "name": "RCO debug completo", "method": "GET",
+      "url": "{{ base_url }}/debug/rco",
+      "headers": [], "body": {}
+    }
+
+  ]
+}
