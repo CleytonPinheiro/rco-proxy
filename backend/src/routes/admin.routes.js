@@ -4,11 +4,30 @@
  */
 import { Router }          from 'express';
 import pg                  from 'pg';
+import fs                  from 'fs';
+import path                from 'path';
+import { fileURLToPath }   from 'url';
+import { google }          from 'googleapis';
 import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 import { auditLogger }     from '../services/AuditLogger.js';
 import { LISTA_PERFIS }    from '../config/permissions.js';
 
 const { Pool } = pg;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TEACHER_TOKEN_FILE = path.join(__dirname, '../../data/classroom_token.json');
+
+function getTeacherAuth() {
+    const id  = process.env.GOOGLE_CLIENT_ID;
+    const sec = process.env.GOOGLE_CLIENT_SECRET;
+    if (!id || !sec) return null;
+    try {
+        if (!fs.existsSync(TEACHER_TOKEN_FILE)) return null;
+        const token  = JSON.parse(fs.readFileSync(TEACHER_TOKEN_FILE, 'utf8'));
+        const client = new google.auth.OAuth2(id, sec);
+        client.setCredentials(token);
+        return client;
+    } catch { return null; }
+}
 
 export function createAdminRouter({ supabaseAdmin } = {}) {
     const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -403,6 +422,213 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
 
         res.json({ sucesso: true, usuario: req.userSession.toPublic() });
+    });
+
+    /* ════════════════════════════════════════════════════════
+       PREVIEW PORTAL DO ALUNO — visualização pelo admin
+       Permite ao admin ver as atividades de qualquer aluno
+       ou disciplina sem precisar de login Google.
+    ════════════════════════════════════════════════════════ */
+
+    /* GET /api/admin/portal-aluno/cursos — lista cursos do Classroom do professor */
+    router.get('/admin/portal-aluno/cursos', async (_req, res) => {
+        const auth = getTeacherAuth();
+        if (!auth) return res.status(503).json({ erro: 'Google Classroom não conectado.' });
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+            let cursos = [], pageToken;
+            do {
+                const r = await classroom.courses.list({
+                    courseStates: ['ACTIVE'],
+                    teacherId:    'me',
+                    pageSize:     100,
+                    pageToken,
+                });
+                cursos.push(...(r.data.courses || []));
+                pageToken = r.data.nextPageToken;
+            } while (pageToken);
+
+            res.json(cursos.map(c => ({ id: c.id, nome: c.name, secao: c.section || '' })));
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* GET /api/admin/portal-aluno/preview?email=xxx — atividades de um aluno */
+    router.get('/admin/portal-aluno/preview', async (req, res) => {
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ erro: 'email é obrigatório.' });
+
+        const auth = getTeacherAuth();
+        if (!auth) return res.status(503).json({ erro: 'Google Classroom não conectado.' });
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            let todosCursos = [], pageToken;
+            do {
+                const r = await classroom.courses.list({
+                    studentId:    email,
+                    courseStates: ['ACTIVE'],
+                    pageSize:     50,
+                    pageToken,
+                });
+                todosCursos.push(...(r.data.courses || []));
+                pageToken = r.data.nextPageToken;
+            } while (pageToken);
+
+            if (!todosCursos.length) {
+                return res.json({ email, cursos: [], totalPendentes: 0 });
+            }
+
+            const resultados = await Promise.all(todosCursos.map(async curso => {
+                try {
+                    const [subsResp, cwResp] = await Promise.all([
+                        classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     curso.id,
+                            courseWorkId: '-',
+                            userId:       email,
+                            states:       ['NEW', 'CREATED', 'RECLAIMED_BY_STUDENT'],
+                            pageSize:     100,
+                        }),
+                        classroom.courses.courseWork.list({
+                            courseId:         curso.id,
+                            courseWorkStates: ['PUBLISHED'],
+                            orderBy:          'dueDate asc',
+                            pageSize:         100,
+                        }),
+                    ]);
+
+                    const pendingSubs = subsResp.data.studentSubmissions || [];
+                    if (!pendingSubs.length) return null;
+
+                    const cwMap = {};
+                    (cwResp.data.courseWork || []).forEach(cw => { cwMap[cw.id] = cw; });
+
+                    const atividades = pendingSubs.map(sub => {
+                        const cw = cwMap[sub.courseWorkId];
+                        if (!cw) return null;
+                        const dueDate = cw.dueDate;
+                        let prazo = null, prazoIso = null, vencida = false;
+                        if (dueDate?.year) {
+                            const d = String(dueDate.day).padStart(2,'0');
+                            const m = String(dueDate.month).padStart(2,'0');
+                            prazo    = `${d}/${m}/${dueDate.year}`;
+                            prazoIso = `${dueDate.year}-${m}-${d}`;
+                            vencida  = new Date(prazoIso) < new Date();
+                        }
+                        return {
+                            id:       cw.id,
+                            titulo:   cw.title,
+                            tipo:     cw.workType || 'ASSIGNMENT',
+                            prazo,
+                            prazoIso,
+                            vencida,
+                            pontos:   cw.maxPoints ?? null,
+                            link:     cw.alternateLink || '',
+                            estado:   sub.state,
+                        };
+                    }).filter(Boolean).sort((a, b) => {
+                        if (!a.prazoIso && !b.prazoIso) return 0;
+                        if (!a.prazoIso) return 1;
+                        if (!b.prazoIso) return -1;
+                        return a.prazoIso.localeCompare(b.prazoIso);
+                    });
+
+                    if (!atividades.length) return null;
+                    return { cursoId: curso.id, nome: curso.name, secao: curso.section || '', link: curso.alternateLink || '', atividades };
+                } catch { return null; }
+            }));
+
+            const cursos = resultados.filter(Boolean);
+            res.json({ email, cursos, totalPendentes: cursos.reduce((s, c) => s + c.atividades.length, 0) });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* GET /api/admin/portal-aluno/disciplina?cursoId=xxx — todos alunos pendentes numa disciplina */
+    router.get('/admin/portal-aluno/disciplina', async (req, res) => {
+        const { cursoId } = req.query;
+        if (!cursoId) return res.status(400).json({ erro: 'cursoId é obrigatório.' });
+
+        const auth = getTeacherAuth();
+        if (!auth) return res.status(503).json({ erro: 'Google Classroom não conectado.' });
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            /* Dados do curso + alunos + courseworks em paralelo */
+            const [cursoResp, alunosResp, cwResp] = await Promise.all([
+                classroom.courses.get({ id: cursoId }),
+                classroom.courses.students.list({ courseId: cursoId, pageSize: 200 }),
+                classroom.courses.courseWork.list({
+                    courseId:         cursoId,
+                    courseWorkStates: ['PUBLISHED'],
+                    orderBy:          'dueDate asc',
+                    pageSize:         100,
+                }),
+            ]);
+
+            const curso    = cursoResp.data;
+            const alunos   = alunosResp.data.students || [];
+            const cwMap    = {};
+            (cwResp.data.courseWork || []).forEach(cw => { cwMap[cw.id] = cw; });
+
+            /* Buscar submissions de todos os alunos em paralelo (lotes de 10) */
+            const LOTE = 10;
+            const resultados = [];
+            for (let i = 0; i < alunos.length; i += LOTE) {
+                const lote = alunos.slice(i, i + LOTE);
+                const loteRes = await Promise.all(lote.map(async aluno => {
+                    const email = aluno.profile?.emailAddress || '';
+                    const nome  = aluno.profile?.name?.fullName || email;
+                    try {
+                        const subsResp = await classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     cursoId,
+                            courseWorkId: '-',
+                            userId:       aluno.userId,
+                            states:       ['NEW', 'CREATED', 'RECLAIMED_BY_STUDENT'],
+                            pageSize:     100,
+                        });
+                        const pendingSubs = subsResp.data.studentSubmissions || [];
+                        if (!pendingSubs.length) return null;
+
+                        const atividades = pendingSubs.map(sub => {
+                            const cw = cwMap[sub.courseWorkId];
+                            if (!cw) return null;
+                            const dueDate = cw.dueDate;
+                            let prazo = null, prazoIso = null, vencida = false;
+                            if (dueDate?.year) {
+                                const d = String(dueDate.day).padStart(2,'0');
+                                const m = String(dueDate.month).padStart(2,'0');
+                                prazo    = `${d}/${m}/${dueDate.year}`;
+                                prazoIso = `${dueDate.year}-${m}-${d}`;
+                                vencida  = new Date(prazoIso) < new Date();
+                            }
+                            return { id: cw.id, titulo: cw.title, tipo: cw.workType || 'ASSIGNMENT', prazo, prazoIso, vencida, pontos: cw.maxPoints ?? null, link: cw.alternateLink || '', estado: sub.state };
+                        }).filter(Boolean);
+
+                        if (!atividades.length) return null;
+                        return { email, nome, atividades };
+                    } catch { return null; }
+                }));
+                resultados.push(...loteRes);
+            }
+
+            const alunosPendentes = resultados.filter(Boolean)
+                .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+            res.json({
+                curso: { id: curso.id, nome: curso.name, secao: curso.section || '', link: curso.alternateLink || '' },
+                alunos: alunosPendentes,
+                totalAlunos: alunos.length,
+                totalComPendencia: alunosPendentes.length,
+            });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
     });
 
     return router;

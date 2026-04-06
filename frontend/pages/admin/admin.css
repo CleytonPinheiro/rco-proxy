@@ -237,3 +237,103 @@
 .audit-row-acao.USUARIO_CRIADO    { color: #7c3aed; }
 .audit-row-acao.USUARIO_ATUALIZADO{ color: #1d4ed8; }
 .audit-row-acao.USUARIO_DESATIVADO{ color: #dc2626; }
+
+/* ════════════════════════════════════════════════════
+   Portal Aluno — Preview no admin
+════════════════════════════════════════════════════ */
+
+.pa-admin-modos {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-hover);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.pa-admin-modo-btn {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+
+.pa-admin-modo-btn--ativo {
+    background: #6366f1;
+    color: #fff;
+}
+
+.pa-admin-curso-card {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.pa-admin-curso-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-hover);
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    gap: 8px;
+}
+
+.pa-admin-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: #6366f1;
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.pa-admin-atividades {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.pa-admin-ativ-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    transition: background .12s;
+}
+
+.pa-admin-ativ-item:hover { background: var(--bg-hover); }
+
+.pa-admin-ativ--vencida {
+    background: #fff8f8;
+}
+[data-theme="dark"] .pa-admin-ativ--vencida { background: #2a1a1a; }
+
+.pa-admin-link-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: .75rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background .12s;
+}
+
+.pa-admin-link-btn:hover { background: #e0e7ff; }

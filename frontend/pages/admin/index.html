@@ -33,6 +33,46 @@
 
     <div class="container" style="max-width:1100px;margin-top:32px">
 
+        <!-- Painel de Visualização do Portal do Aluno -->
+        <div class="card" id="cardPortalAluno" style="margin-bottom:16px;border:1.5px solid #6366f1;background:var(--bg-card)">
+            <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+                <div style="flex:1;min-width:200px">
+                    <div style="font-size:.8rem;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">📋 Visualizar Portal do Aluno</div>
+                    <div style="font-size:.8rem;color:var(--text-muted)">Simule a visão do portal por aluno (e-mail) ou por disciplina — sem precisar de login Google.</div>
+                </div>
+                <div class="pa-admin-modos">
+                    <button class="pa-admin-modo-btn pa-admin-modo-btn--ativo" data-modo="aluno" onclick="trocarModoPortal('aluno')">👤 Por aluno</button>
+                    <button class="pa-admin-modo-btn" data-modo="disciplina" onclick="trocarModoPortal('disciplina')">📚 Por disciplina</button>
+                </div>
+            </div>
+
+            <!-- Modo: Por aluno -->
+            <div id="paAdminModoAluno" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <input id="paAdminEmail" type="email" placeholder="email.do.aluno@escola.com"
+                    style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid #a5b4fc;border-radius:8px;font-size:.875rem;background:var(--bg-card);color:var(--text-primary)"
+                    onkeydown="if(event.key==='Enter')buscarPortalAluno()">
+                <button onclick="buscarPortalAluno()"
+                    style="padding:8px 18px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.875rem;cursor:pointer;white-space:nowrap">
+                    Ver atividades
+                </button>
+            </div>
+
+            <!-- Modo: Por disciplina -->
+            <div id="paAdminModoDisciplina" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+                <select id="paAdminCursoSelect"
+                    style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid #a5b4fc;border-radius:8px;font-size:.875rem;background:var(--bg-card);color:var(--text-primary)">
+                    <option value="">— Carregando disciplinas... —</option>
+                </select>
+                <button onclick="buscarPortalDisciplina()"
+                    style="padding:8px 18px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.875rem;cursor:pointer;white-space:nowrap">
+                    Ver alunos pendentes
+                </button>
+            </div>
+
+            <!-- Resultado -->
+            <div id="paAdminResultado" style="margin-top:14px"></div>
+        </div>
+
         <!-- Painel de Impersonação -->
         <div class="card" id="cardImpersonacao" style="margin-bottom:16px;border:1.5px solid #b45309;background:#fffbeb">
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
