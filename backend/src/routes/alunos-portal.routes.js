@@ -273,7 +273,9 @@ export function createAlunosPortalRouter() {
                             courseId:     curso.id,
                             courseWorkId: '-',        // wildcard = todos os courseworks
                             userId:       aluno.email,
-                            states:       ['CREATED', 'RECLAIMED'],
+                            // NEW = nunca abriu | CREATED = abriu mas não entregou
+                            // RECLAIMED_BY_STUDENT = recolheu após entrega
+                            states:       ['NEW', 'CREATED', 'RECLAIMED_BY_STUDENT'],
                             pageSize:     100,
                         }),
                         /* Metadados de todos os courseworks publicados */
