@@ -207,7 +207,7 @@ export function createAlunosPortalRouter() {
                 `INSERT INTO aluno_portal_sessions (id, email, nome, foto, expires_at)
                  VALUES ($1, $2, $3, $4, $5)
                  ON CONFLICT (id) DO UPDATE SET email=$2, nome=$3, foto=$4, expires_at=$5`,
-                [sessionId, email, data.name || '', data.picture || null, expiresAt]
+                [sessionId, email, nome, foto, expiresAt]
             );
 
             res.cookie('aluno_sid', sessionId, {
