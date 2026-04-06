@@ -9,6 +9,21 @@ const __dirname  = path.dirname(__filename);
 
 const app = express();
 
+// ── Middlewares essenciais: registrados ANTES do servidor ouvir ──────────────
+// Garante que req.body, cookies e req.ip estejam disponíveis em qualquer requisição,
+// incluindo as que chegam durante a inicialização assíncrona do app.
+app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json());
+app.use(cookieParser());
+
+// Impedir cache de respostas da API no navegador
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    next();
+});
+
 // Health checks registrados antes de qualquer middleware pesado
 app.get('/health', (_req, res) => res.status(200).send('OK'));
 app.get('/',       (_req, res) => res.redirect('/login/'));
@@ -51,20 +66,6 @@ async function initializeApp() {
             tokenService, rcoApiService, syncService, presencaService,
             loginWithPuppeteer, decodeJwtExpiration,   // necessário para UserSession nas rotas de auth
         };
-
-        app.set('trust proxy', 1);
-        app.use(helmet({
-            contentSecurityPolicy: false, // CSP configurada separadamente abaixo
-        }));
-        app.use(express.json());
-        app.use(cookieParser());
-
-        // Impedir cache de respostas da API no navegador
-        app.use('/api', (req, res, next) => {
-            res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-            res.set('Pragma', 'no-cache');
-            next();
-        });
 
         // Redirecionar URLs antigas (.html) para nova estrutura de pastas
         const paginasRedirect = [

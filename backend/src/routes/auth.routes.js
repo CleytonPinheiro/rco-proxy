@@ -67,6 +67,12 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
     const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
     const router = Router();
 
+    // Tratar erros inesperados do pool (ex: "terminating connection due to administrator command")
+    // sem handler, o evento 'error' mata o processo inteiro
+    pool.on('error', (err) => {
+        console.error('[Auth] Erro inesperado no pool PostgreSQL:', err.message);
+    });
+
     /* ── Status da conexão global (compatibilidade) ── */
     router.get('/status', (req, res) => {
         const session = req.cookies?.[COOKIE_NAME]

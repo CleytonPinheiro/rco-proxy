@@ -32,12 +32,18 @@ const BLOCKED_RESOURCE_TYPES = ["image", "media", "font", "stylesheet"];
 // ── Browser reutilizável ──────────────────────────────────────────────────────
 let browserInstance = null;
 let browserLaunchTime = null;
+let browserLaunchPromise = null;          // mutex: evita inicializações concorrentes
 const BROWSER_MAX_AGE_MS = 30 * 60 * 1000; // reciclar após 30 minutos
 
 async function getBrowser() {
     const chromiumPath = getChromiumPath();
     if (!chromiumPath) {
         throw new Error("Chromium não encontrado. Configure PUPPETEER_EXECUTABLE_PATH ou instale chromium.");
+    }
+
+    // Se já há uma inicialização em andamento, aguardar ela em vez de iniciar outra
+    if (browserLaunchPromise) {
+        return browserLaunchPromise;
     }
 
     const isStale = browserLaunchTime && (Date.now() - browserLaunchTime > BROWSER_MAX_AGE_MS);
@@ -58,37 +64,47 @@ async function getBrowser() {
         }
     }
 
-    console.log("Iniciando nova instância do browser...");
-    console.log("Usando Chromium em:", chromiumPath);
+    // Mutex: registrar a promise antes de lançar para evitar corrida
+    browserLaunchPromise = (async () => {
+        try {
+            console.log("Iniciando nova instância do browser...");
+            console.log("Usando Chromium em:", chromiumPath);
 
-    browserInstance = await puppeteer.launch({
-        headless: true,
-        executablePath: chromiumPath,
-        timeout: 90000,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--no-zygote",
-            "--single-process",
-            "--disable-web-security",
-            "--disable-features=VizDisplayCompositor,TranslateUI,BlinkGenPropertyTrees",
-            "--disable-extensions",
-            "--disable-background-networking",
-            "--disable-sync",
-            "--disable-default-apps",
-            "--no-first-run",
-            "--mute-audio",
-            "--hide-scrollbars",
-            "--disable-notifications",
-            "--js-flags=--max-old-space-size=512"
-        ]
-    });
+            const instance = await puppeteer.launch({
+                headless: true,
+                executablePath: chromiumPath,
+                timeout: 90000,
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--no-zygote",
+                    // REMOVIDO: --single-process (causa crash do WebSocket do Puppeteer)
+                    "--disable-web-security",
+                    "--disable-features=VizDisplayCompositor,TranslateUI,BlinkGenPropertyTrees",
+                    "--disable-extensions",
+                    "--disable-background-networking",
+                    "--disable-sync",
+                    "--disable-default-apps",
+                    "--no-first-run",
+                    "--mute-audio",
+                    "--hide-scrollbars",
+                    "--disable-notifications",
+                    "--js-flags=--max-old-space-size=512"
+                ]
+            });
 
-    browserLaunchTime = Date.now();
-    console.log("Browser iniciado e reutilizável.");
-    return browserInstance;
+            browserInstance  = instance;
+            browserLaunchTime = Date.now();
+            console.log("Browser iniciado e reutilizável.");
+            return instance;
+        } finally {
+            browserLaunchPromise = null;   // liberar mutex sempre, mesmo em erro
+        }
+    })();
+
+    return browserLaunchPromise;
 }
 
 // ── Extração de token ─────────────────────────────────────────────────────────
