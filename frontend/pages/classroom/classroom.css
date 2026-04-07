@@ -206,6 +206,18 @@ body {
 }
 .cl-btn--livro--ok:hover { background: color-mix(in srgb, #10b981 22%, transparent); }
 
+.cl-btn--criar-rec {
+    background: transparent;
+    border: 1px solid #f97316;
+    color: #9a3412;
+    font-weight: 600;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.cl-btn--criar-rec:hover {
+    background: color-mix(in srgb, #f97316 12%, transparent);
+    color: #7c2d12;
+}
+
 .cl-icon-btn {
     display: flex;
     align-items: center;

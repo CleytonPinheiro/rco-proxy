@@ -92,6 +92,7 @@ const elBtnImprimir    = document.getElementById('clBtnImprimir');
 const elBtnAtualizar   = document.getElementById('clBtnAtualizar');
 const elBtnAtualizarIcon = document.getElementById('clBtnAtualizarIcon');
 const elBtnLivro       = document.getElementById('clBtnLivro');
+const elBtnCriarRec    = document.getElementById('clBtnCriarRec');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
 const elToast          = document.getElementById('clToast');
@@ -789,6 +790,8 @@ async function selecionarGrupo(grupo, itemEl) {
     elBtnImprimir.style.display  = 'inline-flex';
     elBtnLivro.style.display     = 'inline-flex';
     atualizarBtnLivro(grupo);
+    /* Atalho "Criar Recuperação": só aparece para grupos normais sem recuperação vinculada */
+    elBtnCriarRec.style.display = (grupo.tipo === 'normal' && !grupo.recuperacaoId) ? 'inline-flex' : 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Calculando somas...</div>';
 
     if (!grupo.atividades.length) {
@@ -859,6 +862,45 @@ elBtnLivro.addEventListener('click', async () => {
     } finally {
         elBtnLivro.disabled = false;
     }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   ATALHO: CRIAR GRUPO DE RECUPERAÇÃO RAPIDAMENTE
+══════════════════════════════════════════════════════════════ */
+
+/**
+ * Abre o modal já preenchido como recuperação do grupoOrigem,
+ * usando a data de hoje como data de corte (data_inicio).
+ */
+function criarRecuperacaoRapida(grupoOrigem) {
+    /* 1. Abre modal vazio (preenche cor, atividades, etc.) */
+    abrirModalGrupo(null);
+
+    /* 2. Força tipo = recuperação */
+    elTipoGrupo.querySelectorAll('.cl-tipo-btn').forEach(b => {
+        b.classList.toggle('cl-tipo-btn--ativo', b.dataset.tipo === 'recuperacao');
+    });
+    elRecOrigemWrap.style.display = '';
+
+    /* 3. Pré-preenche o grupo de origem (select já populado por abrirModalGrupo) */
+    elRecOrigemSel.value = grupoOrigem.id;
+
+    /* 4. Data de hoje como data de corte */
+    const hoje = new Date().toISOString().slice(0, 10);
+    elRecDataInicio.value = hoje;
+
+    /* 5. Sugestão de nome e mesma meta de pontos */
+    elGrupoNome.value    = `Recuperação — ${grupoOrigem.nome}`;
+    elGrupoPontos.value  = (grupoOrigem.pontosMeta / 10).toFixed(1);
+
+    /* 6. Marca as mesmas atividades do grupo de origem */
+    elModalAtivs.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.checked = grupoOrigem.atividades.some(a => String(a.atividade_id) === String(cb.value));
+    });
+}
+
+elBtnCriarRec.addEventListener('click', () => {
+    if (grupoAtivo) criarRecuperacaoRapida(grupoAtivo);
 });
 
 async function carregarResumoGrupo(grupo) {
