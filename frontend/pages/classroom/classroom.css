@@ -518,6 +518,7 @@ body {
 .cl-nota-status--atrasado  { background: #fee2e2; color: #991b1b; }
 .cl-nota-status--pendente  { background: #fef9c3; color: #854d0e; }
 .cl-nota-status--devolvido { background: #ede9fe; color: #5b21b6; }
+.cl-nota-status--entrou    { background: #ffedd5; color: #9a3412; font-weight: 600; border: 1px solid #f97316; }
 
 .cl-nota-input {
     width: 100%;
@@ -921,6 +922,13 @@ body {
     cursor: help;
 }
 .cl-passo:hover { opacity: .75; }
+.cl-passo--entrou {
+    animation: entrou-pulse 1.8s ease-in-out infinite;
+}
+@keyframes entrou-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .5; }
+}
 .cl-passos-vazia {
     font-size: .72rem;
     color: var(--text-muted);
@@ -1088,8 +1096,9 @@ body {
     background: var(--bg-alt);
     color: var(--text-muted);
 }
-.cl-tab-cnt--ok  { background: #d1fae5; color: #065f46; }
-.cl-tab-cnt--err { background: #fee2e2; color: #991b1b; }
+.cl-tab-cnt--ok     { background: #d1fae5; color: #065f46; }
+.cl-tab-cnt--err    { background: #fee2e2; color: #991b1b; }
+.cl-tab-cnt--entrou { background: #ffedd5; color: #9a3412; }
 
 .cl-detalhe-lista {
     overflow-y: auto;

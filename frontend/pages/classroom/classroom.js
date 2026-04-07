@@ -865,8 +865,10 @@ async function carregarResumoGrupo(grupo) {
 
         const alunosResumo = resumo.alunos.map(a => ({
             ...a,
-            aluno: alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
-            soma: ((a.mediaIndice ?? 0) / 100) * meta,
+            aluno:     alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
+            soma:      ((a.mediaIndice ?? 0) / 100) * meta,
+            // "Entrou mas não realizou": pelo menos 1 atividade com nota=0 e estado entregue/devolvido
+            temEntrou: Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
         })).sort((a, b) => {
             const na = a.aluno.numChamada ?? 9999;
             const nb = b.aluno.numChamada ?? 9999;
@@ -934,10 +936,11 @@ function renderListaFiltrada() {
     const { alunosResumo, meta, atividades } = grupoResumoData;
 
     // Contagens por faixa
-    const nMeta   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
-    const nProg   = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'prog').length;
-    const nAbaixo = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'abaixo').length;
-    const nTodos  = alunosResumo.length;
+    const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
+    const nProg    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'prog').length;
+    const nAbaixo  = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'abaixo').length;
+    const nEntrou  = alunosResumo.filter(a => a.temEntrou).length;
+    const nTodos   = alunosResumo.length;
 
     const chip = (key, cor, label, count) => {
         const ativo  = filtrosGrupoAtivos.has(key) ? ' cl-faixa-chip--ativo' : '';
@@ -951,20 +954,24 @@ function renderListaFiltrada() {
 
     const filtrados = filtrosGrupoAtivos.has('todos')
         ? alunosResumo
-        : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
+        : filtrosGrupoAtivos.has('entrou')
+            ? alunosResumo.filter(a => a.temEntrou)
+            : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
     elNotasLista.innerHTML = `
         <div class="cl-passos-legenda">
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
-            <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue</span>
+            <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#f97316"></span>Entrou (0 pts)</span>
+            <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue s/ nota</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:var(--border)"></span>Pendente</span>
             <span class="cl-legenda-hint">Clique no aluno para ver detalhes</span>
         </div>
         <div class="cl-faixa-filtros">
-            ${chip('todos',  '#6b7280', 'Todos',      nTodos)}
-            ${chip('meta',   '#10b981', 'Meta',        nMeta)}
-            ${chip('prog',   '#4285F4', 'Em progresso', nProg)}
-            ${chip('abaixo', '#f59e0b', 'Abaixo',     nAbaixo)}
+            ${chip('todos',   '#6b7280', 'Todos',        nTodos)}
+            ${chip('meta',    '#10b981', 'Meta',          nMeta)}
+            ${chip('prog',    '#4285F4', 'Em progresso',  nProg)}
+            ${chip('abaixo',  '#f59e0b', 'Abaixo',       nAbaixo)}
+            ${nEntrou > 0 ? chip('entrou', '#f97316', '🎮 Entrou (0 pts)', nEntrou) : ''}
         </div>
         <div class="cl-resumo-header">
             <span></span>
@@ -1003,12 +1010,18 @@ function renderResumoRow(a, meta, atividades = []) {
         const sub  = a.atividades?.[atv.id];
         const nota = sub?.nota ?? null;
         const ent  = sub?.entregue ?? false;
-        // verde = nota lançada | azul = entregue s/ nota | cinza = pendente
-        const cor   = nota !== null ? '#10b981' : ent ? '#4285F4' : 'var(--border)';
-        const label = nota !== null
-            ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
-            : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
-        return `<span class="cl-passo" style="background:${cor}" title="${esc(label)}"></span>`;
+        // verde = nota > 0 | laranja = entrou (0 pts, devolvido) | azul = entregue s/ nota | cinza = pendente
+        const entrou = nota === 0 && ent;
+        const cor    = entrou             ? '#f97316'
+                     : nota !== null      ? '#10b981'
+                     : ent               ? '#4285F4'
+                     : 'var(--border)';
+        const label  = entrou
+            ? `${atv.titulo}: Entrou (0 pts) — não realizou`
+            : nota !== null
+                ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
+                : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
+        return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
     }).join('');
 
     const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
@@ -1205,7 +1218,13 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
         const estado   = sub?.estado ?? null;
 
         let statusHtml, tipo;
-        if (nota !== null) {
+        const entrou = nota === 0 && entregue;   // entrou mas não realizou (nota=0 devolvida)
+
+        if (entrou) {
+            const ptMax = atv.pontos ?? 100;
+            statusHtml  = `<span class="cl-nota-status-badge cl-nota-status--entrou">🎮 Entrou (0 / ${rco(ptMax)} pts)</span>`;
+            tipo        = 'entrou';
+        } else if (nota !== null) {
             const ptMax  = atv.pontos ?? 100;
             const pctAtv = ptMax > 0 ? ((nota / ptMax) * 100).toFixed(0) : nota;
             statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(nota)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
@@ -1230,6 +1249,7 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
     const totalAtiv     = atividades.length;
     const realizadas    = rows.filter(r => r.tipo === 'realizada').length;
     const naoRealizadas = rows.filter(r => r.tipo === 'nao-realizada').length;
+    const entrarEm      = rows.filter(r => r.tipo === 'entrou').length;
 
     const rowsHtml = rows.map(r => `
         <div class="cl-detalhe-row" data-tipo="${r.tipo}">
@@ -1262,6 +1282,10 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
             <button class="cl-detalhe-tab" data-filtro="realizada">
                 Realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--ok">${realizadas}</span>
             </button>
+            ${entrarEm > 0 ? `
+            <button class="cl-detalhe-tab" data-filtro="entrou">
+                Entrou (0 pts) <span class="cl-detalhe-tab-cnt cl-tab-cnt--entrou">${entrarEm}</span>
+            </button>` : ''}
             <button class="cl-detalhe-tab" data-filtro="nao-realizada">
                 Não realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--err">${naoRealizadas}</span>
             </button>
