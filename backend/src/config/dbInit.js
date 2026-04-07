@@ -104,6 +104,12 @@ export async function initializeDatabase() {
         await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS tipo            VARCHAR(20) NOT NULL DEFAULT 'normal'`);
         await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS grupo_origem_id INTEGER     REFERENCES classroom_grupos(id) ON DELETE SET NULL`);
         await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS data_inicio     DATE        DEFAULT NULL`);
+        /* Migração: promover data_inicio de DATE para TIMESTAMP WITH TIME ZONE (preserva horário de corte) */
+        await client.query(`
+            ALTER TABLE classroom_grupos
+            ALTER COLUMN data_inicio TYPE TIMESTAMP WITH TIME ZONE
+            USING data_inicio::TIMESTAMP WITH TIME ZONE
+        `);
 
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {

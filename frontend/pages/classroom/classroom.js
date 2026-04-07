@@ -144,6 +144,23 @@ async function apiRaw(path, opts = {}) {
 function esc(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+/* Converte ISO UTC string → valor de input[datetime-local] (YYYY-MM-DDTHH:mm, horário local) */
+function toDatetimeLocal(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const offset = d.getTimezoneOffset(); // minutos, positivo = atrás do UTC
+    return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 16);
+}
+
+/* Formata ISO UTC string → "DD/MM/YYYY às HH:mm" no fuso local */
+function fmtDatetime(isoStr) {
+    if (!isoStr) return '';
+    return new Date(isoStr).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+}
 const TIPO_LABELS = {
     ASSIGNMENT:               'Atividade',
     SHORT_ANSWER_QUESTION:    'Pergunta',
@@ -738,9 +755,7 @@ function renderGrupos() {
         const lancadoHtml = g.lancadoLivro
             ? `<span class="cl-grupo-livro-badge" title="Lançado no livro${g.lancadoEm ? ' em ' + new Date(g.lancadoEm).toLocaleDateString('pt-BR') : ''}">📗 Lançado</span>`
             : '';
-        const dataInicioStr = g.dataInicio
-            ? new Date(g.dataInicio + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-            : '';
+        const dataInicioStr = fmtDatetime(g.dataInicio);
         const recBadgeHtml = g.tipo === 'recuperacao'
             ? `<span class="cl-grupo-rec-badge" title="Recuperação${dataInicioStr ? ' — a partir de ' + dataInicioStr : ''}">🔄 Recuperação</span>`
             : '';
@@ -886,9 +901,8 @@ function criarRecuperacaoRapida(grupoOrigem) {
     /* 3. Pré-preenche o grupo de origem (select já populado por abrirModalGrupo) */
     elRecOrigemSel.value = grupoOrigem.id;
 
-    /* 4. Data de hoje como data de corte */
-    const hoje = new Date().toISOString().slice(0, 10);
-    elRecDataInicio.value = hoje;
+    /* 4. Data e horário atual como corte */
+    elRecDataInicio.value = toDatetimeLocal(new Date().toISOString());
 
     /* 5. Sugestão de nome e mesma meta de pontos */
     elGrupoNome.value    = `Recuperação — ${grupoOrigem.nome}`;
@@ -1039,14 +1053,12 @@ function renderListaFiltrada() {
             : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
     /* Banner de grupo de recuperação */
-    const dataInicioStr = dataInicio
-        ? new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-        : null;
+    const dataInicioStr = fmtDatetime(dataInicio);
     const recBannerHtml = isRec
         ? `<div class="cl-rec-banner">
                <span class="cl-rec-banner-icon">🔄</span>
                <div>
-                   <div>Grupo de <strong>Recuperação</strong> — exibindo apenas alunos que entregaram após a data de corte.</div>
+                   <div>Grupo de <strong>Recuperação</strong> — exibindo apenas alunos que entregaram após a data e horário de corte.</div>
                    ${dataInicioStr ? `<div class="cl-rec-banner-data">📅 A partir de <strong>${dataInicioStr}</strong></div>` : ''}
                </div>
            </div>`
@@ -1493,7 +1505,7 @@ function abrirModalGrupo(grupo = null) {
     popularRecOrigem(grupo?.id);
     elRecOrigemWrap.style.display = tipo === 'recuperacao' ? '' : 'none';
     if (grupo?.grupoOrigemId) elRecOrigemSel.value = grupo.grupoOrigemId;
-    elRecDataInicio.value = grupo?.dataInicio || '';
+    elRecDataInicio.value = toDatetimeLocal(grupo?.dataInicio);
 
     if (grupo) {
         elModalTitulo.textContent = 'Editar Grupo';
@@ -1692,7 +1704,10 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     const id            = elGrupoId.value;
     const tipo          = tipoModalAtivo();
     const grupoOrigemId = tipo === 'recuperacao' ? (elRecOrigemSel.value || null) : null;
-    const dataInicio    = tipo === 'recuperacao' ? (elRecDataInicio.value || null) : null;
+    /* Converte datetime-local (horário local) para ISO UTC antes de enviar */
+    const dataInicio    = tipo === 'recuperacao' && elRecDataInicio.value
+        ? new Date(elRecDataInicio.value).toISOString()
+        : null;
 
     if (!nome) { elGrupoNome.focus(); toast('Informe o nome do grupo.', 'erro'); return; }
     if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }

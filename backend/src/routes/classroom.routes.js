@@ -609,7 +609,7 @@ export function createClassroomRouter(deps = {}) {
                 lancadoEm:      g.lancado_em ?? null,
                 tipo:           g.tipo || 'normal',
                 grupoOrigemId:  g.grupo_origem_id ?? null,
-                dataInicio:     g.data_inicio ? g.data_inicio.toISOString().slice(0, 10) : null,
+                dataInicio:     g.data_inicio ? g.data_inicio.toISOString() : null,
                 recuperacaoId:  g.rec_id   ?? null,
                 recuperacaoNome:g.rec_nome ?? null,
             })));
@@ -880,7 +880,7 @@ export function createClassroomRouter(deps = {}) {
                 })),
                 alunos,
                 isRecuperacao,
-                dataInicio: dataInicio ? dataInicio.toISOString().slice(0, 10) : null,
+                dataInicio: dataInicio ? dataInicio.toISOString() : null,
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
             });
         } catch (e) {
