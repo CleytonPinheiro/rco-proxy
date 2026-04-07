@@ -590,7 +590,9 @@ export function createClassroomRouter(deps = {}) {
                             'atividade_titulo', ga.atividade_titulo,
                             'pontos_max',       ga.pontos_max
                         ) ORDER BY ga.id
-                    ) FILTER (WHERE ga.id IS NOT NULL), '[]') AS atividades
+                    ) FILTER (WHERE ga.id IS NOT NULL), '[]') AS atividades,
+                    (SELECT id   FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_id,
+                    (SELECT nome FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_nome
                 FROM classroom_grupos g
                 LEFT JOIN classroom_grupo_atividades ga ON ga.grupo_id = g.id
                 WHERE g.curso_id = $1
@@ -598,13 +600,17 @@ export function createClassroomRouter(deps = {}) {
                 ORDER BY g.id
             `, [courseId]);
             res.json(rows.map(g => ({
-                id:           g.id,
-                nome:         g.nome,
-                pontosMeta:   Number(g.pontos_meta),
-                cor:          g.cor,
-                atividades:   g.atividades,
-                lancadoLivro: g.lancado_livro ?? false,
-                lancadoEm:    g.lancado_em ?? null,
+                id:             g.id,
+                nome:           g.nome,
+                pontosMeta:     Number(g.pontos_meta),
+                cor:            g.cor,
+                atividades:     g.atividades,
+                lancadoLivro:   g.lancado_livro ?? false,
+                lancadoEm:      g.lancado_em ?? null,
+                tipo:           g.tipo || 'normal',
+                grupoOrigemId:  g.grupo_origem_id ?? null,
+                recuperacaoId:  g.rec_id   ?? null,
+                recuperacaoNome:g.rec_nome ?? null,
             })));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar grupos:', e.message);
@@ -614,12 +620,15 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Criar grupo ── */
     router.post('/classroom/groups', async (req, res) => {
-        const { courseId, nome, pontosMeta, cor } = req.body;
+        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
+        const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         try {
             const { rows } = await pool.query(
-                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor) VALUES ($1,$2,$3,$4) RETURNING id`,
-                [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4']
+                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id)
+                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+                [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4',
+                 tipoVal, grupoOrigemId || null]
             );
             res.json({ id: rows[0].id });
         } catch (e) {
@@ -630,12 +639,14 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Atualizar grupo ── */
     router.put('/classroom/groups/:id', async (req, res) => {
-        const { nome, pontosMeta, cor } = req.body;
+        const { nome, pontosMeta, cor, tipo, grupoOrigemId } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
+        const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         try {
             await pool.query(
-                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3 WHERE id=$4`,
-                [nome.trim(), pontosMeta || 40, cor || '#4285F4', req.params.id]
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5 WHERE id=$6`,
+                [nome.trim(), pontosMeta || 40, cor || '#4285F4', tipoVal,
+                 grupoOrigemId || null, req.params.id]
             );
             res.json({ ok: true });
         } catch (e) {
@@ -726,6 +737,13 @@ export function createClassroomRouter(deps = {}) {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
+            /* Carrega metadados do grupo para saber se é recuperação */
+            const { rows: [grupoInfo] } = await pool.query(
+                `SELECT tipo, grupo_origem_id FROM classroom_grupos WHERE id = $1`,
+                [req.params.id]
+            );
+            const isRecuperacao = grupoInfo?.tipo === 'recuperacao';
+
             const { rows: ativs } = await pool.query(
                 `SELECT * FROM classroom_grupo_atividades WHERE grupo_id=$1 ORDER BY id`,
                 [req.params.id]
@@ -794,18 +812,28 @@ export function createClassroomRouter(deps = {}) {
 
             // mediaIndice = porcentagem dos pontos ganhos sobre o total possível do grupo
             // Inclui atividades faltantes como 0, refletindo o desempenho real
-            const alunos = Object.values(alunoMap).map(a => ({
+            let alunos = Object.values(alunoMap).map(a => ({
                 userId:      a.userId,
                 mediaIndice: totalPossivel > 0 ? (a.totalGanho / totalPossivel) * 100 : 0,
                 pendentes:   a.pendentes,
                 atividades:  a.atividades,
             }));
 
+            // Para grupos de recuperação: exibe APENAS alunos que efetivamente entregaram
+            // (state = TURNED_IN ou RETURNED), ignorando quem nem abriu as atividades
+            if (isRecuperacao) {
+                alunos = alunos.filter(a =>
+                    Object.values(a.atividades).some(atv => atv.entregue)
+                );
+            }
+
             res.json({
                 atividades: ativs.map(a => ({
                     id: a.atividade_id, titulo: a.atividade_titulo, pontos: a.pontos_max !== null ? Number(a.pontos_max) : null,
                 })),
                 alunos,
+                isRecuperacao,
+                grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
             });
         } catch (e) {
             console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);

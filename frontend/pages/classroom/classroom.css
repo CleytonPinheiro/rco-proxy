@@ -1465,3 +1465,132 @@ body {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   RECUPERAÇÃO — grupo e resumo
+══════════════════════════════════════════════════════════════ */
+
+/* Grupo de recuperação: borda e fundo laranja suave */
+.cl-grupo-item--recuperacao {
+    border-color: color-mix(in srgb, #f97316 40%, var(--border));
+    background: color-mix(in srgb, #f97316 5%, var(--bg-card));
+}
+.cl-grupo-rec-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: .63rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: color-mix(in srgb, #f97316 18%, transparent);
+    color: #9a3412;
+    vertical-align: middle;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+.cl-grupo-tem-rec {
+    display: inline-flex;
+    align-items: center;
+    font-size: .63rem;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, #f97316 12%, transparent);
+    color: #9a3412;
+    vertical-align: middle;
+    margin-left: 4px;
+    cursor: default;
+}
+
+/* Banner laranja no topo da lista de resumo de recuperação */
+.cl-rec-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    background: color-mix(in srgb, #f97316 10%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, #f97316 35%, transparent);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: .82rem;
+    color: var(--text-primary);
+    line-height: 1.45;
+}
+.cl-rec-banner-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+/* Grade extra para a coluna de recuperação */
+.cl-resumo-header--com-rec { grid-template-columns: 36px 1fr 100px 72px 90px; }
+.cl-resumo-row--com-rec    { grid-template-columns: 36px 1fr 100px 72px 90px; }
+
+/* Badge de nota de recuperação na linha do aluno */
+.cl-rec-nota-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: color-mix(in srgb, #f97316 15%, transparent);
+    color: #9a3412;
+    white-space: nowrap;
+}
+.cl-rec-nota-badge--vazio {
+    color: var(--text-muted);
+    background: transparent;
+    font-weight: 400;
+}
+
+/* ── Toggle de tipo no modal ── */
+.cl-tipo-grupo {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+.cl-tipo-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+    text-align: center;
+}
+.cl-tipo-btn:hover { border-color: #94a3b8; color: var(--text-primary); }
+.cl-tipo-btn--ativo {
+    border-color: #4285F4;
+    background: color-mix(in srgb, #4285F4 10%, var(--bg-card));
+    color: #4285F4;
+}
+.cl-tipo-btn[data-tipo="recuperacao"].cl-tipo-btn--ativo {
+    border-color: #f97316;
+    background: color-mix(in srgb, #f97316 10%, var(--bg-card));
+    color: #ea580c;
+}
+
+/* Select genérico no modal */
+.cl-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .15s;
+    margin-top: 4px;
+}
+.cl-select:focus { border-color: #4285F4; }
+
+@media (prefers-color-scheme: dark) {
+    .cl-grupo-rec-badge  { color: #fb923c; }
+    .cl-grupo-tem-rec    { color: #fb923c; }
+    .cl-rec-banner       { color: var(--text-primary); }
+    .cl-rec-nota-badge   { color: #fb923c; }
+}

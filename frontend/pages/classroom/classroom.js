@@ -730,14 +730,23 @@ function renderGrupos() {
         item.className  = 'cl-grupo-item';
         item.dataset.id = g.id;
         const nAtiv     = g.atividades.length;
-        if (g.lancadoLivro) item.classList.add('cl-grupo-item--lancado');
+        if (g.lancadoLivro)           item.classList.add('cl-grupo-item--lancado');
+        if (g.tipo === 'recuperacao') item.classList.add('cl-grupo-item--recuperacao');
+
         const lancadoHtml = g.lancadoLivro
             ? `<span class="cl-grupo-livro-badge" title="Lançado no livro${g.lancadoEm ? ' em ' + new Date(g.lancadoEm).toLocaleDateString('pt-BR') : ''}">📗 Lançado</span>`
             : '';
+        const recBadgeHtml = g.tipo === 'recuperacao'
+            ? `<span class="cl-grupo-rec-badge">🔄 Recuperação</span>`
+            : '';
+        const temRecHtml = g.recuperacaoId
+            ? `<span class="cl-grupo-tem-rec" title="Tem grupo de recuperação: ${esc(g.recuperacaoNome || '')}">📎 Rec.</span>`
+            : '';
+
         item.innerHTML  = `
             <div class="cl-grupo-cor" style="background:${g.cor}"></div>
             <div class="cl-grupo-info">
-                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}</div>
+                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}</div>
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
@@ -859,16 +868,36 @@ async function carregarResumoGrupo(grupo) {
     elBtnAtualizarIcon.style.animation = 'clSpinIcon 0.8s linear infinite';
 
     try {
-        const resumo = await api(`/groups/${grupo.id}/summary?courseId=${cursoAtivo.id}`);
+        /* Busca o resumo principal; se o grupo tem recuperação vinculada,
+           busca em paralelo para montar o overlay de notas de recuperação */
+        const [resumo, resumoRec] = await Promise.all([
+            api(`/groups/${grupo.id}/summary?courseId=${cursoAtivo.id}`),
+            grupo.recuperacaoId
+                ? api(`/groups/${grupo.recuperacaoId}/summary?courseId=${cursoAtivo.id}`).catch(() => null)
+                : Promise.resolve(null),
+        ]);
 
-        const meta = grupo.pontosMeta;
+        const isRec = !!resumo.isRecuperacao;
+        const meta  = grupo.pontosMeta;
+
+        /* Monta mapa userId → dados de recuperação (se houver grupo de rec. vinculado) */
+        const recMap = {};
+        if (resumoRec?.alunos) {
+            const recMeta = gruposCache.find(g => String(g.id) === String(grupo.recuperacaoId))?.pontosMeta || meta;
+            resumoRec.alunos.forEach(a => {
+                recMap[a.userId] = {
+                    soma:     ((a.mediaIndice ?? 0) / 100) * recMeta,
+                    pendentes: a.pendentes,
+                };
+            });
+        }
 
         const alunosResumo = resumo.alunos.map(a => ({
             ...a,
             aluno:     alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
             soma:      ((a.mediaIndice ?? 0) / 100) * meta,
-            // "Entrou mas não realizou": pelo menos 1 atividade com nota=0 e estado entregue/devolvido
             temEntrou: Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
+            recData:   recMap[a.userId] ?? null,
         })).sort((a, b) => {
             const na = a.aluno.numChamada ?? 9999;
             const nb = b.aluno.numChamada ?? 9999;
@@ -882,19 +911,23 @@ async function carregarResumoGrupo(grupo) {
 
         document.getElementById('clStTotal').textContent          = total;
         document.getElementById('clStEntregues').textContent      = comTudo;
-        document.getElementById('clStEntreguesLabel').textContent = 'Completos';
+        document.getElementById('clStEntreguesLabel').textContent = isRec ? 'Fizeram rec.' : 'Completos';
         document.getElementById('clStPendentes').textContent      = pend;
-        document.getElementById('clStPendentesLabel').textContent = 'Com pendências';
+        document.getElementById('clStPendentesLabel').textContent = isRec ? 'Com pendências' : 'Com pendências';
         document.getElementById('clStMedia').textContent          = media;
         elNotasCount.textContent   = `${total} aluno${total !== 1 ? 's' : ''}`;
         elNotasStats.style.display = 'grid';
 
         if (!alunosResumo.length) {
-            elNotasLista.innerHTML = '<div class="cl-empty-state"><p>Nenhum aluno encontrado nas atividades do grupo.</p></div>';
+            const msg = isRec
+                ? '<p>Nenhum aluno realizou atividades neste grupo de recuperação ainda.</p>'
+                : '<p>Nenhum aluno encontrado nas atividades do grupo.</p>';
+            elNotasLista.innerHTML = `<div class="cl-empty-state">${msg}</div>`;
             return;
         }
 
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta };
+        const hasRec = Object.keys(recMap).length > 0;
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, isRec, hasRec };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
 
@@ -933,7 +966,7 @@ function toggleFiltro(chave) {
 
 function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    const { alunosResumo, meta, atividades } = grupoResumoData;
+    const { alunosResumo, meta, atividades, isRec, hasRec } = grupoResumoData;
 
     // Contagens por faixa
     const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
@@ -958,7 +991,21 @@ function renderListaFiltrada() {
             ? alunosResumo.filter(a => a.temEntrou)
             : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
+    /* Banner de grupo de recuperação */
+    const recBannerHtml = isRec
+        ? `<div class="cl-rec-banner">
+               <span class="cl-rec-banner-icon">🔄</span>
+               <span>Grupo de <strong>Recuperação</strong> — exibindo apenas alunos que entregaram ao menos uma atividade.</span>
+           </div>`
+        : '';
+
+    /* Coluna extra para nota de recuperação (só quando o grupo principal tem rec. vinculada) */
+    const recColHeader = hasRec
+        ? `<span style="text-align:center">Rec.</span>`
+        : '';
+
     elNotasLista.innerHTML = `
+        ${recBannerHtml}
         <div class="cl-passos-legenda">
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#f97316"></span>Entrou (0 pts)</span>
@@ -973,15 +1020,16 @@ function renderListaFiltrada() {
             ${chip('abaixo',  '#f59e0b', 'Abaixo',       nAbaixo)}
             ${nEntrou > 0 ? chip('entrou', '#f97316', '🎮 Entrou (0 pts)', nEntrou) : ''}
         </div>
-        <div class="cl-resumo-header">
+        <div class="cl-resumo-header${hasRec ? ' cl-resumo-header--com-rec' : ''}">
             <span></span>
             <span>Aluno</span>
             <span>Soma / ${rco(meta)} pts</span>
+            ${recColHeader}
             <span style="text-align:center">Pendentes</span>
         </div>
         <div class="cl-faixa-lista" id="clFaixaLista">
             ${filtrados.length
-                ? filtrados.map(a => renderResumoRow(a, meta, atividades)).join('')
+                ? filtrados.map(a => renderResumoRow(a, meta, atividades, hasRec)).join('')
                 : `<div class="cl-empty-state"><p>Nenhum aluno nessa faixa.</p></div>`}
         </div>`;
 
@@ -997,7 +1045,7 @@ function renderListaFiltrada() {
     });
 }
 
-function renderResumoRow(a, meta, atividades = []) {
+function renderResumoRow(a, meta, atividades = [], hasRec = false) {
     const al       = a.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
@@ -1024,8 +1072,19 @@ function renderResumoRow(a, meta, atividades = []) {
         return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
     }).join('');
 
+    /* Coluna de nota de recuperação */
+    const recCelHtml = hasRec
+        ? (a.recData
+            ? `<div style="text-align:center">
+                   <span class="cl-rec-nota-badge" title="Nota da recuperação">
+                       🔄 ${rco(a.recData.soma)}
+                   </span>
+               </div>`
+            : `<div style="text-align:center"><span class="cl-rec-nota-badge cl-rec-nota-badge--vazio">—</span></div>`)
+        : '';
+
     const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
-    return `<div class="cl-resumo-row">
+    return `<div class="cl-resumo-row${hasRec ? ' cl-resumo-row--com-rec' : ''}">
         <div class="cl-nota-avatar">${fotoHtml}</div>
         <div class="cl-resumo-info">
             <div class="cl-nota-nome" title="${esc(al.email)}">${numBadge}${esc(al.nome || '—')}</div>
@@ -1035,6 +1094,7 @@ function renderResumoRow(a, meta, atividades = []) {
             <span class="cl-resumo-num" style="color:${somaCor}">${rco(soma)}</span>
             <span class="cl-resumo-den">/${rco(meta)}</span>
         </div>
+        ${recCelHtml}
         <div style="text-align:center">
             ${a.pendentes > 0
                 ? `<span class="cl-nota-status-badge cl-nota-status--pendente">${a.pendentes} pend.</span>`
@@ -1323,6 +1383,35 @@ const elGrupoNome      = document.getElementById('clGrupoNome');
 const elGrupoPontos    = document.getElementById('clGrupoPontos');
 const elCorPicker      = document.getElementById('clCorPicker');
 const elModalAtivs     = document.getElementById('clModalAtividades');
+const elTipoGrupo      = document.getElementById('clTipoGrupo');
+const elRecOrigemWrap  = document.getElementById('clRecOrigemWrap');
+const elRecOrigemSel   = document.getElementById('clRecOrigemSel');
+
+/* ── Lógica dos botões de tipo ── */
+elTipoGrupo.addEventListener('click', e => {
+    const btn = e.target.closest('.cl-tipo-btn');
+    if (!btn) return;
+    elTipoGrupo.querySelectorAll('.cl-tipo-btn').forEach(b => b.classList.remove('cl-tipo-btn--ativo'));
+    btn.classList.add('cl-tipo-btn--ativo');
+    const isRec = btn.dataset.tipo === 'recuperacao';
+    elRecOrigemWrap.style.display = isRec ? '' : 'none';
+});
+
+function tipoModalAtivo() {
+    return elTipoGrupo.querySelector('.cl-tipo-btn--ativo')?.dataset.tipo || 'normal';
+}
+
+function popularRecOrigem(grupoIdAtual = null) {
+    elRecOrigemSel.innerHTML = '<option value="">— selecione o grupo de origem —</option>';
+    gruposCache
+        .filter(g => g.tipo !== 'recuperacao' && String(g.id) !== String(grupoIdAtual))
+        .forEach(g => {
+            const opt = document.createElement('option');
+            opt.value       = g.id;
+            opt.textContent = g.nome;
+            elRecOrigemSel.appendChild(opt);
+        });
+}
 
 function abrirModalGrupo(grupo = null) {
     elCorPicker.innerHTML = '';
@@ -1339,6 +1428,15 @@ function abrirModalGrupo(grupo = null) {
         });
         elCorPicker.appendChild(btn);
     });
+
+    /* Tipo do grupo */
+    const tipo = grupo?.tipo || 'normal';
+    elTipoGrupo.querySelectorAll('.cl-tipo-btn').forEach(b => {
+        b.classList.toggle('cl-tipo-btn--ativo', b.dataset.tipo === tipo);
+    });
+    popularRecOrigem(grupo?.id);
+    elRecOrigemWrap.style.display = tipo === 'recuperacao' ? '' : 'none';
+    if (grupo?.grupoOrigemId) elRecOrigemSel.value = grupo.grupoOrigemId;
 
     if (grupo) {
         elModalTitulo.textContent = 'Editar Grupo';
@@ -1532,12 +1630,19 @@ elAtivLista.addEventListener('click', async e => {
 });
 
 document.getElementById('clGrupoModalSalvar').addEventListener('click', async () => {
-    const nome      = elGrupoNome.value.trim();
-    const pontos    = Math.round((Number(elGrupoPontos.value) || 4) * 10);
-    const id        = elGrupoId.value;
+    const nome          = elGrupoNome.value.trim();
+    const pontos        = Math.round((Number(elGrupoPontos.value) || 4) * 10);
+    const id            = elGrupoId.value;
+    const tipo          = tipoModalAtivo();
+    const grupoOrigemId = tipo === 'recuperacao' ? (elRecOrigemSel.value || null) : null;
 
     if (!nome) { elGrupoNome.focus(); toast('Informe o nome do grupo.', 'erro'); return; }
     if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }
+    if (tipo === 'recuperacao' && !grupoOrigemId) {
+        toast('Selecione o grupo de origem da recuperação.', 'erro');
+        elRecOrigemSel.focus();
+        return;
+    }
 
     const atividades = [];
     elModalAtivs.querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
@@ -1555,9 +1660,9 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     try {
         let grupoId = id;
         if (id) {
-            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada } });
+            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId } });
         } else {
-            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada } });
+            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId } });
             grupoId = r.id;
         }
         await api(`/groups/${grupoId}/activities`, { method: 'PUT', body: { atividades } });

@@ -362,7 +362,28 @@
             </div>
             <div class="cl-modal-body">
                 <input type="hidden" id="clGrupoId"/>
-                <label class="cl-label">Nome do grupo</label>
+
+                <!-- Tipo do grupo -->
+                <label class="cl-label">Tipo do grupo</label>
+                <div class="cl-tipo-grupo" id="clTipoGrupo">
+                    <button type="button" class="cl-tipo-btn cl-tipo-btn--ativo" data-tipo="normal">
+                        📊 Normal
+                    </button>
+                    <button type="button" class="cl-tipo-btn" data-tipo="recuperacao">
+                        🔄 Recuperação
+                    </button>
+                </div>
+
+                <!-- Grupo de origem (só aparece se tipo=recuperacao) -->
+                <div id="clRecOrigemWrap" style="display:none">
+                    <label class="cl-label" style="margin-top:10px">Recuperação do grupo</label>
+                    <select class="cl-select" id="clRecOrigemSel">
+                        <option value="">— selecione o grupo de origem —</option>
+                    </select>
+                    <p class="cl-label-hint" style="margin-top:4px">Apenas alunos que realmente entregaram as atividades serão exibidos no resumo.</p>
+                </div>
+
+                <label class="cl-label" style="margin-top:12px">Nome do grupo</label>
                 <input type="text" class="cl-input" id="clGrupoNome" placeholder="Ex: Atividades Práticas — 1º Trimestre"/>
 
                 <label class="cl-label" style="margin-top:12px">Meta de pontos do grupo</label>

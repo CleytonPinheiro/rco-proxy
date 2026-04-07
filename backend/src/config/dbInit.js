@@ -100,6 +100,10 @@ export async function initializeDatabase() {
         await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS lancado_livro BOOLEAN NOT NULL DEFAULT false`);
         await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS lancado_em    TIMESTAMP DEFAULT NULL`);
 
+        /* Migração: tipo de grupo e vínculo com grupo de origem (recuperação) */
+        await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS tipo            VARCHAR(20) NOT NULL DEFAULT 'normal'`);
+        await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS grupo_origem_id INTEGER     REFERENCES classroom_grupos(id) ON DELETE SET NULL`);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();
