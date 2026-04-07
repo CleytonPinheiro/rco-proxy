@@ -1620,11 +1620,20 @@ body {
     font-weight: 600;
 }
 
-/* Passo de atividade entregue como recuperação (outline brilhante para destacar) */
+/* Passo de atividade entregue como recuperação — visualmente destacado */
 .cl-passo--rec {
-    outline: 2px solid #f97316;
-    outline-offset: 1px;
+    outline: 2px solid #fb923c;
+    outline-offset: 2px;
     border-radius: 3px;
+    transform: scaleY(1.6);
+    transform-origin: center;
+    position: relative;
+    z-index: 1;
+    animation: rec-glow 1.8s ease-in-out infinite;
+}
+@keyframes rec-glow {
+    0%, 100% { box-shadow: 0 0 4px 1px rgba(251, 146, 60, 0.55); }
+    50%       { box-shadow: 0 0 10px 3px rgba(251, 146, 60, 0.90); outline-color: #fdba74; }
 }
 
 @media (prefers-color-scheme: dark) {
