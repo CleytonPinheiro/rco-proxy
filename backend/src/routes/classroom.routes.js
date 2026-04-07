@@ -609,6 +609,7 @@ export function createClassroomRouter(deps = {}) {
                 lancadoEm:      g.lancado_em ?? null,
                 tipo:           g.tipo || 'normal',
                 grupoOrigemId:  g.grupo_origem_id ?? null,
+                dataInicio:     g.data_inicio ? g.data_inicio.toISOString().slice(0, 10) : null,
                 recuperacaoId:  g.rec_id   ?? null,
                 recuperacaoNome:g.rec_nome ?? null,
             })));
@@ -620,15 +621,16 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Criar grupo ── */
     router.post('/classroom/groups', async (req, res) => {
-        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId } = req.body;
+        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
+        const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
         try {
             const { rows } = await pool.query(
-                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id)
-                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
                 [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4',
-                 tipoVal, grupoOrigemId || null]
+                 tipoVal, grupoOrigemId || null, dataInicioVal]
             );
             res.json({ id: rows[0].id });
         } catch (e) {
@@ -639,14 +641,15 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Atualizar grupo ── */
     router.put('/classroom/groups/:id', async (req, res) => {
-        const { nome, pontosMeta, cor, tipo, grupoOrigemId } = req.body;
+        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
+        const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
         try {
             await pool.query(
-                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5 WHERE id=$6`,
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6 WHERE id=$7`,
                 [nome.trim(), pontosMeta || 40, cor || '#4285F4', tipoVal,
-                 grupoOrigemId || null, req.params.id]
+                 grupoOrigemId || null, dataInicioVal, req.params.id]
             );
             res.json({ ok: true });
         } catch (e) {
@@ -739,10 +742,14 @@ export function createClassroomRouter(deps = {}) {
         try {
             /* Carrega metadados do grupo para saber se é recuperação */
             const { rows: [grupoInfo] } = await pool.query(
-                `SELECT tipo, grupo_origem_id FROM classroom_grupos WHERE id = $1`,
+                `SELECT tipo, grupo_origem_id, data_inicio FROM classroom_grupos WHERE id = $1`,
                 [req.params.id]
             );
             const isRecuperacao = grupoInfo?.tipo === 'recuperacao';
+            /* Data de corte: submissions com updateTime >= data_inicio são "de recuperação" */
+            const dataInicio = grupoInfo?.data_inicio
+                ? new Date(grupoInfo.data_inicio)
+                : null;
 
             const { rows: ativs } = await pool.query(
                 `SELECT * FROM classroom_grupo_atividades WHERE grupo_id=$1 ORDER BY id`,
@@ -795,8 +802,11 @@ export function createClassroomRouter(deps = {}) {
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
                     const atrasado = s.late || false;
 
+                    /* updateTime → detectar submissões pós data de recuperação */
+                    const updateTime = s.updateTime ? new Date(s.updateTime) : null;
+
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
-                        nota, estado: s.state, entregue, atrasado,
+                        nota, estado: s.state, entregue, atrasado, updateTime,
                     };
 
                     if (nota !== null) {
@@ -819,12 +829,49 @@ export function createClassroomRouter(deps = {}) {
                 atividades:  a.atividades,
             }));
 
-            // Para grupos de recuperação: exibe APENAS alunos que efetivamente entregaram
-            // (state = TURNED_IN ou RETURNED), ignorando quem nem abriu as atividades
+            /* ─── Filtro de recuperação por data ───────────────────────────────────
+               Para grupos de recuperação com data_inicio definida:
+               - "Fez recuperação" = entregou APÓS a data de corte (updateTime >= dataInicio)
+               - Apenas esses alunos aparecem no resumo do grupo de recuperação
+               Sem data_inicio definida: cai no comportamento legado (qualquer entrega).
+            ─────────────────────────────────────────────────────────────────────── */
+            const alunoFezRecuperacao = (a) => {
+                const atvs = Object.values(a.atividades);
+                if (dataInicio) {
+                    return atvs.some(atv => atv.entregue && atv.updateTime && atv.updateTime >= dataInicio);
+                }
+                return atvs.some(atv => atv.entregue);
+            };
+
             if (isRecuperacao) {
-                alunos = alunos.filter(a =>
-                    Object.values(a.atividades).some(atv => atv.entregue)
-                );
+                alunos = alunos.filter(a => alunoFezRecuperacao(a));
+            }
+
+            /* Marca per-submission se é uma entrega de recuperação (pós data_inicio) */
+            if (dataInicio) {
+                alunos = alunos.map(a => ({
+                    ...a,
+                    atividades: Object.fromEntries(
+                        Object.entries(a.atividades).map(([id, atv]) => [
+                            id,
+                            {
+                                ...atv,
+                                fezRec: atv.entregue && atv.updateTime ? atv.updateTime >= dataInicio : false,
+                                updateTime: atv.updateTime ? atv.updateTime.toISOString() : null,
+                            }
+                        ])
+                    ),
+                }));
+            } else {
+                alunos = alunos.map(a => ({
+                    ...a,
+                    atividades: Object.fromEntries(
+                        Object.entries(a.atividades).map(([id, atv]) => [
+                            id,
+                            { ...atv, fezRec: false, updateTime: atv.updateTime ? atv.updateTime.toISOString() : null }
+                        ])
+                    ),
+                }));
             }
 
             res.json({
@@ -833,6 +880,7 @@ export function createClassroomRouter(deps = {}) {
                 })),
                 alunos,
                 isRecuperacao,
+                dataInicio: dataInicio ? dataInicio.toISOString().slice(0, 10) : null,
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
             });
         } catch (e) {

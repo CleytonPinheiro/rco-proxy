@@ -736,8 +736,11 @@ function renderGrupos() {
         const lancadoHtml = g.lancadoLivro
             ? `<span class="cl-grupo-livro-badge" title="Lançado no livro${g.lancadoEm ? ' em ' + new Date(g.lancadoEm).toLocaleDateString('pt-BR') : ''}">📗 Lançado</span>`
             : '';
+        const dataInicioStr = g.dataInicio
+            ? new Date(g.dataInicio + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            : '';
         const recBadgeHtml = g.tipo === 'recuperacao'
-            ? `<span class="cl-grupo-rec-badge">🔄 Recuperação</span>`
+            ? `<span class="cl-grupo-rec-badge" title="Recuperação${dataInicioStr ? ' — a partir de ' + dataInicioStr : ''}">🔄 Recuperação</span>`
             : '';
         const temRecHtml = g.recuperacaoId
             ? `<span class="cl-grupo-tem-rec" title="Tem grupo de recuperação: ${esc(g.recuperacaoNome || '')}">📎 Rec.</span>`
@@ -750,6 +753,7 @@ function renderGrupos() {
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
+                    ${g.tipo === 'recuperacao' && dataInicioStr ? `&bull; <span class="cl-grupo-data-rec">📅 a partir de ${dataInicioStr}</span>` : ''}
                 </div>
             </div>
             <div class="cl-grupo-acoes">
@@ -927,7 +931,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, isRec, hasRec };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, isRec, hasRec, dataInicio: resumo.dataInicio };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
 
@@ -966,7 +970,7 @@ function toggleFiltro(chave) {
 
 function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    const { alunosResumo, meta, atividades, isRec, hasRec } = grupoResumoData;
+    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio } = grupoResumoData;
 
     // Contagens por faixa
     const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
@@ -992,10 +996,16 @@ function renderListaFiltrada() {
             : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
     /* Banner de grupo de recuperação */
+    const dataInicioStr = dataInicio
+        ? new Date(dataInicio + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+        : null;
     const recBannerHtml = isRec
         ? `<div class="cl-rec-banner">
                <span class="cl-rec-banner-icon">🔄</span>
-               <span>Grupo de <strong>Recuperação</strong> — exibindo apenas alunos que entregaram ao menos uma atividade.</span>
+               <div>
+                   <div>Grupo de <strong>Recuperação</strong> — exibindo apenas alunos que entregaram após a data de corte.</div>
+                   ${dataInicioStr ? `<div class="cl-rec-banner-data">📅 A partir de <strong>${dataInicioStr}</strong></div>` : ''}
+               </div>
            </div>`
         : '';
 
@@ -1055,21 +1065,23 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false) {
 
     // Barra de passos: um segmento por atividade
     const stepsHtml = atividades.map(atv => {
-        const sub  = a.atividades?.[atv.id];
-        const nota = sub?.nota ?? null;
-        const ent  = sub?.entregue ?? false;
+        const sub    = a.atividades?.[atv.id];
+        const nota   = sub?.nota ?? null;
+        const ent    = sub?.entregue ?? false;
+        const fezRec = sub?.fezRec ?? false;
         // verde = nota > 0 | laranja = entrou (0 pts, devolvido) | azul = entregue s/ nota | cinza = pendente
         const entrou = nota === 0 && ent;
         const cor    = entrou             ? '#f97316'
                      : nota !== null      ? '#10b981'
                      : ent               ? '#4285F4'
                      : 'var(--border)';
-        const label  = entrou
-            ? `${atv.titulo}: Entrou (0 pts) — não realizou`
-            : nota !== null
-                ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
-                : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`;
-        return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
+        const label  = (fezRec ? '🔄 Recuperação — ' : '')
+            + (entrou
+                ? `${atv.titulo}: Entrou (0 pts) — não realizou`
+                : nota !== null
+                    ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
+                    : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`);
+        return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}${fezRec ? ' cl-passo--rec' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
     }).join('');
 
     /* Coluna de nota de recuperação */
@@ -1386,6 +1398,7 @@ const elModalAtivs     = document.getElementById('clModalAtividades');
 const elTipoGrupo      = document.getElementById('clTipoGrupo');
 const elRecOrigemWrap  = document.getElementById('clRecOrigemWrap');
 const elRecOrigemSel   = document.getElementById('clRecOrigemSel');
+const elRecDataInicio  = document.getElementById('clRecDataInicio');
 
 /* ── Lógica dos botões de tipo ── */
 elTipoGrupo.addEventListener('click', e => {
@@ -1437,6 +1450,7 @@ function abrirModalGrupo(grupo = null) {
     popularRecOrigem(grupo?.id);
     elRecOrigemWrap.style.display = tipo === 'recuperacao' ? '' : 'none';
     if (grupo?.grupoOrigemId) elRecOrigemSel.value = grupo.grupoOrigemId;
+    elRecDataInicio.value = grupo?.dataInicio || '';
 
     if (grupo) {
         elModalTitulo.textContent = 'Editar Grupo';
@@ -1635,12 +1649,18 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     const id            = elGrupoId.value;
     const tipo          = tipoModalAtivo();
     const grupoOrigemId = tipo === 'recuperacao' ? (elRecOrigemSel.value || null) : null;
+    const dataInicio    = tipo === 'recuperacao' ? (elRecDataInicio.value || null) : null;
 
     if (!nome) { elGrupoNome.focus(); toast('Informe o nome do grupo.', 'erro'); return; }
     if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }
     if (tipo === 'recuperacao' && !grupoOrigemId) {
         toast('Selecione o grupo de origem da recuperação.', 'erro');
         elRecOrigemSel.focus();
+        return;
+    }
+    if (tipo === 'recuperacao' && !dataInicio) {
+        toast('Informe a data de início da recuperação.', 'erro');
+        elRecDataInicio.focus();
         return;
     }
 
@@ -1660,9 +1680,9 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     try {
         let grupoId = id;
         if (id) {
-            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId } });
+            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio } });
         } else {
-            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId } });
+            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio } });
             grupoId = r.id;
         }
         await api(`/groups/${grupoId}/activities`, { method: 'PUT', body: { atividades } });

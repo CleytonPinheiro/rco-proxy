@@ -1518,6 +1518,11 @@ body {
     line-height: 1.45;
 }
 .cl-rec-banner-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.cl-rec-banner-data {
+    margin-top: 4px;
+    font-size: .79rem;
+    color: var(--text-secondary);
+}
 
 /* Grade extra para a coluna de recuperação */
 .cl-resumo-header--com-rec { grid-template-columns: 36px 1fr 100px 72px 90px; }
@@ -1587,6 +1592,19 @@ body {
     margin-top: 4px;
 }
 .cl-select:focus { border-color: #4285F4; }
+
+/* Data de início no meta do card do grupo de recuperação */
+.cl-grupo-data-rec {
+    color: #ea580c;
+    font-weight: 600;
+}
+
+/* Passo de atividade entregue como recuperação (outline brilhante para destacar) */
+.cl-passo--rec {
+    outline: 2px solid #f97316;
+    outline-offset: 1px;
+    border-radius: 3px;
+}
 
 @media (prefers-color-scheme: dark) {
     .cl-grupo-rec-badge  { color: #fb923c; }
