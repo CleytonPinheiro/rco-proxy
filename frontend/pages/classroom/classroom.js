@@ -1267,18 +1267,29 @@ function abrirModalGrupo(grupo = null) {
     });
 
     const ativsNoGrupo = new Set((grupo?.atividades || []).map(a => a.atividade_id));
+    // pontos_max salvo no banco para cada atividade do grupo (pode diferir do maxPoints do Classroom)
+    const pontosNoGrupo = {};
+    (grupo?.atividades || []).forEach(a => { pontosNoGrupo[a.atividade_id] = a.pontos_max; });
+
     if (!atividadesCache.length) {
         elModalAtivs.innerHTML = '<div class="cl-empty-state" style="padding:12px">Selecione uma disciplina primeiro.</div>';
     } else {
-        elModalAtivs.innerHTML = atividadesCache.map(a => `
+        elModalAtivs.innerHTML = atividadesCache.map(a => {
+            // Para atividades já no grupo: usa pontos_max do banco (editável pelo professor)
+            // Para atividades novas (não vinculadas): usa maxPoints da API do Classroom
+            const pontosInterno = ativsNoGrupo.has(a.id) && pontosNoGrupo[a.id] != null
+                ? Number(pontosNoGrupo[a.id])
+                : (a.pontos ?? null);
+            return `
             <label class="cl-modal-ativ-item">
                 <input type="checkbox" value="${esc(a.id)}"
                     data-titulo="${esc(a.titulo)}"
-                    data-pontos="${a.pontos ?? ''}"
+                    data-pontos="${pontosInterno ?? ''}"
                     ${ativsNoGrupo.has(a.id) ? 'checked' : ''}/>
                 <span class="cl-modal-ativ-nome">${esc(a.titulo)}</span>
-                ${a.pontos !== null ? `<span class="cl-ativ-pontos">${rco(a.pontos)} pts</span>` : ''}
-            </label>`).join('');
+                ${pontosInterno !== null ? `<span class="cl-ativ-pontos">${rco(pontosInterno)} pts</span>` : ''}
+            </label>`;
+        }).join('');
     }
 
     elModal.classList.add('cl-modal-overlay--visivel');
