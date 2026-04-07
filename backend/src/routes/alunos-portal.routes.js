@@ -264,41 +264,46 @@ export function createAlunosPortalRouter() {
                 return res.json({ aluno: { email: aluno.email, nome: aluno.nome, foto: aluno.foto }, cursos: [] });
             }
 
-            /* 2. Para cada curso: submissions pendentes + lista de coursework — em paralelo */
+            /* 2. Para cada curso: submissions pendentes + zeradas + coursework — em paralelo */
             const resultados = await Promise.all(todosCursos.map(async (curso) => {
                 try {
-                    const [subsResp, cwResp] = await Promise.all([
-                        /* Submissions pendentes deste aluno neste curso */
+                    const [subsPendResp, subsZerResp, cwResp] = await Promise.all([
+                        /* Pendentes: nunca abriu / abriu mas não entregou / recolheu */
                         classroom.courses.courseWork.studentSubmissions.list({
                             courseId:     curso.id,
-                            courseWorkId: '-',        // wildcard = todos os courseworks
+                            courseWorkId: '-',
                             userId:       aluno.email,
-                            // NEW = nunca abriu | CREATED = abriu mas não entregou
-                            // RECLAIMED_BY_STUDENT = recolheu após entrega
                             states:       ['NEW', 'CREATED', 'RECLAIMED_BY_STUDENT'],
+                            pageSize:     100,
+                        }),
+                        /* Devolvidas: RETURNED — filtraremos as zeradas (assignedGrade=0) */
+                        classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     curso.id,
+                            courseWorkId: '-',
+                            userId:       aluno.email,
+                            states:       ['RETURNED'],
                             pageSize:     100,
                         }),
                         /* Metadados de todos os courseworks publicados */
                         classroom.courses.courseWork.list({
-                            courseId:          curso.id,
-                            courseWorkStates:  ['PUBLISHED'],
-                            orderBy:           'dueDate asc',
-                            pageSize:          100,
+                            courseId:         curso.id,
+                            courseWorkStates: ['PUBLISHED'],
+                            orderBy:          'dueDate asc',
+                            pageSize:         100,
                         }),
                     ]);
-
-                    const pendingSubs = subsResp.data.studentSubmissions || [];
-                    if (!pendingSubs.length) return null;
 
                     const cwMap = {};
                     (cwResp.data.courseWork || []).forEach(cw => { cwMap[cw.id] = cw; });
 
-                    const atividades = pendingSubs
+                    /* ── Atividades pendentes ─────────────────────────── */
+                    const pendingSubs = subsPendResp.data.studentSubmissions || [];
+                    const atividades  = pendingSubs
                         .map(sub => {
                             const cw = cwMap[sub.courseWorkId];
                             if (!cw) return null;
-                            const prazo    = formatarPrazo(cw.dueDate, cw.dueTime);
-                            const vencida  = prazoVencido(cw.dueDate);
+                            const prazo   = formatarPrazo(cw.dueDate, cw.dueTime);
+                            const vencida = prazoVencido(cw.dueDate);
                             return {
                                 id:        cw.id,
                                 titulo:    cw.title,
@@ -319,17 +324,45 @@ export function createAlunosPortalRouter() {
                             return a.prazoIso.localeCompare(b.prazoIso);
                         });
 
-                    if (!atividades.length) return null;
+                    /* ── Atividades zeradas (RETURNED + assignedGrade=0) ─ */
+                    const returnedSubs = subsZerResp.data.studentSubmissions || [];
+                    const zeradas = returnedSubs
+                        .filter(sub => (sub.assignedGrade ?? null) === 0)
+                        .map(sub => {
+                            const cw = cwMap[sub.courseWorkId];
+                            if (!cw) return null;
+                            const prazo   = formatarPrazo(cw.dueDate, cw.dueTime);
+                            const vencida = prazoVencido(cw.dueDate);
+                            return {
+                                id:       cw.id,
+                                titulo:   cw.title,
+                                tipo:     cw.workType || 'ASSIGNMENT',
+                                prazo:    prazo?.br  || null,
+                                prazoIso: prazo?.iso || null,
+                                vencida,
+                                pontos:   cw.maxPoints ?? null,
+                                link:     cw.alternateLink || '',
+                            };
+                        })
+                        .filter(Boolean)
+                        .sort((a, b) => {
+                            if (!a.prazoIso && !b.prazoIso) return 0;
+                            if (!a.prazoIso) return 1;
+                            if (!b.prazoIso) return -1;
+                            return a.prazoIso.localeCompare(b.prazoIso);
+                        });
+
+                    if (!atividades.length && !zeradas.length) return null;
 
                     return {
-                        cursoId: curso.id,
-                        nome:    curso.name,
-                        secao:   curso.section || '',
-                        link:    curso.alternateLink || '',
+                        cursoId:  curso.id,
+                        nome:     curso.name,
+                        secao:    curso.section || '',
+                        link:     curso.alternateLink || '',
                         atividades,
+                        zeradas,
                     };
                 } catch (e) {
-                    /* Ignora cursos onde o professor não tem acesso aos dados do aluno */
                     console.warn(`[ALUNOS-PORTAL] Curso ${curso.id} ignorado:`, e.message);
                     return null;
                 }
@@ -337,9 +370,10 @@ export function createAlunosPortalRouter() {
 
             const cursos = resultados.filter(Boolean);
             res.json({
-                aluno:  { email: aluno.email, nome: aluno.nome, foto: aluno.foto },
+                aluno:          { email: aluno.email, nome: aluno.nome, foto: aluno.foto },
                 cursos,
                 totalPendentes: cursos.reduce((s, c) => s + c.atividades.length, 0),
+                totalZeradas:   cursos.reduce((s, c) => s + c.zeradas.length,    0),
             });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao buscar atividades:', e.message);

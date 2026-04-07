@@ -98,10 +98,18 @@
     <main id="paTelaAtividades" class="pa-section" style="display:none">
 
         <!-- Resumo -->
-        <div class="pa-resumo" id="paResumo">
-            <div class="pa-resumo-inner">
-                <div class="pa-resumo-num" id="paResumoNum">0</div>
-                <div class="pa-resumo-label">atividades pendentes</div>
+        <div class="pa-resumo-bar">
+            <div class="pa-resumo" id="paResumo">
+                <div class="pa-resumo-inner">
+                    <div class="pa-resumo-num" id="paResumoNum">0</div>
+                    <div class="pa-resumo-label">pendentes</div>
+                </div>
+            </div>
+            <div class="pa-resumo pa-resumo--zeradas" id="paResumoZeradas" style="display:none">
+                <div class="pa-resumo-inner">
+                    <div class="pa-resumo-num" id="paResumoZeradasNum">0</div>
+                    <div class="pa-resumo-label">⚠️ zeradas</div>
+                </div>
             </div>
         </div>
 
@@ -118,8 +126,20 @@
             <span id="paSemConexaoMsg"></span>
         </div>
 
-        <!-- Cards por disciplina -->
+        <!-- Cards por disciplina — pendentes -->
         <div id="paCursos" class="pa-cursos-grid"></div>
+
+        <!-- Seção de atividades zeradas -->
+        <div id="paZeradasSection" style="display:none">
+            <div class="pa-zeradas-titulo">
+                <span class="pa-zeradas-icon">🎮</span>
+                <div>
+                    <strong>Entrou mas não realizou</strong>
+                    <span class="pa-zeradas-desc">Você acessou essas atividades mas saiu com 0 pontos. Refaça antes que o prazo encerre.</span>
+                </div>
+            </div>
+            <div id="paCursosZerados" class="pa-cursos-grid"></div>
+        </div>
 
     </main>
 

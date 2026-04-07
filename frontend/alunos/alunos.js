@@ -174,9 +174,12 @@ async function entrarComGoogle() {
 /* ── Carrega atividades ──────────────────────────────── */
 async function carregarAtividades() {
     mostrarLoading(true);
-    $('paVazio').style.display      = 'none';
-    $('paSemConexao').style.display = 'none';
-    $('paCursos').innerHTML         = '';
+    $('paVazio').style.display          = 'none';
+    $('paSemConexao').style.display     = 'none';
+    $('paCursos').innerHTML             = '';
+    $('paCursosZerados').innerHTML      = '';
+    $('paZeradasSection').style.display = 'none';
+    $('paResumoZeradas').style.display  = 'none';
 
     try {
         const resp = await fetch('/api/alunos-portal/atividades', { credentials: 'include' });
@@ -186,7 +189,7 @@ async function carregarAtividades() {
         const data = await resp.json();
 
         if (!resp.ok) {
-            $('paSemConexao').style.display = '';
+            $('paSemConexao').style.display  = '';
             $('paSemConexaoMsg').textContent = data.erro || 'Erro ao carregar atividades.';
             $('paResumoNum').textContent     = '0';
             return;
@@ -201,78 +204,113 @@ async function carregarAtividades() {
     }
 }
 
-/* ── Render ──────────────────────────────────────────── */
-function renderAtividades({ cursos = [], totalPendentes = 0 }) {
+/* ── Render de um item de atividade ─────────────────── */
+function renderAtivItem(ativ, { zerada = false } = {}) {
+    const li        = document.createElement('li');
+    li.className    = 'pa-atividade-item' + (zerada ? ' pa-atividade-item--zerada' : '');
+
+    const tipoLabel = TIPO_LABEL[ativ.tipo] || ativ.tipo;
+    const tipoCls   = `pa-tipo-${ativ.tipo}`;
+
+    const prazoPart = ativ.prazo
+        ? `<span class="pa-prazo ${ativ.vencida ? 'vencida' : ''}">
+               <span class="pa-prazo-icon">${ativ.vencida ? '⚠️' : '📅'}</span>
+               ${esc(ativ.prazo)}
+           </span>`
+        : '<span class="pa-prazo"><span class="pa-prazo-icon">📅</span> Sem prazo</span>';
+
+    const devolvidaPart = ativ.devolvida
+        ? '<span class="pa-devolvida-badge">↩ Devolvida</span>' : '';
+
+    const zerouPart = zerada
+        ? '<span class="pa-zerada-badge">🎮 Entrou com 0 pts</span>' : '';
+
+    const pontosPart = ativ.pontos != null
+        ? `<span class="pa-pontos">${ativ.pontos} pts</span>` : '';
+
+    li.innerHTML = `
+        <div class="pa-ativ-left">
+            <div class="pa-ativ-titulo">${esc(ativ.titulo)}</div>
+            <div class="pa-ativ-meta">
+                <span class="pa-tipo-badge ${tipoCls}">${esc(tipoLabel)}</span>
+                ${prazoPart}
+                ${zerouPart}
+                ${devolvidaPart}
+                ${pontosPart}
+            </div>
+        </div>
+        <div class="pa-ativ-right">
+            <a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
+                ${zerada ? 'Tentar novamente ↗' : 'Abrir ↗'}
+            </a>
+        </div>
+    `;
+    return li;
+}
+
+/* ── Render de um card de curso ─────────────────────── */
+function renderCursoCard(curso, { zerada = false } = {}) {
+    const card = document.createElement('div');
+    card.className = 'pa-curso-card' + (zerada ? ' pa-curso-card--zerada' : '');
+
+    const qtd = zerada ? curso.zeradas.length : curso.atividades.length;
+    const badgeLabel = zerada
+        ? `${qtd} zerada${qtd !== 1 ? 's' : ''}`
+        : `${qtd} pendente${qtd !== 1 ? 's' : ''}`;
+
+    const header = document.createElement('div');
+    header.className = 'pa-curso-header';
+    header.innerHTML = `
+        <div class="pa-curso-info">
+            <div class="pa-curso-nome" title="${esc(curso.nome)}">${esc(curso.nome)}</div>
+            ${curso.secao ? `<div class="pa-curso-secao">${esc(curso.secao)}</div>` : ''}
+        </div>
+        <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}">${badgeLabel}</span>
+    `;
+
+    const lista = document.createElement('ul');
+    lista.className = 'pa-atividade-lista';
+
+    const items = zerada ? curso.zeradas : curso.atividades;
+    items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada })));
+
+    card.appendChild(header);
+    card.appendChild(lista);
+    return card;
+}
+
+/* ── Render principal ────────────────────────────────── */
+function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0 }) {
     $('paResumoNum').textContent = totalPendentes;
 
-    if (!cursos.length) {
+    /* Cursos com pendentes */
+    const cursosComPend = cursos.filter(c => c.atividades.length > 0);
+    /* Cursos com zeradas */
+    const cursosComZer  = cursos.filter(c => c.zeradas  && c.zeradas.length > 0);
+
+    if (!cursosComPend.length && !cursosComZer.length) {
         $('paVazio').style.display = '';
         return;
     }
 
+    /* Grid de pendentes */
     const grid = $('paCursos');
     grid.innerHTML = '';
+    cursosComPend.forEach(curso => grid.appendChild(renderCursoCard(curso)));
 
-    cursos.forEach(curso => {
-        const card = document.createElement('div');
-        card.className = 'pa-curso-card';
+    if (!cursosComPend.length) {
+        $('paVazio').style.display = '';
+    }
 
-        const header = document.createElement('div');
-        header.className = 'pa-curso-header';
-        header.innerHTML = `
-            <div class="pa-curso-info">
-                <div class="pa-curso-nome" title="${esc(curso.nome)}">${esc(curso.nome)}</div>
-                ${curso.secao ? `<div class="pa-curso-secao">${esc(curso.secao)}</div>` : ''}
-            </div>
-            <span class="pa-curso-badge">${curso.atividades.length} pendente${curso.atividades.length !== 1 ? 's' : ''}</span>
-        `;
-
-        const lista = document.createElement('ul');
-        lista.className = 'pa-atividade-lista';
-
-        curso.atividades.forEach(ativ => {
-            const li   = document.createElement('li');
-            li.className = 'pa-atividade-item';
-
-            const tipoLabel = TIPO_LABEL[ativ.tipo] || ativ.tipo;
-            const tipoCls   = `pa-tipo-${ativ.tipo}`;
-
-            const prazoPart = ativ.prazo
-                ? `<span class="pa-prazo ${ativ.vencida ? 'vencida' : ''}">
-                       <span class="pa-prazo-icon">${ativ.vencida ? '⚠️' : '📅'}</span>
-                       ${esc(ativ.prazo)}
-                   </span>`
-                : '<span class="pa-prazo"><span class="pa-prazo-icon">📅</span> Sem prazo</span>';
-
-            const devolvidaPart = ativ.devolvida
-                ? '<span class="pa-devolvida-badge">↩ Devolvida</span>' : '';
-
-            const pontosPart = ativ.pontos != null
-                ? `<span class="pa-pontos">${ativ.pontos} pts</span>` : '';
-
-            li.innerHTML = `
-                <div class="pa-ativ-left">
-                    <div class="pa-ativ-titulo">${esc(ativ.titulo)}</div>
-                    <div class="pa-ativ-meta">
-                        <span class="pa-tipo-badge ${tipoCls}">${esc(tipoLabel)}</span>
-                        ${prazoPart}
-                        ${devolvidaPart}
-                        ${pontosPart}
-                    </div>
-                </div>
-                <div class="pa-ativ-right">
-                    <a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ">
-                        Abrir ↗
-                    </a>
-                </div>
-            `;
-            lista.appendChild(li);
-        });
-
-        card.appendChild(header);
-        card.appendChild(lista);
-        grid.appendChild(card);
-    });
+    /* Seção zeradas */
+    if (cursosComZer.length > 0) {
+        $('paResumoZeradas').style.display  = '';
+        $('paResumoZeradasNum').textContent = totalZeradas;
+        $('paZeradasSection').style.display = '';
+        const gridZ = $('paCursosZerados');
+        gridZ.innerHTML = '';
+        cursosComZer.forEach(curso => gridZ.appendChild(renderCursoCard(curso, { zerada: true })));
+    }
 }
 
 /* ── Logout ──────────────────────────────────────────── */

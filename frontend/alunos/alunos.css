@@ -325,10 +325,12 @@ html, body {
 }
 
 /* ── Resumo ──────────────────────────────────────────── */
-.pa-resumo         { margin-bottom: 24px; }
+.pa-resumo-bar     { display: flex; align-items: baseline; gap: 28px; margin-bottom: 24px; flex-wrap: wrap; }
+.pa-resumo         { }
 .pa-resumo-inner   { display: inline-flex; align-items: baseline; gap: 8px; }
 .pa-resumo-num     { font-size: 2.4rem; font-weight: 800; color: var(--pa-primary); line-height: 1; }
 .pa-resumo-label   { font-size: 1.05rem; color: var(--pa-sub); }
+.pa-resumo--zeradas .pa-resumo-num { color: #f97316; }
 
 /* ── Cards de disciplinas ────────────────────────────── */
 .pa-cursos-grid { display: flex; flex-direction: column; gap: 20px; }
@@ -493,6 +495,62 @@ html, body {
     animation: pa-spin .7s linear infinite;
 }
 @keyframes pa-spin { to { transform: rotate(360deg); } }
+
+/* ── Zeradas ─────────────────────────────────────────── */
+.pa-zeradas-titulo {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: rgba(249, 115, 22, .1);
+    border: 1px solid rgba(249, 115, 22, .35);
+    border-radius: var(--pa-radius);
+    padding: 16px 20px;
+    margin-top: 36px;
+    margin-bottom: 16px;
+}
+.pa-zeradas-icon { font-size: 1.8rem; flex-shrink: 0; line-height: 1.2; }
+.pa-zeradas-titulo strong {
+    display: block;
+    color: #c2410c;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+[data-theme="dark"] .pa-zeradas-titulo strong { color: #fb923c; }
+.pa-zeradas-desc {
+    font-size: .88rem;
+    color: var(--pa-sub);
+    display: block;
+}
+
+.pa-curso-card--zerada {
+    border-color: rgba(249, 115, 22, .4);
+}
+.pa-curso-card--zerada .pa-curso-header {
+    background: linear-gradient(135deg, #f97316 0%, #c2410c 100%);
+}
+.pa-curso-badge--zerada {
+    background: rgba(255, 255, 255, .2);
+}
+
+.pa-atividade-item--zerada { background: rgba(249, 115, 22, .04); }
+.pa-atividade-item--zerada:hover { background: rgba(249, 115, 22, .09); }
+
+.pa-zerada-badge {
+    font-size: .7rem;
+    font-weight: 700;
+    background: rgba(249, 115, 22, .14);
+    color: #c2410c;
+    border-radius: 4px;
+    padding: 2px 7px;
+    border: 1px solid rgba(249, 115, 22, .3);
+}
+[data-theme="dark"] .pa-zerada-badge { color: #fb923c; background: rgba(249,115,22,.2); }
+
+.pa-link-ativ--zerada {
+    background: #f97316;
+}
+.pa-link-ativ--zerada:hover { background: #c2410c; }
 
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 600px) {
