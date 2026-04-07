@@ -96,6 +96,10 @@ export async function initializeDatabase() {
             CREATE INDEX IF NOT EXISTS idx_emp_status   ON livros_emprestimos(status);
         `);
 
+        /* Migração: marcação "lançado no livro" nos grupos do Classroom */
+        await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS lancado_livro BOOLEAN NOT NULL DEFAULT false`);
+        await client.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS lancado_em    TIMESTAMP DEFAULT NULL`);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

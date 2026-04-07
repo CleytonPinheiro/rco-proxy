@@ -598,11 +598,13 @@ export function createClassroomRouter(deps = {}) {
                 ORDER BY g.id
             `, [courseId]);
             res.json(rows.map(g => ({
-                id:          g.id,
-                nome:        g.nome,
-                pontosMeta:  Number(g.pontos_meta),
-                cor:         g.cor,
-                atividades:  g.atividades,
+                id:           g.id,
+                nome:         g.nome,
+                pontosMeta:   Number(g.pontos_meta),
+                cor:          g.cor,
+                atividades:   g.atividades,
+                lancadoLivro: g.lancado_livro ?? false,
+                lancadoEm:    g.lancado_em ?? null,
             })));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar grupos:', e.message);
@@ -649,6 +651,31 @@ export function createClassroomRouter(deps = {}) {
             res.json({ ok: true });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao excluir grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Marcar/desmarcar "lançado no livro" ── */
+    router.patch('/classroom/groups/:id/livro', async (req, res) => {
+        const { lancado } = req.body;          // boolean
+        if (typeof lancado !== 'boolean') return res.status(400).json({ erro: 'lancado (boolean) obrigatório.' });
+        try {
+            const { rows } = await pool.query(
+                `UPDATE classroom_grupos
+                    SET lancado_livro = $1,
+                        lancado_em    = $2
+                  WHERE id = $3
+                  RETURNING id, lancado_livro, lancado_em`,
+                [lancado, lancado ? new Date() : null, req.params.id]
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+            res.json({
+                ok:           true,
+                lancadoLivro: rows[0].lancado_livro,
+                lancadoEm:    rows[0].lancado_em,
+            });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao marcar livro:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

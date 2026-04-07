@@ -91,6 +91,7 @@ const elBtnExportar    = document.getElementById('clBtnExportar');
 const elBtnImprimir    = document.getElementById('clBtnImprimir');
 const elBtnAtualizar   = document.getElementById('clBtnAtualizar');
 const elBtnAtualizarIcon = document.getElementById('clBtnAtualizarIcon');
+const elBtnLivro       = document.getElementById('clBtnLivro');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
 const elToast          = document.getElementById('clToast');
@@ -517,6 +518,7 @@ async function selecionarAtividade(ativ, itemEl) {
         elNotasActions.style.display  = 'flex';
         elBtnImprimir.style.display  = 'none';
         elBtnAtualizar.style.display = 'none';
+        elBtnLivro.style.display     = 'none';
 
         document.getElementById('clStEntreguesLabel').textContent = 'Entregues';
         document.getElementById('clStPendentesLabel').textContent = 'Pendentes';
@@ -728,10 +730,14 @@ function renderGrupos() {
         item.className  = 'cl-grupo-item';
         item.dataset.id = g.id;
         const nAtiv     = g.atividades.length;
+        if (g.lancadoLivro) item.classList.add('cl-grupo-item--lancado');
+        const lancadoHtml = g.lancadoLivro
+            ? `<span class="cl-grupo-livro-badge" title="Lançado no livro${g.lancadoEm ? ' em ' + new Date(g.lancadoEm).toLocaleDateString('pt-BR') : ''}">📗 Lançado</span>`
+            : '';
         item.innerHTML  = `
             <div class="cl-grupo-cor" style="background:${g.cor}"></div>
             <div class="cl-grupo-info">
-                <div class="cl-grupo-nome">${esc(g.nome)}</div>
+                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}</div>
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
@@ -768,6 +774,8 @@ async function selecionarGrupo(grupo, itemEl) {
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'flex';
     elBtnImprimir.style.display  = 'inline-flex';
+    elBtnLivro.style.display     = 'inline-flex';
+    atualizarBtnLivro(grupo);
     elNotasLista.innerHTML       = '<div class="cl-loading">Calculando somas...</div>';
 
     if (!grupo.atividades.length) {
@@ -778,6 +786,67 @@ async function selecionarGrupo(grupo, itemEl) {
 
     await carregarResumoGrupo(grupo);
 }
+
+/* ── Atualiza visual do botão "Lançar no livro" conforme estado do grupo ── */
+function atualizarBtnLivro(grupo) {
+    if (!grupo) { elBtnLivro.style.display = 'none'; return; }
+    if (grupo.lancadoLivro) {
+        elBtnLivro.innerHTML = '✅ Lançado no livro';
+        elBtnLivro.classList.add('cl-btn--livro--ok');
+        elBtnLivro.title = grupo.lancadoEm
+            ? `Lançado em ${new Date(grupo.lancadoEm).toLocaleString('pt-BR')} — clique para desmarcar`
+            : 'Lançado — clique para desmarcar';
+    } else {
+        elBtnLivro.innerHTML = '📒 Lançar no livro';
+        elBtnLivro.classList.remove('cl-btn--livro--ok');
+        elBtnLivro.title = 'Marcar que as notas deste grupo já foram lançadas no livro de chamada';
+    }
+}
+
+/* ── Handler: marcar/desmarcar lançamento no livro ── */
+elBtnLivro.addEventListener('click', async () => {
+    if (!grupoAtivo) return;
+    const novoEstado = !grupoAtivo.lancadoLivro;
+    const msg        = novoEstado
+        ? `Confirmar que as notas do grupo "${grupoAtivo.nome}" foram lançadas no livro?`
+        : `Desmarcar o grupo "${grupoAtivo.nome}" como lançado?`;
+    if (!confirm(msg)) return;
+
+    elBtnLivro.disabled = true;
+    try {
+        const res = await apiRaw(`/groups/${grupoAtivo.id}/livro`, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ lancado: novoEstado }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || 'Erro ao salvar.');
+
+        grupoAtivo.lancadoLivro = data.lancadoLivro;
+        grupoAtivo.lancadoEm    = data.lancadoEm;
+
+        // Atualiza cache
+        const idx = gruposCache.findIndex(g => g.id === grupoAtivo.id);
+        if (idx !== -1) {
+            gruposCache[idx].lancadoLivro = data.lancadoLivro;
+            gruposCache[idx].lancadoEm    = data.lancadoEm;
+        }
+
+        atualizarBtnLivro(grupoAtivo);
+        renderGrupos();                      // atualiza badge no card da lista
+
+        // Restaura seleção visual após re-render
+        document.querySelectorAll('.cl-grupo-item').forEach(el => {
+            if (Number(el.dataset.id) === grupoAtivo.id) el.classList.add('cl-grupo-item--ativo');
+        });
+
+        toast(novoEstado ? 'Grupo marcado como lançado no livro!' : 'Marcação removida.', 'ok');
+    } catch (e) {
+        toast(e.message, 'erro');
+    } finally {
+        elBtnLivro.disabled = false;
+    }
+});
 
 async function carregarResumoGrupo(grupo) {
     if (!grupo || !grupo.atividades.length) return;
@@ -1676,6 +1745,7 @@ async function selecionarAuditAtiv(ativ, itemEl) {
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'flex';
     elBtnImprimir.style.display  = 'none';
+    elBtnLivro.style.display     = 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Carregando dados da atividade...</div>';
 
     try {
