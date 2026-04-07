@@ -743,9 +743,10 @@ export function createClassroomRouter(deps = {}) {
                             atividades: {},
                         };
                     }
-                    // assignedGrade = publicada (devolvida); draftGrade = rascunho do professor
-                    // draftGrade=0 é ambíguo (padrão do Classroom) → só usar se > 0
-                    const nota     = s.assignedGrade ?? (s.draftGrade > 0 ? s.draftGrade : null);
+                    // Usa APENAS assignedGrade (nota publicada/devolvida ao aluno).
+                    // draftGrade (rascunho não publicado) é ignorado: não deve inflacionar
+                    // a média enquanto o aluno ainda não viu a nota.
+                    const nota     = s.assignedGrade ?? null;
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
                     const atrasado = s.late || false;
 
