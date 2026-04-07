@@ -1280,14 +1280,18 @@ function abrirModalGrupo(grupo = null) {
             const pontosInterno = ativsNoGrupo.has(a.id) && pontosNoGrupo[a.id] != null
                 ? Number(pontosNoGrupo[a.id])
                 : (a.pontos ?? null);
+            const pontosSuspeito = pontosInterno !== null && pontosInterno > 0 && pontosInterno < 10;
             return `
-            <label class="cl-modal-ativ-item">
+            <label class="cl-modal-ativ-item${pontosSuspeito ? ' cl-modal-ativ-item--alerta' : ''}">
                 <input type="checkbox" value="${esc(a.id)}"
                     data-titulo="${esc(a.titulo)}"
                     data-pontos="${pontosInterno ?? ''}"
                     ${ativsNoGrupo.has(a.id) ? 'checked' : ''}/>
                 <span class="cl-modal-ativ-nome">${esc(a.titulo)}</span>
-                ${pontosInterno !== null ? `<span class="cl-ativ-pontos">${rco(pontosInterno)} pts</span>` : ''}
+                ${pontosInterno !== null
+                    ? `<span class="cl-ativ-pontos${pontosSuspeito ? ' cl-ativ-pontos--alerta' : ''}" title="${pontosSuspeito ? '⚠ Valor muito baixo — clique para corrigir' : 'Clique para editar pontos'}">${rco(pontosInterno)} pts${pontosSuspeito ? ' ⚠' : ''}</span>`
+                    : ''
+                }
             </label>`;
         }).join('');
     }
