@@ -2707,37 +2707,31 @@ async function abrirModalRco() {
 
         elRcoAvaliacoesLista.innerHTML = '';
         lista.forEach(av => {
-            const isRec      = av.codTipoAvaliacaoParcial === 2;
-            const temId      = !!av.codAvaliacaoParcialClasse;
-            const labelBruto = av.descrAvaliacaoParcial ?? (av.numAvaliacaoParcial != null ? `AV${av.numAvaliacaoParcial}` : '—');
-            /* Remove "\n" e espaços extras que o RCO inclui no campo */
-            const label      = String(labelBruto).replace(/\n\s*/g, ' ').trim();
+            /* Oculta itens que ainda não existem no RCO (sem ID de classe) */
+            if (!av.codAvaliacaoParcialClasse) return;
+
+            const isRec  = av.codTipoAvaliacaoParcial === 2;
+            const label  = String(av.descrAvaliacaoParcial ?? (av.numAvaliacaoParcial != null ? `AV${av.numAvaliacaoParcial}` : '—'))
+                               .replace(/\n\s*/g, ' ').trim();
+
+            /* Sub-linha: só exibe campos que existem no retorno do RCO */
+            const subPartes = [];
+            if (av.pesoDecimal != null)        subPartes.push(`Peso: ${av.pesoDecimal}`);
+            if (av.dataAvaliacaoParcial)        subPartes.push(`Data: ${av.dataAvaliacaoParcial.slice(0,10)}`);
 
             const item = document.createElement('div');
-            item.className = 'cl-rco-av-item' + (isRec ? ' cl-rco-av-item--rec' : '') + (!temId ? ' cl-rco-av-item--indisponivel' : '');
-
+            item.className = 'cl-rco-av-item' + (isRec ? ' cl-rco-av-item--rec' : '');
             item.innerHTML = `
                 <div class="cl-rco-av-header">
                     ${isRec
                         ? '<span class="cl-rco-tipo-badge cl-rco-tipo-badge--rec">🔄 Recuperação</span>'
                         : '<span class="cl-rco-tipo-badge cl-rco-tipo-badge--av">📊 Avaliação</span>'
                     }
-                    ${!temId ? '<span class="cl-rco-tipo-badge cl-rco-tipo-badge--vazia">Não disponível</span>' : ''}
                 </div>
                 <div class="cl-rco-av-nome">${label}</div>
-                <div class="cl-rco-av-sub">
-                    Peso: ${av.pesoDecimal ?? '—'}
-                    &nbsp;|&nbsp;
-                    Data: ${av.dataAvaliacaoParcial ? av.dataAvaliacaoParcial.slice(0,10) : '—'}
-                </div>
+                ${subPartes.length ? `<div class="cl-rco-av-sub">${subPartes.join(' &nbsp;|&nbsp; ')}</div>` : ''}
             `;
-
-            if (temId) {
-                item.addEventListener('click', () => selecionarAvaliacao(av, item));
-            } else {
-                item.title = 'Esta avaliação ainda não tem código no RCO — não é possível lançar notas.';
-            }
-
+            item.addEventListener('click', () => selecionarAvaliacao(av, item));
             elRcoAvaliacoesLista.appendChild(item);
         });
     } catch (e) {
