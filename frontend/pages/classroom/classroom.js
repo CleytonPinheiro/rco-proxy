@@ -954,13 +954,10 @@ elBtnLivro.addEventListener('click', async () => {
 
     elBtnLivro.disabled = true;
     try {
-        const res = await apiRaw(`/groups/${grupoAtivo.id}/livro`, {
-            method:  'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ lancado: novoEstado }),
+        const data = await apiRaw(`/groups/${grupoAtivo.id}/livro`, {
+            method: 'PATCH',
+            body:   { lancado: novoEstado },
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.erro || 'Erro ao salvar.');
 
         grupoAtivo.lancadoLivro = data.lancadoLivro;
         grupoAtivo.lancadoEm    = data.lancadoEm;
