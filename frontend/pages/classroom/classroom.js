@@ -1570,41 +1570,34 @@ const elRecOrigemSel     = document.getElementById('clRecOrigemSel');
 const elRecDataInicio    = document.getElementById('clRecDataInicio');
 
 /* ── Campo de código RCO: bloqueia/desbloqueia conforme tipo do grupo ──
-   Grupos de recuperação herdam o código do grupo pai e não podem alterar. */
-let _campoCodBloqueado = false;   // estado global de bloqueio do campo
+   Grupos de recuperação herdam o código do grupo pai — campo somente consulta. */
+let _campoCodBloqueado = false;
 
 function configurarCampoCodClasse(isRec, grupoOrigemId = null) {
     _campoCodBloqueado = isRec;
 
     if (!isRec) {
-        /* Grupo normal — campo totalmente editável */
-        elGrupoCodClasseRco.readOnly = false;
-        elGrupoCodClasseRco.removeAttribute('readonly');
+        /* Grupo normal — totalmente editável */
+        elGrupoCodClasseRco.disabled = false;
         elGrupoCodClasseRco.classList.remove('cl-input--herdado');
-        elBtnBuscarClasse.disabled = false;
-        elBtnBuscarClasse.classList.remove('cl-btn--bloqueado');
-        elBtnBuscarClasse.title = 'Buscar classe no RCO';
+        elBtnBuscarClasse.style.display = '';
         return;
     }
 
-    /* Grupo de recuperação — herda código do pai e bloqueia */
+    /* Grupo de recuperação — herda código do pai, campo apenas consulta */
     const origem = gruposCache.find(g => String(g.id) === String(grupoOrigemId));
     const codPai = origem?.codClasseRco ?? null;
 
-    /* Só substitui o valor se o grupo pai tiver código;
-       caso contrário mantém o que já estava preenchido (valor salvo no próprio grupo) */
+    /* Substitui valor apenas se o pai tiver código definido */
     if (codPai) elGrupoCodClasseRco.value = String(codPai);
 
-    const cod = elGrupoCodClasseRco.value;
-
-    elGrupoCodClasseRco.setAttribute('readonly', '');
-    elGrupoCodClasseRco.readOnly = true;
+    /* Desabilita o campo e esconde o botão */
+    elGrupoCodClasseRco.disabled = true;
     elGrupoCodClasseRco.classList.add('cl-input--herdado');
-    elBtnBuscarClasse.disabled = true;
-    elBtnBuscarClasse.classList.add('cl-btn--bloqueado');
-    elBtnBuscarClasse.title = 'Código herdado do grupo principal — edite no grupo normal';
+    elBtnBuscarClasse.style.display = 'none';
 
     /* Exibe info da classe vinculada se disponível no cache */
+    const cod = elGrupoCodClasseRco.value;
     if (cod && _classesRcoCache) {
         const c = _classesRcoCache.find(x => String(x.codClasse) === String(cod));
         if (c) mostrarInfoClasseRco(c);
