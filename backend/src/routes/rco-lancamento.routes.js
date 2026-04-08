@@ -127,10 +127,16 @@ export function createRcoLancamentoRouter(deps = {}) {
                 /* A chave única da tabela alunos no Supabase é `registro`
                    (= String(codMatrizAluno)), não `codmatrizaluno`. */
                 const registros = alunos.map(a => String(a.codMatrizAluno)).filter(Boolean);
+                console.log('[RCO-LANC] registros busca (registro):', registros.slice(0,3));
                 const { data: aluSupa, error: errSupa } = await supabaseAdmin
                     .from('alunos')
                     .select('registro, nome, numchamada')
                     .in('registro', registros);
+                console.log('[RCO-LANC] Supabase retornou:', aluSupa?.length ?? 0, '| erro:', errSupa?.message ?? 'none');
+                /* Diagnóstico extra: conta total de registros na tabela */
+                const { count: totalReg } = await supabaseAdmin.from('alunos').select('*', { count: 'exact', head: true });
+                console.log('[RCO-LANC] Total alunos na tabela Supabase:', totalReg);
+                if (aluSupa?.length > 0) console.log('[RCO-LANC] sample:', JSON.stringify(aluSupa[0]));
                 if (errSupa) console.warn('[RCO-LANC] Supabase erro:', errSupa.message);
                 const aluMap = Object.fromEntries(
                     (aluSupa || []).map(a => [String(a.registro), a])
