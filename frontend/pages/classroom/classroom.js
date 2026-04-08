@@ -2502,13 +2502,23 @@ function extrairSerieCurso(nome) {
     return { ano: m[1], letra: m[2].toUpperCase() };
 }
 
-/* Verifica se uma classe RCO pertence à série dada (descrTurma ex: "1° ANO C - MATUTINO") */
+/* Verifica se uma classe RCO pertence à série dada.
+   Formato real do RCO: "TEC EM DES DE SISTEMAS - ET IC - 2ª série - Manhã - C"
+   — a letra é SEMPRE o último segmento separado por " - "
+   — o número da série aparece antes de "série" ou "Ano"             */
 function classeMatchSerie(c, serie) {
     if (!serie) return true;
-    const s = (c.descrTurma || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const mAno   = s.match(/^(\d+)/);
-    const mLetra = s.match(/ANO\s+([A-Z])/);
-    return mAno && mAno[1] === serie.ano && mLetra && mLetra[1] === serie.letra;
+    const s = c.descrTurma || '';
+
+    /* Letra: último segmento após " - " */
+    const segmentos = s.split(/\s*-\s*/);
+    const letra = segmentos[segmentos.length - 1].trim().toUpperCase();
+    if (letra !== serie.letra) return false;
+
+    /* Número de série: dígito antes de "série" ou "Ano" (ignora maiúsculas/acentos) */
+    const mSerie = s.match(/(\d+)\s*[ªºo°]?\s*(?:s[eé]rie|ano)/i);
+    if (!mSerie) return false;
+    return mSerie[1] === serie.ano;
 }
 
 function fecharClassePicker() {
