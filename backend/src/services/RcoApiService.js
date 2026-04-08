@@ -36,6 +36,22 @@ export class RcoApiService {
         const headers = await this.#headers();
         return axios.get(fullBase + path, { headers, timeout: 20000, validateStatus: () => true });
     }
+
+    async put(path, body, extraHeaders = {}) {
+        const headers = await this.#headers();
+        const all = { ...headers, 'Content-Type': 'application/json', ...extraHeaders };
+        let response = await axios.put(BASE + path, body, { headers: all, timeout: 30000, validateStatus: () => true });
+        if (response.status === 401 || response.status === 403) {
+            const newH = await this.#refreshHeaders();
+            const all2 = { ...newH, 'Content-Type': 'application/json', ...extraHeaders };
+            response = await axios.put(BASE + path, body, { headers: all2, timeout: 30000, validateStatus: () => true });
+        }
+        return response;
+    }
+
+    async getToken() {
+        return this.#tokenService.getValidToken();
+    }
 }
 
 export const rcoApiService = new RcoApiService();

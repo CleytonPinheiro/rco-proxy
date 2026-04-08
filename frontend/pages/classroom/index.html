@@ -313,6 +313,9 @@
                         <button class="cl-btn cl-btn--sm cl-btn--livro" id="clBtnLivro" style="display:none" title="Marcar/desmarcar que as notas deste grupo já foram lançadas no livro de chamada">
                             📒 Lançar no livro
                         </button>
+                        <button class="cl-btn cl-btn--sm cl-btn--rco" id="clBtnRco" style="display:none" title="Lançar notas calculadas diretamente no RCO Digital">
+                            🚀 Lançar no RCO
+                        </button>
                         <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnImprimir" style="display:none">🖨️ Imprimir</button>
                         <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnExportar">Exportar CSV</button>
                     </div>
@@ -398,6 +401,12 @@
                 <label class="cl-label" style="margin-top:12px">Meta de pontos do grupo</label>
                 <input type="number" class="cl-input" id="clGrupoPontos" value="4" min="0.1" max="10" step="0.1" placeholder="Ex: 4.0"/>
 
+                <label class="cl-label" style="margin-top:12px">
+                    Código da classe no RCO
+                    <span class="cl-label-hint">Permite lançamento automático de notas no RCO Digital</span>
+                </label>
+                <input type="text" class="cl-input" id="clGrupoCodClasseRco" placeholder="Ex: 9148976" style="max-width:180px"/>
+
                 <label class="cl-label" style="margin-top:12px">Cor do grupo</label>
                 <div class="cl-cor-picker" id="clCorPicker"></div>
 
@@ -427,6 +436,50 @@
             <div class="cl-modal-foot cl-confirm-foot">
                 <button class="cl-btn cl-btn--outline" id="clConfirmCancelar">Cancelar</button>
                 <button class="cl-btn cl-btn--primary" id="clConfirmOk">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Modal de Lançamento RCO ─── -->
+    <div class="cl-modal-overlay" id="clRcoModal" role="dialog" aria-modal="true">
+        <div class="cl-modal cl-rco-modal">
+            <div class="cl-modal-head">
+                <h3 id="clRcoModalTitulo">🚀 Lançar no RCO</h3>
+                <button class="cl-modal-close" id="clRcoModalFechar">✕</button>
+            </div>
+            <div class="cl-modal-body" id="clRcoModalBody">
+                <!-- Passo 1: Selecionar avaliação -->
+                <div id="clRcoPasso1">
+                    <p class="cl-rco-desc">Selecione qual avaliação parcial receberá as notas calculadas pelo Classroom.</p>
+                    <div id="clRcoAvaliacoesLista" class="cl-rco-avaliacoes-lista">
+                        <div class="cl-loading">Buscando avaliações no RCO…</div>
+                    </div>
+                </div>
+                <!-- Passo 2: Preview de mapeamento -->
+                <div id="clRcoPasso2" style="display:none">
+                    <div class="cl-rco-avaliacao-info" id="clRcoAvaliacaoInfo"></div>
+                    <p class="cl-rco-desc">Confira o mapeamento antes de confirmar. Alunos não encontrados ficam com a nota original do RCO.</p>
+                    <div class="cl-rco-table-wrap">
+                        <table class="cl-rco-table" id="clRcoTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Aluno (RCO)</th>
+                                    <th>Nota atual</th>
+                                    <th>Nota Classroom</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clRcoTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="cl-modal-foot" id="clRcoModalFoot">
+                <button class="cl-btn cl-btn--outline" id="clRcoModalCancelar">Cancelar</button>
+                <button class="cl-btn cl-btn--rco-confirm" id="clRcoModalConfirmar" style="display:none">
+                    🚀 Confirmar lançamento
+                </button>
             </div>
         </div>
     </div>

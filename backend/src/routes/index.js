@@ -20,6 +20,7 @@ import { createClassroomRouter }     from './classroom.routes.js';
 import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
 import { createAlunosPortalRouter }  from './alunos-portal.routes.js';
+import { createRcoLancamentoRouter } from './rco-lancamento.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -60,6 +61,7 @@ export function createApiRouter(deps) {
     router.use('/', createClassroomRouter(deps));
     router.use('/', createLivrosRouter());
     router.use('/', createAdminRouter(deps));
+    router.use('/', createRcoLancamentoRouter());
 
     return router;
 }

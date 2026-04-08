@@ -206,6 +206,28 @@ body {
 }
 .cl-btn--livro--ok:hover { background: color-mix(in srgb, #10b981 22%, transparent); }
 
+.cl-btn--rco {
+    background: transparent;
+    border: 1px solid #6366f1;
+    color: #3730a3;
+    font-weight: 600;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.cl-btn--rco:hover { background: color-mix(in srgb, #6366f1 12%, transparent); }
+
+.cl-btn--rco-confirm {
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.cl-btn--rco-confirm:hover { background: #4f46e5; }
+.cl-btn--rco-confirm:disabled { opacity: .6; cursor: not-allowed; }
+
 .cl-btn--criar-rec {
     background: transparent;
     border: 1px solid #f97316;
@@ -1641,4 +1663,105 @@ body {
     .cl-grupo-tem-rec    { color: #fb923c; }
     .cl-rec-banner       { color: var(--text-primary); }
     .cl-rec-nota-badge   { color: #fb923c; }
+}
+
+/* ─── Modal RCO ─── */
+.cl-rco-modal {
+    max-width: 700px;
+    width: 100%;
+}
+
+.cl-rco-desc {
+    font-size: .875rem;
+    color: var(--text-secondary);
+    margin: 0 0 12px;
+}
+
+.cl-rco-avaliacoes-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.cl-rco-av-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.cl-rco-av-item:hover { border-color: #6366f1; background: color-mix(in srgb, #6366f1 6%, transparent); }
+.cl-rco-av-item--selecionado {
+    border-color: #6366f1;
+    background: color-mix(in srgb, #6366f1 10%, transparent);
+}
+.cl-rco-av-nome { font-weight: 600; font-size: .95rem; color: var(--text-primary); }
+.cl-rco-av-sub  { font-size: .8rem; color: var(--text-secondary); margin-top: 3px; }
+
+.cl-rco-avaliacao-info {
+    background: color-mix(in srgb, #6366f1 8%, transparent);
+    border: 1px solid color-mix(in srgb, #6366f1 30%, transparent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: .875rem;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.cl-rco-table-wrap {
+    max-height: 360px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.cl-rco-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+.cl-rco-table th {
+    background: var(--bg-sidebar);
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.cl-rco-table td {
+    padding: 7px 10px;
+    border-top: 1px solid var(--border);
+    color: var(--text-primary);
+}
+.cl-rco-table tbody tr:hover td { background: var(--bg-hover, color-mix(in srgb, currentColor 4%, transparent)); }
+.cl-rco-row--naoencontrado td { color: var(--text-secondary); font-style: italic; }
+
+.cl-rco-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+.cl-rco-badge--ok   { background: color-mix(in srgb,#10b981 15%,transparent); color: #065f46; }
+.cl-rco-badge--miss { background: color-mix(in srgb,#ef4444 12%,transparent); color: #991b1b; }
+
+.cl-rco-erro {
+    padding: 12px;
+    color: #b91c1c;
+    font-size: .875rem;
+    background: color-mix(in srgb,#ef4444 8%,transparent);
+    border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .cl-rco-badge--ok   { color: #6ee7b7; }
+    .cl-rco-badge--miss { color: #fca5a5; }
+    .cl-btn--rco        { color: #a5b4fc; border-color: #6366f1; }
 }

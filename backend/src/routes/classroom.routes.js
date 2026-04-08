@@ -57,6 +57,8 @@ async function migrarTabelas() {
                 UNIQUE(curso_id, atividade_id, user_id)
             )
         `);
+        /* Migração incremental: cod_classe_rco para vincular ao RCO */
+        await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS cod_classe_rco TEXT`);
         console.log('[CLASSROOM] Tabelas OK (grupos + ausências)');
     } catch (e) {
         console.warn('[CLASSROOM] Erro na migração:', e.message);
@@ -610,8 +612,9 @@ export function createClassroomRouter(deps = {}) {
                 tipo:           g.tipo || 'normal',
                 grupoOrigemId:  g.grupo_origem_id ?? null,
                 dataInicio:     g.data_inicio ? g.data_inicio.toISOString() : null,
-                recuperacaoId:  g.rec_id   ?? null,
-                recuperacaoNome:g.rec_nome ?? null,
+                recuperacaoId:  g.rec_id      ?? null,
+                recuperacaoNome:g.rec_nome    ?? null,
+                codClasseRco:   g.cod_classe_rco || null,
             })));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar grupos:', e.message);
@@ -621,16 +624,16 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Criar grupo ── */
     router.post('/classroom/groups', async (req, res) => {
-        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio } = req.body;
+        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
         try {
             const { rows } = await pool.query(
-                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
                 [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4',
-                 tipoVal, grupoOrigemId || null, dataInicioVal]
+                 tipoVal, grupoOrigemId || null, dataInicioVal, codClasseRco || null]
             );
             res.json({ id: rows[0].id });
         } catch (e) {
@@ -641,15 +644,15 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Atualizar grupo ── */
     router.put('/classroom/groups/:id', async (req, res) => {
-        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio } = req.body;
+        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
         try {
             await pool.query(
-                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6 WHERE id=$7`,
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6, cod_classe_rco=$7 WHERE id=$8`,
                 [nome.trim(), pontosMeta || 40, cor || '#4285F4', tipoVal,
-                 grupoOrigemId || null, dataInicioVal, req.params.id]
+                 grupoOrigemId || null, dataInicioVal, codClasseRco || null, req.params.id]
             );
             res.json({ ok: true });
         } catch (e) {

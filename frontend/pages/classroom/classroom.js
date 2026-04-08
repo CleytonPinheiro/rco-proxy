@@ -92,6 +92,7 @@ const elBtnImprimir    = document.getElementById('clBtnImprimir');
 const elBtnAtualizar   = document.getElementById('clBtnAtualizar');
 const elBtnAtualizarIcon = document.getElementById('clBtnAtualizarIcon');
 const elBtnLivro       = document.getElementById('clBtnLivro');
+const elBtnRco         = document.getElementById('clBtnRco');
 const elBtnCriarRec    = document.getElementById('clBtnCriarRec');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
@@ -538,6 +539,7 @@ async function selecionarAtividade(ativ, itemEl) {
         elBtnImprimir.style.display  = 'none';
         elBtnAtualizar.style.display = 'none';
         elBtnLivro.style.display     = 'none';
+        elBtnRco.style.display       = 'none';
 
         document.getElementById('clStEntreguesLabel').textContent = 'Entregues';
         document.getElementById('clStPendentesLabel').textContent = 'Pendentes';
@@ -806,6 +808,7 @@ async function selecionarGrupo(grupo, itemEl) {
     elBtnImprimir.style.display  = 'inline-flex';
     elBtnLivro.style.display     = 'inline-flex';
     atualizarBtnLivro(grupo);
+    elBtnRco.style.display       = grupo.codClasseRco ? 'inline-flex' : 'none';
     /* Atalho "Criar Recuperação": só aparece para grupos normais sem recuperação vinculada */
     elBtnCriarRec.style.display = (grupo.tipo === 'normal' && !grupo.recuperacaoId) ? 'flex' : 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Calculando somas...</div>';
@@ -1443,17 +1446,18 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
 /* ══════════════════════════════════════════════════════════════
    MODAL DE GRUPO
 ══════════════════════════════════════════════════════════════ */
-const elModal          = document.getElementById('clGrupoModal');
-const elModalTitulo    = document.getElementById('clGrupoModalTitulo');
-const elGrupoId        = document.getElementById('clGrupoId');
-const elGrupoNome      = document.getElementById('clGrupoNome');
-const elGrupoPontos    = document.getElementById('clGrupoPontos');
-const elCorPicker      = document.getElementById('clCorPicker');
-const elModalAtivs     = document.getElementById('clModalAtividades');
-const elTipoGrupo      = document.getElementById('clTipoGrupo');
-const elRecOrigemWrap  = document.getElementById('clRecOrigemWrap');
-const elRecOrigemSel   = document.getElementById('clRecOrigemSel');
-const elRecDataInicio  = document.getElementById('clRecDataInicio');
+const elModal            = document.getElementById('clGrupoModal');
+const elModalTitulo      = document.getElementById('clGrupoModalTitulo');
+const elGrupoId          = document.getElementById('clGrupoId');
+const elGrupoNome        = document.getElementById('clGrupoNome');
+const elGrupoPontos      = document.getElementById('clGrupoPontos');
+const elGrupoCodClasseRco= document.getElementById('clGrupoCodClasseRco');
+const elCorPicker        = document.getElementById('clCorPicker');
+const elModalAtivs       = document.getElementById('clModalAtividades');
+const elTipoGrupo        = document.getElementById('clTipoGrupo');
+const elRecOrigemWrap    = document.getElementById('clRecOrigemWrap');
+const elRecOrigemSel     = document.getElementById('clRecOrigemSel');
+const elRecDataInicio    = document.getElementById('clRecDataInicio');
 
 /* ── Lógica dos botões de tipo ── */
 elTipoGrupo.addEventListener('click', e => {
@@ -1508,17 +1512,19 @@ function abrirModalGrupo(grupo = null) {
     elRecDataInicio.value = toDatetimeLocal(grupo?.dataInicio);
 
     if (grupo) {
-        elModalTitulo.textContent = 'Editar Grupo';
-        elGrupoId.value           = grupo.id;
-        elGrupoNome.value         = grupo.nome;
-        elGrupoPontos.value       = (grupo.pontosMeta / 10).toFixed(1);
-        corSelecionada            = grupo.cor;
+        elModalTitulo.textContent    = 'Editar Grupo';
+        elGrupoId.value              = grupo.id;
+        elGrupoNome.value            = grupo.nome;
+        elGrupoPontos.value          = (grupo.pontosMeta / 10).toFixed(1);
+        elGrupoCodClasseRco.value    = grupo.codClasseRco || '';
+        corSelecionada               = grupo.cor;
     } else {
-        elModalTitulo.textContent = 'Novo Grupo';
-        elGrupoId.value           = '';
-        elGrupoNome.value         = '';
-        elGrupoPontos.value       = 4;
-        corSelecionada            = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
+        elModalTitulo.textContent    = 'Novo Grupo';
+        elGrupoId.value              = '';
+        elGrupoNome.value            = '';
+        elGrupoPontos.value          = 4;
+        elGrupoCodClasseRco.value    = '';
+        corSelecionada               = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
 
     elCorPicker.querySelectorAll('.cl-cor-btn').forEach(b => {
@@ -1735,12 +1741,14 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     btn.disabled    = true;
     btn.textContent = 'Salvando...';
 
+    const codClasseRco = elGrupoCodClasseRco.value.trim() || null;
+
     try {
         let grupoId = id;
         if (id) {
-            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio } });
+            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco } });
         } else {
-            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio } });
+            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco } });
             grupoId = r.id;
         }
         await api(`/groups/${grupoId}/activities`, { method: 'PUT', body: { atividades } });
@@ -1953,6 +1961,7 @@ async function selecionarAuditAtiv(ativ, itemEl) {
     elNotasActions.style.display = 'flex';
     elBtnImprimir.style.display  = 'none';
     elBtnLivro.style.display     = 'none';
+    elBtnRco.style.display       = 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Carregando dados da atividade...</div>';
 
     try {
@@ -2317,6 +2326,200 @@ function initAuditConfigHandle() {
 }
 initAuditConfigHandle();
 initCustomSel();
+
+/* ══════════════════════════════════════════════════════════════
+   MODAL LANÇAMENTO RCO
+══════════════════════════════════════════════════════════════ */
+const elRcoModal          = document.getElementById('clRcoModal');
+const elRcoPasso1         = document.getElementById('clRcoPasso1');
+const elRcoPasso2         = document.getElementById('clRcoPasso2');
+const elRcoAvaliacoesLista= document.getElementById('clRcoAvaliacoesLista');
+const elRcoAvaliacaoInfo  = document.getElementById('clRcoAvaliacaoInfo');
+const elRcoTableBody      = document.getElementById('clRcoTableBody');
+const elRcoModalConfirmar = document.getElementById('clRcoModalConfirmar');
+
+/* Normaliza nome para comparação (remove acentos, pontuação, caixa) */
+function normNome(s) {
+    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9 ]/gi, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+let rcoAvaliacaoSelecionada = null;   // avaliação escolhida no passo 1
+let rcoAlunosMapeados       = null;   // array de alunos com nota calculada (passo 2)
+
+function fecharModalRco() {
+    elRcoModal.classList.remove('cl-modal-overlay--visivel');
+    rcoAvaliacaoSelecionada = null;
+    rcoAlunosMapeados       = null;
+    elRcoModalConfirmar.style.display = 'none';
+    elRcoPasso1.style.display = '';
+    elRcoPasso2.style.display = 'none';
+}
+
+document.getElementById('clRcoModalFechar').addEventListener('click', fecharModalRco);
+document.getElementById('clRcoModalCancelar').addEventListener('click', fecharModalRco);
+elRcoModal.addEventListener('click', e => { if (e.target === elRcoModal) fecharModalRco(); });
+
+/* Abre o modal e carrega avaliações */
+async function abrirModalRco() {
+    if (!grupoAtivo?.codClasseRco) {
+        toast('Este grupo não tem código de classe RCO configurado.', 'erro');
+        return;
+    }
+    if (!grupoResumoData?.alunosResumo?.length) {
+        toast('Carregue as notas do grupo antes de lançar.', 'erro');
+        return;
+    }
+
+    rcoAvaliacaoSelecionada = null;
+    rcoAlunosMapeados       = null;
+    elRcoPasso1.style.display = '';
+    elRcoPasso2.style.display = 'none';
+    elRcoModalConfirmar.style.display = 'none';
+    elRcoAvaliacoesLista.innerHTML = '<div class="cl-loading">Buscando avaliações no RCO…</div>';
+    elRcoModal.classList.add('cl-modal-overlay--visivel');
+
+    try {
+        const data = await api(`/rco-lancamento/avaliacoes?codClasse=${grupoAtivo.codClasseRco}`);
+        const lista = Array.isArray(data) ? data : (data.data ?? data.items ?? data.resultado ?? []);
+
+        if (!lista.length) {
+            elRcoAvaliacoesLista.innerHTML = '<div class="cl-empty-state">Nenhuma avaliação parcial encontrada para esta classe.</div>';
+            return;
+        }
+
+        elRcoAvaliacoesLista.innerHTML = '';
+        lista.forEach(av => {
+            const item = document.createElement('div');
+            item.className = 'cl-rco-av-item';
+            item.innerHTML = `
+                <div class="cl-rco-av-nome">${av.descricaoAvaliacaoParcial ?? av.numAvaliacaoParcial ?? av.codAvaliacaoParcialClasse}</div>
+                <div class="cl-rco-av-sub">Peso: ${av.pesoDecimal ?? '—'} &nbsp;|&nbsp; Data: ${av.dataAvaliacaoParcial ? av.dataAvaliacaoParcial.slice(0,10) : '—'}</div>
+            `;
+            item.addEventListener('click', () => selecionarAvaliacao(av, item));
+            elRcoAvaliacoesLista.appendChild(item);
+        });
+    } catch (e) {
+        elRcoAvaliacoesLista.innerHTML = `<div class="cl-rco-erro">Erro ao buscar avaliações: ${e.message}</div>`;
+    }
+}
+
+/* Passo 1 → 2: carrega detalhe e monta preview */
+async function selecionarAvaliacao(av, itemEl) {
+    elRcoAvaliacoesLista.querySelectorAll('.cl-rco-av-item').forEach(el =>
+        el.classList.remove('cl-rco-av-item--selecionado'));
+    itemEl.classList.add('cl-rco-av-item--selecionado');
+
+    elRcoAvaliacoesLista.innerHTML = '<div class="cl-loading">Carregando detalhes da avaliação…</div>';
+
+    try {
+        const detalhe = await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}`);
+        rcoAvaliacaoSelecionada = detalhe;
+
+        /* Monta o mapeamento aluno-por-aluno */
+        const alunosRco = detalhe.alunos ?? [];
+        const alunosClass = grupoResumoData.alunosResumo;
+
+        /* Índice RCO por nome normalizado */
+        const rcoIdx = {};
+        alunosRco.forEach(a => { rcoIdx[normNome(a.nome)] = a; });
+
+        rcoAlunosMapeados = alunosRco.map(rcoAluno => {
+            const keyRco = normNome(rcoAluno.nome);
+            /* Tenta match exato, depois parcial (primeiros 3 tokens) */
+            let classAluno = alunosClass.find(a => normNome(a.nome) === keyRco);
+            if (!classAluno) {
+                const tokensRco = keyRco.split(' ').slice(0, 3).join(' ');
+                classAluno = alunosClass.find(a => normNome(a.nome).startsWith(tokensRco));
+            }
+
+            const notaRco  = rcoAluno.notaDecimal !== undefined ? Number(rcoAluno.notaDecimal) : null;
+            const notaCalc = classAluno ? Number(classAluno.soma.toFixed(2)) : null;
+
+            return {
+                ...rcoAluno,
+                _classNome:  classAluno?.nome ?? null,
+                _notaCalc:   notaCalc,
+                notaDecimal: notaCalc !== null ? notaCalc : notaRco,
+                _matched:    classAluno !== null,
+            };
+        });
+
+        /* Renderiza passo 2 */
+        elRcoPasso1.style.display = 'none';
+        elRcoPasso2.style.display = '';
+        elRcoAvaliacaoInfo.innerHTML = `
+            <strong>${detalhe.descricaoAvaliacaoParcial ?? `Avaliação #${detalhe.numAvaliacaoParcial}`}</strong>
+            &nbsp;|&nbsp; Peso: ${detalhe.pesoDecimal}
+            &nbsp;|&nbsp; Data: ${detalhe.dataAvaliacaoParcial?.slice(0,10) ?? '—'}
+            &nbsp;|&nbsp; ${rcoAlunosMapeados.filter(a => a._matched).length}/${rcoAlunosMapeados.length} alunos encontrados
+        `;
+
+        elRcoTableBody.innerHTML = '';
+        rcoAlunosMapeados.forEach(a => {
+            const tr = document.createElement('tr');
+            tr.className = a._matched ? '' : 'cl-rco-row--naoencontrado';
+            const notaAtual = a._notaCalc !== null ? a._notaCalc.toFixed(2) : (a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—');
+            const badge = a._matched
+                ? '<span class="cl-rco-badge cl-rco-badge--ok">✓ mapeado</span>'
+                : '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado</span>';
+            tr.innerHTML = `
+                <td>${a.numChamada ?? '—'}</td>
+                <td>${a.nome}</td>
+                <td>${a.notaDecimal !== undefined && a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—'}</td>
+                <td><strong>${notaAtual}</strong></td>
+                <td>${badge}</td>
+            `;
+            elRcoTableBody.appendChild(tr);
+        });
+
+        elRcoModalConfirmar.style.display = '';
+    } catch (e) {
+        elRcoAvaliacoesLista.innerHTML = `<div class="cl-rco-erro">Erro ao carregar avaliação: ${e.message}</div>`;
+        elRcoPasso1.style.display = '';
+        elRcoPasso2.style.display = 'none';
+    }
+}
+
+/* Confirmar lançamento */
+elRcoModalConfirmar.addEventListener('click', async () => {
+    if (!rcoAvaliacaoSelecionada || !rcoAlunosMapeados) return;
+
+    const mapeados   = rcoAlunosMapeados.filter(a => a._matched).length;
+    const total      = rcoAlunosMapeados.length;
+    if (!confirm(`Lançar ${mapeados} de ${total} notas no RCO?\n${total - mapeados} aluno(s) sem match manterão nota atual.`)) return;
+
+    elRcoModalConfirmar.disabled    = true;
+    elRcoModalConfirmar.textContent = 'Lançando…';
+
+    const av = rcoAvaliacaoSelecionada;
+    const meta = {
+        codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+        codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
+        numAvaliacaoParcial:       av.numAvaliacaoParcial,
+        dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
+        pesoDecimal:               av.pesoDecimal,
+    };
+
+    /* Remove campos internos antes de enviar */
+    const alunosPayload = rcoAlunosMapeados.map(({ _classNome, _notaCalc, _matched, ...rest }) => rest);
+
+    try {
+        await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
+            method: 'POST',
+            body: { meta, alunos: alunosPayload },
+        });
+        toast(`✅ Notas lançadas no RCO com sucesso! (${mapeados}/${total} alunos)`, 'ok');
+        fecharModalRco();
+    } catch (e) {
+        toast('Erro ao lançar no RCO: ' + e.message, 'erro');
+    } finally {
+        elRcoModalConfirmar.disabled    = false;
+        elRcoModalConfirmar.textContent = '🚀 Confirmar lançamento';
+    }
+});
+
+elBtnRco.addEventListener('click', () => abrirModalRco());
 
 /* ══════════════════════════════════════════════════════════════
    INICIA
