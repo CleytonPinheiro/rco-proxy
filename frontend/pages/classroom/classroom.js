@@ -1571,32 +1571,43 @@ const elRecDataInicio    = document.getElementById('clRecDataInicio');
 
 /* ── Campo de código RCO: bloqueia/desbloqueia conforme tipo do grupo ──
    Grupos de recuperação herdam o código do grupo pai e não podem alterar. */
+let _campoCodBloqueado = false;   // estado global de bloqueio do campo
+
 function configurarCampoCodClasse(isRec, grupoOrigemId = null) {
+    _campoCodBloqueado = isRec;
+
     if (!isRec) {
-        /* Grupo normal — campo editável */
+        /* Grupo normal — campo totalmente editável */
         elGrupoCodClasseRco.readOnly = false;
+        elGrupoCodClasseRco.removeAttribute('readonly');
         elGrupoCodClasseRco.classList.remove('cl-input--herdado');
         elBtnBuscarClasse.disabled = false;
+        elBtnBuscarClasse.classList.remove('cl-btn--bloqueado');
         elBtnBuscarClasse.title = 'Buscar classe no RCO';
         return;
     }
 
-    /* Grupo de recuperação — herda código do grupo de origem */
+    /* Grupo de recuperação — herda código do pai e bloqueia */
     const origem = gruposCache.find(g => String(g.id) === String(grupoOrigemId));
-    const cod    = origem?.codClasseRco || '';
+    const codPai = origem?.codClasseRco ?? null;
 
-    elGrupoCodClasseRco.value    = cod;
+    /* Só substitui o valor se o grupo pai tiver código;
+       caso contrário mantém o que já estava preenchido (valor salvo no próprio grupo) */
+    if (codPai) elGrupoCodClasseRco.value = String(codPai);
+
+    const cod = elGrupoCodClasseRco.value;
+
+    elGrupoCodClasseRco.setAttribute('readonly', '');
     elGrupoCodClasseRco.readOnly = true;
     elGrupoCodClasseRco.classList.add('cl-input--herdado');
     elBtnBuscarClasse.disabled = true;
-    elBtnBuscarClasse.title = 'Código herdado do grupo principal';
+    elBtnBuscarClasse.classList.add('cl-btn--bloqueado');
+    elBtnBuscarClasse.title = 'Código herdado do grupo principal — edite no grupo normal';
 
-    /* Atualiza o info da classe se disponível */
+    /* Exibe info da classe vinculada se disponível no cache */
     if (cod && _classesRcoCache) {
         const c = _classesRcoCache.find(x => String(x.codClasse) === String(cod));
-        mostrarInfoClasseRco(c || null);
-    } else {
-        elClasseRcoInfo.style.display = 'none';
+        if (c) mostrarInfoClasseRco(c);
     }
 }
 
@@ -2623,12 +2634,20 @@ function mostrarInfoClasseRco(c) {
     `;
 }
 
-/* Quando o usuário digita o código manualmente, limpa o info */
+/* Quando o usuário digita o código manualmente, limpa o info
+   (guard: bloqueia completamente a edição se campo estiver em modo herdado) */
 elGrupoCodClasseRco.addEventListener('input', () => {
+    if (_campoCodBloqueado) return;
     elClasseRcoInfo.style.display = 'none';
 });
+elGrupoCodClasseRco.addEventListener('keydown', e => {
+    if (_campoCodBloqueado) e.preventDefault();
+});
 
-elBtnBuscarClasse.addEventListener('click', abrirClassePicker);
+elBtnBuscarClasse.addEventListener('click', () => {
+    if (_campoCodBloqueado) return;   // bloqueado em grupos de recuperação
+    abrirClassePicker();
+});
 
 /* ══════════════════════════════════════════════════════════════
    MODAL LANÇAMENTO RCO

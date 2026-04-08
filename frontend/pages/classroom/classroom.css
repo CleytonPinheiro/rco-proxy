@@ -1747,17 +1747,23 @@ body {
 .cl-btn--buscar-classe {
     white-space: nowrap;
 }
-.cl-btn--buscar-classe:disabled {
-    opacity: .38;
-    cursor: not-allowed;
+.cl-btn--buscar-classe:disabled,
+.cl-btn--bloqueado {
+    opacity: .35 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
 }
 
 /* Campo de código herdado do grupo pai (somente-leitura em grupos de recuperação) */
-.cl-input--herdado {
-    background: color-mix(in srgb, var(--border) 30%, var(--surface)) !important;
+.cl-input--herdado,
+.cl-input--herdado:focus {
+    background: color-mix(in srgb, var(--border) 40%, transparent) !important;
     color: var(--text-muted) !important;
     cursor: not-allowed !important;
     border-color: var(--border) !important;
+    box-shadow: none !important;
+    outline: none !important;
+    user-select: none;
 }
 
 .cl-classe-rco-info {
