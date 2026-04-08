@@ -124,13 +124,16 @@ export function createRcoLancamentoRouter(deps = {}) {
                pois o endpoint do RCO retorna apenas codMatrizAluno + notaDecimal */
             const alunos = r.data?.alunos ?? [];
             if (alunos.length > 0 && supabaseAdmin) {
-                const codigos = alunos.map(a => a.codMatrizAluno).filter(Boolean);
-                const { data: aluSupa } = await supabaseAdmin
+                /* A chave única da tabela alunos no Supabase é `registro`
+                   (= String(codMatrizAluno)), não `codmatrizaluno`. */
+                const registros = alunos.map(a => String(a.codMatrizAluno)).filter(Boolean);
+                const { data: aluSupa, error: errSupa } = await supabaseAdmin
                     .from('alunos')
-                    .select('codmatrizaluno, nome, numchamada')
-                    .in('codmatrizaluno', codigos);
+                    .select('registro, nome, numchamada')
+                    .in('registro', registros);
+                if (errSupa) console.warn('[RCO-LANC] Supabase erro:', errSupa.message);
                 const aluMap = Object.fromEntries(
-                    (aluSupa || []).map(a => [String(a.codmatrizaluno), a])
+                    (aluSupa || []).map(a => [String(a.registro), a])
                 );
                 r.data.alunos = alunos.map(a => ({
                     ...a,

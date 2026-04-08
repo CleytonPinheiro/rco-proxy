@@ -231,16 +231,19 @@ export function createClassroomRouter(deps = {}) {
             } while (pageToken);
 
             // Busca numChamada e codMatrizAluno do Supabase por nome normalizado
+            // A chave única é `registro` (= String(codMatrizAluno)), não `codmatrizaluno`
             let numChamadaMap     = {};
             let codMatrizAlunoMap = {};
             if (supabaseAdmin) {
-                const { data: alunosRCO } = await supabaseAdmin
+                const { data: alunosRCO, error: eRCO } = await supabaseAdmin
                     .from('alunos')
-                    .select('nome, numchamada, codmatrizaluno');
+                    .select('nome, numchamada, registro');
+                if (eRCO) console.warn('[CLASSROOM] Supabase alunos erro:', eRCO.message);
                 (alunosRCO || []).forEach(a => {
                     const chave = normNome(a.nome);
                     numChamadaMap[chave]     = a.numchamada;
-                    codMatrizAlunoMap[chave] = a.codmatrizaluno;
+                    // registro é String(codMatrizAluno) — convertemos de volta para number
+                    codMatrizAlunoMap[chave] = a.registro ? Number(a.registro) : null;
                 });
             }
 
