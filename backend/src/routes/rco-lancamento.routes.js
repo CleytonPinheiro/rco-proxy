@@ -119,11 +119,26 @@ export function createRcoLancamentoRouter(deps = {}) {
             if (r.status !== 200) {
                 return res.status(r.status).json({ erro: 'Avaliação não encontrada no RCO', detalhe: r.data });
             }
+
+            /* Enriquece a lista de alunos com nome e numChamada do Supabase,
+               pois o endpoint do RCO retorna apenas codMatrizAluno + notaDecimal */
             const alunos = r.data?.alunos ?? [];
-            if (alunos.length > 0) {
-                console.log('[RCO-LANC] detalhe.alunos[0]:', JSON.stringify(alunos[0], null, 2));
-                console.log('[RCO-LANC] detalhe top-level keys:', Object.keys(r.data));
+            if (alunos.length > 0 && supabaseAdmin) {
+                const codigos = alunos.map(a => a.codMatrizAluno).filter(Boolean);
+                const { data: aluSupa } = await supabaseAdmin
+                    .from('alunos')
+                    .select('codmatrizaluno, nome, numchamada')
+                    .in('codmatrizaluno', codigos);
+                const aluMap = Object.fromEntries(
+                    (aluSupa || []).map(a => [String(a.codmatrizaluno), a])
+                );
+                r.data.alunos = alunos.map(a => ({
+                    ...a,
+                    nome:       aluMap[String(a.codMatrizAluno)]?.nome ?? null,
+                    numChamada: aluMap[String(a.codMatrizAluno)]?.numchamada ?? null,
+                }));
             }
+
             res.json(r.data);
         } catch (e) {
             console.error('[RCO-LANC] Erro ao buscar avaliação:', e.message);

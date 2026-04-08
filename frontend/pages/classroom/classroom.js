@@ -2755,53 +2755,64 @@ async function selecionarAvaliacao(av, itemEl) {
         const alunosRco = detalhe.alunos ?? [];
         const alunosClass = grupoResumoData.alunosResumo;
 
-        /* Índice RCO por nome normalizado */
-        const rcoIdx = {};
-        alunosRco.forEach(a => { rcoIdx[normNome(a.nome)] = a; });
-
         const temRec = grupoResumoData.hasRec;
 
+        /* Índice Classroom por codMatrizAluno (chave primária confiável) */
+        const classIdx = {};
+        alunosClass.forEach(a => {
+            const cod = a.aluno?.codMatrizAluno ?? a.codMatrizAluno;
+            if (cod) classIdx[String(cod)] = a;
+        });
+
         rcoAlunosMapeados = alunosRco.map(rcoAluno => {
-            const keyRco = normNome(rcoAluno.nome);
-            /* Tenta match exato, depois parcial (primeiros 3 tokens) */
-            let classAluno = alunosClass.find(a => normNome(a.aluno?.nome ?? a.nome ?? '') === keyRco);
-            if (!classAluno) {
-                const tokensRco = keyRco.split(' ').slice(0, 3).join(' ');
-                classAluno = alunosClass.find(a => normNome(a.aluno?.nome ?? a.nome ?? '').startsWith(tokensRco));
+            /* Match 1º por codMatrizAluno (exato), 2º por nome normalizado (fallback) */
+            let classAluno = classIdx[String(rcoAluno.codMatrizAluno)] ?? null;
+            if (!classAluno && rcoAluno.nome) {
+                const keyRco = normNome(rcoAluno.nome);
+                if (keyRco) {
+                    classAluno = alunosClass.find(a =>
+                        normNome(a.aluno?.nome ?? a.nome ?? '') === keyRco
+                    ) ?? null;
+                    if (!classAluno) {
+                        const tok = keyRco.split(' ').slice(0, 3).join(' ');
+                        if (tok) {
+                            classAluno = alunosClass.find(a =>
+                                normNome(a.aluno?.nome ?? a.nome ?? '').startsWith(tok)
+                            ) ?? null;
+                        }
+                    }
+                }
             }
 
-            const notaRco = rcoAluno.notaDecimal !== undefined ? Number(rcoAluno.notaDecimal) : null;
+            /* Nota original do RCO — preservada separadamente para exibição */
+            const notaRcoOrig = rcoAluno.notaDecimal != null ? Number(rcoAluno.notaDecimal) : null;
 
             /* Lógica de recuperação:
                - Aluno FEZ recuperação (recData.soma existe) → nota = nota da recuperação
-               - Aluno NÃO fez recuperação                  → nota = nota atual do RCO (inalterada)
-               A nota da recuperação é enviada independente de ser maior ou menor. */
+               - Aluno NÃO fez recuperação                  → nota = nota do grupo principal
+               A nota da recuperação é enviada independentemente de ser maior ou menor. */
             let notaCalc = null;
             let usouRec  = false;
 
             if (classAluno) {
                 const somaRec = classAluno.recData?.soma ?? null;
                 if (somaRec !== null) {
-                    /* Aluno realizou recuperação → envia nota da recuperação */
-                    notaCalc = Number(somaRec.toFixed(2));
+                    notaCalc = Number(somaRec.toFixed(1));
                     usouRec  = true;
                 } else {
-                    /* Aluno NÃO realizou recuperação → envia nota do grupo principal.
-                       O RCO decide qual das duas (avaliação ou recuperação) compõe a média. */
-                    notaCalc = Number((classAluno.soma ?? 0).toFixed(2));
+                    notaCalc = Number((classAluno.soma ?? 0).toFixed(1));
                 }
             }
-            /* Se classAluno === null (não encontrado no Classroom): notaCalc permanece null
-               → notaDecimal = notaRco → mantém o que já está no RCO inalterado. */
 
             return {
                 ...rcoAluno,
-                _classNome:  classAluno?.aluno?.nome ?? classAluno?.nome ?? null,
-                _notaCalc:   notaCalc,
-                _usouRec:    usouRec,
-                /* notaDecimal que vai no payload: calculado se mapeado, original RCO se não mapeado */
-                notaDecimal: notaCalc !== null ? notaCalc : notaRco,
-                _matched:    classAluno !== null,
+                _classNome:   classAluno?.aluno?.nome ?? classAluno?.nome ?? null,
+                _notaRcoOrig: notaRcoOrig,          /* nota ATUAL no RCO — só para exibição */
+                _notaCalc:    notaCalc,
+                _usouRec:     usouRec,
+                /* notaDecimal que vai no payload: calculado se mapeado, original se não mapeado */
+                notaDecimal:  notaCalc !== null ? notaCalc : notaRcoOrig,
+                _matched:     classAluno !== null,
             };
         });
 
@@ -2824,47 +2835,47 @@ async function selecionarAvaliacao(av, itemEl) {
             ? '<th>#</th><th>Aluno (RCO)</th><th>Nota RCO atual</th><th>Nota orig.</th><th>Nota rec.</th><th>Nota final</th><th>Status</th>'
             : '<th>#</th><th>Aluno (RCO)</th><th>Nota RCO atual</th><th>Nota Classroom</th><th>Status</th>';
 
+        /* Helper: formata nota sem zeros desnecessários (RCO usa 1 decimal) */
+        const fmtNota = v => (v != null ? Number(v).toFixed(1) : '—');
+
         elRcoTableBody.innerHTML = '';
         rcoAlunosMapeados.forEach(a => {
             const tr = document.createElement('tr');
             tr.className = a._matched ? (a._usouRec ? 'cl-rco-row--rec' : '') : 'cl-rco-row--naoencontrado';
 
-            const notaRcoAtual = a._notaCalc !== null ? a._notaCalc.toFixed(2)
-                                : (a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—');
+            /* Nome: vem do Supabase (via backend) ou do _classNome matched */
+            const nomeExibir  = a.nome ?? a._classNome ?? `cod: ${a.codMatrizAluno ?? '?'}`;
+            /* Nota atual no RCO (real, preservada antes do cálculo) */
+            const notaRcoAtual = fmtNota(a._notaRcoOrig);
+            /* Nota calculada que será enviada ao RCO */
+            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : notaRcoAtual;
 
-            /* Badge de status:
-               - Tem recuperação aplicada      → "🔄 recuperação" (nota do grupo de rec.)
-               - Mapeado mas sem recuperação   → "📋 nota grupo principal" (RCO decide qual vale)
-               - Não mapeado no Classroom      → "✕ não encontrado" (nota já no RCO inalterada) */
+            /* Badge de status */
             let badge;
             if (!a._matched) {
                 badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado</span>';
             } else if (a._usouRec) {
                 badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 recuperação</span>';
             } else {
-                badge = '<span class="cl-rco-badge cl-rco-badge--neutro">📋 nota grupo principal</span>';
+                badge = '<span class="cl-rco-badge cl-rco-badge--neutro">📋 grupo principal</span>';
             }
 
-            const notaRcoOriginal = a.notaDecimal !== undefined && a.notaDecimal !== null
-                ? Number(a.notaDecimal).toFixed(2) : '—';
-
             if (temRec) {
-                const ca = grupoResumoData.alunosResumo.find(
-                    x => normNome(x.aluno?.nome ?? x.nome ?? '') === normNome(a.nome));
-                const somaOrig = ca ? ca.soma.toFixed(2) : '—';
-                const somaRec  = ca?.recData ? ca.recData.soma.toFixed(2) : '—';
+                /* Classroom já calculou soma e somaRec — pega direto do classAluno via _notaCalc */
+                const classAluno = classIdx[String(a.codMatrizAluno)] ?? null;
+                const somaOrig = classAluno ? fmtNota(classAluno.soma) : '—';
+                const somaRec  = classAluno?.recData ? fmtNota(classAluno.recData.soma) : '—';
 
-                /* Nota final: se usou rec → nota da rec; se não fez rec → nota do grupo principal */
                 const notaFinalExibir = a._usouRec
-                    ? `<strong class="cl-rco-nota-rec">${notaRcoAtual}</strong>`
+                    ? `<strong class="cl-rco-nota-rec">${notaEnviar}</strong>`
                     : (a._matched
-                        ? `<span>${notaRcoAtual} <small style="opacity:.55">(grupo principal)</small></span>`
-                        : `<span class="cl-rco-mantido">${notaRcoAtual} <small>(inalterada)</small></span>`);
+                        ? `<span>${notaEnviar} <small style="opacity:.55">(principal)</small></span>`
+                        : `<span class="cl-rco-mantido">${notaEnviar} <small>(inalterada)</small></span>`);
 
                 tr.innerHTML = `
                     <td>${a.numChamada ?? '—'}</td>
-                    <td>${a.nome}</td>
-                    <td>${notaRcoOriginal}</td>
+                    <td>${nomeExibir}</td>
+                    <td>${notaRcoAtual}</td>
                     <td>${somaOrig}</td>
                     <td>${somaRec}</td>
                     <td>${notaFinalExibir}</td>
@@ -2873,9 +2884,9 @@ async function selecionarAvaliacao(av, itemEl) {
             } else {
                 tr.innerHTML = `
                     <td>${a.numChamada ?? '—'}</td>
-                    <td>${a.nome}</td>
-                    <td>${notaRcoOriginal}</td>
-                    <td><strong>${notaRcoAtual}</strong></td>
+                    <td>${nomeExibir}</td>
+                    <td>${notaRcoAtual}</td>
+                    <td><strong>${notaEnviar}</strong></td>
                     <td>${badge}</td>
                 `;
             }
