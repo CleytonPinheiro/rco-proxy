@@ -124,7 +124,9 @@ async function api(path, opts = {}) {
         headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-    const data = await r.json();
+    let data;
+    try { data = await r.json(); }
+    catch { throw new Error(`Erro ${r.status} — resposta inválida do servidor.`); }
     if (!r.ok) throw new Error(data.erro || 'Erro na requisição');
     return data;
 }
@@ -136,7 +138,9 @@ async function apiRaw(path, opts = {}) {
         headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-    const data = await r.json();
+    let data;
+    try { data = await r.json(); }
+    catch { throw new Error(`Erro ${r.status} — resposta inválida do servidor.`); }
     if (!r.ok) throw new Error(data.erro || 'Erro na requisição');
     return data;
 }
@@ -954,7 +958,7 @@ elBtnLivro.addEventListener('click', async () => {
 
     elBtnLivro.disabled = true;
     try {
-        const data = await apiRaw(`/groups/${grupoAtivo.id}/livro`, {
+        const data = await api(`/groups/${grupoAtivo.id}/livro`, {
             method: 'PATCH',
             body:   { lancado: novoEstado },
         });
