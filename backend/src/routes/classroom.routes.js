@@ -230,25 +230,30 @@ export function createClassroomRouter(deps = {}) {
                 pageToken = resp.data.nextPageToken;
             } while (pageToken);
 
-            // Busca numChamada do Supabase e faz match por nome normalizado
-            let numChamadaMap = {};
+            // Busca numChamada e codMatrizAluno do Supabase por nome normalizado
+            let numChamadaMap     = {};
+            let codMatrizAlunoMap = {};
             if (supabaseAdmin) {
                 const { data: alunosRCO } = await supabaseAdmin
                     .from('alunos')
-                    .select('nome, numchamada');
+                    .select('nome, numchamada, codmatrizaluno');
                 (alunosRCO || []).forEach(a => {
-                    numChamadaMap[normNome(a.nome)] = a.numchamada;
+                    const chave = normNome(a.nome);
+                    numChamadaMap[chave]     = a.numchamada;
+                    codMatrizAlunoMap[chave] = a.codmatrizaluno;
                 });
             }
 
             res.json(allStudents.map(s => {
-                const nome = s.profile?.name?.fullName || '—';
+                const nome  = s.profile?.name?.fullName || '—';
+                const chave = normNome(nome);
                 return {
-                    userId:      s.userId,
+                    userId:         s.userId,
                     nome,
-                    email:       s.profile?.emailAddress || '',
-                    foto:        s.profile?.photoUrl || null,
-                    numChamada:  numChamadaMap[normNome(nome)] ?? null,
+                    email:          s.profile?.emailAddress || '',
+                    foto:           s.profile?.photoUrl || null,
+                    numChamada:     numChamadaMap[chave]     ?? null,
+                    codMatrizAluno: codMatrizAlunoMap[chave] ?? null,
                 };
             }));
         } catch (e) {
