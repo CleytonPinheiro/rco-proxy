@@ -1,0 +1,3639 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-08T21:13:40.226Z",
+  "__export_source": "edusync.manual.export",
+  "resources": [
+    {
+      "_id": "wrk_c0w4ou1rur",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "EduSync API",
+      "description": "Coleção completa de rotas da API EduSync — Node.js/Express com autenticação RCO, RBAC e integração Google Classroom.",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_p1zahaooai",
+      "_type": "environment",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "Dev (local)",
+      "data": {
+        "base_url": "http://localhost:5000",
+        "cpf": "00000000000",
+        "senha": "SuaSenhaRCO"
+      }
+    },
+    {
+      "_id": "fld_9l3id72kwj",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🔐 Auth",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_ajv9nyssnv",
+      "_type": "request",
+      "parentId": "fld_9l3id72kwj",
+      "name": "Status / Sessão atual",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/status",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_em4svlu8i2",
+      "_type": "request",
+      "parentId": "fld_9l3id72kwj",
+      "name": "Me — dados do usuário",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/me",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_3r8xc6bbf6",
+      "_type": "request",
+      "parentId": "fld_9l3id72kwj",
+      "name": "Login",
+      "description": "Autentica com CPF + senha RCO. Cria sessão e seta cookie edusync_sid.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cpf\": \"{{ _.cpf }}\",\n  \"senha\": \"{{ _.senha }}\"\n}"
+      }
+    },
+    {
+      "_id": "req_hbcbrg0tvf",
+      "_type": "request",
+      "parentId": "fld_9l3id72kwj",
+      "name": "Logout",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/logout",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_1zyv32ti8y",
+      "_type": "request",
+      "parentId": "fld_9l3id72kwj",
+      "name": "Atualizar nome do perfil",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/auth/perfil",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Meu Nome Atualizado\"\n}"
+      }
+    },
+    {
+      "_id": "req_u12nrfegyu",
+      "_type": "request",
+      "parentId": "fld_9l3id72kwj",
+      "name": "Configurar credenciais (legado)",
+      "description": "Endpoint legado de compatibilidade. Usa o TokenService global.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/configurar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cpf\": \"{{ _.cpf }}\",\n  \"senha\": \"{{ _.senha }}\"\n}"
+      }
+    },
+    {
+      "_id": "fld_ik81uqcxyz",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "👑 Admin",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_rvy8brngh4",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Listar perfis disponíveis",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/perfis",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_rza1xo49zl",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Listar usuários",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/usuarios",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_4qfcxyjd49",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Criar usuário",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/admin/usuarios",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Professor Teste\",\n  \"cpf\": \"12345678901\",\n  \"perfil\": \"professor\"\n}"
+      }
+    },
+    {
+      "_id": "req_nfg6cffgwm",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Atualizar usuário",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/admin/usuarios/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Novo Nome\",\n  \"perfil\": \"pedagogo\",\n  \"ativo\": true\n}"
+      }
+    },
+    {
+      "_id": "req_zo7to7vi54",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Atualizar plano do usuário",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/admin/usuarios/:id/plano",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"plano\": \"classroom-individual\",\n  \"plano_inicio\": \"2026-01-01\",\n  \"plano_renovacao\": \"2027-01-01\",\n  \"plano_obs\": \"Pago via PIX\"\n}"
+      }
+    },
+    {
+      "_id": "req_l2j64ongwz",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Desativar usuário",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/admin/usuarios/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_ahaobytjpt",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Audit log",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/audit-log",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "limite",
+          "value": "100",
+          "disabled": false
+        },
+        {
+          "name": "offset",
+          "value": "0",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_n9lqn7o7z1",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Listar escolas (whitelist)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/escolas",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_7qhvgemqkz",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Adicionar escola",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/admin/escolas",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Colégio Exemplo\",\n  \"codigo_estabelecimento\": 12345,\n  \"permite_auto_cadastro\": true\n}"
+      }
+    },
+    {
+      "_id": "req_5opul5e9gm",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Atualizar escola",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/admin/escolas/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Nome Atualizado\",\n  \"permite_auto_cadastro\": false,\n  \"ativo\": true\n}"
+      }
+    },
+    {
+      "_id": "req_1km8kq1mq3",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Atualizar plano da escola",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/admin/escolas/:id/plano",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"plano\": \"profissional\",\n  \"plano_inicio\": \"2026-01-01\",\n  \"plano_renovacao\": \"2027-01-01\",\n  \"plano_obs\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_wsg3ng9wfq",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Remover escola",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/admin/escolas/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_lwcx9fc3to",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Estabelecimentos RCO (lookup)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/rco-estabelecimentos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_1ybwpchg5p",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Ativar impersonação de perfil",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/admin/impersonar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"perfil\": \"professor\"\n}"
+      }
+    },
+    {
+      "_id": "req_xcb5mfvgaa",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Sair da impersonação",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/admin/impersonar/sair",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_k8nbrss5h1",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Preview portal — cursos",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/portal-aluno/cursos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_aui91w24qf",
+      "_type": "request",
+      "parentId": "fld_ik81uqcxyz",
+      "name": "Preview portal — atividades do aluno",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/admin/portal-aluno/preview",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "email",
+          "value": "aluno@escola.pr.edu.br",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_1vhz0ut59f",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "📋 RCO",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_k6664jefkm",
+      "_type": "request",
+      "parentId": "fld_1vhz0ut59f",
+      "name": "Estabelecimentos do educador",
+      "description": "Sem query param data → fallback progressivo 45 dias.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/acessos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "data",
+          "value": "2026-04-08",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_pk41g42r2j",
+      "_type": "request",
+      "parentId": "fld_1vhz0ut59f",
+      "name": "Frequências da classe",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/frequencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        },
+        {
+          "name": "codPeriodoAvaliacao",
+          "value": "9",
+          "disabled": false
+        },
+        {
+          "name": "codPeriodoLetivo",
+          "value": "261",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_za7quyd9sd",
+      "_type": "request",
+      "parentId": "fld_1vhz0ut59f",
+      "name": "Alunos da classe (RCO)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos-rco",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        },
+        {
+          "name": "codPeriodoAvaliacao",
+          "value": "9",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_i92n832blf",
+      "_type": "request",
+      "parentId": "fld_1vhz0ut59f",
+      "name": "Observações das aulas",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/observacoes",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        },
+        {
+          "name": "codPeriodoAvaliacao",
+          "value": "9",
+          "disabled": false
+        },
+        {
+          "name": "codPeriodoLetivo",
+          "value": "261",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_ocy8w4ki4g",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🚀 RCO Lançamento",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_ytoxv94cw4",
+      "_type": "request",
+      "parentId": "fld_ocy8w4ki4g",
+      "name": "Listar classes RCO sincronizadas",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/rco-lancamento/classes",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "busca",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_c0hhlqymm3",
+      "_type": "request",
+      "parentId": "fld_ocy8w4ki4g",
+      "name": "Listar avaliações da classe",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/rco-lancamento/avaliacoes",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        },
+        {
+          "name": "codPeriodoAvaliacao",
+          "value": "9",
+          "disabled": false
+        },
+        {
+          "name": "codRegraCalculo",
+          "value": "3",
+          "disabled": false
+        },
+        {
+          "name": "qtdeAvaliacao",
+          "value": "2",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_puihrw2lk7",
+      "_type": "request",
+      "parentId": "fld_ocy8w4ki4g",
+      "name": "Detalhar avaliação (com alunos)",
+      "description": "Substitua :id pelo codAvaliacaoParcialClasse.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/rco-lancamento/avaliacoes/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_jghwma5pvk",
+      "_type": "request",
+      "parentId": "fld_ocy8w4ki4g",
+      "name": "Lançar notas no RCO",
+      "description": "Para ZERAR, envie notaDecimal: null em todos os alunos.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/rco-lancamento/avaliacoes/:id/lancar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"meta\": {\n    \"codAvaliacaoParcialClasse\": 9999,\n    \"codTipoAvaliacaoParcial\": 1,\n    \"numAvaliacaoParcial\": 1,\n    \"dataAvaliacaoParcial\": \"2026-04-08T00:00:00.000Z\",\n    \"pesoDecimal\": \"1.0\"\n  },\n  \"alunos\": [\n    {\n      \"codMatrizAluno\": 111111,\n      \"notaDecimal\": \"7.5\"\n    },\n    {\n      \"codMatrizAluno\": 222222,\n      \"notaDecimal\": \"9.0\"\n    },\n    {\n      \"codMatrizAluno\": 333333,\n      \"notaDecimal\": null\n    }\n  ]\n}"
+      }
+    },
+    {
+      "_id": "req_4heoymh5cw",
+      "_type": "request",
+      "parentId": "fld_ocy8w4ki4g",
+      "name": "Vincular codClasseRco ao grupo",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/rco-lancamento/grupos/:grupoId/cod-classe",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codClasseRco\": \"123456\"\n}"
+      }
+    },
+    {
+      "_id": "fld_16lkedt7tw",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "👨‍🎓 Alunos",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_szlnj7em9n",
+      "_type": "request",
+      "parentId": "fld_16lkedt7tw",
+      "name": "Listar alunos",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "turma",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "codturma",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "registro",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8fela1p73k",
+      "_type": "request",
+      "parentId": "fld_16lkedt7tw",
+      "name": "Listar turmas",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos/turmas/lista",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_qji2ji3oeb",
+      "_type": "request",
+      "parentId": "fld_16lkedt7tw",
+      "name": "Buscar aluno por mat.",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos/:registro",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_t0sfhde5zz",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🎓 Classroom",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8i4ufjolsk",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Status da conexão Google",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/status",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_ehklkt1on",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "URL de autorização OAuth",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/auth-url",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_7haa3wopxs",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Callback OAuth (redirect)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/callback",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "code",
+          "value": "CODE_AQUI",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_en4udfaz34",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Desconectar Google",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/classroom/disconnect",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_q4atn52yta",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Listar cursos",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/courses",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_gmasa65ttu",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Atividades do curso",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/courses/:courseId/coursework",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_9yarntxhzn",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Submissões de uma atividade",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/courses/:courseId/coursework/:cwId/submissions",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_homui6idsw",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Alunos do curso",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/courses/:courseId/students",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_zbii5p4mbm",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Atualizar pontos_max atividade",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/classroom/courses/:courseId/activities/:activityId/pontos_max",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"pontos_max\": 10\n}"
+      }
+    },
+    {
+      "_id": "req_j08y6qbu6d",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Lançar nota individual",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nota\": 8.5\n}"
+      }
+    },
+    {
+      "_id": "req_f2o0um256s",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Devolver submissão ao aluno",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_f9kyful4v5",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Listar grupos (Classroom)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/groups",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "cursoId",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8wnjycaplu",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Criar grupo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/classroom/groups",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cursoId\": \"CURSO_ID\",\n  \"nome\": \"Grupo A\",\n  \"pontosMeta\": 40,\n  \"cor\": \"#4285F4\",\n  \"tipo\": \"normal\"\n}"
+      }
+    },
+    {
+      "_id": "req_pfk8vtqeee",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Resumo/notas do grupo",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/groups/:id/summary",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codPeriodoAvaliacao",
+          "value": "9",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_sire3h6rwp",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Atualizar grupo",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/classroom/groups/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Novo Nome\",\n  \"pontosMeta\": 50,\n  \"cor\": \"#34a853\",\n  \"grupoOrigemId\": null,\n  \"dataInicio\": null,\n  \"codClasseRco\": null\n}"
+      }
+    },
+    {
+      "_id": "req_qyp8gaful0",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Excluir grupo",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/classroom/groups/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_w3igk4xpi",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Atualizar atividades do grupo",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/classroom/groups/:id/activities",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"atividades\": [\n    {\n      \"atividadeId\": \"CW_ID\",\n      \"titulo\": \"Avaliação 1\",\n      \"pontosMax\": 10\n    }\n  ]\n}"
+      }
+    },
+    {
+      "_id": "req_wj5rgr995s",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Marcar lançado no livro",
+      "description": "",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/classroom/groups/:id/livro",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"lancado_livro\": true\n}"
+      }
+    },
+    {
+      "_id": "req_rt4441n5wy",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Listar ausências",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/ausencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "cursoId",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "atividadeId",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_vvh7g8x19v",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Registrar ausência",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/classroom/ausencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cursoId\": \"C_ID\",\n  \"atividadeId\": \"ATV_ID\",\n  \"userId\": \"USER_ID\",\n  \"nomeAluno\": \"Aluno Teste\",\n  \"dataAtividade\": \"2026-04-08\",\n  \"codClasse\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_8yrh7m4jqx",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Remover ausência",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/classroom/ausencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cursoId\": \"C_ID\",\n  \"atividadeId\": \"ATV_ID\",\n  \"userId\": \"USER_ID\"\n}"
+      }
+    },
+    {
+      "_id": "req_pp691bjo9r",
+      "_type": "request",
+      "parentId": "fld_t0sfhde5zz",
+      "name": "Histórico de auditoria",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/classroom/audit",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "cursoId",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "limit",
+          "value": "50",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_dc5fki7axu",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "⚠️ Comportamento",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_kpun1vto4d",
+      "_type": "request",
+      "parentId": "fld_dc5fki7axu",
+      "name": "Listar ocorrências",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/comportamento",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codTurma",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_c7y8dn3h7p",
+      "_type": "request",
+      "parentId": "fld_dc5fki7axu",
+      "name": "Registrar ocorrência",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/comportamento",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cod_matriz_aluno\": 111111,\n  \"cod_turma\": 2604991,\n  \"nome_aluno\": \"Fulano de Tal\",\n  \"num_chamada\": 5,\n  \"data\": \"2026-04-08\",\n  \"tipo\": \"negativo\",\n  \"categoria\": \"desrespeito\",\n  \"categoria_label\": \"Desrespeito\",\n  \"descricao\": \"Detalhe da ocorrência\",\n  \"pontos\": -1,\n  \"professor_nome\": \"Prof. José\",\n  \"nome_turma\": \"7ºA - Manhã\"\n}"
+      }
+    },
+    {
+      "_id": "req_0adfbgq4tz",
+      "_type": "request",
+      "parentId": "fld_dc5fki7axu",
+      "name": "Excluir ocorrência",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/comportamento/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_5709ht7pr4",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "📅 Presença",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_dixmt1p6z5",
+      "_type": "request",
+      "parentId": "fld_5709ht7pr4",
+      "name": "Listar presença do dia",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/presenca-diaria",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "data",
+          "value": "2026-04-08",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_egj7okuwsq",
+      "_type": "request",
+      "parentId": "fld_5709ht7pr4",
+      "name": "Sincronizar do RCO",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/presenca-diaria/sync",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-04-08\"\n}"
+      }
+    },
+    {
+      "_id": "req_dlyev1keiu",
+      "_type": "request",
+      "parentId": "fld_5709ht7pr4",
+      "name": "Seed por turmas estimadas",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/presenca-diaria/seed",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-04-08\"\n}"
+      }
+    },
+    {
+      "_id": "req_s0w2vj23x1",
+      "_type": "request",
+      "parentId": "fld_5709ht7pr4",
+      "name": "Confirmar presença da turma",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/presenca-diaria/confirmar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-04-08\",\n  \"cod_turma\": 2604991,\n  \"total_presentes\": 28,\n  \"observacao\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_tmcvm7hbws",
+      "_type": "request",
+      "parentId": "fld_5709ht7pr4",
+      "name": "Histórico de presença",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/presenca-diaria/historico",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "data",
+          "value": "2026-04-08",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_w2xxxpcybh",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "📦 Materiais & Empréstimos",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_eyqq70d9mq",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Listar materiais",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/materiais",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "tipo",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "status",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_cxkgifgt7e",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Buscar material por código",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/materiais/:codigo",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_f9y55bvrgf",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Cadastrar material",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/materiais",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"TAB-001\",\n  \"tipo\": \"tablet\",\n  \"descricao\": \"Samsung Tab A7\",\n  \"localizacao\": \"Sala 01\",\n  \"estado\": \"otimo\"\n}"
+      }
+    },
+    {
+      "_id": "req_g56dz7fy01",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Atualizar material",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/materiais/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codigo\": \"TAB-001\",\n  \"tipo\": \"tablet\",\n  \"descricao\": \"Samsung Tab A7\",\n  \"localizacao\": \"Sala 02\",\n  \"estado\": \"bom\",\n  \"status\": \"disponivel\"\n}"
+      }
+    },
+    {
+      "_id": "req_qwbkcjrfbc",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Excluir material",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/materiais/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_iv69fdacn3",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Listar empréstimos",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/emprestimos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "status",
+          "value": "emprestado",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_aoxpkb5v4z",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Registrar empréstimo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/emprestimos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"aluno_registro\": \"123456\",\n  \"material_codigo\": \"TAB-001\",\n  \"professor\": \"Prof. Ana\",\n  \"aulas\": [\n    \"1\",\n    \"2\"\n  ],\n  \"observacoes\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_g4vvfvdkft",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Devolver material",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/emprestimos/:id/devolver",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_exw2be4ig7",
+      "_type": "request",
+      "parentId": "fld_w2xxxpcybh",
+      "name": "Estatísticas de materiais",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/estatisticas/materiais",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_i5veu2za31",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "👥 Grupos Pedagógicos",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_cv2lqle2hl",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Listar grupos",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/grupos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codTurma",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_rh5o2ha14s",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Criar grupo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/grupos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codTurma\": 2604991,\n  \"nome\": \"Grupo Reforço\",\n  \"descricao\": \"Alunos em recuperação\"\n}"
+      }
+    },
+    {
+      "_id": "req_1rrkq32c6s",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Atualizar grupo",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/grupos/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Novo Nome\",\n  \"descricao\": \"Nova descrição\",\n  \"bloqueado\": false\n}"
+      }
+    },
+    {
+      "_id": "req_lo4z0m8dx4",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Excluir grupo",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/grupos/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_mx0osm5svb",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Adicionar aluno ao grupo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/grupos/:id/alunos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codMatrizAluno\": 111111,\n  \"nome\": \"Aluno Teste\",\n  \"numChamada\": 5\n}"
+      }
+    },
+    {
+      "_id": "req_mqwfbvt3cl",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Remover aluno do grupo",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/grupos/:id/alunos/:codMatrizAluno",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_lv6urzq03c",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Adicionar atividade ao grupo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/grupos/:id/atividades",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-04-08\",\n  \"descricao\": \"Atividade de reforço\"\n}"
+      }
+    },
+    {
+      "_id": "req_w3c3d03ooz",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Atualizar atividade do grupo",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/grupos/:id/atividades/:ativId",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-04-09\",\n  \"descricao\": \"Atividade atualizada\"\n}"
+      }
+    },
+    {
+      "_id": "req_yp3ky9rqnc",
+      "_type": "request",
+      "parentId": "fld_i5veu2za31",
+      "name": "Excluir atividade do grupo",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/grupos/:id/atividades/:ativId",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_pmsygcw179",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🪪 Crachás",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_657escpuwp",
+      "_type": "request",
+      "parentId": "fld_pmsygcw179",
+      "name": "Listar status dos crachás",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/crachas",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_x785j960c6",
+      "_type": "request",
+      "parentId": "fld_pmsygcw179",
+      "name": "Atualizar status em lote",
+      "description": "status aceito: pendente | impresso | entregue",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/crachas/status",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ids\": [\n    111111,\n    222222\n  ],\n  \"status\": \"impresso\"\n}"
+      }
+    },
+    {
+      "_id": "fld_3otrsizwjj",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🚶 Circulação",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_cmzcl0m7wt",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Listar ambientes",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/circulacao/ambientes",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_2alqvgt025",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Criar ambiente",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/circulacao/ambientes",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Banheiro Bloco A\",\n  \"tipo\": \"banheiro\",\n  \"capacidade_max\": 2\n}"
+      }
+    },
+    {
+      "_id": "req_a6kxn6qyug",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Atualizar ambiente",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/circulacao/ambientes/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome\": \"Banheiro Reformado\",\n  \"capacidade_max\": 3,\n  \"ativo\": true\n}"
+      }
+    },
+    {
+      "_id": "req_5qlbgx0aaw",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Desativar ambiente",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/circulacao/ambientes/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_4knw568739",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Scan entrada/saída",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/circulacao/scan",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cod_matriz_aluno\": 111111,\n  \"ambiente_id\": 1\n}"
+      }
+    },
+    {
+      "_id": "req_hirp3rrtka",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Forçar saída manual",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/circulacao/saida/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_z6lnk25vdt",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Alunos ativos no momento",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/circulacao/ativos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_snz7j5lk9o",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Histórico de circulação",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/circulacao/historico",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "data",
+          "value": "2026-04-08",
+          "disabled": false
+        },
+        {
+          "name": "codTurma",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_g0bnog3t5f",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Quiosque — scan",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/circulacao/quiosque/scan",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"cod_matriz_aluno\": 111111,\n  \"ambiente_id\": 1\n}"
+      }
+    },
+    {
+      "_id": "req_6t9ttwmh7t",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Quiosque — ativos",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/circulacao/quiosque/ativos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_hux6mjyr26",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Quiosque — histórico",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/circulacao/quiosque/historico",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_vjn2c1zbu9",
+      "_type": "request",
+      "parentId": "fld_3otrsizwjj",
+      "name": "Histórico do aluno",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/circulacao/aluno/:cod",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_zmgenyd1be",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "📣 Comunicados",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_cvehx8487f",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Configurações",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/comunicados/config",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8miisjpfw3",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Salvar configurações",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/comunicados/config",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"n8n_webhook_url\": \"https://...\",\n  \"comunicados_token\": \"TOKEN\",\n  \"msg_template\": \"Seu filho {nome} faltou em {data}.\"\n}"
+      }
+    },
+    {
+      "_id": "req_i4hpcfxtu6",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Contato do responsável",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/responsaveis/:cod",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_w33fazs7i3",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Salvar contato do responsável",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/responsaveis/:cod",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nome_responsavel\": \"Maria Silva\",\n  \"telefone\": \"41999999999\",\n  \"email\": \"maria@email.com\"\n}"
+      }
+    },
+    {
+      "_id": "req_8hjdolia6e",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Listar comunicados",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/comunicados",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "status",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "cod_turma",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "data_inicio",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "data_fim",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "busca",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_20byap2tfw",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Estatísticas de comunicados",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/comunicados/stats",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_0gw4xilvpe",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Gerar comunicados do dia",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/comunicados/gerar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"data\": \"2026-04-08\",\n  \"codTurma\": 2604991\n}"
+      }
+    },
+    {
+      "_id": "req_r5n1lqeytx",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Enviar comunicado via WhatsApp",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/comunicados/enviar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"id\": \"COMUNICADO_ID\"\n}"
+      }
+    },
+    {
+      "_id": "req_yf1ccdhz34",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Registrar resposta do responsável",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/comunicados/resposta",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"id\": \"COMUNICADO_ID\",\n  \"resposta\": \"Justificado — consulta médica.\"\n}"
+      }
+    },
+    {
+      "_id": "req_s2phi7w0f4",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Atualizar status do comunicado",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/comunicados/:id/status",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"status\": \"justificado\"\n}"
+      }
+    },
+    {
+      "_id": "req_xkozyfbnkl",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Validar comunicado (pedagogo)",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/comunicados/:id/validar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"validado\": true,\n  \"observacao\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_2xrj1pb78o",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Atualizar contato no comunicado",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/comunicados/:id/contato",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"telefone\": \"41999999999\",\n  \"email\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_3dmkk8pl04",
+      "_type": "request",
+      "parentId": "fld_zmgenyd1be",
+      "name": "Excluir comunicado",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/comunicados/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_3v50zbrxrc",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🧑‍🏫 Painel Pedagógico",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_tsxyixnspv",
+      "_type": "request",
+      "parentId": "fld_3v50zbrxrc",
+      "name": "Sincronizar obs. do RCO",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedagogico/sincronizar-rco",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codPeriodoAvaliacao\": 9,\n  \"codPeriodoLetivo\": 261,\n  \"maxAulas\": 40\n}"
+      }
+    },
+    {
+      "_id": "req_ss7q9q724e",
+      "_type": "request",
+      "parentId": "fld_3v50zbrxrc",
+      "name": "Listar ocorrências pedagógicas",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedagogico",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codTurma",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "dataInicio",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "dataFim",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_6az4m7wwjn",
+      "_type": "request",
+      "parentId": "fld_3v50zbrxrc",
+      "name": "Observações do RCO",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedagogico/observacoes-rco",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_stl5wmt9x5",
+      "_type": "request",
+      "parentId": "fld_3v50zbrxrc",
+      "name": "Retorno pedagógico",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/pedagogico/retorno",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codTurma",
+          "value": "",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8m3knjefp7",
+      "_type": "request",
+      "parentId": "fld_3v50zbrxrc",
+      "name": "Confirmar retorno",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedagogico/retorno/confirmar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"id_ocorrencia\": \"OCC_ID\",\n  \"visto_professor\": true\n}"
+      }
+    },
+    {
+      "_id": "req_fa1wr14qyp",
+      "_type": "request",
+      "parentId": "fld_3v50zbrxrc",
+      "name": "Salvar nota do pedagogo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/pedagogico/nota",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"id_ocorrencia\": \"OCC_ID\",\n  \"nota\": \"Conversei com o responsável.\",\n  \"encaminhamento\": \"Encaminhado à orientação.\",\n  \"visto\": true\n}"
+      }
+    },
+    {
+      "_id": "fld_u7eaptvmsh",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "📝 Atividades de Sala",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_umu6r8vzp8",
+      "_type": "request",
+      "parentId": "fld_u7eaptvmsh",
+      "name": "Listar atividades do dia",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/atividades",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codturma",
+          "value": "2604991",
+          "disabled": false
+        },
+        {
+          "name": "data",
+          "value": "2026-04-08",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_lzmakbkstm",
+      "_type": "request",
+      "parentId": "fld_u7eaptvmsh",
+      "name": "Salvar atividades em lote",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/atividades/salvar",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codturma\": \"2604991\",\n  \"data\": \"2026-04-08\",\n  \"registros\": [\n    {\n      \"codmatrizaluno\": \"111111\",\n      \"nome_aluno\": \"Aluno A\",\n      \"num_chamada\": 1,\n      \"atividades\": {\n        \"tarefa-casa\": true,\n        \"material\": false\n      },\n      \"observacao\": \"\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "_id": "fld_w9gxsb4awf",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🗺️ Mapa de Sala",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_zf2sysb6qw",
+      "_type": "request",
+      "parentId": "fld_w9gxsb4awf",
+      "name": "Buscar mapa da turma",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/mapa-sala",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codturma",
+          "value": "2604991",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_5d221qp0mo",
+      "_type": "request",
+      "parentId": "fld_w9gxsb4awf",
+      "name": "Salvar mapa da turma",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/mapa-sala",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"codturma\": 2604991,\n  \"turma\": \"7ºA - Manhã\",\n  \"colunas\": 5,\n  \"filas\": 6,\n  \"posicoes\": [],\n  \"alunos_fora\": [],\n  \"alunos_excluidos\": []\n}"
+      }
+    },
+    {
+      "_id": "fld_41vj2g0otg",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "📚 Livros Didáticos",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_zdwabk8uuk",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Listar acervo",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/livros",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_sx5yihxclu",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Cadastrar livro",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/livros",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titulo\": \"Matemática 7º Ano\",\n  \"autor\": \"João Silva\",\n  \"editora\": \"FTD\",\n  \"ano_publicacao\": 2024,\n  \"disciplina\": \"Matemática\",\n  \"serie\": \"7º Ano\",\n  \"isbn\": \"9780000000001\",\n  \"quantidade\": 30\n}"
+      }
+    },
+    {
+      "_id": "req_mbeda6ynr7",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Atualizar livro",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/livros/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titulo\": \"Matemática 7º Ano Ed. Rev.\",\n  \"quantidade\": 28,\n  \"ativo\": true\n}"
+      }
+    },
+    {
+      "_id": "req_1zn5zv2wun",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Desativar livro",
+      "description": "",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/livros/:id",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_w8ur58v9il",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Listar empréstimos anuais",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/livros-emprestimos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "status",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "turma",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "livro_id",
+          "value": "",
+          "disabled": false
+        },
+        {
+          "name": "ano_letivo",
+          "value": "2026",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_cnbop7sfxp",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Registrar empréstimo",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/livros-emprestimos",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"livro_id\": 1,\n  \"cod_matriz_aluno\": 111111,\n  \"nome_aluno\": \"Aluno Teste\",\n  \"turma\": \"7ºA - Manhã\",\n  \"num_chamada\": 5,\n  \"ano_letivo\": 2026,\n  \"obs\": \"\"\n}"
+      }
+    },
+    {
+      "_id": "req_legdf9sbbp",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Registrar devolução",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/livros-emprestimos/:id/devolver",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_dpngb57nf2",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Marcar como perdido",
+      "description": "",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/livros-emprestimos/:id/perdido",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_5rxaoxsqh1",
+      "_type": "request",
+      "parentId": "fld_41vj2g0otg",
+      "name": "Empréstimos do aluno",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/livros-emprestimos/aluno/:cod",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_7bbb1yipw0",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🍽️ Cozinha",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8b6d7eeu7p",
+      "_type": "request",
+      "parentId": "fld_7bbb1yipw0",
+      "name": "Resumo de presença para a cozinha",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/cozinha",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "data",
+          "value": "2026-04-08",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_fqdjxzqgg9",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🔄 Sync & Setup",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_fu8smaq7ya",
+      "_type": "request",
+      "parentId": "fld_fqdjxzqgg9",
+      "name": "Status do setup (Supabase)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/setup-status",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_7ba65axz2a",
+      "_type": "request",
+      "parentId": "fld_fqdjxzqgg9",
+      "name": "Forçar sincronização RCO",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/sync",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_azo5ddgxrm",
+      "_type": "request",
+      "parentId": "fld_fqdjxzqgg9",
+      "name": "Log de sincronizações",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/sync/log",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_gqkufwsmfy",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🧑‍💻 Portal do Aluno (público)",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_hlp6pa27rs",
+      "_type": "request",
+      "parentId": "fld_gqkufwsmfy",
+      "name": "Status da sessão do aluno",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos-portal/status",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_8puzzouhjl",
+      "_type": "request",
+      "parentId": "fld_gqkufwsmfy",
+      "name": "URL de auth do aluno (Google)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos-portal/auth-url",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_69w1h2x7y8",
+      "_type": "request",
+      "parentId": "fld_gqkufwsmfy",
+      "name": "Callback OAuth aluno",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos-portal/callback",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "code",
+          "value": "CODE_AQUI",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_ws9w8gw6wl",
+      "_type": "request",
+      "parentId": "fld_gqkufwsmfy",
+      "name": "Logout do aluno",
+      "description": "",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/alunos-portal/logout",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_1uwcqssm07",
+      "_type": "request",
+      "parentId": "fld_gqkufwsmfy",
+      "name": "Atividades pendentes do aluno",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/alunos-portal/atividades",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "fld_8mgsnat3j9",
+      "_type": "request_group",
+      "parentId": "wrk_c0w4ou1rur",
+      "name": "🐛 Debug",
+      "description": "",
+      "environment": {},
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_kmbprr3juv",
+      "_type": "request",
+      "parentId": "fld_8mgsnat3j9",
+      "name": "Raw RCO response",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/debug/raw-rco",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_q0lrw43p9o",
+      "_type": "request",
+      "parentId": "fld_8mgsnat3j9",
+      "name": "RCO formatado",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/debug/rco",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_2p88kdzxa7",
+      "_type": "request",
+      "parentId": "fld_8mgsnat3j9",
+      "name": "Alunos da classe (debug)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/debug/alunos-classe",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    },
+    {
+      "_id": "req_6r9v4cuk4s",
+      "_type": "request",
+      "parentId": "fld_8mgsnat3j9",
+      "name": "Alunos RCO (debug)",
+      "description": "",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/debug/alunos-rco",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [
+        {
+          "name": "codClasse",
+          "value": "123456",
+          "disabled": false
+        }
+      ],
+      "meta": {
+        "sortKey": 0
+      }
+    }
+  ]
+}
