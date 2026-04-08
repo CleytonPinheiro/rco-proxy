@@ -594,11 +594,13 @@ export function createClassroomRouter(deps = {}) {
                         ) ORDER BY ga.id
                     ) FILTER (WHERE ga.id IS NOT NULL), '[]') AS atividades,
                     (SELECT id   FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_id,
-                    (SELECT nome FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_nome
+                    (SELECT nome FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_nome,
+                    COALESCE(g.cod_classe_rco, gorigem.cod_classe_rco) AS cod_classe_rco_efetivo
                 FROM classroom_grupos g
                 LEFT JOIN classroom_grupo_atividades ga ON ga.grupo_id = g.id
+                LEFT JOIN classroom_grupos gorigem ON gorigem.id = g.grupo_origem_id
                 WHERE g.curso_id = $1
-                GROUP BY g.id
+                GROUP BY g.id, gorigem.cod_classe_rco
                 ORDER BY g.id
             `, [courseId]);
             res.json(rows.map(g => ({
@@ -614,7 +616,7 @@ export function createClassroomRouter(deps = {}) {
                 dataInicio:     g.data_inicio ? g.data_inicio.toISOString() : null,
                 recuperacaoId:  g.rec_id      ?? null,
                 recuperacaoNome:g.rec_nome    ?? null,
-                codClasseRco:   g.cod_classe_rco || null,
+                codClasseRco:   g.cod_classe_rco_efetivo || null,
             })));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar grupos:', e.message);
