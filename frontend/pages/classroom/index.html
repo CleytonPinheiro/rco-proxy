@@ -455,6 +455,11 @@
             </div>
             <div class="cl-modal-body">
                 <input type="text" class="cl-input" id="clClassePickerBusca" placeholder="Filtrar por turma, disciplina ou código…" autocomplete="off"/>
+                <div id="clClassePickerFiltro" class="cl-picker-filtro-chip" style="display:none">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    <span id="clClassePickerFiltroLabel"></span>
+                    <button class="cl-picker-filtro-limpar" id="clClassePickerFiltroLimpar" title="Ver todas as turmas">✕ ver todas</button>
+                </div>
                 <div id="clClassePickerLista" class="cl-classe-picker-lista">
                     <div class="cl-loading">Carregando classes…</div>
                 </div>

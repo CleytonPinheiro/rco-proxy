@@ -2444,13 +2444,32 @@ initCustomSel();
 /* ══════════════════════════════════════════════════════════════
    SELETOR DE CLASSE RCO (para o modal de grupo)
 ══════════════════════════════════════════════════════════════ */
-const elClassePickerModal   = document.getElementById('clClassePickerModal');
-const elClassePickerBusca   = document.getElementById('clClassePickerBusca');
-const elClassePickerLista   = document.getElementById('clClassePickerLista');
-const elClasseRcoInfo       = document.getElementById('clClasseRcoInfo');
+const elClassePickerModal       = document.getElementById('clClassePickerModal');
+const elClassePickerBusca       = document.getElementById('clClassePickerBusca');
+const elClassePickerLista       = document.getElementById('clClassePickerLista');
+const elClassePickerFiltro      = document.getElementById('clClassePickerFiltro');
+const elClassePickerFiltroLabel = document.getElementById('clClassePickerFiltroLabel');
+const elClasseRcoInfo           = document.getElementById('clClasseRcoInfo');
 
 let _classesRcoCache  = null;   // cache da lista completa
 let _classesRcoTimer  = null;   // debounce do filtro
+let _serieAtiva       = null;   // { ano, letra } — filtro pré-aplicado pela série do curso
+
+/* Extrai {ano, letra} do nome de um curso Classroom, ex: "Logica - 1º Ano C Manha" → { ano:'1', letra:'C' } */
+function extrairSerieCurso(nome) {
+    const m = (nome || '').match(/(\d+)\s*[ºo°]\s*Ano\s+([A-Z])/i);
+    if (!m) return null;
+    return { ano: m[1], letra: m[2].toUpperCase() };
+}
+
+/* Verifica se uma classe RCO pertence à série dada (descrTurma ex: "1° ANO C - MATUTINO") */
+function classeMatchSerie(c, serie) {
+    if (!serie) return true;
+    const s = (c.descrTurma || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const mAno   = s.match(/^(\d+)/);
+    const mLetra = s.match(/ANO\s+([A-Z])/);
+    return mAno && mAno[1] === serie.ano && mLetra && mLetra[1] === serie.letra;
+}
 
 function fecharClassePicker() {
     elClassePickerModal.classList.remove('cl-modal-overlay--visivel');
@@ -2460,6 +2479,13 @@ document.getElementById('clClassePickerFechar').addEventListener('click', fechar
 document.getElementById('clClassePickerCancelar').addEventListener('click', fecharClassePicker);
 elClassePickerModal.addEventListener('click', e => {
     if (e.target === elClassePickerModal) fecharClassePicker();
+});
+
+/* Botão "ver todas" — limpa o filtro de série e re-renderiza */
+document.getElementById('clClassePickerFiltroLimpar').addEventListener('click', () => {
+    _serieAtiva = null;
+    elClassePickerFiltro.style.display = 'none';
+    filtrarClassePicker();
 });
 
 function renderClassePicker(lista) {
@@ -2488,12 +2514,18 @@ function renderClassePicker(lista) {
 function filtrarClassePicker() {
     clearTimeout(_classesRcoTimer);
     _classesRcoTimer = setTimeout(() => {
-        const q = elClassePickerBusca.value.toLowerCase().trim();
         if (!_classesRcoCache) return;
-        const filtrado = q
-            ? _classesRcoCache.filter(c =>
-                c.label.toLowerCase().includes(q) || String(c.codClasse).includes(q))
-            : _classesRcoCache;
+        const q = elClassePickerBusca.value.toLowerCase().trim();
+
+        let filtrado = _classesRcoCache;
+
+        /* 1º — filtro de série (pré-aplicado pelo curso selecionado) */
+        if (_serieAtiva) filtrado = filtrado.filter(c => classeMatchSerie(c, _serieAtiva));
+
+        /* 2º — filtro de texto digitado */
+        if (q) filtrado = filtrado.filter(c =>
+            c.label.toLowerCase().includes(q) || String(c.codClasse).includes(q));
+
         renderClassePicker(filtrado);
     }, 200);
 }
@@ -2505,9 +2537,19 @@ async function abrirClassePicker() {
     elClassePickerModal.classList.add('cl-modal-overlay--visivel');
     elClassePickerLista.innerHTML = '<div class="cl-loading">Carregando classes…</div>';
 
+    /* Pré-aplica filtro de série a partir do curso selecionado */
+    _serieAtiva = cursoAtivo ? extrairSerieCurso(cursoAtivo.nome) : null;
+    if (_serieAtiva) {
+        elClassePickerFiltroLabel.textContent =
+            `Mostrando apenas ${_serieAtiva.ano}º Ano ${_serieAtiva.letra}`;
+        elClassePickerFiltro.style.display = 'flex';
+    } else {
+        elClassePickerFiltro.style.display = 'none';
+    }
+
     /* Usa cache se já carregado */
     if (_classesRcoCache) {
-        renderClassePicker(_classesRcoCache);
+        filtrarClassePicker();
         setTimeout(() => elClassePickerBusca.focus(), 80);
         return;
     }
@@ -2515,7 +2557,7 @@ async function abrirClassePicker() {
     try {
         const lista = await apiRaw('/rco-lancamento/classes');
         _classesRcoCache = lista;
-        renderClassePicker(lista);
+        filtrarClassePicker();
         setTimeout(() => elClassePickerBusca.focus(), 80);
     } catch (e) {
         elClassePickerLista.innerHTML = `<div class="cl-rco-erro">Erro ao buscar classes: ${e.message}</div>`;
