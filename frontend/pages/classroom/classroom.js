@@ -2513,7 +2513,7 @@ async function abrirClassePicker() {
     }
 
     try {
-        const lista = await api('/rco-lancamento/classes');
+        const lista = await apiRaw('/rco-lancamento/classes');
         _classesRcoCache = lista;
         renderClassePicker(lista);
         setTimeout(() => elClassePickerBusca.focus(), 80);
@@ -2593,7 +2593,7 @@ async function abrirModalRco() {
     elRcoModal.classList.add('cl-modal-overlay--visivel');
 
     try {
-        const data = await api(`/rco-lancamento/avaliacoes?codClasse=${grupoAtivo.codClasseRco}`);
+        const data = await apiRaw(`/rco-lancamento/avaliacoes?codClasse=${grupoAtivo.codClasseRco}`);
         const lista = Array.isArray(data) ? data : (data.data ?? data.items ?? data.resultado ?? []);
 
         if (!lista.length) {
@@ -2626,7 +2626,7 @@ async function selecionarAvaliacao(av, itemEl) {
     elRcoAvaliacoesLista.innerHTML = '<div class="cl-loading">Carregando detalhes da avaliação…</div>';
 
     try {
-        const detalhe = await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}`);
+        const detalhe = await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}`);
         rcoAvaliacaoSelecionada = detalhe;
 
         /* Monta o mapeamento aluno-por-aluno */
@@ -2803,7 +2803,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     );
 
     try {
-        await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
+        await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
             method: 'POST',
             body: { meta, alunos: alunosPayload },
         });
@@ -2855,7 +2855,7 @@ elRcoModalZerar.addEventListener('click', async () => {
     );
 
     try {
-        await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
+        await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
             method: 'POST',
             body: { meta, alunos: alunosPayload },
         });
