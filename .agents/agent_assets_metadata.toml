@@ -1,5 +1,10 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "xPv_TwSfjT0I4_gUH-XJP"
+uri = "file://attached_assets/generated_images/edusync_architecture.png"
+type = "image"
+title = "edusync architecture diagram"
 
 [[outputs]]
 id = "_hBL8cNfbGPnS80jh6yyM"
@@ -18,3 +23,9 @@ id = "dgS-kJSZHI0YSV-qx9k0B"
 uri = "file://insomnia_edusync.json"
 type = "unspecified"
 title = "EduSync — Coleção Insomnia"
+
+[[outputs]]
+id = "anje1zj4SLieLyuFA3zCe"
+uri = "file://attached_assets/generated_images/edusync_architecture.png"
+type = "image"
+title = "Arquitetura EduSync — Classroom · EduSync · RCO"
