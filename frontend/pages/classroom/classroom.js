@@ -2707,13 +2707,37 @@ async function abrirModalRco() {
 
         elRcoAvaliacoesLista.innerHTML = '';
         lista.forEach(av => {
+            const isRec      = av.codTipoAvaliacaoParcial === 2;
+            const temId      = !!av.codAvaliacaoParcialClasse;
+            const labelBruto = av.descrAvaliacaoParcial ?? (av.numAvaliacaoParcial != null ? `AV${av.numAvaliacaoParcial}` : '—');
+            /* Remove "\n" e espaços extras que o RCO inclui no campo */
+            const label      = String(labelBruto).replace(/\n\s*/g, ' ').trim();
+
             const item = document.createElement('div');
-            item.className = 'cl-rco-av-item';
+            item.className = 'cl-rco-av-item' + (isRec ? ' cl-rco-av-item--rec' : '') + (!temId ? ' cl-rco-av-item--indisponivel' : '');
+
             item.innerHTML = `
-                <div class="cl-rco-av-nome">${av.descricaoAvaliacaoParcial ?? av.numAvaliacaoParcial ?? av.codAvaliacaoParcialClasse}</div>
-                <div class="cl-rco-av-sub">Peso: ${av.pesoDecimal ?? '—'} &nbsp;|&nbsp; Data: ${av.dataAvaliacaoParcial ? av.dataAvaliacaoParcial.slice(0,10) : '—'}</div>
+                <div class="cl-rco-av-header">
+                    ${isRec
+                        ? '<span class="cl-rco-tipo-badge cl-rco-tipo-badge--rec">🔄 Recuperação</span>'
+                        : '<span class="cl-rco-tipo-badge cl-rco-tipo-badge--av">📊 Avaliação</span>'
+                    }
+                    ${!temId ? '<span class="cl-rco-tipo-badge cl-rco-tipo-badge--vazia">Não disponível</span>' : ''}
+                </div>
+                <div class="cl-rco-av-nome">${label}</div>
+                <div class="cl-rco-av-sub">
+                    Peso: ${av.pesoDecimal ?? '—'}
+                    &nbsp;|&nbsp;
+                    Data: ${av.dataAvaliacaoParcial ? av.dataAvaliacaoParcial.slice(0,10) : '—'}
+                </div>
             `;
-            item.addEventListener('click', () => selecionarAvaliacao(av, item));
+
+            if (temId) {
+                item.addEventListener('click', () => selecionarAvaliacao(av, item));
+            } else {
+                item.title = 'Esta avaliação ainda não tem código no RCO — não é possível lançar notas.';
+            }
+
             elRcoAvaliacoesLista.appendChild(item);
         });
     } catch (e) {
@@ -2794,7 +2818,7 @@ async function selecionarAvaliacao(av, itemEl) {
         elRcoPasso1.style.display = 'none';
         elRcoPasso2.style.display = '';
         elRcoAvaliacaoInfo.innerHTML = `
-            <strong>${detalhe.descricaoAvaliacaoParcial ?? `Avaliação #${detalhe.numAvaliacaoParcial}`}</strong>
+            <strong>${detalhe.descrAvaliacaoParcial ? String(detalhe.descrAvaliacaoParcial).replace(/\n\s*/g,' ').trim() : `Avaliação #${detalhe.numAvaliacaoParcial}`}</strong>
             &nbsp;|&nbsp; Peso: ${detalhe.pesoDecimal}
             &nbsp;|&nbsp; Data: ${detalhe.dataAvaliacaoParcial?.slice(0,10) ?? '—'}
             &nbsp;|&nbsp; ${nMapeados}/${rcoAlunosMapeados.length} alunos encontrados
@@ -2927,7 +2951,7 @@ elRcoModalZerar.addEventListener('click', async () => {
 
     const av    = rcoAvaliacaoSelecionada;
     const total = rcoAlunosMapeados.length;
-    const nomeAv = av.descricaoAvaliacaoParcial ?? `Avaliação #${av.numAvaliacaoParcial}`;
+    const nomeAv = av.descrAvaliacaoParcial ? String(av.descrAvaliacaoParcial).replace(/\n\s*/g,' ').trim() : `Avaliação #${av.numAvaliacaoParcial}`;
 
     if (!await confirmar(
         `Isso enviará nota vazia para todos os ${total} alunos da avaliação "${nomeAv}". O RCO irá limpar as notas desta avaliação. Esta ação não pode ser desfeita.`,
