@@ -2552,14 +2552,17 @@ async function selecionarAvaliacao(av, itemEl) {
             if (classAluno) {
                 const somaRec = classAluno.recData?.soma ?? null;
                 if (somaRec !== null) {
-                    /* Aluno realizou recuperação → usa nota da recuperação */
+                    /* Aluno realizou recuperação → envia nota da recuperação */
                     notaCalc = Number(somaRec.toFixed(2));
                     usouRec  = true;
                 } else {
-                    /* Aluno não realizou recuperação → mantém nota que já está no RCO */
-                    notaCalc = notaRco;
+                    /* Aluno NÃO realizou recuperação → envia nota do grupo principal.
+                       O RCO decide qual das duas (avaliação ou recuperação) compõe a média. */
+                    notaCalc = Number((classAluno.soma ?? 0).toFixed(2));
                 }
             }
+            /* Se classAluno === null (não encontrado no Classroom): notaCalc permanece null
+               → notaDecimal = notaRco → mantém o que já está no RCO inalterado. */
 
             return {
                 ...rcoAluno,
@@ -2600,18 +2603,16 @@ async function selecionarAvaliacao(av, itemEl) {
                                 : (a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—');
 
             /* Badge de status:
-               - Tem recuperação aplicada      → "🔄 recuperação"
-               - Mapeado mas sem recuperação   → "→ mantém nota RCO" (nota inalterada)
-               - Não mapeado no Classroom      → "✕ não encontrado" (nota inalterada)  */
+               - Tem recuperação aplicada      → "🔄 recuperação" (nota do grupo de rec.)
+               - Mapeado mas sem recuperação   → "📋 nota grupo principal" (RCO decide qual vale)
+               - Não mapeado no Classroom      → "✕ não encontrado" (nota já no RCO inalterada) */
             let badge;
             if (!a._matched) {
                 badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado</span>';
             } else if (a._usouRec) {
                 badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 recuperação</span>';
-            } else if (temRec) {
-                badge = '<span class="cl-rco-badge cl-rco-badge--neutro">→ sem rec. (mantém)</span>';
             } else {
-                badge = '<span class="cl-rco-badge cl-rco-badge--ok">✓ mapeado</span>';
+                badge = '<span class="cl-rco-badge cl-rco-badge--neutro">📋 nota grupo principal</span>';
             }
 
             const notaRcoOriginal = a.notaDecimal !== undefined && a.notaDecimal !== null
@@ -2623,10 +2624,12 @@ async function selecionarAvaliacao(av, itemEl) {
                 const somaOrig = ca ? ca.soma.toFixed(2) : '—';
                 const somaRec  = ca?.recData ? ca.recData.soma.toFixed(2) : '—';
 
-                /* Nota final: se usou rec → nota da rec; se não fez rec → mantém nota RCO atual */
+                /* Nota final: se usou rec → nota da rec; se não fez rec → nota do grupo principal */
                 const notaFinalExibir = a._usouRec
                     ? `<strong style="color:#4338ca">${notaRcoAtual}</strong>`
-                    : `<span class="cl-rco-mantido">${notaRcoAtual} <small>(inalterada)</small></span>`;
+                    : (a._matched
+                        ? `<span>${notaRcoAtual} <small style="opacity:.65">(grupo principal)</small></span>`
+                        : `<span class="cl-rco-mantido">${notaRcoAtual} <small>(inalterada)</small></span>`);
 
                 tr.innerHTML = `
                     <td>${a.numChamada ?? '—'}</td>
