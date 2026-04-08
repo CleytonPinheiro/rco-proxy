@@ -405,7 +405,13 @@
                     Código da classe no RCO
                     <span class="cl-label-hint">Permite lançamento automático de notas no RCO Digital</span>
                 </label>
-                <input type="text" class="cl-input" id="clGrupoCodClasseRco" placeholder="Ex: 9148976" style="max-width:180px"/>
+                <div class="cl-rco-classe-row">
+                    <input type="text" class="cl-input" id="clGrupoCodClasseRco" placeholder="Ex: 9148976"/>
+                    <button type="button" class="cl-btn cl-btn--sm cl-btn--outline cl-btn--buscar-classe" id="clBtnBuscarClasse" title="Buscar classe no RCO">
+                        🔍 Buscar no RCO
+                    </button>
+                </div>
+                <div id="clClasseRcoInfo" class="cl-classe-rco-info" style="display:none"></div>
 
                 <label class="cl-label" style="margin-top:12px">Cor do grupo</label>
                 <div class="cl-cor-picker" id="clCorPicker"></div>
@@ -436,6 +442,25 @@
             <div class="cl-modal-foot cl-confirm-foot">
                 <button class="cl-btn cl-btn--outline" id="clConfirmCancelar">Cancelar</button>
                 <button class="cl-btn cl-btn--primary" id="clConfirmOk">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Modal Seletor de Classe RCO ─── -->
+    <div class="cl-modal-overlay" id="clClassePickerModal" role="dialog" aria-modal="true">
+        <div class="cl-modal cl-classe-picker-modal">
+            <div class="cl-modal-head">
+                <h3>🔍 Selecionar Classe no RCO</h3>
+                <button class="cl-modal-close" id="clClassePickerFechar">✕</button>
+            </div>
+            <div class="cl-modal-body">
+                <input type="text" class="cl-input" id="clClassePickerBusca" placeholder="Filtrar por turma, disciplina ou código…" autocomplete="off"/>
+                <div id="clClassePickerLista" class="cl-classe-picker-lista">
+                    <div class="cl-loading">Carregando classes…</div>
+                </div>
+            </div>
+            <div class="cl-modal-foot">
+                <button class="cl-btn cl-btn--outline" id="clClassePickerCancelar">Cancelar</button>
             </div>
         </div>
     </div>

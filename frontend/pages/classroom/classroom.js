@@ -1518,12 +1518,20 @@ function abrirModalGrupo(grupo = null) {
         elGrupoPontos.value          = (grupo.pontosMeta / 10).toFixed(1);
         elGrupoCodClasseRco.value    = grupo.codClasseRco || '';
         corSelecionada               = grupo.cor;
+        /* Mostra info da classe se já vinculada */
+        if (grupo.codClasseRco && _classesRcoCache) {
+            const c = _classesRcoCache.find(x => String(x.codClasse) === String(grupo.codClasseRco));
+            mostrarInfoClasseRco(c || null);
+        } else {
+            elClasseRcoInfo.style.display = 'none';
+        }
     } else {
         elModalTitulo.textContent    = 'Novo Grupo';
         elGrupoId.value              = '';
         elGrupoNome.value            = '';
         elGrupoPontos.value          = 4;
         elGrupoCodClasseRco.value    = '';
+        elClasseRcoInfo.style.display = 'none';
         corSelecionada               = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
 
@@ -2326,6 +2334,103 @@ function initAuditConfigHandle() {
 }
 initAuditConfigHandle();
 initCustomSel();
+
+/* ══════════════════════════════════════════════════════════════
+   SELETOR DE CLASSE RCO (para o modal de grupo)
+══════════════════════════════════════════════════════════════ */
+const elClassePickerModal   = document.getElementById('clClassePickerModal');
+const elClassePickerBusca   = document.getElementById('clClassePickerBusca');
+const elClassePickerLista   = document.getElementById('clClassePickerLista');
+const elClasseRcoInfo       = document.getElementById('clClasseRcoInfo');
+
+let _classesRcoCache  = null;   // cache da lista completa
+let _classesRcoTimer  = null;   // debounce do filtro
+
+function fecharClassePicker() {
+    elClassePickerModal.classList.remove('cl-modal-overlay--visivel');
+}
+
+document.getElementById('clClassePickerFechar').addEventListener('click', fecharClassePicker);
+document.getElementById('clClassePickerCancelar').addEventListener('click', fecharClassePicker);
+elClassePickerModal.addEventListener('click', e => {
+    if (e.target === elClassePickerModal) fecharClassePicker();
+});
+
+function renderClassePicker(lista) {
+    if (!lista.length) {
+        elClassePickerLista.innerHTML = '<div class="cl-empty-state">Nenhuma classe encontrada.</div>';
+        return;
+    }
+    elClassePickerLista.innerHTML = '';
+    lista.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'cl-classe-item';
+        item.innerHTML = `
+            <div class="cl-classe-item-label">${c.descrTurma}</div>
+            <div class="cl-classe-item-disc">${c.nomeDisciplina || '—'}${c.siglaDisciplina ? ` <span class="cl-classe-sigla">${c.siglaDisciplina}</span>` : ''}</div>
+            <div class="cl-classe-item-cod">cod. ${c.codClasse}${c.periodoLetivo ? ` &middot; ${c.periodoLetivo}` : ''}</div>
+        `;
+        item.addEventListener('click', () => {
+            elGrupoCodClasseRco.value = String(c.codClasse);
+            mostrarInfoClasseRco(c);
+            fecharClassePicker();
+        });
+        elClassePickerLista.appendChild(item);
+    });
+}
+
+function filtrarClassePicker() {
+    clearTimeout(_classesRcoTimer);
+    _classesRcoTimer = setTimeout(() => {
+        const q = elClassePickerBusca.value.toLowerCase().trim();
+        if (!_classesRcoCache) return;
+        const filtrado = q
+            ? _classesRcoCache.filter(c =>
+                c.label.toLowerCase().includes(q) || String(c.codClasse).includes(q))
+            : _classesRcoCache;
+        renderClassePicker(filtrado);
+    }, 200);
+}
+
+elClassePickerBusca.addEventListener('input', filtrarClassePicker);
+
+async function abrirClassePicker() {
+    elClassePickerBusca.value = '';
+    elClassePickerModal.classList.add('cl-modal-overlay--visivel');
+    elClassePickerLista.innerHTML = '<div class="cl-loading">Carregando classes…</div>';
+
+    /* Usa cache se já carregado */
+    if (_classesRcoCache) {
+        renderClassePicker(_classesRcoCache);
+        setTimeout(() => elClassePickerBusca.focus(), 80);
+        return;
+    }
+
+    try {
+        const lista = await api('/rco-lancamento/classes');
+        _classesRcoCache = lista;
+        renderClassePicker(lista);
+        setTimeout(() => elClassePickerBusca.focus(), 80);
+    } catch (e) {
+        elClassePickerLista.innerHTML = `<div class="cl-rco-erro">Erro ao buscar classes: ${e.message}</div>`;
+    }
+}
+
+function mostrarInfoClasseRco(c) {
+    if (!c) { elClasseRcoInfo.style.display = 'none'; return; }
+    elClasseRcoInfo.style.display = '';
+    elClasseRcoInfo.innerHTML = `
+        ✅ <strong>${c.descrTurma}</strong> — ${c.nomeDisciplina || '—'}
+        <span class="cl-classe-cod-badge">cod. ${c.codClasse}</span>
+    `;
+}
+
+/* Quando o usuário digita o código manualmente, limpa o info */
+elGrupoCodClasseRco.addEventListener('input', () => {
+    elClasseRcoInfo.style.display = 'none';
+});
+
+document.getElementById('clBtnBuscarClasse').addEventListener('click', abrirClassePicker);
 
 /* ══════════════════════════════════════════════════════════════
    MODAL LANÇAMENTO RCO

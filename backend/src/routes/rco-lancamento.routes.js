@@ -15,8 +15,76 @@ const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const RCO_CLASSE_BASE = '/classe/v1';
 
-export function createRcoLancamentoRouter() {
-    const router = Router();
+export function createRcoLancamentoRouter(deps = {}) {
+    const router         = Router();
+    const supabaseAdmin  = deps?.supabaseAdmin ?? null;
+
+    /* ── GET /api/rco-lancamento/classes
+       Lista todas as classes RCO disponíveis (sincronizadas no Supabase),
+       com nome da turma e da disciplina, prontas para o seletor de grupo.
+    ─────────────────────────────────────────────────────── */
+    router.get('/rco-lancamento/classes', async (req, res) => {
+        if (!supabaseAdmin) {
+            return res.status(503).json({ erro: 'Supabase não disponível neste contexto.' });
+        }
+        try {
+            const { busca } = req.query;
+
+            const [
+                { data: classes,     error: e1 },
+                { data: turmas,      error: e2 },
+                { data: disciplinas, error: e3 },
+            ] = await Promise.all([
+                supabaseAdmin.from('rco_classes').select('cod_classe, cod_turma, cod_disciplina, cod_estabelecimento, periodo_letivo'),
+                supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma'),
+                supabaseAdmin.from('rco_disciplinas').select('cod_disciplina, nome_disciplina, sigla'),
+            ]);
+
+            if (e1 || e2 || e3) {
+                const msg = (e1 || e2 || e3).message;
+                console.error('[RCO-LANC] Erro ao buscar classes do Supabase:', msg);
+                return res.status(500).json({ erro: msg });
+            }
+
+            /* Índices para join */
+            const turmaIdx = {};
+            (turmas || []).forEach(t => { turmaIdx[t.cod_turma] = t; });
+            const discIdx = {};
+            (disciplinas || []).forEach(d => { discIdx[d.cod_disciplina] = d; });
+
+            let lista = (classes || []).map(c => {
+                const t = turmaIdx[c.cod_turma] || {};
+                const d = discIdx[c.cod_disciplina] || {};
+                return {
+                    codClasse:      c.cod_classe,
+                    codTurma:       c.cod_turma,
+                    descrTurma:     t.descr_turma || `Turma ${c.cod_turma}`,
+                    codDisciplina:  c.cod_disciplina,
+                    nomeDisciplina: d.nome_disciplina || '',
+                    siglaDisciplina:d.sigla || '',
+                    periodoLetivo:  c.periodo_letivo || '',
+                    label:          `${t.descr_turma || c.cod_turma} — ${d.nome_disciplina || c.cod_disciplina}`,
+                };
+            });
+
+            /* Filtragem por texto se fornecido */
+            if (busca) {
+                const q = busca.toLowerCase();
+                lista = lista.filter(c =>
+                    c.label.toLowerCase().includes(q) ||
+                    String(c.codClasse).includes(q)
+                );
+            }
+
+            /* Ordena por turma → disciplina */
+            lista.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+
+            res.json(lista);
+        } catch (e) {
+            console.error('[RCO-LANC] Erro ao listar classes:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
 
     /* ── GET /api/rco-lancamento/avaliacoes
        Lista avaliações parciais de uma classe RCO.
