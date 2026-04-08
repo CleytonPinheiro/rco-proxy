@@ -2529,52 +2529,99 @@ async function selecionarAvaliacao(av, itemEl) {
         const rcoIdx = {};
         alunosRco.forEach(a => { rcoIdx[normNome(a.nome)] = a; });
 
+        const temRec = grupoResumoData.hasRec;
+
         rcoAlunosMapeados = alunosRco.map(rcoAluno => {
             const keyRco = normNome(rcoAluno.nome);
             /* Tenta match exato, depois parcial (primeiros 3 tokens) */
-            let classAluno = alunosClass.find(a => normNome(a.nome) === keyRco);
+            let classAluno = alunosClass.find(a => normNome(a.aluno?.nome ?? a.nome ?? '') === keyRco);
             if (!classAluno) {
                 const tokensRco = keyRco.split(' ').slice(0, 3).join(' ');
-                classAluno = alunosClass.find(a => normNome(a.nome).startsWith(tokensRco));
+                classAluno = alunosClass.find(a => normNome(a.aluno?.nome ?? a.nome ?? '').startsWith(tokensRco));
             }
 
-            const notaRco  = rcoAluno.notaDecimal !== undefined ? Number(rcoAluno.notaDecimal) : null;
-            const notaCalc = classAluno ? Number(classAluno.soma.toFixed(2)) : null;
+            const notaRco      = rcoAluno.notaDecimal !== undefined ? Number(rcoAluno.notaDecimal) : null;
+
+            /* Nota final: considera recuperação se existir (usa a maior entre original e rec) */
+            let notaCalc    = null;
+            let usouRec     = false;
+            if (classAluno) {
+                const somaOrig = classAluno.soma ?? 0;
+                const somaRec  = classAluno.recData?.soma ?? null;
+                if (somaRec !== null && somaRec > somaOrig) {
+                    notaCalc = Number(somaRec.toFixed(2));
+                    usouRec  = true;
+                } else {
+                    notaCalc = Number(somaOrig.toFixed(2));
+                }
+            }
 
             return {
                 ...rcoAluno,
-                _classNome:  classAluno?.nome ?? null,
+                _classNome:  classAluno?.aluno?.nome ?? classAluno?.nome ?? null,
                 _notaCalc:   notaCalc,
+                _usouRec:    usouRec,
                 notaDecimal: notaCalc !== null ? notaCalc : notaRco,
                 _matched:    classAluno !== null,
             };
         });
 
         /* Renderiza passo 2 */
+        const nMapeados    = rcoAlunosMapeados.filter(a => a._matched).length;
+        const nRecuperados = rcoAlunosMapeados.filter(a => a._usouRec).length;
+
         elRcoPasso1.style.display = 'none';
         elRcoPasso2.style.display = '';
         elRcoAvaliacaoInfo.innerHTML = `
             <strong>${detalhe.descricaoAvaliacaoParcial ?? `Avaliação #${detalhe.numAvaliacaoParcial}`}</strong>
             &nbsp;|&nbsp; Peso: ${detalhe.pesoDecimal}
             &nbsp;|&nbsp; Data: ${detalhe.dataAvaliacaoParcial?.slice(0,10) ?? '—'}
-            &nbsp;|&nbsp; ${rcoAlunosMapeados.filter(a => a._matched).length}/${rcoAlunosMapeados.length} alunos encontrados
+            &nbsp;|&nbsp; ${nMapeados}/${rcoAlunosMapeados.length} alunos encontrados
+            ${nRecuperados ? `&nbsp;|&nbsp; <span class="cl-rco-rec-badge">🔄 ${nRecuperados} com recuperação</span>` : ''}
         `;
+
+        /* Cabeçalho da tabela — coluna extra se houver recuperação */
+        document.querySelector('#clRcoTable thead tr').innerHTML = temRec
+            ? '<th>#</th><th>Aluno (RCO)</th><th>Nota RCO atual</th><th>Nota orig.</th><th>Nota rec.</th><th>Nota final</th><th>Status</th>'
+            : '<th>#</th><th>Aluno (RCO)</th><th>Nota RCO atual</th><th>Nota Classroom</th><th>Status</th>';
 
         elRcoTableBody.innerHTML = '';
         rcoAlunosMapeados.forEach(a => {
             const tr = document.createElement('tr');
-            tr.className = a._matched ? '' : 'cl-rco-row--naoencontrado';
-            const notaAtual = a._notaCalc !== null ? a._notaCalc.toFixed(2) : (a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—');
+            tr.className = a._matched ? (a._usouRec ? 'cl-rco-row--rec' : '') : 'cl-rco-row--naoencontrado';
+
+            const notaRcoAtual = a._notaCalc !== null ? a._notaCalc.toFixed(2)
+                                : (a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—');
+
             const badge = a._matched
-                ? '<span class="cl-rco-badge cl-rco-badge--ok">✓ mapeado</span>'
+                ? (a._usouRec
+                    ? '<span class="cl-rco-badge cl-rco-badge--rec">🔄 recuperação</span>'
+                    : '<span class="cl-rco-badge cl-rco-badge--ok">✓ mapeado</span>')
                 : '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado</span>';
-            tr.innerHTML = `
-                <td>${a.numChamada ?? '—'}</td>
-                <td>${a.nome}</td>
-                <td>${a.notaDecimal !== undefined && a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—'}</td>
-                <td><strong>${notaAtual}</strong></td>
-                <td>${badge}</td>
-            `;
+
+            if (temRec) {
+                /* Encontra o aluno no cache do classroom para exibir orig. e rec. separados */
+                const ca = grupoResumoData.alunosResumo.find(x => normNome(x.aluno?.nome ?? x.nome ?? '') === normNome(a.nome));
+                const somaOrig = ca ? ca.soma.toFixed(2) : '—';
+                const somaRec  = ca?.recData ? ca.recData.soma.toFixed(2) : '—';
+                tr.innerHTML = `
+                    <td>${a.numChamada ?? '—'}</td>
+                    <td>${a.nome}</td>
+                    <td>${a.notaDecimal !== undefined && a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—'}</td>
+                    <td>${somaOrig}</td>
+                    <td>${somaRec}</td>
+                    <td><strong>${notaRcoAtual}</strong></td>
+                    <td>${badge}</td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td>${a.numChamada ?? '—'}</td>
+                    <td>${a.nome}</td>
+                    <td>${a.notaDecimal !== undefined && a.notaDecimal !== null ? Number(a.notaDecimal).toFixed(2) : '—'}</td>
+                    <td><strong>${notaRcoAtual}</strong></td>
+                    <td>${badge}</td>
+                `;
+            }
             elRcoTableBody.appendChild(tr);
         });
 

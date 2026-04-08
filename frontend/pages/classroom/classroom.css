@@ -1843,6 +1843,20 @@ body {
 }
 .cl-rco-badge--ok   { background: color-mix(in srgb,#10b981 15%,transparent); color: #065f46; }
 .cl-rco-badge--miss { background: color-mix(in srgb,#ef4444 12%,transparent); color: #991b1b; }
+.cl-rco-badge--rec  { background: color-mix(in srgb,#6366f1 14%,transparent); color: #3730a3; }
+
+.cl-rco-row--rec td { background: color-mix(in srgb,#6366f1 5%,transparent); }
+.cl-rco-row--rec td:nth-child(6) { font-weight: 700; color: #4338ca; }
+
+.cl-rco-rec-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb,#6366f1 14%,transparent);
+    color: #3730a3;
+    font-size: .78rem;
+    font-weight: 600;
+}
 
 .cl-rco-erro {
     padding: 12px;
