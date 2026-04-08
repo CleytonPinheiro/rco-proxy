@@ -100,6 +100,10 @@ export function createRcoLancamentoRouter(deps = {}) {
             if (r.status !== 200) {
                 return res.status(r.status).json({ erro: 'Erro ao buscar avaliações no RCO', detalhe: r.data });
             }
+            const lista = Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? r.data?.resultado ?? []);
+            if (lista.length > 0) {
+                lista.forEach((av, i) => console.log(`[RCO-LANC] av[${i}]:`, JSON.stringify(av, null, 2)));
+            }
             res.json(r.data);
         } catch (e) {
             console.error('[RCO-LANC] Erro ao listar avaliações:', e.message);
