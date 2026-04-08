@@ -942,9 +942,15 @@ elBtnLivro.addEventListener('click', async () => {
     if (!grupoAtivo) return;
     const novoEstado = !grupoAtivo.lancadoLivro;
     const msg        = novoEstado
-        ? `Confirmar que as notas do grupo "${grupoAtivo.nome}" foram lançadas no livro?`
-        : `Desmarcar o grupo "${grupoAtivo.nome}" como lançado?`;
-    if (!confirm(msg)) return;
+        ? `As notas do grupo "${grupoAtivo.nome}" foram lançadas no livro de chamada?`
+        : `Desmarcar o grupo "${grupoAtivo.nome}" como lançado no livro?`;
+    const confirmado = await confirmar(msg, {
+        titulo:       novoEstado ? 'Lançar no livro' : 'Remover marcação',
+        confirmLabel: novoEstado ? '📒 Confirmar lançamento' : 'Remover',
+        tipo:         novoEstado ? 'info' : 'danger',
+        icone:        novoEstado ? '📒' : '↩️',
+    });
+    if (!confirmado) return;
 
     elBtnLivro.disabled = true;
     try {
@@ -2768,7 +2774,15 @@ elRcoModalConfirmar.addEventListener('click', async () => {
 
     const mapeados   = rcoAlunosMapeados.filter(a => a._matched).length;
     const total      = rcoAlunosMapeados.length;
-    if (!confirm(`Lançar ${mapeados} de ${total} notas no RCO?\n${total - mapeados} aluno(s) sem match manterão nota atual.`)) return;
+    const semMatch   = total - mapeados;
+    const msgRco     = semMatch > 0
+        ? `${mapeados} de ${total} notas serão enviadas ao RCO. ${semMatch} aluno(s) sem correspondência manterão a nota atual.`
+        : `${mapeados} nota${mapeados !== 1 ? 's' : ''} serão enviadas ao RCO para todos os alunos mapeados.`;
+    if (!await confirmar(msgRco, {
+        titulo:       'Confirmar lançamento no RCO',
+        confirmLabel: '🚀 Lançar notas',
+        icone:        '🚀',
+    })) return;
 
     elRcoModalConfirmar.disabled    = true;
     elRcoModalConfirmar.textContent = 'Lançando…';
@@ -2810,12 +2824,14 @@ elRcoModalZerar.addEventListener('click', async () => {
     const total = rcoAlunosMapeados.length;
     const nomeAv = av.descricaoAvaliacaoParcial ?? `Avaliação #${av.numAvaliacaoParcial}`;
 
-    if (!confirm(
-        `⚠️ ZERAR AVALIAÇÃO NO RCO\n\n` +
-        `Isso enviará nota vazia (null) para todos os ${total} alunos de:\n` +
-        `"${nomeAv}"\n\n` +
-        `O RCO irá limpar as notas desta avaliação.\n\n` +
-        `Tem certeza?`
+    if (!await confirmar(
+        `Isso enviará nota vazia para todos os ${total} alunos da avaliação "${nomeAv}". O RCO irá limpar as notas desta avaliação. Esta ação não pode ser desfeita.`,
+        {
+            titulo:       '⚠️ Zerar avaliação no RCO',
+            confirmLabel: '🗑️ Sim, zerar notas',
+            tipo:         'danger',
+            icone:        '⚠️',
+        }
     )) return;
 
     elRcoModalZerar.disabled    = true;
