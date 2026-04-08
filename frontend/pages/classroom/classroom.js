@@ -2442,6 +2442,7 @@ const elRcoAvaliacoesLista= document.getElementById('clRcoAvaliacoesLista');
 const elRcoAvaliacaoInfo  = document.getElementById('clRcoAvaliacaoInfo');
 const elRcoTableBody      = document.getElementById('clRcoTableBody');
 const elRcoModalConfirmar = document.getElementById('clRcoModalConfirmar');
+const elRcoModalZerar     = document.getElementById('clRcoModalZerar');
 
 /* Normaliza nome para comparação (remove acentos, pontuação, caixa) */
 function normNome(s) {
@@ -2457,6 +2458,7 @@ function fecharModalRco() {
     rcoAvaliacaoSelecionada = null;
     rcoAlunosMapeados       = null;
     elRcoModalConfirmar.style.display = 'none';
+    elRcoModalZerar.style.display     = 'none';
     elRcoPasso1.style.display = '';
     elRcoPasso2.style.display = 'none';
 }
@@ -2653,6 +2655,7 @@ async function selecionarAvaliacao(av, itemEl) {
         });
 
         elRcoModalConfirmar.style.display = '';
+        elRcoModalZerar.style.display     = '';
     } catch (e) {
         elRcoAvaliacoesLista.innerHTML = `<div class="cl-rco-erro">Erro ao carregar avaliação: ${e.message}</div>`;
         elRcoPasso1.style.display = '';
@@ -2680,8 +2683,10 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
     };
 
-    /* Remove campos internos antes de enviar */
-    const alunosPayload = rcoAlunosMapeados.map(({ _classNome, _notaCalc, _matched, ...rest }) => rest);
+    /* Remove campos internos (_*) antes de enviar */
+    const alunosPayload = rcoAlunosMapeados.map(
+        ({ _classNome, _notaCalc, _matched, _usouRec, ...rest }) => rest
+    );
 
     try {
         await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
@@ -2695,6 +2700,56 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     } finally {
         elRcoModalConfirmar.disabled    = false;
         elRcoModalConfirmar.textContent = '🚀 Confirmar lançamento';
+    }
+});
+
+/* ── Zerar avaliação no RCO ── */
+elRcoModalZerar.addEventListener('click', async () => {
+    if (!rcoAvaliacaoSelecionada || !rcoAlunosMapeados) return;
+
+    const av    = rcoAvaliacaoSelecionada;
+    const total = rcoAlunosMapeados.length;
+    const nomeAv = av.descricaoAvaliacaoParcial ?? `Avaliação #${av.numAvaliacaoParcial}`;
+
+    if (!confirm(
+        `⚠️ ZERAR AVALIAÇÃO NO RCO\n\n` +
+        `Isso enviará nota vazia (null) para todos os ${total} alunos de:\n` +
+        `"${nomeAv}"\n\n` +
+        `O RCO irá limpar as notas desta avaliação.\n\n` +
+        `Tem certeza?`
+    )) return;
+
+    elRcoModalZerar.disabled    = true;
+    elRcoModalZerar.textContent = 'Zerando…';
+
+    const meta = {
+        codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+        codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
+        numAvaliacaoParcial:       av.numAvaliacaoParcial,
+        dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
+        pesoDecimal:               av.pesoDecimal,
+    };
+
+    /* Payload com notaDecimal = null para todos os alunos */
+    const alunosPayload = rcoAlunosMapeados.map(
+        ({ _classNome, _notaCalc, _matched, _usouRec, ...rest }) => ({
+            ...rest,
+            notaDecimal: null,
+        })
+    );
+
+    try {
+        await api(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
+            method: 'POST',
+            body: { meta, alunos: alunosPayload },
+        });
+        toast(`🗑️ Avaliação zerada no RCO — ${total} alunos com nota vazia.`, 'ok');
+        fecharModalRco();
+    } catch (e) {
+        toast('Erro ao zerar no RCO: ' + e.message, 'erro');
+    } finally {
+        elRcoModalZerar.disabled    = false;
+        elRcoModalZerar.textContent = '🗑️ Zerar avaliação no RCO';
     }
 });
 
