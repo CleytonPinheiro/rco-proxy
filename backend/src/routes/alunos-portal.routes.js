@@ -354,6 +354,29 @@ export function createAlunosPortalRouter() {
 
                     if (!atividades.length && !zeradas.length) return null;
 
+                    /* ── Anota grupo de cada atividade pendente ─────── */
+                    if (atividades.length > 0) {
+                        try {
+                            const ids = atividades.map(a => a.id);
+                            const { rows: grupoRows } = await pool.query(
+                                `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome
+                                 FROM classroom_grupo_atividades ga
+                                 JOIN classroom_grupos g ON g.id = ga.grupo_id
+                                 WHERE ga.atividade_id = ANY($1::bigint[])
+                                   AND g.tipo = 'normal'`,
+                                [ids]
+                            );
+                            const grupoMap = {};
+                            grupoRows.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
+                            atividades.forEach(a => {
+                                const g = grupoMap[String(a.id)];
+                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                            });
+                        } catch (e) {
+                            console.warn('[ALUNOS-PORTAL] Erro ao buscar grupos:', e.message);
+                        }
+                    }
+
                     return {
                         cursoId:  curso.id,
                         nome:     curso.name,

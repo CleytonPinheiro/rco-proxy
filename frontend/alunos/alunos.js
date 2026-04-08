@@ -253,7 +253,8 @@ function renderCursoCard(curso, { zerada = false } = {}) {
     const card = document.createElement('div');
     card.className = 'pa-curso-card' + (zerada ? ' pa-curso-card--zerada' : '');
 
-    const qtd = zerada ? curso.zeradas.length : curso.atividades.length;
+    const items = zerada ? curso.zeradas : curso.atividades;
+    const qtd   = items.length;
     const badgeLabel = zerada
         ? `${qtd} zerada${qtd !== 1 ? 's' : ''}`
         : `${qtd} pendente${qtd !== 1 ? 's' : ''}`;
@@ -267,15 +268,71 @@ function renderCursoCard(curso, { zerada = false } = {}) {
         </div>
         <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}">${badgeLabel}</span>
     `;
-
-    const lista = document.createElement('ul');
-    lista.className = 'pa-atividade-lista';
-
-    const items = zerada ? curso.zeradas : curso.atividades;
-    items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada })));
-
     card.appendChild(header);
-    card.appendChild(lista);
+
+    if (zerada) {
+        /* Atividades zeradas: sem agrupamento por grupo */
+        const lista = document.createElement('ul');
+        lista.className = 'pa-atividade-lista';
+        items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada: true })));
+        card.appendChild(lista);
+        return card;
+    }
+
+    /* ── Agrupa atividades pendentes por grupo ───────── */
+    const gruposMap = new Map();   /* grupoId → { nome, atividades[] } */
+    const semGrupo  = [];
+
+    items.forEach(ativ => {
+        if (ativ.grupoId) {
+            if (!gruposMap.has(ativ.grupoId)) {
+                gruposMap.set(ativ.grupoId, { nome: ativ.grupoNome, atividades: [] });
+            }
+            gruposMap.get(ativ.grupoId).atividades.push(ativ);
+        } else {
+            semGrupo.push(ativ);
+        }
+    });
+
+    /* Renderiza cada grupo */
+    gruposMap.forEach(({ nome, atividades: gAtivs }) => {
+        const secao = document.createElement('div');
+        secao.className = 'pa-grupo-secao';
+
+        const label = document.createElement('div');
+        label.className = 'pa-grupo-label';
+        label.innerHTML = `<span class="pa-grupo-icon">📋</span><span class="pa-grupo-nome">${esc(nome)}</span>`;
+        secao.appendChild(label);
+
+        const lista = document.createElement('ul');
+        lista.className = 'pa-atividade-lista';
+        gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ)));
+        secao.appendChild(lista);
+
+        card.appendChild(secao);
+    });
+
+    /* Atividades sem grupo */
+    if (semGrupo.length > 0) {
+        const secao = document.createElement('div');
+        secao.className = 'pa-grupo-secao pa-grupo-secao--outras';
+
+        if (gruposMap.size > 0) {
+            /* Só mostra o label "Outras" se já houver grupos acima */
+            const label = document.createElement('div');
+            label.className = 'pa-grupo-label pa-grupo-label--outras';
+            label.innerHTML = `<span class="pa-grupo-icon">📌</span><span class="pa-grupo-nome">Outras atividades</span>`;
+            secao.appendChild(label);
+        }
+
+        const lista = document.createElement('ul');
+        lista.className = 'pa-atividade-lista';
+        semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ)));
+        secao.appendChild(lista);
+
+        card.appendChild(secao);
+    }
+
     return card;
 }
 

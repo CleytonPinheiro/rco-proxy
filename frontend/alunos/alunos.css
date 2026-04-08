@@ -452,6 +452,47 @@ html, body {
 }
 .pa-link-ativ:hover { background: var(--pa-primary-dark); }
 
+/* ── Grupos de atividades dentro do card ────────────── */
+.pa-grupo-secao {
+    border-top: 2px solid var(--pa-border);
+}
+.pa-grupo-secao:first-of-type { border-top: none; }
+
+.pa-grupo-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px 7px;
+    background: rgba(26,115,232,.07);
+    border-bottom: 1px solid rgba(26,115,232,.15);
+}
+[data-theme="dark"] .pa-grupo-label {
+    background: rgba(123,170,247,.08);
+    border-bottom-color: rgba(123,170,247,.15);
+}
+
+.pa-grupo-icon { font-size: .9rem; line-height: 1; }
+
+.pa-grupo-nome {
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--pa-primary);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* Seção "Outras atividades" */
+.pa-grupo-secao--outras { border-top: 2px dashed var(--pa-border); }
+
+.pa-grupo-label--outras {
+    background: rgba(95,99,104,.06);
+    border-bottom-color: var(--pa-border);
+}
+[data-theme="dark"] .pa-grupo-label--outras {
+    background: rgba(154,160,166,.07);
+}
+.pa-grupo-label--outras .pa-grupo-nome { color: var(--pa-sub); }
+
 /* ── Vazio ───────────────────────────────────────────── */
 .pa-vazio       { text-align: center; padding: 80px 20px; }
 .pa-vazio-icon  { font-size: 3.5rem; margin-bottom: 16px; }
