@@ -2856,9 +2856,9 @@ async function selecionarAvaliacao(av, itemEl) {
 
                 /* Nota final: se usou rec → nota da rec; se não fez rec → nota do grupo principal */
                 const notaFinalExibir = a._usouRec
-                    ? `<strong style="color:#4338ca">${notaRcoAtual}</strong>`
+                    ? `<strong class="cl-rco-nota-rec">${notaRcoAtual}</strong>`
                     : (a._matched
-                        ? `<span>${notaRcoAtual} <small style="opacity:.65">(grupo principal)</small></span>`
+                        ? `<span>${notaRcoAtual} <small style="opacity:.55">(grupo principal)</small></span>`
                         : `<span class="cl-rco-mantido">${notaRcoAtual} <small>(inalterada)</small></span>`);
 
                 tr.innerHTML = `

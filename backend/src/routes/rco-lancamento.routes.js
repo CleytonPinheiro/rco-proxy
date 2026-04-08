@@ -119,6 +119,11 @@ export function createRcoLancamentoRouter(deps = {}) {
             if (r.status !== 200) {
                 return res.status(r.status).json({ erro: 'Avaliação não encontrada no RCO', detalhe: r.data });
             }
+            const alunos = r.data?.alunos ?? [];
+            if (alunos.length > 0) {
+                console.log('[RCO-LANC] detalhe.alunos[0]:', JSON.stringify(alunos[0], null, 2));
+                console.log('[RCO-LANC] detalhe top-level keys:', Object.keys(r.data));
+            }
             res.json(r.data);
         } catch (e) {
             console.error('[RCO-LANC] Erro ao buscar avaliação:', e.message);
