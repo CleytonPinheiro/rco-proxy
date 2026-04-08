@@ -1747,6 +1747,18 @@ body {
 .cl-btn--buscar-classe {
     white-space: nowrap;
 }
+.cl-btn--buscar-classe:disabled {
+    opacity: .38;
+    cursor: not-allowed;
+}
+
+/* Campo de código herdado do grupo pai (somente-leitura em grupos de recuperação) */
+.cl-input--herdado {
+    background: color-mix(in srgb, var(--border) 30%, var(--surface)) !important;
+    color: var(--text-muted) !important;
+    cursor: not-allowed !important;
+    border-color: var(--border) !important;
+}
 
 .cl-classe-rco-info {
     margin-top: 6px;

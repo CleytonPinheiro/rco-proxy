@@ -1021,6 +1021,9 @@ function criarRecuperacaoRapida(grupoOrigem) {
     elModalAtivs.querySelectorAll('input[type=checkbox]').forEach(cb => {
         cb.checked = grupoOrigem.atividades.some(a => String(a.atividade_id) === String(cb.value));
     });
+
+    /* 7. Herda e bloqueia o código de classe RCO do grupo de origem */
+    configurarCampoCodClasse(true, grupoOrigem.id);
 }
 
 elBtnCriarRec.addEventListener('click', () => {
@@ -1558,12 +1561,44 @@ const elGrupoId          = document.getElementById('clGrupoId');
 const elGrupoNome        = document.getElementById('clGrupoNome');
 const elGrupoPontos      = document.getElementById('clGrupoPontos');
 const elGrupoCodClasseRco= document.getElementById('clGrupoCodClasseRco');
+const elBtnBuscarClasse  = document.getElementById('clBtnBuscarClasse');
 const elCorPicker        = document.getElementById('clCorPicker');
 const elModalAtivs       = document.getElementById('clModalAtividades');
 const elTipoGrupo        = document.getElementById('clTipoGrupo');
 const elRecOrigemWrap    = document.getElementById('clRecOrigemWrap');
 const elRecOrigemSel     = document.getElementById('clRecOrigemSel');
 const elRecDataInicio    = document.getElementById('clRecDataInicio');
+
+/* ── Campo de código RCO: bloqueia/desbloqueia conforme tipo do grupo ──
+   Grupos de recuperação herdam o código do grupo pai e não podem alterar. */
+function configurarCampoCodClasse(isRec, grupoOrigemId = null) {
+    if (!isRec) {
+        /* Grupo normal — campo editável */
+        elGrupoCodClasseRco.readOnly = false;
+        elGrupoCodClasseRco.classList.remove('cl-input--herdado');
+        elBtnBuscarClasse.disabled = false;
+        elBtnBuscarClasse.title = 'Buscar classe no RCO';
+        return;
+    }
+
+    /* Grupo de recuperação — herda código do grupo de origem */
+    const origem = gruposCache.find(g => String(g.id) === String(grupoOrigemId));
+    const cod    = origem?.codClasseRco || '';
+
+    elGrupoCodClasseRco.value    = cod;
+    elGrupoCodClasseRco.readOnly = true;
+    elGrupoCodClasseRco.classList.add('cl-input--herdado');
+    elBtnBuscarClasse.disabled = true;
+    elBtnBuscarClasse.title = 'Código herdado do grupo principal';
+
+    /* Atualiza o info da classe se disponível */
+    if (cod && _classesRcoCache) {
+        const c = _classesRcoCache.find(x => String(x.codClasse) === String(cod));
+        mostrarInfoClasseRco(c || null);
+    } else {
+        elClasseRcoInfo.style.display = 'none';
+    }
+}
 
 /* ── Lógica dos botões de tipo ── */
 elTipoGrupo.addEventListener('click', e => {
@@ -1573,6 +1608,14 @@ elTipoGrupo.addEventListener('click', e => {
     btn.classList.add('cl-tipo-btn--ativo');
     const isRec = btn.dataset.tipo === 'recuperacao';
     elRecOrigemWrap.style.display = isRec ? '' : 'none';
+    configurarCampoCodClasse(isRec, elRecOrigemSel.value || null);
+});
+
+/* Ao trocar o grupo de origem, herda o código imediatamente */
+elRecOrigemSel.addEventListener('change', () => {
+    if (tipoModalAtivo() === 'recuperacao') {
+        configurarCampoCodClasse(true, elRecOrigemSel.value || null);
+    }
 });
 
 function tipoModalAtivo() {
@@ -1624,13 +1667,7 @@ function abrirModalGrupo(grupo = null) {
         elGrupoPontos.value          = (grupo.pontosMeta / 10).toFixed(1);
         elGrupoCodClasseRco.value    = grupo.codClasseRco || '';
         corSelecionada               = grupo.cor;
-        /* Mostra info da classe se já vinculada */
-        if (grupo.codClasseRco && _classesRcoCache) {
-            const c = _classesRcoCache.find(x => String(x.codClasse) === String(grupo.codClasseRco));
-            mostrarInfoClasseRco(c || null);
-        } else {
-            elClasseRcoInfo.style.display = 'none';
-        }
+        elClasseRcoInfo.style.display = 'none';
     } else {
         elModalTitulo.textContent    = 'Novo Grupo';
         elGrupoId.value              = '';
@@ -1640,6 +1677,9 @@ function abrirModalGrupo(grupo = null) {
         elClasseRcoInfo.style.display = 'none';
         corSelecionada               = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
+
+    /* Configura campo de código RCO conforme tipo (herda e bloqueia se for recuperação) */
+    configurarCampoCodClasse(tipo === 'recuperacao', grupo?.grupoOrigemId ?? null);
 
     elCorPicker.querySelectorAll('.cl-cor-btn').forEach(b => {
         b.classList.toggle('cl-cor-btn--ativo', b.style.background === corSelecionada ||
@@ -2578,7 +2618,7 @@ elGrupoCodClasseRco.addEventListener('input', () => {
     elClasseRcoInfo.style.display = 'none';
 });
 
-document.getElementById('clBtnBuscarClasse').addEventListener('click', abrirClassePicker);
+elBtnBuscarClasse.addEventListener('click', abrirClassePicker);
 
 /* ══════════════════════════════════════════════════════════════
    MODAL LANÇAMENTO RCO
