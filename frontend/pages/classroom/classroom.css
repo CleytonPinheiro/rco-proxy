@@ -337,6 +337,75 @@ body {
     text-overflow: ellipsis;
 }
 
+/* ── Botão de ocultar disciplina (aparece no hover do item) ── */
+.cl-curso-ocultar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, background .12s, color .12s;
+    padding: 0;
+}
+.cl-curso-item:hover .cl-curso-ocultar { opacity: 1; }
+.cl-curso-ocultar:hover {
+    background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+    color: var(--text-primary);
+}
+
+/* Nos itens ocultos o ícone fica sempre visível (olho riscado) */
+.cl-ocultos-lista .cl-curso-ocultar { opacity: .55; }
+.cl-ocultos-lista .cl-curso-item:hover .cl-curso-ocultar { opacity: 1; }
+.cl-ocultos-lista .cl-curso-item { opacity: .55; cursor: default; }
+.cl-ocultos-lista .cl-curso-item:hover { opacity: .85; }
+
+/* ── Seção de disciplinas ocultas ── */
+.cl-ocultos-secao {
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 6px;
+}
+
+.cl-ocultos-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    transition: background .12s, color .12s;
+    text-align: left;
+}
+.cl-ocultos-toggle:hover {
+    background: var(--bg);
+    color: var(--text-primary);
+}
+
+.cl-ocultos-arrow {
+    transition: transform .2s;
+    flex-shrink: 0;
+}
+.cl-ocultos-arrow--aberto { transform: rotate(180deg); }
+
+.cl-ocultos-lista {
+    margin-top: 4px;
+}
+
 /* ── Item de atividade ── */
 .cl-ativ-item {
     display: flex;

@@ -285,62 +285,161 @@ function ordenarTurmas(a, b) {
     return a.localeCompare(b);
 }
 
+/* ── Ocultar disciplinas — persistência em localStorage ── */
+const CL_OCULTOS_KEY = 'cl_disciplinas_ocultas';
+
+function carregarOcultos() {
+    try { return new Set(JSON.parse(localStorage.getItem(CL_OCULTOS_KEY) || '[]')); }
+    catch { return new Set(); }
+}
+
+function salvarOcultos(set) {
+    localStorage.setItem(CL_OCULTOS_KEY, JSON.stringify([...set]));
+}
+
+/* Cria um item de curso (visível ou oculto) e retorna o elemento */
+function criarItemCurso(c, ocultos, onToggle) {
+    const item = document.createElement('div');
+    item.className  = 'cl-curso-item';
+    item.dataset.id = c.id;
+    const oculto = ocultos.has(c.id);
+
+    item.innerHTML = `
+        <div class="cl-curso-cor" style="background:${c.cor}"></div>
+        <div class="cl-curso-info">
+            <div class="cl-curso-nome" title="${esc(c.nome)}">${esc(c.nome)}</div>
+            <div class="cl-curso-secao">${esc(c.secao || 'Sem seção')}</div>
+        </div>
+        <button class="cl-curso-ocultar" title="${oculto ? 'Mostrar disciplina' : 'Ocultar disciplina'}" tabindex="-1">
+            ${oculto
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+            }
+        </button>`;
+
+    /* Clique no botão de ocultar */
+    item.querySelector('.cl-curso-ocultar').addEventListener('click', e => {
+        e.stopPropagation();
+        onToggle(c.id);
+    });
+
+    /* Clique no item abre o curso (apenas para itens visíveis) */
+    if (!oculto) {
+        item.addEventListener('click', () => selecionarCurso(c, item, c.cor));
+    }
+
+    return item;
+}
+
+let _cursosCache = [];   // cache da última resposta da API
+let _ocultosPanelAberto = false;
+
 async function carregarCursos() {
     elCursoLista.innerHTML    = '<div class="cl-loading">Carregando disciplinas...</div>';
     elCursosCount.textContent = '—';
     try {
         const cursos = await api('/courses');
+        _cursosCache = cursos;
         if (!cursos.length) {
             elCursoLista.innerHTML    = '<div class="cl-empty-state"><p>Nenhum curso encontrado.</p></div>';
             elCursosCount.textContent = '0 disciplinas';
             return;
         }
-        elCursosCount.textContent = `${cursos.length} disciplina${cursos.length !== 1 ? 's' : ''}`;
 
         /* Atribui cor permanente por índice global */
         const cursosComCor = cursos.map((c, i) => ({ ...c, cor: CURSO_CORES[i % CURSO_CORES.length] }));
-
-        /* Agrupa por turma */
-        const grupos = {};
-        cursosComCor.forEach(c => {
-            const turma = extrairTurma(c.nome);
-            if (!grupos[turma]) grupos[turma] = [];
-            grupos[turma].push(c);
-        });
-
-        /* Ordena turmas e dentro de cada turma ordena por nome */
-        const turmasOrdenadas = Object.keys(grupos).sort(ordenarTurmas);
-        turmasOrdenadas.forEach(t => {
-            grupos[t].sort((a, b) => a.nome.localeCompare(b.nome));
-        });
-
-        elCursoLista.innerHTML = '';
-
-        turmasOrdenadas.forEach(turma => {
-            /* Cabeçalho de turma */
-            const hdr = document.createElement('div');
-            hdr.className = 'cl-turma-header';
-            hdr.textContent = turma;
-            elCursoLista.appendChild(hdr);
-
-            /* Itens da turma */
-            grupos[turma].forEach(c => {
-                const item = document.createElement('div');
-                item.className  = 'cl-curso-item';
-                item.dataset.id = c.id;
-                item.innerHTML  = `
-                    <div class="cl-curso-cor" style="background:${c.cor}"></div>
-                    <div class="cl-curso-info">
-                        <div class="cl-curso-nome" title="${esc(c.nome)}">${esc(c.nome)}</div>
-                        <div class="cl-curso-secao">${esc(c.secao || 'Sem seção')}</div>
-                    </div>`;
-                item.addEventListener('click', () => selecionarCurso(c, item, c.cor));
-                elCursoLista.appendChild(item);
-            });
-        });
+        renderListaCursos(cursosComCor);
     } catch (e) {
         elCursoLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
         toast(e.message, 'erro');
+    }
+}
+
+function renderListaCursos(cursosComCor) {
+    const ocultos = carregarOcultos();
+
+    /* Separa visíveis e ocultos */
+    const visiveis = cursosComCor.filter(c => !ocultos.has(c.id));
+    const ocultosLista = cursosComCor.filter(c => ocultos.has(c.id));
+
+    /* Atualiza contador */
+    const total = cursosComCor.length;
+    const vis   = visiveis.length;
+    elCursosCount.textContent = ocultos.size > 0
+        ? `${vis} de ${total} disciplina${total !== 1 ? 's' : ''}`
+        : `${total} disciplina${total !== 1 ? 's' : ''}`;
+
+    /* Callback de toggle — altera localStorage e re-renderiza */
+    function onToggle(cursoId) {
+        const set = carregarOcultos();
+        if (set.has(cursoId)) set.delete(cursoId);
+        else set.add(cursoId);
+        salvarOcultos(set);
+        renderListaCursos(cursosComCor);
+    }
+
+    /* Agrupa visíveis por turma */
+    const grupos = {};
+    visiveis.forEach(c => {
+        const turma = extrairTurma(c.nome);
+        if (!grupos[turma]) grupos[turma] = [];
+        grupos[turma].push(c);
+    });
+    const turmasOrdenadas = Object.keys(grupos).sort(ordenarTurmas);
+    turmasOrdenadas.forEach(t => grupos[t].sort((a, b) => a.nome.localeCompare(b.nome)));
+
+    elCursoLista.innerHTML = '';
+
+    /* Renderiza disciplinas visíveis */
+    turmasOrdenadas.forEach(turma => {
+        const hdr = document.createElement('div');
+        hdr.className = 'cl-turma-header';
+        hdr.textContent = turma;
+        elCursoLista.appendChild(hdr);
+
+        grupos[turma].forEach(c => {
+            elCursoLista.appendChild(criarItemCurso(c, ocultos, onToggle));
+        });
+    });
+
+    /* Seção de disciplinas ocultas */
+    if (ocultosLista.length > 0) {
+        const secao = document.createElement('div');
+        secao.className = 'cl-ocultos-secao';
+
+        const toggle = document.createElement('button');
+        toggle.className = 'cl-ocultos-toggle';
+        toggle.innerHTML = `
+            <svg class="cl-ocultos-arrow${_ocultosPanelAberto ? ' cl-ocultos-arrow--aberto' : ''}"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            <span>Ocultas (${ocultosLista.length})</span>`;
+
+        const lista = document.createElement('div');
+        lista.className = 'cl-ocultos-lista';
+        lista.style.display = _ocultosPanelAberto ? '' : 'none';
+
+        toggle.addEventListener('click', () => {
+            _ocultosPanelAberto = !_ocultosPanelAberto;
+            lista.style.display = _ocultosPanelAberto ? '' : 'none';
+            toggle.querySelector('.cl-ocultos-arrow').classList.toggle('cl-ocultos-arrow--aberto', _ocultosPanelAberto);
+        });
+
+        ocultosLista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).forEach(c => {
+            lista.appendChild(criarItemCurso(c, ocultos, onToggle));
+        });
+
+        secao.appendChild(toggle);
+        secao.appendChild(lista);
+        elCursoLista.appendChild(secao);
+    }
+
+    /* Restaura item ativo se ainda visível */
+    if (cursoAtivo) {
+        const itemAtivo = elCursoLista.querySelector(`.cl-curso-item[data-id="${cursoAtivo.id}"]`);
+        if (itemAtivo) itemAtivo.classList.add('cl-curso-item--ativo');
     }
 }
 
