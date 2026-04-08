@@ -86,9 +86,21 @@
                 <input type="range" id="inpFilas" class="ms-range" min="1" max="10" value="6"
                     oninput="document.getElementById('lblFilas').textContent=this.value; reconstruirGrade()">
             </div>
+            <div class="ms-config-group ms-config-acoes">
+                <button class="ms-btn-acao ms-btn-acao--distribuir" id="btnDistribuir"
+                    onclick="distribuirAutomaticamente()" disabled
+                    title="Distribui os alunos disponíveis nas carteiras vazias, seguindo a ordem de chamada (chamada 1 → carteira 1)">
+                    ⚡ Distribuir por chamada
+                </button>
+                <button class="ms-btn-acao ms-btn-acao--resetar" id="btnResetar"
+                    onclick="resetarMapa()" disabled
+                    title="Remove todos os alunos das carteiras, deixando o mapa em branco">
+                    🔄 Resetar mapa
+                </button>
+            </div>
             <div class="ms-config-group ms-config-dica">
                 <span class="ms-dica-icon">💡</span>
-                <span>Arraste alunos para as carteiras. Arraste de volta para remover.</span>
+                <span>Arraste alunos para as carteiras. Use ✕ no chip para remover transferidos.</span>
             </div>
         </div>
 

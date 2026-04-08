@@ -5,12 +5,13 @@
 const API = '/api';
 
 // Estado global
-let turmaAtual   = null;   // { codturma, turma }
-let todosAlunos  = [];     // lista completa da turma
-let grade        = [];     // array de objetos: { pos, fila, coluna, aluno|null }
-let alunosFora   = [];     // alunos ainda não posicionados
-let dragSource   = null;   // { tipo: 'banco'|'carteira', pos?, aluno }
-let modificado   = false;
+let turmaAtual      = null;   // { codturma, turma }
+let todosAlunos     = [];     // lista completa da turma
+let grade           = [];     // array de objetos: { pos, fila, coluna, aluno|null }
+let alunosFora      = [];     // alunos ainda não posicionados
+let alunosExcluidos = [];     // alunos removidos da turma (transferidos, etc.)
+let dragSource      = null;   // { tipo: 'banco'|'carteira', pos?, aluno }
+let modificado      = false;
 
 // ── Init ────────────────────────────────────────────────────
 async function init() {
@@ -72,23 +73,25 @@ async function carregarMapaSalvo() {
         const mapa = await r.json();
 
         if (mapa) {
-            // Restaurar configuração salva
+            alunosExcluidos = mapa.alunos_excluidos || [];
             document.getElementById('inpColunas').value = mapa.colunas;
             document.getElementById('lblColunas').textContent = mapa.colunas;
             document.getElementById('inpFilas').value = mapa.filas;
             document.getElementById('lblFilas').textContent = mapa.filas;
             construirGrade(mapa.colunas, mapa.filas, mapa.posicoes);
         } else {
-            // Nova configuração padrão
+            alunosExcluidos = [];
             const col = parseInt(document.getElementById('inpColunas').value);
             const fil = parseInt(document.getElementById('inpFilas').value);
             construirGrade(col, fil, []);
         }
     } catch (e) {
+        alunosExcluidos = [];
         const col = parseInt(document.getElementById('inpColunas').value);
         const fil = parseInt(document.getElementById('inpFilas').value);
         construirGrade(col, fil, []);
     }
+    atualizarBotoesAcoes();
     marcarSalvo();
 }
 
@@ -111,9 +114,10 @@ function construirGrade(colunas, filas, posicoesExistentes) {
         if (posMap[c.pos]) c.aluno = posMap[c.pos];
     });
 
-    // Calcula alunos fora: todos que não estão em nenhuma carteira
-    const ocupados = new Set(grade.filter(c => c.aluno).map(c => c.aluno.codmatrizaluno));
-    alunosFora = todosAlunos.filter(a => !ocupados.has(a.codmatrizaluno));
+    // Calcula alunos fora: todos que não estão em nenhuma carteira nem foram excluídos
+    const ocupados  = new Set(grade.filter(c => c.aluno).map(c => c.aluno.codmatrizaluno));
+    const excluidos = new Set(alunosExcluidos.map(a => a.codmatrizaluno));
+    alunosFora = todosAlunos.filter(a => !ocupados.has(a.codmatrizaluno) && !excluidos.has(a.codmatrizaluno));
 
     renderGrade(colunas);
     renderBanco();
@@ -133,12 +137,13 @@ function reconstruirGrade() {
 }
 
 function limparWorkspace() {
-    grade = []; alunosFora = [];
+    grade = []; alunosFora = []; alunosExcluidos = [];
     document.getElementById('grade').innerHTML    = '';
     document.getElementById('grade').style.display = 'none';
     document.getElementById('vazioMsg').style.display = '';
     renderBanco();
     document.getElementById('btnSalvar').disabled = true;
+    atualizarBotoesAcoes();
 }
 
 // ── Render grade ─────────────────────────────────────────────
@@ -205,6 +210,22 @@ function renderBanco() {
 
     cont.textContent = alunosFora.length;
 
+    // Atualiza indicador de excluídos
+    let exclBtn = document.getElementById('bancoExclBtn');
+    if (alunosExcluidos.length) {
+        if (!exclBtn) {
+            exclBtn = document.createElement('button');
+            exclBtn.id = 'bancoExclBtn';
+            exclBtn.className = 'ms-banco-excl-btn';
+            exclBtn.onclick = restaurarExcluidos;
+            document.getElementById('banco').querySelector('.ms-banco-header').appendChild(exclBtn);
+        }
+        exclBtn.textContent = `${alunosExcluidos.length} excluído${alunosExcluidos.length !== 1 ? 's' : ''} · Restaurar`;
+        exclBtn.style.display = '';
+    } else if (exclBtn) {
+        exclBtn.style.display = 'none';
+    }
+
     // Remove apenas chips — preserva #bancoVazio no DOM
     lista.querySelectorAll('.ms-aluno-chip').forEach(el => el.remove());
 
@@ -225,6 +246,7 @@ function renderBanco() {
                 <div class="ms-aluno-nome">${primeiroNomePrimUlt(a.nome)}</div>
                 ${a.numchamada ? `<div class="ms-aluno-num">#${a.numchamada}</div>` : ''}
             </div>
+            <button class="ms-chip-rem" title="Remover aluno da lista (transferido)" onclick="excluirAluno(${a.codmatrizaluno})">✕</button>
         `;
         div.addEventListener('dragstart', e => onDragStartBanco(e, a));
         div.addEventListener('dragend',   () => div.classList.remove('dragging'));
@@ -311,9 +333,106 @@ function removerDaCarteira(pos) {
 }
 
 function atualizarBancoFora() {
-    const ocupados = new Set(grade.filter(c => c.aluno).map(c => c.aluno.codmatrizaluno));
-    alunosFora = todosAlunos.filter(a => !ocupados.has(a.codmatrizaluno));
+    const ocupados  = new Set(grade.filter(c => c.aluno).map(c => c.aluno.codmatrizaluno));
+    const excluidos = new Set(alunosExcluidos.map(a => a.codmatrizaluno));
+    alunosFora = todosAlunos.filter(a => !ocupados.has(a.codmatrizaluno) && !excluidos.has(a.codmatrizaluno));
     alunosFora.sort((a, b) => (a.numchamada || 999) - (b.numchamada || 999));
+}
+
+// ── Resetar mapa ─────────────────────────────────────────────
+function resetarMapa() {
+    if (!turmaAtual || !grade.length) return;
+    const totalOcupadas = grade.filter(c => c.aluno).length;
+    if (!totalOcupadas) { mostrarToast('O mapa já está vazio.', ''); return; }
+    const ok = confirm(
+        `Resetar o mapa da turma "${turmaAtual.turma}"?\n\n` +
+        `Todos os ${totalOcupadas} aluno${totalOcupadas !== 1 ? 's' : ''} posicionado${totalOcupadas !== 1 ? 's' : ''} voltarão para a lista de disponíveis.\n\n` +
+        `Esta ação pode ser desfeita salvando o mapa em branco ou recarregando a página sem salvar.`
+    );
+    if (!ok) return;
+    grade.forEach(c => { c.aluno = null; });
+    const excluidos = new Set(alunosExcluidos.map(a => a.codmatrizaluno));
+    alunosFora = todosAlunos.filter(a => !excluidos.has(a.codmatrizaluno));
+    alunosFora.sort((a, b) => (a.numchamada || 999) - (b.numchamada || 999));
+    renderGrade(parseInt(document.getElementById('inpColunas').value));
+    renderBanco();
+    marcarModificado();
+    mostrarToast('Mapa resetado — todos os alunos estão disponíveis.', 'ok');
+}
+
+// ── Distribuir automaticamente ────────────────────────────────
+function distribuirAutomaticamente() {
+    if (!turmaAtual || !grade.length) return;
+    if (!alunosFora.length) { mostrarToast('Não há alunos disponíveis para distribuir.', ''); return; }
+
+    const disponiveis = [...alunosFora].sort((a, b) => (a.numchamada || 999) - (b.numchamada || 999));
+    const alocados = new Set();
+
+    // Tentativa 1: posiciona cada aluno na carteira cujo número = numchamada
+    disponiveis.forEach(aluno => {
+        const pos = (aluno.numchamada || 0) - 1;
+        if (pos >= 0 && pos < grade.length && !grade[pos].aluno) {
+            grade[pos].aluno = aluno;
+            alocados.add(aluno.codmatrizaluno);
+        }
+    });
+
+    // Tentativa 2: alunos que não encontraram a carteira exata → próxima vazia em ordem
+    const sobras     = disponiveis.filter(a => !alocados.has(a.codmatrizaluno));
+    const carteiras  = grade.filter(c => !c.aluno);
+    let idx = 0;
+    sobras.forEach(aluno => {
+        if (idx < carteiras.length) {
+            carteiras[idx].aluno = aluno;
+            alocados.add(aluno.codmatrizaluno);
+            idx++;
+        }
+    });
+
+    alunosFora = alunosFora.filter(a => !alocados.has(a.codmatrizaluno));
+    renderGrade(parseInt(document.getElementById('inpColunas').value));
+    renderBanco();
+    marcarModificado();
+    mostrarToast(`${alocados.size} aluno${alocados.size !== 1 ? 's' : ''} distribuído${alocados.size !== 1 ? 's' : ''} pela ordem de chamada.`, 'ok');
+}
+
+// ── Excluir aluno (transferido) ───────────────────────────────
+function excluirAluno(codmatrizaluno) {
+    const aluno = alunosFora.find(a => a.codmatrizaluno === codmatrizaluno);
+    if (!aluno) return;
+    const ok = confirm(
+        `Remover "${aluno.nome}" da lista de alunos?\n\n` +
+        `Use esta opção para alunos que foram transferidos ou que não fazem mais parte desta turma.\n\n` +
+        `O aluno pode ser restaurado a qualquer momento clicando em "Restaurar" no painel de alunos.`
+    );
+    if (!ok) return;
+    alunosExcluidos.push(aluno);
+    alunosFora = alunosFora.filter(a => a.codmatrizaluno !== codmatrizaluno);
+    renderBanco();
+    marcarModificado();
+    mostrarToast(`${aluno.nome.split(' ')[0]} removido da lista.`, 'ok');
+}
+
+// ── Restaurar excluídos ───────────────────────────────────────
+function restaurarExcluidos() {
+    if (!alunosExcluidos.length) return;
+    const n = alunosExcluidos.length;
+    const ok = confirm(`Restaurar ${n} aluno${n !== 1 ? 's' : ''} excluído${n !== 1 ? 's' : ''} de volta para a lista de disponíveis?`);
+    if (!ok) return;
+    const ocupados = new Set(grade.filter(c => c.aluno).map(c => c.aluno.codmatrizaluno));
+    alunosExcluidos.forEach(a => { if (!ocupados.has(a.codmatrizaluno)) alunosFora.push(a); });
+    alunosExcluidos = [];
+    alunosFora.sort((a, b) => (a.numchamada || 999) - (b.numchamada || 999));
+    renderBanco();
+    marcarModificado();
+    mostrarToast(`${n} aluno${n !== 1 ? 's' : ''} restaurado${n !== 1 ? 's' : ''}.`, 'ok');
+}
+
+// ── Habilitar/desabilitar botões de ação ─────────────────────
+function atualizarBotoesAcoes() {
+    const ativo = !!turmaAtual;
+    document.getElementById('btnResetar').disabled    = !ativo;
+    document.getElementById('btnDistribuir').disabled = !ativo;
 }
 
 // ── Salvar ───────────────────────────────────────────────────
@@ -332,7 +451,8 @@ async function salvarMapa() {
                 codturma: turmaAtual.codturma,
                 turma:    turmaAtual.turma,
                 colunas, filas, posicoes,
-                alunos_fora: alunosFora,
+                alunos_fora:      alunosFora,
+                alunos_excluidos: alunosExcluidos,
             }),
         });
         const data = await r.json();
