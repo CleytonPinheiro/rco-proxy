@@ -29,3 +29,9 @@ id = "anje1zj4SLieLyuFA3zCe"
 uri = "file://attached_assets/generated_images/edusync_architecture.png"
 type = "image"
 title = "Arquitetura EduSync — Classroom · EduSync · RCO"
+
+[[outputs]]
+id = "m2V3lEg9WR1yi3KEwu8He"
+uri = "file://edusync_insomnia.json"
+type = "unspecified"
+title = "EduSync — Coleção Insomnia (todas as rotas)"
