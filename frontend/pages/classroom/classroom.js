@@ -2970,11 +2970,15 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     const av     = rcoAvaliacaoSelecionada;
     const isRec  = av.codTipoAvaliacaoParcial === 2;
 
-    /* O RCO usa nomes invertidos entre GET e PUT para avaliações de recuperação:
-       - GET devolve 'recuperadas'  = avaliações principais que esta recuperação cobre
-       - PUT exige   'recuperacaos' = esse mesmo array para validar o vínculo
-       Para avaliações principais (tipo 1), 'recuperacaos' já vem populado no GET. */
-    const recVinculadas = isRec ? (av.recuperadas ?? []) : (av.recuperacaos ?? []);
+    /* Testes mostraram que o RCO valida 'recuperadas' no PUT (não 'recuperacaos').
+       O 500 anterior ocorria porque enviávamos o objeto completo da AV1 dentro de
+       'recuperadas' — o RCO aparentemente espera apenas { codAvaliacaoParcialClasse }.
+       Estratégia:
+         - tipo=2 (recuperação): 'recuperadas' = [{ codAvaliacaoParcialClasse }] de cada AV vinculada
+         - tipo=1 (principal):   'recuperacaos' re-enviado do GET (já funciona) */
+    const recuperadasParaPut = isRec
+        ? (av.recuperadas ?? []).map(r => ({ codAvaliacaoParcialClasse: r.codAvaliacaoParcialClasse }))
+        : [];
 
     const meta = {
         codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
@@ -2982,14 +2986,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
-        /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações (tipo 2). */
-        ...(!isRec && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados } : {}),
-        /* recuperacaos: lista de avaliações vinculadas (mapeada corretamente para o PUT).
-           Para tipo=2 (recuperação), o RCO NÃO deve receber 'recuperadas' no PUT —
-           apenas 'recuperacaos' com os dados das avaliações principais vinculadas.
-           Para tipo=1 (principal), 'recuperacaos' vem populado direto do GET. */
-        ...(recVinculadas.length ? { recuperacaos: recVinculadas } : {}),
-        ...(!isRec && av.recuperadas?.length ? { recuperadas: av.recuperadas } : {}),
+        /* Conteúdos: apenas em avaliações principais (tipo 1). */
+        ...(!isRec && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados }  : {}),
+        /* recuperadas simplificado: só o código — RCO usa para validar vínculo em tipo=2 */
+        ...(recuperadasParaPut.length               ? { recuperadas: recuperadasParaPut }        : {}),
+        /* recuperacaos: re-enviado do GET para tipo=1 (já funcionava) */
+        ...(av.recuperacaos?.length                 ? { recuperacaos: av.recuperacaos }          : {}),
     };
 
     /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
@@ -3108,8 +3110,11 @@ elRcoModalZerar.addEventListener('click', async () => {
     elRcoModalZerar.disabled    = true;
     elRcoModalZerar.textContent = 'Zerando…';
 
-    const isRecZ       = av.codTipoAvaliacaoParcial === 2;
-    const recVinculadasZ = isRecZ ? (av.recuperadas ?? []) : (av.recuperacaos ?? []);
+    const isRecZ = av.codTipoAvaliacaoParcial === 2;
+
+    const recuperadasParaPutZ = isRecZ
+        ? (av.recuperadas ?? []).map(r => ({ codAvaliacaoParcialClasse: r.codAvaliacaoParcialClasse }))
+        : [];
 
     const meta = {
         codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
@@ -3117,10 +3122,9 @@ elRcoModalZerar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
-        /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações */
-        ...(!isRecZ && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados } : {}),
-        ...(recVinculadasZ.length                         ? { recuperacaos: recVinculadasZ }  : {}),
-        ...(!isRecZ && av.recuperadas?.length             ? { recuperadas:  av.recuperadas }  : {}),
+        ...(!isRecZ && rcoConteudosSelecionados.length ? { conteudos:    rcoConteudosSelecionados }  : {}),
+        ...(recuperadasParaPutZ.length                 ? { recuperadas:  recuperadasParaPutZ }       : {}),
+        ...(av.recuperacaos?.length                    ? { recuperacaos: av.recuperacaos }           : {}),
     };
 
     /* Payload com notaDecimal = null para todos os alunos (limpa notas no RCO) */
