@@ -342,7 +342,14 @@ export function createRcoLancamentoRouter(deps = {}) {
                 const rcoMsg = typeof r.data === 'string'
                     ? r.data
                     : (r.data?.message ?? r.data?.erro ?? r.data?.msg ?? JSON.stringify(r.data));
+                /* Log completo do body de erro para depuração (especialmente 500 genérico) */
                 console.error(`[RCO-LANC] Erro no PUT RCO (${r.status}):`, rcoMsg);
+                console.error(`[RCO-LANC] Body completo do erro RCO:`, JSON.stringify(r.data, null, 2));
+                if (isRec) {
+                    console.error(`[RCO-LANC] Payload exato enviado ao RCO (tipo=2):`, JSON.stringify(
+                        { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco }, null, 2
+                    ));
+                }
                 return res.status(r.status).json({
                     erro:   rcoMsg || 'Erro desconhecido ao lançar notas no RCO.',
                     detalhe: r.data,

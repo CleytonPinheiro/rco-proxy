@@ -2970,14 +2970,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     const av     = rcoAvaliacaoSelecionada;
     const isRec  = av.codTipoAvaliacaoParcial === 2;
 
-    /* Testes mostraram que o RCO valida 'recuperadas' no PUT (não 'recuperacaos').
-       O 500 anterior ocorria porque enviávamos o objeto completo da AV1 dentro de
-       'recuperadas' — o RCO aparentemente espera apenas { codAvaliacaoParcialClasse }.
-       Estratégia:
-         - tipo=2 (recuperação): 'recuperadas' = [{ codAvaliacaoParcialClasse }] de cada AV vinculada
-         - tipo=1 (principal):   'recuperacaos' re-enviado do GET (já funciona) */
+    /* Para tipo=2: envia 'recuperadas' com os objetos completos exatamente como vieram do GET.
+       O RCO rejeita tanto o objeto completo quanto só o código — enviamos completo para o log
+       mostrar tudo e o backend poder ver a estrutura exata no erro.
+       Para tipo=1: 'recuperacaos' re-enviado do GET (já funciona). */
     const recuperadasParaPut = isRec
-        ? (av.recuperadas ?? []).map(r => ({ codAvaliacaoParcialClasse: r.codAvaliacaoParcialClasse }))
+        ? (av.recuperadas ?? []).map(({ alunos: _al, conteudos: _co, ...r }) => r)
         : [];
 
     const meta = {
@@ -2988,7 +2986,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
         /* Conteúdos: apenas em avaliações principais (tipo 1). */
         ...(!isRec && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados }  : {}),
-        /* recuperadas simplificado: só o código — RCO usa para validar vínculo em tipo=2 */
+        /* recuperadas com objeto completo do GET para tipo=2 */
         ...(recuperadasParaPut.length               ? { recuperadas: recuperadasParaPut }        : {}),
         /* recuperacaos: re-enviado do GET para tipo=1 (já funcionava) */
         ...(av.recuperacaos?.length                 ? { recuperacaos: av.recuperacaos }          : {}),
@@ -3113,7 +3111,7 @@ elRcoModalZerar.addEventListener('click', async () => {
     const isRecZ = av.codTipoAvaliacaoParcial === 2;
 
     const recuperadasParaPutZ = isRecZ
-        ? (av.recuperadas ?? []).map(r => ({ codAvaliacaoParcialClasse: r.codAvaliacaoParcialClasse }))
+        ? (av.recuperadas ?? []).map(({ alunos: _al, conteudos: _co, ...r }) => r)
         : [];
 
     const meta = {
