@@ -388,39 +388,22 @@ export function createRcoLancamentoRouter(deps = {}) {
                 const notaMap = {};
                 alunos.forEach(a => { notaMap[String(a.codMatrizAluno)] = a.notaDecimal; });
 
-                /* ── Passo 4: Merge dos alunos ──
-                   Usa a lista da avaliacaoParcialClasses (tem codAvaliacaoParcialAluno).
-                   Enriquece com campos do matrizAlunos (nome, numChamada, indAtivo, cgmAluno…).
-                   Substitui notaDecimal pelo valor calculado — como STRING (padrão RCO). */
+                /* ── Passo 4: Monta lista final de alunos para o PUT ──
+                   Usa apenas os campos mínimos aceitos pelo RCO:
+                   codAvaliacaoParcialAluno + codMatrizAluno + notaDecimal (string).
+                   Não inclui campos do matrizAlunos pois podem causar rejeição pelo servidor.
+                   - Encontrados no Classroom → nota calculada (string)
+                   - Não encontrados → "0.0" */
                 const alunosBase = Object.values(alunosRcoMap);
-                const alunosFinais = alunosBase.map(a => {
+                const alunosEnviar = alunosBase.map(a => {
                     const key      = String(a.codMatrizAluno);
-                    const matriz   = matrizMap[key] ?? {};
                     const notaCalc = notaMap[key];
-                    const merged = {
+                    return {
                         codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
                         codMatrizAluno:           a.codMatrizAluno,
-                        /* Campos do matrizAlunos — inclui se disponível */
-                        ...(matriz.numChamada        != null ? { numChamada:        matriz.numChamada }        : {}),
-                        ...(matriz.nome              != null ? { nome:              matriz.nome }              : {}),
-                        ...(matriz.indAtivo          != null ? { indAtivo:          matriz.indAtivo }          : {}),
-                        ...(matriz.situacaoMatricula != null ? { situacaoMatricula: matriz.situacaoMatricula } : {}),
-                        ...(matriz.cgmAluno          != null ? { cgmAluno:          matriz.cgmAluno }          : {}),
-                        /* notaDecimal como STRING — valor calculado se encontrado no Classroom,
-                           "0.0" se não encontrado (aluno não fez recuperação pelo grupo). */
-                        notaDecimal: notaCalc != null ? Number(notaCalc).toFixed(1) : '0.0',
+                        notaDecimal:              notaCalc != null ? Number(notaCalc).toFixed(1) : '0.0',
                     };
-                    return merged;
                 });
-
-                /* Envia TODOS os alunos da avaliação:
-                   - Encontrados no Classroom → nota calculada
-                   - Não encontrados → nota "0.0" */
-                const alunosEnviar = alunosFinais.length > 0
-                    ? alunosFinais
-                    /* Fallback: se GET falhou, usa payload do frontend com 0.0 para os sem nota */
-                    : alunosParaRco
-                        .map(a => ({ ...a, notaDecimal: a.notaDecimal != null ? Number(a.notaDecimal).toFixed(1) : '0.0' }));
 
                 const base = evalBase ?? {
                     codAvaliacaoParcialClasse: meta.codAvaliacaoParcialClasse,
@@ -446,13 +429,11 @@ export function createRcoLancamentoRouter(deps = {}) {
                 }
 
                 /* Loga TODOS os alunos para diagnóstico completo */
-                console.log('[RCO-LANC] Lista completa de alunos para PUT:', JSON.stringify(
+                console.log('[RCO-LANC] Lista completa de alunos para PUT (mínimo):', JSON.stringify(
                     alunosEnviar.map(a => ({
-                        codMatrizAluno: a.codMatrizAluno,
-                        numChamada:     a.numChamada,
-                        nome:           a.nome,
-                        notaDecimal:    a.notaDecimal,
-                        temMatriz:      !!matrizMap[String(a.codMatrizAluno)],
+                        codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
+                        codMatrizAluno:           a.codMatrizAluno,
+                        notaDecimal:              a.notaDecimal,
                     })),
                 null, 2));
 
