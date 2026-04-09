@@ -410,11 +410,17 @@ export function createRcoLancamentoRouter(deps = {}) {
                     return merged;
                 });
 
-                /* Fallback: se GET falhou e não temos lista, usa alunos simplificados */
-                const alunosEnviar = alunosFinais.length > 0 ? alunosFinais : alunosParaRco.map(a => ({
-                    ...a,
-                    notaDecimal: a.notaDecimal != null ? Number(a.notaDecimal).toFixed(1) : undefined,
-                }));
+                /* Filtra: inclui apenas alunos com nota calculada (notaDecimal presente).
+                   Alunos "não encontrado" (sem Classroom) são omitidos do PUT — replicando
+                   o comportamento do RCO web que só inclui alunos com nota explicitamente lançada.
+                   Isso evita que alunos sem recuperação causem erros no servidor RCO. */
+                const alunosComNota  = alunosFinais.filter(a => a.notaDecimal != null);
+                const alunosEnviar   = alunosComNota.length > 0
+                    ? alunosComNota
+                    /* Fallback: se GET falhou, usa payload do frontend (só mapeados) */
+                    : alunosParaRco
+                        .filter(a => a.notaDecimal != null)
+                        .map(a => ({ ...a, notaDecimal: Number(a.notaDecimal).toFixed(1) }));
 
                 const base = evalBase ?? {
                     codAvaliacaoParcialClasse: meta.codAvaliacaoParcialClasse,
