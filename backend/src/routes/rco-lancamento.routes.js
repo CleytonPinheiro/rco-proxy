@@ -122,6 +122,13 @@ export function createRcoLancamentoRouter(deps = {}) {
                 return res.status(r.status).json({ erro: 'Avaliação não encontrada no RCO', detalhe: r.data });
             }
 
+            /* Debug: loga todos os campos de avaliações de recuperação para entender a estrutura */
+            const tipoAv = Number(r.data?.codTipoAvaliacaoParcial ?? 0);
+            if (tipoAv === 2) {
+                const { alunos: _al, ...semAlunos } = r.data ?? {};
+                console.log(`[RCO-LANC] Estrutura da avaliação de recuperação ${id}:`, JSON.stringify(semAlunos, null, 2));
+            }
+
             /* Enriquece a lista de alunos com nome e numChamada.
                Estratégia (em ordem de prioridade):
                1. Busca roster da turma direto no RCO via codClasse da avaliação

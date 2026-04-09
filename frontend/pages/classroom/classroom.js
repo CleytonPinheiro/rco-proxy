@@ -2939,28 +2939,8 @@ async function selecionarAvaliacao(av, itemEl) {
         elRcoModalConfirmar.style.display = '';
         elRcoModalZerar.style.display     = '';
 
-        /* ── Alerta pré-voo: avaliação de recuperação sem vinculadas ── */
-        const isAvRec    = Number(detalhe.codTipoAvaliacaoParcial) === 2;
-        const semVinculo = isAvRec && !(detalhe.recuperacaos?.length);
-
-        /* Remove aviso anterior, se houver */
+        /* Remove aviso residual de navegações anteriores */
         document.getElementById('clRcoAvisoRecVinculo')?.remove();
-
-        if (semVinculo) {
-            const aviso = document.createElement('div');
-            aviso.id        = 'clRcoAvisoRecVinculo';
-            aviso.className = 'cl-rco-aviso-bloqueio';
-            aviso.innerHTML = `
-                <strong>⚠️ Avaliação de recuperação sem vínculos configurados no RCO</strong><br>
-                Esta avaliação de recuperação não está vinculada a nenhuma avaliação principal no RCO Digital.
-                Acesse o RCO, edite a avaliação de recuperação e vincule-a à avaliação correspondente (AV1, AV2, etc.)
-                antes de tentar lançar notas pelo EduSync.
-            `;
-            /* Insere o aviso acima do rodapé do modal */
-            elRcoModalConfirmar.closest('.cl-modal-foot').before(aviso);
-            elRcoModalConfirmar.disabled = true;
-            elRcoModalConfirmar.title    = 'Configure os vínculos no RCO antes de lançar';
-        }
     } catch (e) {
         elRcoAvaliacoesLista.innerHTML = `<div class="cl-rco-erro">Erro ao carregar avaliação: ${e.message}</div>`;
         elRcoPasso1.style.display = '';
@@ -2994,10 +2974,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
-        /* Re-envia estruturas que o RCO requer no PUT — omite se vazio para não mudar comportamento */
-        ...(rcoConteudosSelecionados.length          ? { conteudos:    rcoConteudosSelecionados }  : {}),
-        ...(av.recuperacaos?.length                  ? { recuperacaos: av.recuperacaos }           : {}),
-        ...(av.recuperadas?.length                   ? { recuperadas:  av.recuperadas }            : {}),
+        /* Re-envia estruturas que o RCO requer no PUT — omite se vazio para não mudar comportamento.
+           Conteúdos: o RCO só exige em avaliações principais (tipo 1), nunca em recuperações (tipo 2). */
+        ...(av.codTipoAvaliacaoParcial !== 2 && rcoConteudosSelecionados.length
+                                             ? { conteudos:    rcoConteudosSelecionados }  : {}),
+        ...(av.recuperacaos?.length          ? { recuperacaos: av.recuperacaos }           : {}),
+        ...(av.recuperadas?.length           ? { recuperadas:  av.recuperadas }            : {}),
     };
 
     /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
@@ -3122,9 +3104,11 @@ elRcoModalZerar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
-        conteudos:                 rcoConteudosSelecionados,
-        recuperacaos:              Array.isArray(av.recuperacaos)  ? av.recuperacaos  : [],
-        recuperadas:               Array.isArray(av.recuperadas)   ? av.recuperadas   : [],
+        /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações */
+        ...(av.codTipoAvaliacaoParcial !== 2 && rcoConteudosSelecionados.length
+                                             ? { conteudos:    rcoConteudosSelecionados }  : {}),
+        ...(av.recuperacaos?.length          ? { recuperacaos: av.recuperacaos }           : {}),
+        ...(av.recuperadas?.length           ? { recuperadas:  av.recuperadas }            : {}),
     };
 
     /* Payload com notaDecimal = null para todos os alunos (limpa notas no RCO) */
