@@ -2971,8 +2971,10 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
-        /* Conteúdos já vinculados (ou selecionados no modal de fallback) re-enviados ao RCO */
+        /* Re-envia estruturas que o RCO requer no PUT para não perder vínculos */
         conteudos:                 rcoConteudosSelecionados,
+        recuperacaos:              Array.isArray(av.recuperacaos)  ? av.recuperacaos  : [],
+        recuperadas:               Array.isArray(av.recuperadas)   ? av.recuperadas   : [],
     };
 
     /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
@@ -3097,6 +3099,9 @@ elRcoModalZerar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
+        conteudos:                 rcoConteudosSelecionados,
+        recuperacaos:              Array.isArray(av.recuperacaos)  ? av.recuperacaos  : [],
+        recuperadas:               Array.isArray(av.recuperadas)   ? av.recuperadas   : [],
     };
 
     /* Payload com notaDecimal = null para todos os alunos (limpa notas no RCO) */

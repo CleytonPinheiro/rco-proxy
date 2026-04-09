@@ -291,7 +291,14 @@ export function createRcoLancamentoRouter(deps = {}) {
             const codUsuario = Number(jwtPayload.resoucreowner_id || jwtPayload.resouceowner_id || 0);
             const agora      = new Date().toISOString().replace('Z', '+0000');
 
-            console.log(`[RCO-LANC] PUT avaliação ${id} | ${alunos.length} alunos | codUsuario=${codUsuario}`);
+            const isRec      = Number(meta.codTipoAvaliacaoParcial) === 2;
+            const nRecs      = meta.recuperacaos?.length  ?? 0;
+            const nConteudos = meta.conteudos?.length     ?? 0;
+            console.log(
+                `[RCO-LANC] PUT avaliação ${id} | tipo=${isRec ? 'RECUPERAÇÃO' : 'PRINCIPAL'}` +
+                ` | alunos=${alunos.length} | recuperacaos=${nRecs} | conteudos=${nConteudos}` +
+                ` | codUsuario=${codUsuario}`
+            );
 
             const r = await rcoApiService.put(
                 `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
