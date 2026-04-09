@@ -2820,10 +2820,18 @@ async function selecionarAvaliacao(av, itemEl) {
                 _notaRcoOrig: notaRcoOrig,          /* nota ATUAL no RCO — só para exibição */
                 _notaCalc:    notaCalc,
                 _usouRec:     usouRec,
-                /* notaDecimal que vai no payload: calculado se mapeado, original se não mapeado */
-                notaDecimal:  notaCalc !== null ? notaCalc : notaRcoOrig,
+                /* notaDecimal que vai no payload: calculado se mapeado, 0 se não mapeado */
+                notaDecimal:  notaCalc !== null ? notaCalc : 0,
                 _matched:     classAluno !== null,
             };
+        });
+
+        /* Ordena: encontrados (com recuperação > grupo principal) no topo, não-encontrados no fim */
+        rcoAlunosMapeados.sort((a, b) => {
+            const prioA = a._matched ? (a._usouRec ? 0 : 1) : 2;
+            const prioB = b._matched ? (b._usouRec ? 0 : 1) : 2;
+            if (prioA !== prioB) return prioA - prioB;
+            return (a.numChamada ?? 9999) - (b.numChamada ?? 9999);
         });
 
         /* Renderiza passo 2 */
@@ -2857,13 +2865,13 @@ async function selecionarAvaliacao(av, itemEl) {
             const nomeExibir  = a.nome ?? a._classNome ?? `cod: ${a.codMatrizAluno ?? '?'}`;
             /* Nota atual no RCO (real, preservada antes do cálculo) */
             const notaRcoAtual = fmtNota(a._notaRcoOrig);
-            /* Nota calculada que será enviada ao RCO */
-            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : notaRcoAtual;
+            /* Nota que será enviada ao RCO: calculada se mapeado, 0 se não mapeado */
+            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : '0.0';
 
             /* Badge de status */
             let badge;
             if (!a._matched) {
-                badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado</span>';
+                badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não no grupo → 0</span>';
             } else if (a._usouRec) {
                 badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 recuperação</span>';
             } else {
@@ -2889,7 +2897,7 @@ async function selecionarAvaliacao(av, itemEl) {
                     ? `<strong class="cl-rco-nota-rec">${notaEnviar}</strong>`
                     : (a._matched
                         ? `<span>${notaEnviar} <small style="opacity:.55">(principal)</small></span>`
-                        : `<span class="cl-rco-mantido">${notaEnviar} <small>(inalterada)</small></span>`);
+                        : `<span class="cl-rco-mantido">${notaEnviar} <small>(enviar 0)</small></span>`);
 
                 tr.innerHTML = `
                     <td>${a.numChamada ?? '—'}</td>
@@ -2929,7 +2937,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     const total      = rcoAlunosMapeados.length;
     const semMatch   = total - mapeados;
     const msgRco     = semMatch > 0
-        ? `${mapeados} de ${total} notas serão enviadas ao RCO. ${semMatch} aluno(s) sem correspondência manterão a nota atual.`
+        ? `${mapeados} de ${total} alunos têm nota do Classroom e receberão a nota calculada. ${semMatch} aluno(s) não fazem parte do grupo de recuperação e receberão nota 0 no RCO.`
         : `${mapeados} nota${mapeados !== 1 ? 's' : ''} serão enviadas ao RCO para todos os alunos mapeados.`;
     if (!await confirmar(msgRco, {
         titulo:       'Confirmar lançamento no RCO',
@@ -2949,9 +2957,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
     };
 
-    /* Remove campos internos (_*) antes de enviar */
+    /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao para o backend salvar */
     const alunosPayload = rcoAlunosMapeados.map(
-        ({ _classNome, _notaCalc, _matched, _usouRec, ...rest }) => rest
+        ({ _classNome, _notaCalc, _matched, _usouRec, _notaRcoOrig, ...rest }) => ({
+            ...rest,
+            usouRecuperacao: !!_usouRec,
+        })
     );
 
     try {

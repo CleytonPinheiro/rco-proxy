@@ -219,6 +219,31 @@ export function createRcoLancamentoRouter(deps = {}) {
             }
 
             console.log(`[RCO-LANC] Sucesso! Status RCO: ${r.status}`);
+
+            /* Persiste no banco local cada nota enviada ao RCO */
+            try {
+                const values = alunos.map((a, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`).join(', ');
+                const params = alunos.flatMap(a => [
+                    Number(id),
+                    Number(a.codMatrizAluno),
+                    Number(a.notaDecimal ?? 0),
+                    !!(a.usouRecuperacao ?? false),
+                ]);
+                await pool.query(
+                    `INSERT INTO rco_lancamentos (cod_avaliacao_parcial, cod_matriz_aluno, nota_decimal, usou_recuperacao)
+                     VALUES ${values}
+                     ON CONFLICT (cod_avaliacao_parcial, cod_matriz_aluno)
+                     DO UPDATE SET nota_decimal = EXCLUDED.nota_decimal,
+                                   usou_recuperacao = EXCLUDED.usou_recuperacao,
+                                   lancado_em = NOW()`,
+                    params
+                );
+                console.log(`[RCO-LANC] ${alunos.length} registros salvos em rco_lancamentos`);
+            } catch (dbErr) {
+                console.error('[RCO-LANC] Aviso: falha ao salvar no banco local:', dbErr.message);
+                /* Não bloqueia a resposta — o PUT no RCO já foi feito */
+            }
+
             res.json({ ok: true, status: r.status, resposta: r.data });
         } catch (e) {
             console.error('[RCO-LANC] Erro ao lançar:', e.message);
