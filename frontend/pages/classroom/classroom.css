@@ -839,6 +839,8 @@ body {
     justify-content: center;
     padding: 24px;
 }
+/* Diálogo de confirmação sempre acima de qualquer outro modal */
+#clConfirmModal { z-index: 400; }
 .cl-modal-overlay--visivel { display: flex; }
 
 .cl-modal {
@@ -1998,7 +2000,8 @@ body {
 }
 .cl-rco-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: .85rem;
 }
 .cl-rco-table th {
@@ -2012,12 +2015,14 @@ body {
     letter-spacing: .04em;
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
+    border-bottom: 2px solid var(--border);
 }
 .cl-rco-table td {
     padding: 7px 10px;
     border-top: 1px solid var(--border);
     color: var(--text-primary);
+    background: var(--bg-card);
 }
 .cl-rco-table tbody tr:hover td { background: var(--bg-hover, color-mix(in srgb, currentColor 4%, transparent)); }
 .cl-rco-row--naoencontrado td { color: var(--text-secondary); font-style: italic; }

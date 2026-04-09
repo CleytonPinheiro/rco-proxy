@@ -3075,11 +3075,13 @@ elRcoModalZerar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
     };
 
-    /* Payload com notaDecimal = null para todos os alunos */
+    /* Payload com notaDecimal = null para todos os alunos (limpa notas no RCO) */
     const alunosPayload = rcoAlunosMapeados.map(
-        ({ _classNome, _notaCalc, _matched, _usouRec, ...rest }) => ({
+        ({ _classNome, _notaCalc, _matched, _usouRec, _notaRcoOrig, ...rest }) => ({
             ...rest,
-            notaDecimal: null,
+            matched:         false,
+            usouRecuperacao: false,
+            notaDecimal:     null,
         })
     );
 
