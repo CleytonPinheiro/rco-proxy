@@ -308,15 +308,27 @@ export function createRcoLancamentoRouter(deps = {}) {
                 ` | conteudos=${nConteudos} | codUsuario=${codUsuario}`
             );
 
-            /* Log do payload completo (sem notas individuais para não poluir o log) */
+            /* Para avaliações de recuperação (tipo=2), o RCO rejeita campos extras nos alunos.
+               Envia apenas codMatrizAluno + notaDecimal. Os outros campos (nome, numChamada,
+               matched, usouRecuperacao) ficam só no banco local. */
+            const alunosParaRco = isRec
+                ? alunos.map(({ codMatrizAluno, notaDecimal }) => ({ codMatrizAluno, notaDecimal }))
+                : alunos;
+
+            /* Log do payload completo — inclui amostra dos 3 primeiros alunos para debug */
             if (isRec) {
-                const payloadDebug = { ...meta, codUsuario, dataAtualizacao: agora, _qtdeAlunos: alunos.length };
+                const payloadDebug = {
+                    ...meta, codUsuario, dataAtualizacao: agora,
+                    _qtdeAlunos: alunosParaRco.length,
+                    _amostraAlunos: alunosParaRco.slice(0, 3),
+                    _amostraAlunosOriginal: alunos.slice(0, 1),
+                };
                 console.log('[RCO-LANC] Payload PUT recuperação:', JSON.stringify(payloadDebug, null, 2));
             }
 
             const r = await rcoApiService.put(
                 `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
-                { ...meta, codUsuario, dataAtualizacao: agora, alunos },
+                { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco },
                 { grupo: 'D' }
             );
 
