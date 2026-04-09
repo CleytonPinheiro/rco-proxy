@@ -308,11 +308,16 @@ export function createRcoLancamentoRouter(deps = {}) {
                 ` | conteudos=${nConteudos} | codUsuario=${codUsuario}`
             );
 
-            /* Para avaliações de recuperação (tipo=2), o RCO rejeita campos extras nos alunos.
-               Envia apenas codMatrizAluno + notaDecimal. Os outros campos (nome, numChamada,
-               matched, usouRecuperacao) ficam só no banco local. */
+            /* Para avaliações de recuperação (tipo=2), envia apenas os campos originais do RCO.
+               codAvaliacaoParcialAluno é o ID do registro individual — obrigatório no PUT.
+               Os campos extras que o EduSync adiciona (nome, numChamada, matched, usouRecuperacao)
+               ficam fora do payload enviado ao RCO, mas são usados para salvar no banco local. */
             const alunosParaRco = isRec
-                ? alunos.map(({ codMatrizAluno, notaDecimal }) => ({ codMatrizAluno, notaDecimal }))
+                ? alunos.map(({ codAvaliacaoParcialAluno, codMatrizAluno, notaDecimal }) => ({
+                      ...(codAvaliacaoParcialAluno != null ? { codAvaliacaoParcialAluno } : {}),
+                      codMatrizAluno,
+                      notaDecimal,
+                  }))
                 : alunos;
 
             /* Log do payload completo — inclui amostra dos 3 primeiros alunos para debug */
