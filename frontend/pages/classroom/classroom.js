@@ -2876,7 +2876,9 @@ async function selecionarAvaliacao(av, itemEl) {
             let badge;
             if (!a._matched) {
                 badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não no grupo → 0</span>';
-            } else if (a._usouRec) {
+            } else if (a._usouRec || grupoResumoData?.isRec) {
+                /* _usouRec = aluno tem nota do grupo de rec. vinculado ao principal
+                   isRec    = estamos DENTRO do próprio grupo de recuperação */
                 badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 recuperação</span>';
             } else {
                 badge = '<span class="cl-rco-badge cl-rco-badge--neutro">📋 grupo principal</span>';
