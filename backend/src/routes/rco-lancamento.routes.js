@@ -671,6 +671,116 @@ export function createRcoLancamentoRouter(deps = {}) {
         }
     });
 
+    /* ── GET /api/rco-lancamento/debug/:id
+       Retorna dados brutos do RCO para diagnóstico: avaliação, matrizAlunos
+       e payload PUT simulado — sem enviar nada ao RCO.
+       Query: codClasse (obrigatório para matrizAlunos)
+    ─────────────────────────────────────────────────────── */
+    router.get('/rco-lancamento/debug/:id', async (req, res) => {
+        const { id }        = req.params;
+        const { codClasse } = req.query;
+        const periodoAv     = process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+        const resultado     = { id, codClasse, timestamp: new Date().toISOString() };
+
+        /* 1 ── GET avaliação completa */
+        try {
+            const r = await rcoApiService.get(
+                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
+            );
+            resultado.avaliacao = { status: r.status, data: r.data };
+        } catch (e) {
+            resultado.avaliacao = { erro: e.message };
+        }
+
+        /* 2 ── GET matrizAlunos (se codClasse fornecido) */
+        if (codClasse) {
+            const peso = resultado.avaliacao?.data?.pesoDecimal ?? '4.0';
+            try {
+                const r = await rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/matrizAlunos?codClasse=${codClasse}` +
+                    `&codPeriodoAvaliacao=${periodoAv}&data=2026-12-31&pesoDecimal=${peso}`
+                );
+                resultado.matrizAlunos = { status: r.status, data: r.data };
+            } catch (e) {
+                resultado.matrizAlunos = { erro: e.message };
+            }
+        } else {
+            resultado.matrizAlunos = { aviso: 'codClasse não fornecido — endpoint não chamado.' };
+        }
+
+        /* 3 ── GET relatorios/avaliacaoAlunos (roster) */
+        if (codClasse) {
+            try {
+                const r = await rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${periodoAv}`
+                );
+                resultado.rosterAlunos = { status: r.status, data: r.data };
+            } catch (e) {
+                resultado.rosterAlunos = { erro: e.message };
+            }
+        }
+
+        /* 4 ── Token decodificado */
+        try {
+            const token      = await rcoApiService.getToken();
+            const jwtPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
+            resultado.tokenInfo = {
+                codUsuario: jwtPayload.resoucreowner_id || jwtPayload.resouceowner_id,
+                exp: new Date(jwtPayload.exp * 1000).toISOString(),
+                sub: jwtPayload.sub,
+            };
+        } catch (e) {
+            resultado.tokenInfo = { erro: e.message };
+        }
+
+        /* 5 ── Payload PUT simulado (tipo=2) */
+        const av     = resultado.avaliacao?.data;
+        const matriz = resultado.matrizAlunos?.data;
+        if (av && Array.isArray(av.alunos) && Array.isArray(matriz)) {
+            const matrizMap = {};
+            matriz.forEach(a => { matrizMap[String(a.codMatrizAluno)] = a; });
+
+            const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => r);
+            const base = {
+                codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+                codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
+                numAvaliacaoParcial:        av.numAvaliacaoParcial,
+                dataAvaliacaoParcial:       av.dataAvaliacaoParcial,
+                pesoDecimal:                Number(av.pesoDecimal),
+                dataAtualizacao:            av.dataAtualizacao,
+                codUsuario:                 resultado.tokenInfo?.codUsuario ?? 0,
+                recuperadas:                limparAninhados(av.recuperadas),
+            };
+            const alunosSimulados = av.alunos.map(a => {
+                const m = matrizMap[String(a.codMatrizAluno)] ?? {};
+                return {
+                    codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
+                    codMatrizAluno:           a.codMatrizAluno,
+                    ...(m.numChamada        != null ? { numChamada: m.numChamada }               : {}),
+                    ...(m.nome              != null ? { nome: m.nome }                           : {}),
+                    ...(m.indAtivo          != null ? { indAtivo: m.indAtivo }                   : {}),
+                    ...(m.situacaoMatricula != null ? { situacaoMatricula: m.situacaoMatricula } : {}),
+                    ...(m.cgmAluno          != null ? { cgmAluno: m.cgmAluno }                   : {}),
+                    notaDecimal: a.notaDecimal ?? null,
+                    _temMatriz:  !!m.codMatrizAluno,
+                };
+            });
+            resultado.payloadPutSimulado = {
+                ...base,
+                alunos: alunosSimulados,
+                _resumo: {
+                    totalAlunos:        av.alunos.length,
+                    comMatriz:          alunosSimulados.filter(a => a._temMatriz).length,
+                    semMatriz:          alunosSimulados.filter(a => !a._temMatriz).length,
+                    comNotaAtual:       alunosSimulados.filter(a => a.notaDecimal != null).length,
+                    camposEmFalta:      alunosSimulados.filter(a => !a._temMatriz).map(a => a.codMatrizAluno),
+                },
+            };
+        }
+
+        res.json(resultado);
+    });
+
     /* ── PATCH /api/rco-lancamento/grupos/:grupoId/cod-classe
        Salva/atualiza o codClasseRco vinculado a um grupo.
     ─────────────────────────────────────────────────────── */

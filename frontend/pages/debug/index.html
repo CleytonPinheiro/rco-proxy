@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Debug RCO</title>
+    <link rel="stylesheet" href="./debug.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+                <a href="/pages/admin/">Admin</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="debug-container">
+            <div class="debug-header">
+                <h1 class="debug-title">🔍 Debug RCO</h1>
+                <p class="debug-subtitle">Inspecione os dados brutos da API do RCO sem enviar nenhuma nota.</p>
+            </div>
+
+            <!-- Formulário de busca -->
+            <div class="debug-form card">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID da Avaliação (codAvaliacaoParcialClasse)</label>
+                        <input type="number" id="inpAvaliacaoId" placeholder="Ex: 56221739" />
+                    </div>
+                    <div class="form-group">
+                        <label>Código da Classe (codClasse)</label>
+                        <input type="number" id="inpCodClasse" placeholder="Ex: 2642416 — opcional, mas necessário para matrizAlunos" />
+                    </div>
+                    <div class="form-group form-group--btn">
+                        <button class="btn-buscar" id="btnBuscar" onclick="buscarDebug()">
+                            <span class="btn-icon">🔍</span> Buscar dados RCO
+                        </button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Histórico recente</label>
+                        <div class="historico" id="historico"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado de carregamento -->
+            <div class="debug-loading" id="debugLoading" style="display:none">
+                <div class="spinner"></div>
+                <span>Consultando RCO...</span>
+            </div>
+
+            <!-- Resumo rápido -->
+            <div class="debug-resumo" id="debugResumo" style="display:none">
+                <div class="resumo-card" id="resumoAvaliacao"></div>
+                <div class="resumo-card" id="resumoMatriz"></div>
+                <div class="resumo-card" id="resumoToken"></div>
+                <div class="resumo-card" id="resumoPayload"></div>
+            </div>
+
+            <!-- Abas de dados -->
+            <div class="debug-tabs-wrapper" id="debugTabs" style="display:none">
+                <div class="debug-tabs">
+                    <button class="dtab dtab--ativo" data-tab="avaliacao" onclick="abrirTab(this, 'avaliacao')">
+                        📋 Avaliação
+                    </button>
+                    <button class="dtab" data-tab="matriz" onclick="abrirTab(this, 'matriz')">
+                        👥 matrizAlunos
+                    </button>
+                    <button class="dtab" data-tab="roster" onclick="abrirTab(this, 'roster')">
+                        📄 Roster
+                    </button>
+                    <button class="dtab" data-tab="payload" onclick="abrirTab(this, 'payload')">
+                        📤 Payload PUT Simulado
+                    </button>
+                    <button class="dtab" data-tab="token" onclick="abrirTab(this, 'token')">
+                        🔑 Token
+                    </button>
+                    <button class="dtab" data-tab="raw" onclick="abrirTab(this, 'raw')">
+                        🗂 JSON Completo
+                    </button>
+                </div>
+
+                <div class="dtab-content dtab-content--ativo" id="tab-avaliacao">
+                    <div class="tab-toolbar">
+                        <button class="btn-copy" onclick="copiarTab('avaliacao')">📋 Copiar</button>
+                    </div>
+                    <div class="json-tree" id="json-avaliacao"></div>
+                </div>
+
+                <div class="dtab-content" id="tab-matriz">
+                    <div class="tab-toolbar">
+                        <button class="btn-copy" onclick="copiarTab('matriz')">📋 Copiar</button>
+                        <span class="tab-info" id="info-matriz"></span>
+                    </div>
+                    <div class="json-tree" id="json-matriz"></div>
+                </div>
+
+                <div class="dtab-content" id="tab-roster">
+                    <div class="tab-toolbar">
+                        <button class="btn-copy" onclick="copiarTab('roster')">📋 Copiar</button>
+                        <span class="tab-info" id="info-roster"></span>
+                    </div>
+                    <div class="json-tree" id="json-roster"></div>
+                </div>
+
+                <div class="dtab-content" id="tab-payload">
+                    <div class="tab-toolbar">
+                        <button class="btn-copy" onclick="copiarTab('payload')">📋 Copiar</button>
+                        <span class="tab-info" id="info-payload"></span>
+                    </div>
+                    <div class="alunos-table-wrapper" id="alunos-table-wrapper" style="margin-bottom:16px"></div>
+                    <div class="json-tree" id="json-payload"></div>
+                </div>
+
+                <div class="dtab-content" id="tab-token">
+                    <div class="json-tree" id="json-token"></div>
+                </div>
+
+                <div class="dtab-content" id="tab-raw">
+                    <div class="tab-toolbar">
+                        <button class="btn-copy" onclick="copiarRaw()">📋 Copiar tudo</button>
+                    </div>
+                    <pre class="json-raw" id="json-raw"></pre>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../shared/js/auth.js"></script>
+    <script src="./debug.js"></script>
+</body>
+</html>
