@@ -312,13 +312,12 @@ function renderCursoCard(curso, { zerada = false } = {}) {
         card.appendChild(secao);
     });
 
-    /* Atividades sem grupo */
-    if (semGrupo.length > 0) {
+    /* Atividades sem grupo — só mostra se o curso NÃO tem grupos definidos */
+    if (semGrupo.length > 0 && !curso.temGrupos) {
         const secao = document.createElement('div');
         secao.className = 'pa-grupo-secao pa-grupo-secao--outras';
 
         if (gruposMap.size > 0) {
-            /* Só mostra o label "Outras" se já houver grupos acima */
             const label = document.createElement('div');
             label.className = 'pa-grupo-label pa-grupo-label--outras';
             label.innerHTML = `<span class="pa-grupo-icon">📌</span><span class="pa-grupo-nome">Outras atividades</span>`;

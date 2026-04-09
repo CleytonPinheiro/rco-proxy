@@ -354,34 +354,55 @@ export function createAlunosPortalRouter() {
 
                     if (!atividades.length && !zeradas.length) return null;
 
-                    /* ── Anota grupo de cada atividade pendente ─────── */
-                    if (atividades.length > 0) {
-                        try {
-                            const ids = atividades.map(a => a.id);
+                    /* ── Anota grupo de cada atividade (pendentes + zeradas) e filtra ── */
+                    let temGrupos = false;
+                    try {
+                        const todosIds = [
+                            ...atividades.map(a => a.id),
+                            ...zeradas.map(a => a.id),
+                        ];
+                        if (todosIds.length > 0) {
                             const { rows: grupoRows } = await pool.query(
                                 `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome
                                  FROM classroom_grupo_atividades ga
                                  JOIN classroom_grupos g ON g.id = ga.grupo_id
                                  WHERE ga.atividade_id = ANY($1::bigint[])
                                    AND g.tipo = 'normal'`,
-                                [ids]
+                                [todosIds]
                             );
-                            const grupoMap = {};
-                            grupoRows.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
-                            atividades.forEach(a => {
-                                const g = grupoMap[String(a.id)];
-                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                            });
-                        } catch (e) {
-                            console.warn('[ALUNOS-PORTAL] Erro ao buscar grupos:', e.message);
+                            if (grupoRows.length > 0) {
+                                temGrupos = true;
+                                const grupoMap = {};
+                                grupoRows.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
+
+                                /* Anota e filtra pendentes */
+                                atividades.forEach(a => {
+                                    const g = grupoMap[String(a.id)];
+                                    if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                                });
+                                /* Remove pendentes não pertencentes a nenhum grupo selecionado */
+                                atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
+
+                                /* Anota e filtra zeradas */
+                                zeradas.forEach(a => {
+                                    const g = grupoMap[String(a.id)];
+                                    if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                                });
+                                zeradas.splice(0, zeradas.length, ...zeradas.filter(a => a.grupoId));
+                            }
                         }
+                    } catch (e) {
+                        console.warn('[ALUNOS-PORTAL] Erro ao buscar grupos:', e.message);
                     }
+
+                    if (!atividades.length && !zeradas.length) return null;
 
                     return {
                         cursoId:  curso.id,
                         nome:     curso.name,
                         secao:    curso.section || '',
                         link:     curso.alternateLink || '',
+                        temGrupos,
                         atividades,
                         zeradas,
                     };
