@@ -300,11 +300,12 @@ export function createRcoLancamentoRouter(deps = {}) {
 
             const isRec      = Number(meta.codTipoAvaliacaoParcial) === 2;
             const nRecs      = meta.recuperacaos?.length  ?? 0;
+            const nRecupDe   = meta.recuperadas?.length   ?? 0;
             const nConteudos = meta.conteudos?.length     ?? 0;
             console.log(
                 `[RCO-LANC] PUT avaliação ${id} | tipo=${isRec ? 'RECUPERAÇÃO' : 'PRINCIPAL'}` +
-                ` | alunos=${alunos.length} | recuperacaos=${nRecs} | conteudos=${nConteudos}` +
-                ` | codUsuario=${codUsuario}`
+                ` | alunos=${alunos.length} | recuperacaos=${nRecs} | recuperadas=${nRecupDe}` +
+                ` | conteudos=${nConteudos} | codUsuario=${codUsuario}`
             );
 
             const r = await rcoApiService.put(

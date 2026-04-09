@@ -2967,19 +2967,26 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     elRcoModalConfirmar.disabled    = true;
     elRcoModalConfirmar.textContent = 'Lançando…';
 
-    const av = rcoAvaliacaoSelecionada;
+    const av     = rcoAvaliacaoSelecionada;
+    const isRec  = av.codTipoAvaliacaoParcial === 2;
+
+    /* O RCO usa nomes invertidos entre GET e PUT para avaliações de recuperação:
+       - GET devolve 'recuperadas'  = avaliações principais que esta recuperação cobre
+       - PUT exige   'recuperacaos' = esse mesmo array para validar o vínculo
+       Para avaliações principais (tipo 1), 'recuperacaos' já vem populado no GET. */
+    const recVinculadas = isRec ? (av.recuperadas ?? []) : (av.recuperacaos ?? []);
+
     const meta = {
         codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
         codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
-        /* Re-envia estruturas que o RCO requer no PUT — omite se vazio para não mudar comportamento.
-           Conteúdos: o RCO só exige em avaliações principais (tipo 1), nunca em recuperações (tipo 2). */
-        ...(av.codTipoAvaliacaoParcial !== 2 && rcoConteudosSelecionados.length
-                                             ? { conteudos:    rcoConteudosSelecionados }  : {}),
-        ...(av.recuperacaos?.length          ? { recuperacaos: av.recuperacaos }           : {}),
-        ...(av.recuperadas?.length           ? { recuperadas:  av.recuperadas }            : {}),
+        /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações (tipo 2). */
+        ...(!isRec && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados } : {}),
+        /* recuperacaos: lista de avaliações vinculadas (mapeada corretamente para o PUT) */
+        ...(recVinculadas.length  ? { recuperacaos: recVinculadas }  : {}),
+        ...(av.recuperadas?.length ? { recuperadas:  av.recuperadas } : {}),
     };
 
     /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
@@ -3098,6 +3105,9 @@ elRcoModalZerar.addEventListener('click', async () => {
     elRcoModalZerar.disabled    = true;
     elRcoModalZerar.textContent = 'Zerando…';
 
+    const isRecZ       = av.codTipoAvaliacaoParcial === 2;
+    const recVinculadasZ = isRecZ ? (av.recuperadas ?? []) : (av.recuperacaos ?? []);
+
     const meta = {
         codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
         codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
@@ -3105,10 +3115,9 @@ elRcoModalZerar.addEventListener('click', async () => {
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
         /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações */
-        ...(av.codTipoAvaliacaoParcial !== 2 && rcoConteudosSelecionados.length
-                                             ? { conteudos:    rcoConteudosSelecionados }  : {}),
-        ...(av.recuperacaos?.length          ? { recuperacaos: av.recuperacaos }           : {}),
-        ...(av.recuperadas?.length           ? { recuperadas:  av.recuperadas }            : {}),
+        ...(!isRecZ && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados } : {}),
+        ...(recVinculadasZ.length   ? { recuperacaos: recVinculadasZ }  : {}),
+        ...(av.recuperadas?.length  ? { recuperadas:  av.recuperadas }  : {}),
     };
 
     /* Payload com notaDecimal = null para todos os alunos (limpa notas no RCO) */
