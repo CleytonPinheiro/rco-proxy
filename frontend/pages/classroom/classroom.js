@@ -2871,7 +2871,10 @@ async function selecionarAvaliacao(av, itemEl) {
         const fmtNota = v => (v != null ? Number(v).toFixed(1) : '—');
 
         elRcoTableBody.innerHTML = '';
-        rcoAlunosMapeados.forEach(a => {
+        rcoAlunosMapeados
+            .slice()
+            .sort((a, b) => (a.numChamada ?? 9999) - (b.numChamada ?? 9999))
+            .forEach(a => {
             const tr = document.createElement('tr');
             tr.className = a._matched ? (a._usouRec ? 'cl-rco-row--rec' : '') : 'cl-rco-row--naoencontrado';
 
