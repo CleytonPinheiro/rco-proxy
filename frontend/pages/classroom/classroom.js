@@ -2748,7 +2748,8 @@ async function selecionarAvaliacao(av, itemEl) {
     elRcoAvaliacoesLista.innerHTML = '<div class="cl-loading">Carregando detalhes da avaliação…</div>';
 
     try {
-        const detalhe = await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}`);
+        const codClasse = grupoAtivo?.codClasseRco ?? '';
+        const detalhe = await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}?codClasse=${codClasse}`);
         rcoAvaliacaoSelecionada = detalhe;
 
         /* Monta o mapeamento aluno-por-aluno */

@@ -120,31 +120,54 @@ export function createRcoLancamentoRouter(deps = {}) {
                 return res.status(r.status).json({ erro: 'Avaliação não encontrada no RCO', detalhe: r.data });
             }
 
-            /* Enriquece a lista de alunos com nome e numChamada do Supabase,
-               pois o endpoint do RCO retorna apenas codMatrizAluno + notaDecimal */
+            /* Enriquece a lista de alunos com nome e numChamada.
+               Estratégia (em ordem de prioridade):
+               1. Busca roster da turma direto no RCO via codClasse da avaliação
+               2. Fallback: Supabase por nome (se o roster RCO falhar)
+               O RCO retorna apenas codMatrizAluno + notaDecimal nos alunos da avaliação. */
             const alunos = r.data?.alunos ?? [];
-            if (alunos.length > 0 && supabaseAdmin) {
-                /* A chave única da tabela alunos no Supabase é `registro`
-                   (= String(codMatrizAluno)), não `codmatrizaluno`. */
-                const registros = alunos.map(a => String(a.codMatrizAluno)).filter(Boolean);
-                console.log('[RCO-LANC] registros busca (registro):', registros.slice(0,3));
-                const { data: aluSupa, error: errSupa } = await supabaseAdmin
-                    .from('alunos')
-                    .select('registro, nome, numchamada')
-                    .in('registro', registros);
-                console.log('[RCO-LANC] Supabase retornou:', aluSupa?.length ?? 0, '| erro:', errSupa?.message ?? 'none');
-                /* Diagnóstico extra: conta total de registros na tabela */
-                const { count: totalReg } = await supabaseAdmin.from('alunos').select('*', { count: 'exact', head: true });
-                console.log('[RCO-LANC] Total alunos na tabela Supabase:', totalReg);
-                if (aluSupa?.length > 0) console.log('[RCO-LANC] sample:', JSON.stringify(aluSupa[0]));
-                if (errSupa) console.warn('[RCO-LANC] Supabase erro:', errSupa.message);
-                const aluMap = Object.fromEntries(
-                    (aluSupa || []).map(a => [String(a.registro), a])
-                );
+            if (alunos.length > 0) {
+                let rosterMap = {};    /* codMatrizAluno (string) → { nome, numChamada } */
+
+                /* Estratégia 1: roster RCO pelo codClasse passado pelo frontend via query param */
+                const codClasse = req.query.codClasse ?? null;
+                if (codClasse) {
+                    try {
+                        const codPeriodoAvaliacao = process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+                        const rosterR = await rcoApiService.get(
+                            `${RCO_CLASSE_BASE}/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}`
+                        );
+                        const roster = Array.isArray(rosterR.data) ? rosterR.data : [];
+                        roster.forEach(s => {
+                            if (s.codMatrizAluno) {
+                                rosterMap[String(s.codMatrizAluno)] = {
+                                    nome:       s.nome       ?? null,
+                                    numChamada: s.numChamada ?? null,
+                                };
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('[RCO-LANC] Roster RCO falhou:', e.message);
+                    }
+                }
+
+                /* Estratégia 2: Supabase por registro (fallback se roster RCO falhou) */
+                if (Object.keys(rosterMap).length === 0 && supabaseAdmin) {
+                    const registros = alunos.map(a => String(a.codMatrizAluno)).filter(Boolean);
+                    const { data: aluSupa } = await supabaseAdmin
+                        .from('alunos').select('registro, nome, numchamada').in('registro', registros);
+                    (aluSupa || []).forEach(a => {
+                        rosterMap[String(a.registro)] = {
+                            nome:       a.nome       ?? null,
+                            numChamada: a.numchamada ?? null,
+                        };
+                    });
+                }
+
                 r.data.alunos = alunos.map(a => ({
                     ...a,
-                    nome:       aluMap[String(a.codMatrizAluno)]?.nome ?? null,
-                    numChamada: aluMap[String(a.codMatrizAluno)]?.numchamada ?? null,
+                    nome:       rosterMap[String(a.codMatrizAluno)]?.nome       ?? null,
+                    numChamada: rosterMap[String(a.codMatrizAluno)]?.numChamada ?? null,
                 }));
             }
 
