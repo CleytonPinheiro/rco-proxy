@@ -338,7 +338,12 @@ export function createRcoLancamentoRouter(deps = {}) {
                         `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
                     );
                     if (gr.status === 200 && gr.data) {
-                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => r);
+                        /* Converte para formato RCO: +0000 em vez de Z */
+                        const agoraRco = agora.replace('Z', '+0000');
+                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => ({
+                            ...r,
+                            pesoDecimal: Number(r.pesoDecimal),  /* número, como o top-level */
+                        }));
                         (gr.data.alunos ?? []).forEach(a => {
                             alunosRcoMap[String(a.codMatrizAluno)] = a;
                         });
@@ -347,12 +352,12 @@ export function createRcoLancamentoRouter(deps = {}) {
                             codTipoAvaliacaoParcial:   gr.data.codTipoAvaliacaoParcial,
                             numAvaliacaoParcial:        gr.data.numAvaliacaoParcial,
                             dataAvaliacaoParcial:       gr.data.dataAvaliacaoParcial,
-                            pesoDecimal:               Number(gr.data.pesoDecimal),   /* número, não string */
-                            dataAtualizacao:            gr.data.dataAtualizacao,       /* timestamp original */
+                            pesoDecimal:               Number(gr.data.pesoDecimal),
+                            dataAtualizacao:            agoraRco,   /* timestamp atual no formato RCO */
                             codUsuario,
-                            recuperadas: limparAninhados(gr.data.recuperadas),         /* sem recuperacaos */
+                            recuperadas: limparAninhados(gr.data.recuperadas),
                         };
-                        console.log('[RCO-LANC] GET pré-PUT OK — base limpa sem recuperacaos/descrAvaliacaoParcial.');
+                        console.log(`[RCO-LANC] GET pré-PUT OK — dataAtualizacao=${agoraRco}`);
                     }
                 } catch (e) {
                     console.warn('[RCO-LANC] GET pré-PUT falhou:', e.message);
