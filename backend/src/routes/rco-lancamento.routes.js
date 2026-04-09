@@ -428,10 +428,31 @@ export function createRcoLancamentoRouter(deps = {}) {
 
                 putPayload = { ...base, alunos: alunosEnviar };
 
-                console.log('[RCO-LANC] Payload PUT recuperação final:', JSON.stringify({
+                /* ── Validação: detecta notaDecimal inválida antes de enviar ── */
+                const invalidos = alunosEnviar.filter(a => {
+                    if (a.notaDecimal == null) return false;
+                    const v = Number(a.notaDecimal);
+                    return isNaN(v) || !isFinite(v) || v < 0 || v > Number(base.pesoDecimal) + 0.01;
+                });
+                if (invalidos.length) {
+                    console.error('[RCO-LANC] ⚠ Alunos com notaDecimal INVÁLIDA:', JSON.stringify(invalidos, null, 2));
+                }
+
+                /* Loga TODOS os alunos para diagnóstico completo */
+                console.log('[RCO-LANC] Lista completa de alunos para PUT:', JSON.stringify(
+                    alunosEnviar.map(a => ({
+                        codMatrizAluno: a.codMatrizAluno,
+                        numChamada:     a.numChamada,
+                        nome:           a.nome,
+                        notaDecimal:    a.notaDecimal,
+                        temMatriz:      !!matrizMap[String(a.codMatrizAluno)],
+                    })),
+                null, 2));
+
+                console.log('[RCO-LANC] Payload PUT recuperação final (base):', JSON.stringify({
                     ...putPayload,
-                    alunos: putPayload.alunos?.slice(0, 2),
-                    _qtdeAlunos: alunosEnviar.length,
+                    alunos: `[${alunosEnviar.length} alunos — veja lista completa acima]`,
+                    _invalidos: invalidos.length,
                     _temMatriz: Object.keys(matrizMap).length > 0,
                 }, null, 2));
             } else {
