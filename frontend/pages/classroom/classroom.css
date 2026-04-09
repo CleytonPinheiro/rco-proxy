@@ -228,6 +228,19 @@ body {
 .cl-btn--rco-confirm:hover { background: #4f46e5; }
 .cl-btn--rco-confirm:disabled { opacity: .6; cursor: not-allowed; }
 
+.cl-btn--warning {
+    background: #d97706;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.cl-btn--warning:hover    { background: #b45309; }
+.cl-btn--warning:disabled { opacity: .6; cursor: not-allowed; }
+
 .cl-btn--criar-rec {
     background: transparent;
     border: 1px solid #f97316;

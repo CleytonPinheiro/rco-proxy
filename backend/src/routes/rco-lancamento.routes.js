@@ -354,6 +354,85 @@ export function createRcoLancamentoRouter(deps = {}) {
         }
     });
 
+    /* ── POST /api/rco-lancamento/avaliacoes/:id/salvar-db
+       Recuperação de banco: NÃO faz PUT no RCO.
+       Lê os valores atuais do RCO via GET e persiste no banco local.
+       Usado quando o lançamento foi OK no RCO mas o banco falhou.
+       Body: { alunos: [{codMatrizAluno, notaDecimal, usouRecuperacao, matched}] }
+    ─────────────────────────────────────────────────────── */
+    router.post('/rco-lancamento/avaliacoes/:id/salvar-db', async (req, res) => {
+        const { id } = req.params;
+        const { alunos } = req.body;
+
+        const codAvParam = Number(id);
+        if (!Number.isFinite(codAvParam) || codAvParam <= 0) {
+            return res.status(400).json({ erro: 'ID de avaliação inválido.' });
+        }
+        if (!alunos?.length) {
+            return res.status(400).json({ erro: 'alunos são obrigatórios.' });
+        }
+
+        try {
+            /* GET do RCO para obter os valores verificados */
+            let rcoVerificado = false;
+            const notasRco    = {};
+            try {
+                const vr = await rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=alunos`
+                );
+                if (vr.status === 200 && Array.isArray(vr.data?.alunos)) {
+                    vr.data.alunos.forEach(a => {
+                        notasRco[String(a.codMatrizAluno)] = Number(a.notaDecimal ?? 0);
+                    });
+                    rcoVerificado = true;
+                    console.log(`[RCO-LANC/salvar-db] GET verificado: ${Object.keys(notasRco).length} alunos no RCO.`);
+                }
+            } catch (verErr) {
+                console.warn('[RCO-LANC/salvar-db] GET de verificação falhou:', verErr.message);
+            }
+
+            /* Persiste usando valores reais do RCO (ou fallback para o que o frontend enviou) */
+            const cols   = '(cod_avaliacao_parcial, cod_matriz_aluno, nota_decimal, nota_enviada, usou_recuperacao, matched, verificado)';
+            const values = alunos.map((_, i) => {
+                const base = i * 7;
+                return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7})`;
+            }).join(', ');
+            const params = alunos.flatMap(a => {
+                const codM        = Number(a.codMatrizAluno);
+                const notaEnviada = Number(a.notaDecimal ?? 0);
+                const notaReal    = rcoVerificado ? (notasRco[String(codM)] ?? notaEnviada) : notaEnviada;
+                return [
+                    codAvParam,
+                    codM,
+                    notaReal,
+                    notaEnviada,
+                    !!(a.usouRecuperacao ?? false),
+                    !!(a.matched ?? false),
+                    rcoVerificado,
+                ];
+            });
+
+            await pool.query(
+                `INSERT INTO rco_lancamentos ${cols} VALUES ${values}
+                 ON CONFLICT (cod_avaliacao_parcial, cod_matriz_aluno)
+                 DO UPDATE SET
+                     nota_decimal      = EXCLUDED.nota_decimal,
+                     nota_enviada      = EXCLUDED.nota_enviada,
+                     usou_recuperacao  = EXCLUDED.usou_recuperacao,
+                     matched           = EXCLUDED.matched,
+                     verificado        = EXCLUDED.verificado,
+                     lancado_em        = NOW()`,
+                params
+            );
+
+            console.log(`[RCO-LANC/salvar-db] ${alunos.length} registros salvos (verificado=${rcoVerificado}).`);
+            res.json({ ok: true, dbSalvo: true, rcoVerificado });
+        } catch (e) {
+            console.error('[RCO-LANC/salvar-db] Falha:', e.message);
+            res.status(500).json({ ok: false, dbSalvo: false, erro: e.message });
+        }
+    });
+
     /* ── PATCH /api/rco-lancamento/grupos/:grupoId/cod-classe
        Salva/atualiza o codClasseRco vinculado a um grupo.
     ─────────────────────────────────────────────────────── */

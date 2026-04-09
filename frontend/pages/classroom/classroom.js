@@ -2654,6 +2654,7 @@ const elRcoAvaliacaoInfo  = document.getElementById('clRcoAvaliacaoInfo');
 const elRcoTableBody      = document.getElementById('clRcoTableBody');
 const elRcoModalConfirmar = document.getElementById('clRcoModalConfirmar');
 const elRcoModalZerar     = document.getElementById('clRcoModalZerar');
+const elRcoModalSalvarDb  = document.getElementById('clRcoModalSalvarDb');
 
 /* Normaliza nome para comparação (remove acentos, pontuação, caixa) */
 function normNome(s) {
@@ -2663,13 +2664,16 @@ function normNome(s) {
 
 let rcoAvaliacaoSelecionada = null;   // avaliação escolhida no passo 1
 let rcoAlunosMapeados       = null;   // array de alunos com nota calculada (passo 2)
+let lancamentoPendenteBd    = null;   // payload aguardando persistência (quando dbSalvo=false)
 
 function fecharModalRco() {
     elRcoModal.classList.remove('cl-modal-overlay--visivel');
     rcoAvaliacaoSelecionada = null;
     rcoAlunosMapeados       = null;
+    lancamentoPendenteBd    = null;
     elRcoModalConfirmar.style.display = 'none';
     elRcoModalZerar.style.display     = 'none';
+    elRcoModalSalvarDb.style.display  = 'none';
     elRcoPasso1.style.display = '';
     elRcoPasso2.style.display = 'none';
 }
@@ -2974,14 +2978,20 @@ elRcoModalConfirmar.addEventListener('click', async () => {
 
         /* Verifica se o banco local foi atualizado */
         if (resp.dbSalvo === false) {
-            /* PUT no RCO OK, mas banco falhou — alertar sem fechar o modal */
+            /* PUT no RCO OK, mas banco falhou — armazena payload e mostra botão de recuperação */
+            lancamentoPendenteBd = {
+                codAvaliacao: av.codAvaliacaoParcialClasse,
+                alunos:       alunosPayload,
+            };
+            elRcoModalSalvarDb.style.display  = '';   /* mostra botão de recuperação */
+            elRcoModalConfirmar.style.display = 'none'; /* esconde o confirmar */
             toast(
-                '⚠️ Notas enviadas ao RCO, mas houve falha ao salvar no banco local. ' +
-                'Tente novamente ou contate o suporte. Nenhuma nota foi perdida no RCO.',
+                '⚠️ Notas enviadas ao RCO com sucesso, mas falha ao salvar no banco local. ' +
+                'Use o botão "Salvar no banco" para tentar novamente sem reenviar ao RCO.',
                 'alerta'
             );
             console.error('[CLASSROOM] Falha no banco após lançamento RCO:', resp.dbErro);
-            return; /* mantém modal aberto para o professor poder tentar novamente */
+            return; /* mantém modal aberto */
         }
 
         /* Monta mensagem de sucesso com nível de verificação */
@@ -2998,6 +3008,41 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     } finally {
         elRcoModalConfirmar.disabled    = false;
         elRcoModalConfirmar.textContent = '🚀 Confirmar lançamento';
+    }
+});
+
+/* ── Recuperação de banco: salvar sem re-enviar ao RCO ── */
+elRcoModalSalvarDb.addEventListener('click', async () => {
+    if (!lancamentoPendenteBd) return;
+
+    elRcoModalSalvarDb.disabled    = true;
+    elRcoModalSalvarDb.textContent = 'Salvando…';
+
+    const { codAvaliacao, alunos } = lancamentoPendenteBd;
+
+    try {
+        const resp = await apiRaw(
+            `/rco-lancamento/avaliacoes/${codAvaliacao}/salvar-db`,
+            { method: 'POST', body: { alunos } }
+        );
+
+        if (resp.dbSalvo) {
+            const verMsg = resp.rcoVerificado
+                ? ' ✓ valores confirmados no RCO.'
+                : '';
+            toast(`✅ Banco sincronizado com sucesso!${verMsg}`, 'ok');
+            lancamentoPendenteBd           = null;
+            elRcoModalSalvarDb.style.display = 'none';
+            fecharModalRco();
+        } else {
+            toast('❌ Falha ao salvar no banco. Tente novamente.', 'erro');
+        }
+    } catch (e) {
+        toast('Erro ao salvar no banco: ' + e.message, 'erro');
+        console.error('[CLASSROOM] Erro no salvar-db:', e);
+    } finally {
+        elRcoModalSalvarDb.disabled    = false;
+        elRcoModalSalvarDb.textContent = '💾 Salvar no banco';
     }
 });
 
