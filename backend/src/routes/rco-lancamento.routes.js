@@ -179,74 +179,177 @@ export function createRcoLancamentoRouter(deps = {}) {
     });
 
     /* ── POST /api/rco-lancamento/avaliacoes/:id/lancar
-       Lança notas no RCO.
-       Body: { meta: {...}, alunos: [{...rcoFields, notaDecimal: "3.5"}] }
+       Lança notas no RCO com três camadas de proteção:
+         1. Validação de entrada (antes do PUT)
+         2. Verificação pós-PUT: GET confirma o que o RCO realmente salvou
+         3. Persistência no banco com os valores VERIFICADOS do RCO
+       Retorna HTTP 207 (Multi-Status) se o PUT ao RCO foi OK mas o banco falhou.
     ─────────────────────────────────────────────────────── */
     router.post('/rco-lancamento/avaliacoes/:id/lancar', async (req, res) => {
         const { id } = req.params;
         const { meta, alunos } = req.body;
 
+        /* ── 1. Validação de entrada ── */
+        const codAvParam = Number(id);
+        if (!Number.isFinite(codAvParam) || codAvParam <= 0) {
+            return res.status(400).json({ erro: 'ID de avaliação inválido no path.' });
+        }
         if (!meta || !alunos?.length) {
-            return res.status(400).json({ erro: 'meta e alunos são obrigatórios' });
+            return res.status(400).json({ erro: 'meta e alunos são obrigatórios.' });
         }
 
+        /* Consistência do ID no body vs. path */
+        if (Number(meta.codAvaliacaoParcialClasse) !== codAvParam) {
+            return res.status(400).json({
+                erro: 'ID no path difere de meta.codAvaliacaoParcialClasse — possível adulteração de requisição.',
+            });
+        }
+
+        const pesoMax = Number(meta.pesoDecimal);
+        if (!Number.isFinite(pesoMax) || pesoMax <= 0) {
+            return res.status(400).json({ erro: 'meta.pesoDecimal ausente ou inválido.' });
+        }
+
+        /* Validação por aluno */
+        const errosValidacao = [];
+        const codsVistos     = new Set();
+        for (const a of alunos) {
+            const cod  = Number(a.codMatrizAluno);
+            const nota = Number(a.notaDecimal);
+            if (!Number.isFinite(cod) || cod <= 0) {
+                errosValidacao.push(`codMatrizAluno inválido: ${JSON.stringify(a.codMatrizAluno)}`);
+                continue;
+            }
+            if (codsVistos.has(cod)) {
+                errosValidacao.push(`codMatrizAluno duplicado: ${cod}`);
+                continue;
+            }
+            codsVistos.add(cod);
+            /* Tolerância de 0.05 para arredondamentos de ponto flutuante */
+            if (!Number.isFinite(nota) || nota < 0 || nota > pesoMax + 0.05) {
+                errosValidacao.push(
+                    `Nota inválida para aluno ${cod}: ${a.notaDecimal} (intervalo permitido: [0, ${pesoMax}])`
+                );
+            }
+        }
+        if (errosValidacao.length > 0) {
+            return res.status(400).json({ erro: 'Validação dos dados falhou.', detalhes: errosValidacao });
+        }
+
+        /* ── 2. PUT no RCO ── */
         try {
-            /* Extrai codUsuario do JWT RCO atual */
-            const token   = await rcoApiService.getToken();
-            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
-            const codUsuario = Number(payload.resoucreowner_id || payload.resouceowner_id || 0);
+            const token      = await rcoApiService.getToken();
+            const jwtPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
+            const codUsuario = Number(jwtPayload.resoucreowner_id || jwtPayload.resouceowner_id || 0);
+            const agora      = new Date().toISOString().replace('Z', '+0000');
 
-            const agora = new Date().toISOString().replace('T', 'T').replace('Z', '+0000');
-
-            const body = {
-                ...meta,
-                codUsuario,
-                dataAtualizacao: agora,
-                alunos,
-            };
-
-            console.log(`[RCO-LANC] Lançando ${alunos.length} notas na avaliação ${id} | codUsuario=${codUsuario}`);
+            console.log(`[RCO-LANC] PUT avaliação ${id} | ${alunos.length} alunos | codUsuario=${codUsuario}`);
 
             const r = await rcoApiService.put(
                 `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
-                body,
+                { ...meta, codUsuario, dataAtualizacao: agora, alunos },
                 { grupo: 'D' }
             );
 
             if (r.status >= 400) {
                 console.error('[RCO-LANC] Erro no PUT RCO:', r.status, JSON.stringify(r.data));
-                return res.status(r.status).json({ erro: 'Erro ao lançar notas no RCO', detalhe: r.data });
+                return res.status(r.status).json({ erro: 'Erro ao lançar notas no RCO.', detalhe: r.data });
             }
 
-            console.log(`[RCO-LANC] Sucesso! Status RCO: ${r.status}`);
+            console.log(`[RCO-LANC] PUT OK (status ${r.status}). Iniciando verificação pós-PUT...`);
 
-            /* Persiste no banco local cada nota enviada ao RCO */
+            /* ── 3. Verificação pós-PUT: GET para confirmar valores no RCO ── */
+            let rcoVerificado  = false;
+            const notasRco     = {};  /* codMatrizAluno (string) → notaDecimal confirmada pelo RCO */
             try {
-                const values = alunos.map((a, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`).join(', ');
-                const params = alunos.flatMap(a => [
-                    Number(id),
-                    Number(a.codMatrizAluno),
-                    Number(a.notaDecimal ?? 0),
-                    !!(a.usouRecuperacao ?? false),
-                ]);
+                const vr = await rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=alunos`
+                );
+                if (vr.status === 200 && Array.isArray(vr.data?.alunos)) {
+                    vr.data.alunos.forEach(a => {
+                        notasRco[String(a.codMatrizAluno)] = Number(a.notaDecimal ?? 0);
+                    });
+                    rcoVerificado = true;
+
+                    /* Loga discrepâncias entre o que foi enviado e o que o RCO salvou */
+                    let discrepancias = 0;
+                    alunos.forEach(a => {
+                        const enviada = Number(a.notaDecimal ?? 0);
+                        const real    = notasRco[String(a.codMatrizAluno)];
+                        if (real !== undefined && Math.abs(real - enviada) > 0.05) {
+                            console.warn(
+                                `[RCO-LANC] DISCREPÂNCIA aluno ${a.codMatrizAluno}: enviado=${enviada} RCO=${real}`
+                            );
+                            discrepancias++;
+                        }
+                    });
+                    if (discrepancias === 0) {
+                        console.log(`[RCO-LANC] Verificação OK — todos os ${alunos.length} valores confirmados.`);
+                    } else {
+                        console.warn(`[RCO-LANC] ${discrepancias} discrepância(s) detectada(s) — banco salva valores reais do RCO.`);
+                    }
+                }
+            } catch (verErr) {
+                console.warn('[RCO-LANC] Verificação pós-PUT indisponível:', verErr.message);
+            }
+
+            /* ── 4. Persistência no banco com valores reais do RCO ── */
+            let dbSalvo = false;
+            let dbErro  = null;
+            try {
+                /* Usa nota verificada (GET) se disponível; fallback para nota enviada */
+                const cols   = '(cod_avaliacao_parcial, cod_matriz_aluno, nota_decimal, nota_enviada, usou_recuperacao, matched, verificado)';
+                const values = alunos.map((_, i) => {
+                    const base = i * 7;
+                    return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7})`;
+                }).join(', ');
+                const params = alunos.flatMap(a => {
+                    const codM        = Number(a.codMatrizAluno);
+                    const notaEnviada = Number(a.notaDecimal ?? 0);
+                    const notaReal    = rcoVerificado
+                        ? (notasRco[String(codM)] ?? notaEnviada)
+                        : notaEnviada;
+                    return [
+                        codAvParam,
+                        codM,
+                        notaReal,         /* nota_decimal — o que o RCO realmente tem */
+                        notaEnviada,      /* nota_enviada — o que foi enviado pelo sistema */
+                        !!(a.usouRecuperacao ?? false),
+                        !!(a.matched ?? (notaEnviada > 0)),
+                        rcoVerificado,
+                    ];
+                });
+
                 await pool.query(
-                    `INSERT INTO rco_lancamentos (cod_avaliacao_parcial, cod_matriz_aluno, nota_decimal, usou_recuperacao)
-                     VALUES ${values}
+                    `INSERT INTO rco_lancamentos ${cols} VALUES ${values}
                      ON CONFLICT (cod_avaliacao_parcial, cod_matriz_aluno)
-                     DO UPDATE SET nota_decimal = EXCLUDED.nota_decimal,
-                                   usou_recuperacao = EXCLUDED.usou_recuperacao,
-                                   lancado_em = NOW()`,
+                     DO UPDATE SET
+                         nota_decimal      = EXCLUDED.nota_decimal,
+                         nota_enviada      = EXCLUDED.nota_enviada,
+                         usou_recuperacao  = EXCLUDED.usou_recuperacao,
+                         matched           = EXCLUDED.matched,
+                         verificado        = EXCLUDED.verificado,
+                         lancado_em        = NOW()`,
                     params
                 );
-                console.log(`[RCO-LANC] ${alunos.length} registros salvos em rco_lancamentos`);
-            } catch (dbErr) {
-                console.error('[RCO-LANC] Aviso: falha ao salvar no banco local:', dbErr.message);
-                /* Não bloqueia a resposta — o PUT no RCO já foi feito */
+                dbSalvo = true;
+                console.log(`[RCO-LANC] ${alunos.length} registros persistidos em rco_lancamentos (verificado=${rcoVerificado}).`);
+            } catch (dbErr_) {
+                dbErro = dbErr_.message;
+                console.error('[RCO-LANC] CRÍTICO — PUT OK mas banco falhou:', dbErro);
             }
 
-            res.json({ ok: true, status: r.status, resposta: r.data });
+            /* 207 = PUT OK, banco falhou (frontend deve alertar o usuário) */
+            return res.status(dbSalvo ? 200 : 207).json({
+                ok:            true,
+                dbSalvo,
+                rcoVerificado,
+                dbErro:        dbErro ?? undefined,
+                status:        r.status,
+                resposta:      r.data,
+            });
         } catch (e) {
-            console.error('[RCO-LANC] Erro ao lançar:', e.message);
+            console.error('[RCO-LANC] Erro inesperado ao lançar:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

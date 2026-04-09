@@ -2957,23 +2957,44 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
     };
 
-    /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao para o backend salvar */
+    /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
     const alunosPayload = rcoAlunosMapeados.map(
         ({ _classNome, _notaCalc, _matched, _usouRec, _notaRcoOrig, ...rest }) => ({
             ...rest,
+            matched:         !!_matched,
             usouRecuperacao: !!_usouRec,
         })
     );
 
     try {
-        await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
+        const resp = await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}/lancar`, {
             method: 'POST',
             body: { meta, alunos: alunosPayload },
         });
-        toast(`✅ Notas lançadas no RCO com sucesso! (${mapeados}/${total} alunos)`, 'ok');
+
+        /* Verifica se o banco local foi atualizado */
+        if (resp.dbSalvo === false) {
+            /* PUT no RCO OK, mas banco falhou — alertar sem fechar o modal */
+            toast(
+                '⚠️ Notas enviadas ao RCO, mas houve falha ao salvar no banco local. ' +
+                'Tente novamente ou contate o suporte. Nenhuma nota foi perdida no RCO.',
+                'alerta'
+            );
+            console.error('[CLASSROOM] Falha no banco após lançamento RCO:', resp.dbErro);
+            return; /* mantém modal aberto para o professor poder tentar novamente */
+        }
+
+        /* Monta mensagem de sucesso com nível de verificação */
+        const verMsg = resp.rcoVerificado
+            ? ' ✓ valores confirmados no RCO.'
+            : ' (verificação pós-lançamento indisponível).';
+        toast(`✅ Notas lançadas e salvas! (${mapeados}/${total} alunos)${verMsg}`, 'ok');
         fecharModalRco();
     } catch (e) {
-        toast('Erro ao lançar no RCO: ' + e.message, 'erro');
+        /* Erro na validação (400) ou erro do servidor (500) — PUT não chegou ao RCO */
+        const detalhe = e.detalhes?.join('; ') ?? e.message;
+        toast('Erro ao lançar no RCO: ' + detalhe, 'erro');
+        console.error('[CLASSROOM] Erro no lançamento:', e);
     } finally {
         elRcoModalConfirmar.disabled    = false;
         elRcoModalConfirmar.textContent = '🚀 Confirmar lançamento';
