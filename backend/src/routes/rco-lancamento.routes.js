@@ -317,64 +317,122 @@ export function createRcoLancamentoRouter(deps = {}) {
 
             let putPayload;
             if (isRec) {
-                /* Para tipo=2: replica exatamente o que o RCO web app faz:
-                   1. GET completo da avaliação (com alunos)
-                   2. Monta um mapa nota por aluno (codMatrizAluno → notaDecimal calculada)
-                   3. Sobrescreve apenas notaDecimal em cada aluno do GET — mantém todos os outros campos
-                   4. Usa dataAtualizacao ORIGINAL do GET (não gera nova)
-                   5. pesoDecimal como número (não string)
-                   Isso foi confirmado pelo curl do RCO web app capturado em produção. */
-                let evalBase    = null;
-                let alunosGet   = [];
+                /* Replica o fluxo exato do RCO web app (confirmado por curl capturado em produção):
+                   1. GET avaliacaoParcialClasses/:id → estrutura base + alunos mínimos
+                   2. GET /matrizAlunos → dados completos dos alunos (nome, numChamada, indAtivo, cgmAluno…)
+                   3. Merge: aluno da avaliação + campos do matrizAluno + notaDecimal calculada (STRING)
+                   4. pesoDecimal como número, dataAtualizacao original do GET
+                   5. SEM recuperacaos (ausente no curl nativo), SEM descrAvaliacaoParcial top-level */
+                let evalBase  = null;
+                let alunosRcoMap = {};   /* codMatrizAluno(str) → aluno da avaliacaoParcialClasses */
+                let matrizMap    = {};   /* codMatrizAluno(str) → aluno do matrizAlunos */
+
+                /* ── Passo 1: GET da avaliação ── */
                 try {
                     const gr = await rcoApiService.get(
                         `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
                     );
                     if (gr.status === 200 && gr.data) {
-                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...rest }) => rest);
-                        alunosGet = gr.data.alunos ?? [];
-                        evalBase  = {
-                            ...gr.data,
-                            recuperadas:  limparAninhados(gr.data.recuperadas),
-                            recuperacaos: limparAninhados(gr.data.recuperacaos),
-                            /* pesoDecimal como NÚMERO — o RCO web envia 4, não "4.0" */
-                            pesoDecimal: Number(gr.data.pesoDecimal),
-                            /* dataAtualizacao ORIGINAL do GET — o RCO não regenera o timestamp */
-                            dataAtualizacao: gr.data.dataAtualizacao,
+                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => r);
+                        (gr.data.alunos ?? []).forEach(a => {
+                            alunosRcoMap[String(a.codMatrizAluno)] = a;
+                        });
+                        evalBase = {
+                            codAvaliacaoParcialClasse: gr.data.codAvaliacaoParcialClasse,
+                            codTipoAvaliacaoParcial:   gr.data.codTipoAvaliacaoParcial,
+                            numAvaliacaoParcial:        gr.data.numAvaliacaoParcial,
+                            dataAvaliacaoParcial:       gr.data.dataAvaliacaoParcial,
+                            pesoDecimal:               Number(gr.data.pesoDecimal),   /* número, não string */
+                            dataAtualizacao:            gr.data.dataAtualizacao,       /* timestamp original */
+                            codUsuario,
+                            recuperadas: limparAninhados(gr.data.recuperadas),         /* sem recuperacaos */
                         };
-                        delete evalBase.alunos; /* será substituído abaixo */
-                        console.log('[RCO-LANC] GET pré-PUT tipo=2 OK — pesoDecimal como número, dataAtualizacao original.');
+                        console.log('[RCO-LANC] GET pré-PUT OK — base limpa sem recuperacaos/descrAvaliacaoParcial.');
                     }
                 } catch (e) {
-                    console.warn('[RCO-LANC] GET pré-PUT falhou, usando meta do frontend como fallback:', e.message);
+                    console.warn('[RCO-LANC] GET pré-PUT falhou:', e.message);
                 }
 
-                /* Mapa das notas calculadas pelo EduSync: codMatrizAluno → notaDecimal */
+                /* ── Passo 2: GET /matrizAlunos para dados completos ── */
+                const codClasse        = meta.codClasse ?? null;
+                const periodoAvaliacao = process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+                const pesoStr          = String(meta.pesoDecimal ?? '').replace(',', '.');
+                if (codClasse) {
+                    try {
+                        /* data = fim do ano letivo; traz todos os alunos matriculados */
+                        const mr = await rcoApiService.get(
+                            `${RCO_CLASSE_BASE}/matrizAlunos?codClasse=${codClasse}` +
+                            `&codPeriodoAvaliacao=${periodoAvaliacao}&data=2026-12-31&pesoDecimal=${pesoStr}`
+                        );
+                        if (mr.status === 200 && Array.isArray(mr.data)) {
+                            mr.data.forEach(a => {
+                                matrizMap[String(a.codMatrizAluno)] = a;
+                            });
+                            console.log(`[RCO-LANC] matrizAlunos OK — ${mr.data.length} alunos carregados.`);
+                        } else {
+                            console.warn(`[RCO-LANC] matrizAlunos retornou status ${mr.status}.`);
+                        }
+                    } catch (e) {
+                        console.warn('[RCO-LANC] matrizAlunos falhou:', e.message);
+                    }
+                } else {
+                    console.warn('[RCO-LANC] codClasse ausente no meta — matrizAlunos não chamado.');
+                }
+
+                /* ── Passo 3: Mapa de notas calculadas ── */
                 const notaMap = {};
                 alunos.forEach(a => { notaMap[String(a.codMatrizAluno)] = a.notaDecimal; });
 
-                /* Usa alunos do GET (com todos os campos RCO) e atualiza apenas notaDecimal */
-                const alunosComNota = alunosGet.map(a => {
-                    const notaCalc = notaMap[String(a.codMatrizAluno)];
-                    return notaCalc !== undefined
-                        ? { ...a, notaDecimal: notaCalc }
-                        : a; /* mantém nota original se não mapeado */
+                /* ── Passo 4: Merge dos alunos ──
+                   Usa a lista da avaliacaoParcialClasses (tem codAvaliacaoParcialAluno).
+                   Enriquece com campos do matrizAlunos (nome, numChamada, indAtivo, cgmAluno…).
+                   Substitui notaDecimal pelo valor calculado — como STRING (padrão RCO). */
+                const alunosBase = Object.values(alunosRcoMap);
+                const alunosFinais = alunosBase.map(a => {
+                    const key      = String(a.codMatrizAluno);
+                    const matriz   = matrizMap[key] ?? {};
+                    const notaCalc = notaMap[key];
+                    const merged = {
+                        codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
+                        codMatrizAluno:           a.codMatrizAluno,
+                        /* Campos do matrizAlunos — inclui se disponível */
+                        ...(matriz.numChamada        != null ? { numChamada:        matriz.numChamada }        : {}),
+                        ...(matriz.nome              != null ? { nome:              matriz.nome }              : {}),
+                        ...(matriz.indAtivo          != null ? { indAtivo:          matriz.indAtivo }          : {}),
+                        ...(matriz.situacaoMatricula != null ? { situacaoMatricula: matriz.situacaoMatricula } : {}),
+                        ...(matriz.cgmAluno          != null ? { cgmAluno:          matriz.cgmAluno }          : {}),
+                        /* notaDecimal como STRING — padrão do RCO web (ex: "3.9", não 3.9) */
+                        ...(notaCalc != null
+                            ? { notaDecimal: Number(notaCalc).toFixed(1) }
+                            : (a.notaDecimal != null ? { notaDecimal: Number(a.notaDecimal).toFixed(1) } : {})),
+                    };
+                    return merged;
                 });
 
-                /* Se GET falhou, fallback para alunos simplificados */
-                const alunosFinais = alunosComNota.length > 0 ? alunosComNota : alunosParaRco;
+                /* Fallback: se GET falhou e não temos lista, usa alunos simplificados */
+                const alunosEnviar = alunosFinais.length > 0 ? alunosFinais : alunosParaRco.map(a => ({
+                    ...a,
+                    notaDecimal: a.notaDecimal != null ? Number(a.notaDecimal).toFixed(1) : undefined,
+                }));
 
-                const base = evalBase ?? { ...meta, pesoDecimal: Number(meta.pesoDecimal) };
-                putPayload = {
-                    ...base,
+                const base = evalBase ?? {
+                    codAvaliacaoParcialClasse: meta.codAvaliacaoParcialClasse,
+                    codTipoAvaliacaoParcial:   meta.codTipoAvaliacaoParcial,
+                    numAvaliacaoParcial:       meta.numAvaliacaoParcial,
+                    dataAvaliacaoParcial:      meta.dataAvaliacaoParcial,
+                    pesoDecimal:               Number(meta.pesoDecimal),
+                    dataAtualizacao:           agora,
                     codUsuario,
-                    alunos: alunosFinais,
+                    recuperadas:               meta.recuperadas ?? [],
                 };
 
-                console.log('[RCO-LANC] Payload PUT recuperação (replicando RCO web):', JSON.stringify({
+                putPayload = { ...base, alunos: alunosEnviar };
+
+                console.log('[RCO-LANC] Payload PUT recuperação final:', JSON.stringify({
                     ...putPayload,
                     alunos: putPayload.alunos?.slice(0, 2),
-                    _qtdeAlunos: alunosFinais.length,
+                    _qtdeAlunos: alunosEnviar.length,
+                    _temMatriz: Object.keys(matrizMap).length > 0,
                 }, null, 2));
             } else {
                 putPayload = { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco };

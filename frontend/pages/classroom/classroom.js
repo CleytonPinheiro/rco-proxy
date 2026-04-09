@@ -2984,6 +2984,8 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
+        /* codClasse necessário para /matrizAlunos no backend (tipo=2) */
+        ...(isRec ? { codClasse: grupoAtivo?.codClasseRco ?? null } : {}),
         /* Conteúdos: apenas em avaliações principais (tipo 1). */
         ...(!isRec && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados }  : {}),
         /* recuperadas com objeto completo do GET para tipo=2 */
