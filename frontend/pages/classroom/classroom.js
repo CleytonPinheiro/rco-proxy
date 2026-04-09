@@ -2879,8 +2879,8 @@ async function selecionarAvaliacao(av, itemEl) {
             const nomeExibir  = a.nome ?? a._classNome ?? `cod: ${a.codMatrizAluno ?? '?'}`;
             /* Nota atual no RCO (real, preservada antes do cálculo) */
             const notaRcoAtual = fmtNota(a._notaRcoOrig);
-            /* Nota que será enviada ao RCO: calculada se mapeado, — se não encontrado */
-            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : '—';
+            /* Nota que será enviada ao RCO: calculada se mapeado, 0.0 se não encontrado */
+            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : '0.0';
 
             /* Badge de status */
             let badge;
@@ -2915,7 +2915,7 @@ async function selecionarAvaliacao(av, itemEl) {
                     ? `<strong class="cl-rco-nota-rec">${notaEnviar}</strong>`
                     : (a._matched
                         ? `<span>${notaEnviar} <small style="opacity:.55">(principal)</small></span>`
-                        : `<span class="cl-rco-mantido">${notaEnviar} <small>(enviar 0)</small></span>`);
+                        : `<span class="cl-rco-mantido">${notaEnviar}</span>`);
 
                 tr.innerHTML = `
                     <td>${a.numChamada ?? '—'}</td>
