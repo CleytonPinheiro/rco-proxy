@@ -771,9 +771,8 @@ export function createRcoLancamentoRouter(deps = {}) {
        Testa variações do payload PUT contra o RCO para diagnóstico.
        Usa alunos: [] em todas as variações (mínimo possível).
     ─────────────────────────────────────────────────────── */
-    router.get('/rco-lancamento/debug/:id/put-variations', requireAuth, async (req, res) => {
+    router.get('/rco-lancamento/debug/:id/put-variations', async (req, res) => {
         const id = req.params.id;
-        const RCO_CLASSE_BASE = process.env.RCO_CLASSE_BASE ?? 'https://rco.apps.seed.pr.gov.br/classe/v1';
         const resultados = [];
 
         /* GET avaliação base */
@@ -812,32 +811,34 @@ export function createRcoLancamentoRouter(deps = {}) {
             notaDecimal:              '0.0',
         }));
 
+        const recOriginal   = limpar(av.recuperadas);
+        const recMinimo     = (av.recuperadas ?? []).map(r => ({ codAvaliacaoParcialClasse: r.codAvaliacaoParcialClasse }));
+        const recStringPeso = (av.recuperadas ?? []).map(({ alunos: _a, ...r }) => r);  /* pesoDecimal como string */
+
         const variacoes = [
-            { label: 'V1: base + recuperadas originais + alunos: []',   payload: { ...base, recuperadas: limpar(av.recuperadas), alunos: [] } },
-            { label: 'V2: base SEM recuperadas + alunos: []',           payload: { ...base, alunos: [] } },
-            { label: 'V3: base + recuperadas: [] (vazio) + alunos: []', payload: { ...base, recuperadas: [], alunos: [] } },
-            { label: 'V4: SOMENTE codAvaliacaoParcialClasse + alunos: []', payload: { codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse, alunos: [] } },
-            { label: 'V5: base + recuperadas originais + 1 aluno 0.0',  payload: { ...base, recuperadas: limpar(av.recuperadas), alunos: alunoAmostra } },
-            { label: 'V6: base + recuperadas sem descrAvaliacaoParcial + alunos: []', payload: {
-                ...base,
-                recuperadas: limpar(av.recuperadas).map(({ descrAvaliacaoParcial: _d, ...r }) => r),
-                alunos: [],
-            }},
-            { label: 'V7: base + dataAtualizacao original + recuperadas + alunos: []', payload: {
-                ...base,
-                dataAtualizacao: av.dataAtualizacao,
-                recuperadas: limpar(av.recuperadas),
-                alunos: [],
-            }},
+            /* --- Testes anteriores confirmados --- */
+            { label: 'V1: base + recuperadas completas + alunos: []',    payload: { ...base, recuperadas: recOriginal,   alunos: [] } },
+            { label: 'V2: base SEM recuperadas + alunos: []',            payload: { ...base,                             alunos: [] } },
+            { label: 'V3: base + recuperadas: [] vazio + alunos: []',    payload: { ...base, recuperadas: [],            alunos: [] } },
+            /* --- Novos testes cirúrgicos --- */
+            { label: 'V4: recuperadas SÓ com codAvaliacaoParcialClasse', payload: { ...base, recuperadas: recMinimo,     alunos: [] } },
+            { label: 'V5: recuperadas com pesoDecimal STRING "4.0"',     payload: { ...base, recuperadas: recStringPeso, alunos: [] } },
+            { label: 'V6: pesoDecimal top-level como STRING "4.0"',      payload: { ...base, pesoDecimal: av.pesoDecimal, recuperadas: recOriginal, alunos: [] } },
+            { label: 'V7: pesoDecimal STRING top + recuperadas STRING',  payload: { ...base, pesoDecimal: av.pesoDecimal, recuperadas: recStringPeso, alunos: [] } },
+            { label: 'V8: sem codUsuario top-level',                     payload: { ...base, codUsuario: undefined, recuperadas: recOriginal, alunos: [] } },
+            { label: 'V9: sem dataAtualizacao top-level',                payload: { ...base, dataAtualizacao: undefined, recuperadas: recOriginal, alunos: [] } },
+            { label: 'V10: recuperadas com 1 aluno 0.0 dentro',         payload: { ...base, recuperadas: recOriginal.map(r => ({...r, alunos: alunoAmostra})), alunos: [] } },
         ];
 
         for (const { label, payload } of variacoes) {
             try {
                 const r = await rcoApiService.put(
                     `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}`,
-                    payload
+                    payload,
+                    { grupo: 'D' }   /* mesmo header que o lançamento real */
                 );
-                resultados.push({ label, status: r.status, ok: true });
+                const ok = r.status < 400;
+                resultados.push({ label, status: r.status, ok, body: ok ? undefined : r.data });
             } catch (e) {
                 const status = e.response?.status ?? 'ERR';
                 const body   = e.response?.data   ?? e.message;
