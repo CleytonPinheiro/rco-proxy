@@ -308,6 +308,12 @@ export function createRcoLancamentoRouter(deps = {}) {
                 ` | conteudos=${nConteudos} | codUsuario=${codUsuario}`
             );
 
+            /* Log do payload completo (sem notas individuais para não poluir o log) */
+            if (isRec) {
+                const payloadDebug = { ...meta, codUsuario, dataAtualizacao: agora, _qtdeAlunos: alunos.length };
+                console.log('[RCO-LANC] Payload PUT recuperação:', JSON.stringify(payloadDebug, null, 2));
+            }
+
             const r = await rcoApiService.put(
                 `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
                 { ...meta, codUsuario, dataAtualizacao: agora, alunos },

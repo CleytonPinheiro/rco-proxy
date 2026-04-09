@@ -2984,9 +2984,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
         /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações (tipo 2). */
         ...(!isRec && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados } : {}),
-        /* recuperacaos: lista de avaliações vinculadas (mapeada corretamente para o PUT) */
-        ...(recVinculadas.length  ? { recuperacaos: recVinculadas }  : {}),
-        ...(av.recuperadas?.length ? { recuperadas:  av.recuperadas } : {}),
+        /* recuperacaos: lista de avaliações vinculadas (mapeada corretamente para o PUT).
+           Para tipo=2 (recuperação), o RCO NÃO deve receber 'recuperadas' no PUT —
+           apenas 'recuperacaos' com os dados das avaliações principais vinculadas.
+           Para tipo=1 (principal), 'recuperacaos' vem populado direto do GET. */
+        ...(recVinculadas.length ? { recuperacaos: recVinculadas } : {}),
+        ...(!isRec && av.recuperadas?.length ? { recuperadas: av.recuperadas } : {}),
     };
 
     /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
@@ -3116,8 +3119,8 @@ elRcoModalZerar.addEventListener('click', async () => {
         pesoDecimal:               av.pesoDecimal,
         /* Conteúdos: apenas em avaliações principais (tipo 1), nunca em recuperações */
         ...(!isRecZ && rcoConteudosSelecionados.length ? { conteudos: rcoConteudosSelecionados } : {}),
-        ...(recVinculadasZ.length   ? { recuperacaos: recVinculadasZ }  : {}),
-        ...(av.recuperadas?.length  ? { recuperadas:  av.recuperadas }  : {}),
+        ...(recVinculadasZ.length                         ? { recuperacaos: recVinculadasZ }  : {}),
+        ...(!isRecZ && av.recuperadas?.length             ? { recuperadas:  av.recuperadas }  : {}),
     };
 
     /* Payload com notaDecimal = null para todos os alunos (limpa notas no RCO) */
