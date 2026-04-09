@@ -332,48 +332,46 @@ export function createRcoLancamentoRouter(deps = {}) {
                 let alunosRcoMap = {};   /* codMatrizAluno(str) → aluno da avaliacaoParcialClasses */
                 let matrizMap    = {};   /* codMatrizAluno(str) → aluno do matrizAlunos */
 
-                /* ── Passo 1: GET da avaliação ── */
+                /* ── Passo 1: GET da avaliação (busca recuperadas e lista de alunos RCO) ── */
+                let grData = null;
                 try {
                     const gr = await rcoApiService.get(
                         `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
                     );
                     if (gr.status === 200 && gr.data) {
-                        /* recuperadas: mantém pesoDecimal como string (igual ao nativo RCO) */
+                        grData = gr.data;
+                        /* mantém pesoDecimal como string (idêntico ao nativo RCO) */
                         const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => r);
                         (gr.data.alunos ?? []).forEach(a => {
                             alunosRcoMap[String(a.codMatrizAluno)] = a;
                         });
                         evalBase = {
-                            codAvaliacaoParcialClasse: gr.data.codAvaliacaoParcialClasse,
-                            codTipoAvaliacaoParcial:   gr.data.codTipoAvaliacaoParcial,
-                            numAvaliacaoParcial:        gr.data.numAvaliacaoParcial,
-                            dataAvaliacaoParcial:       gr.data.dataAvaliacaoParcial,
-                            pesoDecimal:               Number(gr.data.pesoDecimal),   /* top-level: número */
-                            dataAtualizacao:            gr.data.dataAtualizacao,       /* ORIGINAL do GET — não usar agora */
-                            codUsuario,
-                            recuperadas: limparAninhados(gr.data.recuperadas),         /* pesoDecimal string, sem alunos */
+                            /* RCO nativo usa POST sem ID — payload NÃO tem codAvaliacaoParcialClasse,
+                               codUsuario nem dataAtualizacao no top-level */
+                            codTipoAvaliacaoParcial: gr.data.codTipoAvaliacaoParcial,
+                            dataAvaliacaoParcial:    gr.data.dataAvaliacaoParcial,
+                            numAvaliacaoParcial:     gr.data.numAvaliacaoParcial,
+                            pesoDecimal:             Number(gr.data.pesoDecimal),  /* número no top-level */
+                            recuperadas:             limparAninhados(gr.data.recuperadas),
                         };
-                        console.log(`[RCO-LANC] GET pré-PUT OK — dataAtualizacao=${gr.data.dataAtualizacao} (original)`);
+                        console.log('[RCO-LANC] GET pré-POST OK — usando estrutura de POST sem ID (nativo RCO).');
                     }
                 } catch (e) {
-                    console.warn('[RCO-LANC] GET pré-PUT falhou:', e.message);
+                    console.warn('[RCO-LANC] GET pré-POST falhou:', e.message);
                 }
 
-                /* ── Passo 2: GET /matrizAlunos para dados completos ── */
+                /* ── Passo 2: GET /matrizAlunos para campos completos do aluno ── */
                 const codClasse        = meta.codClasse ?? null;
                 const periodoAvaliacao = process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
                 const pesoStr          = String(meta.pesoDecimal ?? '').replace(',', '.');
                 if (codClasse) {
                     try {
-                        /* data = fim do ano letivo; traz todos os alunos matriculados */
                         const mr = await rcoApiService.get(
                             `${RCO_CLASSE_BASE}/matrizAlunos?codClasse=${codClasse}` +
                             `&codPeriodoAvaliacao=${periodoAvaliacao}&data=2026-12-31&pesoDecimal=${pesoStr}`
                         );
                         if (mr.status === 200 && Array.isArray(mr.data)) {
-                            mr.data.forEach(a => {
-                                matrizMap[String(a.codMatrizAluno)] = a;
-                            });
+                            mr.data.forEach(a => { matrizMap[String(a.codMatrizAluno)] = a; });
                             console.log(`[RCO-LANC] matrizAlunos OK — ${mr.data.length} alunos carregados.`);
                         } else {
                             console.warn(`[RCO-LANC] matrizAlunos retornou status ${mr.status}.`);
@@ -385,115 +383,89 @@ export function createRcoLancamentoRouter(deps = {}) {
                     console.warn('[RCO-LANC] codClasse ausente no meta — matrizAlunos não chamado.');
                 }
 
-                /* ── Passo 3: Mapa de notas calculadas ── */
+                /* ── Passo 3: Mapa de notas calculadas (Classroom) ── */
                 const notaMap = {};
                 alunos.forEach(a => { notaMap[String(a.codMatrizAluno)] = a.notaDecimal; });
 
-                /* ── Passo 4: Monta lista final de alunos para o PUT ──
-                   Segue exatamente a estrutura do RCO nativo:
-                   - codAvaliacaoParcialAluno, codMatrizAluno, numChamada, nome,
-                     indAtivo, situacaoMatricula, cgmAluno (do matrizAlunos)
-                   - notaDecimal (string): nota calculada ou "0.0" se tem Classroom sem nota
-                   - Alunos sem nota no Classroom E sem nota no RCO: omite notaDecimal */
-                const alunosBase = Object.values(alunosRcoMap);
+                /* ── Passo 4: Monta lista de alunos — estrutura exata do nativo RCO ──
+                   - SEM codAvaliacaoParcialAluno (é um POST / upsert, o servidor resolve)
+                   - notaDecimal: grade calculada, ou "" para aluno sem nota no Classroom */
+                const alunosBase   = Object.values(alunosRcoMap);
                 const alunosEnviar = alunosBase.map(a => {
                     const key      = String(a.codMatrizAluno);
                     const notaCalc = notaMap[key];
                     const mAluno   = matrizMap[key] ?? {};
 
                     const aluno = {
-                        codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
-                        codMatrizAluno:           a.codMatrizAluno,
+                        codMatrizAluno: a.codMatrizAluno,
                         ...(mAluno.numChamada        != null ? { numChamada: mAluno.numChamada }               : {}),
                         ...(mAluno.nome              != null ? { nome: mAluno.nome }                           : {}),
                         ...(mAluno.indAtivo          != null ? { indAtivo: mAluno.indAtivo }                   : {}),
                         ...(mAluno.situacaoMatricula != null ? { situacaoMatricula: mAluno.situacaoMatricula } : {}),
                         ...(mAluno.cgmAluno          != null ? { cgmAluno: mAluno.cgmAluno }                   : {}),
+                        /* nota: string decimal se existe, "" caso contrário (comportamento nativo RCO) */
+                        notaDecimal: notaCalc != null ? Number(notaCalc).toFixed(1) : '',
                     };
-
-                    /* Nota: inclui se veio do Classroom; omite se aluno não estava em nenhuma turma */
-                    if (notaCalc != null) {
-                        aluno.notaDecimal = Number(notaCalc).toFixed(1);
-                    } else if (a.notaDecimal != null) {
-                        /* mantém nota já existente no RCO */
-                        aluno.notaDecimal = Number(a.notaDecimal).toFixed(1);
-                    }
-                    /* sem nota → omite notaDecimal (comportamento nativo RCO) */
 
                     return aluno;
                 });
 
+                /* fallback: se GET falhou, monta payload mínimo com os dados do meta */
                 const base = evalBase ?? {
-                    codAvaliacaoParcialClasse: meta.codAvaliacaoParcialClasse,
-                    codTipoAvaliacaoParcial:   meta.codTipoAvaliacaoParcial,
-                    numAvaliacaoParcial:       meta.numAvaliacaoParcial,
-                    dataAvaliacaoParcial:      meta.dataAvaliacaoParcial,
-                    pesoDecimal:               Number(meta.pesoDecimal),
-                    dataAtualizacao:           agora,
-                    codUsuario,
-                    recuperadas:               meta.recuperadas ?? [],
+                    codTipoAvaliacaoParcial: meta.codTipoAvaliacaoParcial,
+                    dataAvaliacaoParcial:    meta.dataAvaliacaoParcial,
+                    numAvaliacaoParcial:     meta.numAvaliacaoParcial,
+                    pesoDecimal:             Number(meta.pesoDecimal),
+                    recuperadas:             meta.recuperadas ?? [],
                 };
 
                 putPayload = { ...base, alunos: alunosEnviar };
 
-                /* ── Validação: detecta notaDecimal inválida antes de enviar ── */
-                const invalidos = alunosEnviar.filter(a => {
-                    if (a.notaDecimal == null) return false;
-                    const v = Number(a.notaDecimal);
-                    return isNaN(v) || !isFinite(v) || v < 0 || v > Number(base.pesoDecimal) + 0.01;
-                });
-                if (invalidos.length) {
-                    console.error('[RCO-LANC] ⚠ Alunos com notaDecimal INVÁLIDA:', JSON.stringify(invalidos, null, 2));
-                }
-
-                /* Loga TODOS os alunos para diagnóstico completo */
-                console.log('[RCO-LANC] Lista completa de alunos para PUT (mínimo):', JSON.stringify(
-                    alunosEnviar.map(a => ({
-                        codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
-                        codMatrizAluno:           a.codMatrizAluno,
-                        notaDecimal:              a.notaDecimal,
-                    })),
-                null, 2));
-
-                console.log('[RCO-LANC] Payload PUT recuperação final (base):', JSON.stringify({
+                console.log('[RCO-LANC] Payload POST recuperação (base):', JSON.stringify({
                     ...putPayload,
-                    alunos: `[${alunosEnviar.length} alunos — veja lista completa acima]`,
-                    _invalidos: invalidos.length,
-                    _temMatriz: Object.keys(matrizMap).length > 0,
+                    alunos: `[${alunosEnviar.length} alunos]`,
                 }, null, 2));
             } else {
                 putPayload = { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco };
             }
 
-            const r = await rcoApiService.put(
-                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
-                putPayload,
-                { grupo: 'D' }
-            );
+            /* Tipo=2 (recuperação): POST para /avaliacaoParcialClasses (sem ID) — igual ao nativo RCO.
+               Tipo=1 (normal): PUT para /avaliacaoParcialClasses/{id} — comportamento atual. */
+            const r = isRec
+                ? await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    putPayload,
+                    { grupo: 'D' }
+                  )
+                : await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
+                    putPayload,
+                    { grupo: 'D' }
+                  );
 
             if (r.status >= 400) {
-                /* Extrai a mensagem legível que o RCO retornou (string ou objeto) */
                 const rcoMsg = typeof r.data === 'string'
                     ? r.data
                     : (r.data?.message ?? r.data?.erro ?? r.data?.msg ?? JSON.stringify(r.data));
-                /* Log completo do body de erro para depuração (especialmente 500 genérico) */
-                console.error(`[RCO-LANC] Erro no PUT RCO (${r.status}):`, rcoMsg);
+                const metodo = isRec ? 'POST' : 'PUT';
+                console.error(`[RCO-LANC] Erro no ${metodo} RCO (${r.status}):`, rcoMsg);
                 console.error(`[RCO-LANC] Body completo do erro RCO:`, JSON.stringify(r.data, null, 2));
                 if (isRec) {
-                    console.error(`[RCO-LANC] Payload exato enviado ao RCO (tipo=2):`, JSON.stringify({
+                    console.error(`[RCO-LANC] Payload exato enviado ao RCO (POST tipo=2):`, JSON.stringify({
                         ...putPayload,
                         alunos: putPayload?.alunos?.slice(0, 3),
-                        _qtdeAlunos: alunosParaRco.length,
+                        _qtdeAlunos: putPayload?.alunos?.length,
                     }, null, 2));
                 }
                 return res.status(r.status).json({
-                    erro:   rcoMsg || 'Erro desconhecido ao lançar notas no RCO.',
+                    erro:    rcoMsg || 'Erro desconhecido ao lançar notas no RCO.',
                     detalhe: r.data,
-                    origem: 'RCO',
+                    origem:  'RCO',
                 });
             }
 
-            console.log(`[RCO-LANC] PUT OK (status ${r.status}). Iniciando verificação pós-PUT...`);
+            const metodoOk = isRec ? 'POST' : 'PUT';
+            console.log(`[RCO-LANC] ${metodoOk} OK (status ${r.status}). Iniciando verificação pós-lançamento...`);
 
             /* ── 3. Verificação pós-PUT: GET para confirmar valores no RCO ── */
             let rcoVerificado  = false;
