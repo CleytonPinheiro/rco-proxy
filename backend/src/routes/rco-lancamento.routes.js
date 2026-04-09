@@ -401,26 +401,21 @@ export function createRcoLancamentoRouter(deps = {}) {
                         ...(matriz.indAtivo          != null ? { indAtivo:          matriz.indAtivo }          : {}),
                         ...(matriz.situacaoMatricula != null ? { situacaoMatricula: matriz.situacaoMatricula } : {}),
                         ...(matriz.cgmAluno          != null ? { cgmAluno:          matriz.cgmAluno }          : {}),
-                        /* notaDecimal como STRING — apenas se frontend enviou nota calculada.
-                           Alunos sem dados no Classroom (notaCalc = null) ficam SEM o campo,
-                           replicando o comportamento do RCO web que omite notaDecimal para
-                           quem não teve nota lançada. */
-                        ...(notaCalc != null ? { notaDecimal: Number(notaCalc).toFixed(1) } : {}),
+                        /* notaDecimal como STRING — valor calculado se encontrado no Classroom,
+                           "0.0" se não encontrado (aluno não fez recuperação pelo grupo). */
+                        notaDecimal: notaCalc != null ? Number(notaCalc).toFixed(1) : '0.0',
                     };
                     return merged;
                 });
 
-                /* Filtra: inclui apenas alunos com nota calculada (notaDecimal presente).
-                   Alunos "não encontrado" (sem Classroom) são omitidos do PUT — replicando
-                   o comportamento do RCO web que só inclui alunos com nota explicitamente lançada.
-                   Isso evita que alunos sem recuperação causem erros no servidor RCO. */
-                const alunosComNota  = alunosFinais.filter(a => a.notaDecimal != null);
-                const alunosEnviar   = alunosComNota.length > 0
-                    ? alunosComNota
-                    /* Fallback: se GET falhou, usa payload do frontend (só mapeados) */
+                /* Envia TODOS os alunos da avaliação:
+                   - Encontrados no Classroom → nota calculada
+                   - Não encontrados → nota "0.0" */
+                const alunosEnviar = alunosFinais.length > 0
+                    ? alunosFinais
+                    /* Fallback: se GET falhou, usa payload do frontend com 0.0 para os sem nota */
                     : alunosParaRco
-                        .filter(a => a.notaDecimal != null)
-                        .map(a => ({ ...a, notaDecimal: Number(a.notaDecimal).toFixed(1) }));
+                        .map(a => ({ ...a, notaDecimal: a.notaDecimal != null ? Number(a.notaDecimal).toFixed(1) : '0.0' }));
 
                 const base = evalBase ?? {
                     codAvaliacaoParcialClasse: meta.codAvaliacaoParcialClasse,
