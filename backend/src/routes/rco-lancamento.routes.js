@@ -401,10 +401,11 @@ export function createRcoLancamentoRouter(deps = {}) {
                         ...(matriz.indAtivo          != null ? { indAtivo:          matriz.indAtivo }          : {}),
                         ...(matriz.situacaoMatricula != null ? { situacaoMatricula: matriz.situacaoMatricula } : {}),
                         ...(matriz.cgmAluno          != null ? { cgmAluno:          matriz.cgmAluno }          : {}),
-                        /* notaDecimal como STRING — padrão do RCO web (ex: "3.9", não 3.9) */
-                        ...(notaCalc != null
-                            ? { notaDecimal: Number(notaCalc).toFixed(1) }
-                            : (a.notaDecimal != null ? { notaDecimal: Number(a.notaDecimal).toFixed(1) } : {})),
+                        /* notaDecimal como STRING — apenas se frontend enviou nota calculada.
+                           Alunos sem dados no Classroom (notaCalc = null) ficam SEM o campo,
+                           replicando o comportamento do RCO web que omite notaDecimal para
+                           quem não teve nota lançada. */
+                        ...(notaCalc != null ? { notaDecimal: Number(notaCalc).toFixed(1) } : {}),
                     };
                     return merged;
                 });

@@ -2832,8 +2832,10 @@ async function selecionarAvaliacao(av, itemEl) {
                 _notaRcoOrig: notaRcoOrig,          /* nota ATUAL no RCO — só para exibição */
                 _notaCalc:    notaCalc,
                 _usouRec:     usouRec,
-                /* notaDecimal que vai no payload: calculado se mapeado, 0 se não mapeado */
-                notaDecimal:  notaCalc !== null ? notaCalc : 0,
+                /* notaDecimal: calculada se mapeado, null se não mapeado
+                   (alunos sem dados no Classroom NÃO recebem 0 — campo fica ausente no PUT,
+                    replicando o comportamento do RCO web que só envia nota para quem tem) */
+                notaDecimal:  notaCalc,
                 _matched:     classAluno !== null,
             };
         });
@@ -2877,13 +2879,13 @@ async function selecionarAvaliacao(av, itemEl) {
             const nomeExibir  = a.nome ?? a._classNome ?? `cod: ${a.codMatrizAluno ?? '?'}`;
             /* Nota atual no RCO (real, preservada antes do cálculo) */
             const notaRcoAtual = fmtNota(a._notaRcoOrig);
-            /* Nota que será enviada ao RCO: calculada se mapeado, 0 se não mapeado */
-            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : '0.0';
+            /* Nota que será enviada ao RCO: calculada se mapeado, — se não encontrado */
+            const notaEnviar  = a._notaCalc !== null ? fmtNota(a._notaCalc) : '—';
 
             /* Badge de status */
             let badge;
             if (!a._matched) {
-                badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado → 0</span>';
+                badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado</span>';
             } else if (grupoResumoData?.isRec) {
                 /* Estamos dentro do próprio grupo de recuperação */
                 badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 grupo de rec.</span>';
