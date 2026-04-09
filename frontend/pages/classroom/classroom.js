@@ -2666,15 +2666,17 @@ function normNome(s) {
         .replace(/[^a-z0-9 ]/gi, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-let rcoAvaliacaoSelecionada = null;   // avaliação escolhida no passo 1
-let rcoAlunosMapeados       = null;   // array de alunos com nota calculada (passo 2)
-let lancamentoPendenteBd    = null;   // payload aguardando persistência (quando dbSalvo=false)
+let rcoAvaliacaoSelecionada  = null;   // avaliação escolhida no passo 1
+let rcoAlunosMapeados        = null;   // array de alunos com nota calculada (passo 2)
+let lancamentoPendenteBd     = null;   // payload aguardando persistência (quando dbSalvo=false)
+let rcoConteudosSelecionados = [];     // conteúdos a enviar junto com as notas
 
 function fecharModalRco() {
     elRcoModal.classList.remove('cl-modal-overlay--visivel');
     rcoAvaliacaoSelecionada = null;
-    rcoAlunosMapeados       = null;
-    lancamentoPendenteBd    = null;
+    rcoAlunosMapeados        = null;
+    lancamentoPendenteBd     = null;
+    rcoConteudosSelecionados = [];
     elRcoModalConfirmar.style.display = 'none';
     elRcoModalZerar.style.display     = 'none';
     elRcoModalSalvarDb.style.display  = 'none';
@@ -2759,7 +2761,9 @@ async function selecionarAvaliacao(av, itemEl) {
     try {
         const codClasse = grupoAtivo?.codClasseRco ?? '';
         const detalhe = await apiRaw(`/rco-lancamento/avaliacoes/${av.codAvaliacaoParcialClasse}?codClasse=${codClasse}`);
-        rcoAvaliacaoSelecionada = detalhe;
+        rcoAvaliacaoSelecionada  = detalhe;
+        /* Preserva os conteúdos já vinculados — serão re-enviados no PUT */
+        rcoConteudosSelecionados = Array.isArray(detalhe.conteudos) ? detalhe.conteudos : [];
 
         /* Monta o mapeamento aluno-por-aluno */
         const alunosRco = detalhe.alunos ?? [];
@@ -2967,6 +2971,8 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         numAvaliacaoParcial:       av.numAvaliacaoParcial,
         dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
         pesoDecimal:               av.pesoDecimal,
+        /* Conteúdos já vinculados (ou selecionados no modal de fallback) re-enviados ao RCO */
+        conteudos:                 rcoConteudosSelecionados,
     };
 
     /* Remove campos internos (_*) antes de enviar; expõe usouRecuperacao e matched para o backend salvar */
@@ -3009,11 +3015,19 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         toast(`✅ Notas lançadas e salvas! (${mapeados}/${total} alunos)${verMsg}`, 'ok');
         fecharModalRco();
     } catch (e) {
-        /* Distingue erro de validação local vs. resposta de erro do RCO */
         const msg = e.message || 'Erro desconhecido';
-        const isRcoErro = msg.length > 30; /* mensagens do RCO costumam ser longas */
+        /* Detecta erro do RCO sobre conteúdos — abre modal de seleção */
+        const erroConteudos = /conteúdos?\s*(vinculad|obrigat)|sem\s*conteúdos?|registrar.*conteúd|conteúd.*vinculad/i.test(msg);
+        if (erroConteudos) {
+            toast('⚠️ Avaliação sem conteúdos. Selecione abaixo e tente novamente.', 'alerta', 6000);
+            console.warn('[CLASSROOM] Erro de conteúdos — abrindo modal de seleção:', msg);
+            await abrirModalConteudos();
+            return; /* mantém modal RCO aberto atrás */
+        }
+        /* Outros erros */
+        const isRcoErro = msg.length > 30;
         const prefixo   = isRcoErro ? '⚠️ RCO: ' : '❌ Erro: ';
-        toast(prefixo + msg, 'erro', 8000); /* 8 s — tempo suficiente para ler */
+        toast(prefixo + msg, 'erro', 8000);
         console.error('[CLASSROOM] Erro no lançamento:', msg);
     } finally {
         elRcoModalConfirmar.disabled    = false;
@@ -3111,6 +3125,138 @@ elRcoModalZerar.addEventListener('click', async () => {
 });
 
 elBtnRco.addEventListener('click', () => abrirModalRco());
+
+/* ══════════════════════════════════════════════════════════════
+   MODAL DE CONTEÚDOS (fallback quando RCO rejeita sem conteúdos)
+══════════════════════════════════════════════════════════════ */
+const elConteudosModal          = document.getElementById('clConteudosModal');
+const elConteudosSugestoesLista = document.getElementById('clConteudosSugestoesLista');
+const elConteudosSelecionadosLista = document.getElementById('clConteudosSelecionadosLista');
+const elConteudosSelecionadosWrap  = document.getElementById('clConteudosSelecionadosWrap');
+const elConteudosSelecionadosCount = document.getElementById('clConteudosSelecionadosCount');
+const elConteudoNovoInput       = document.getElementById('clConteudoNovoInput');
+const elConteudoNovoBtn         = document.getElementById('clConteudoNovoBtn');
+const elConteudosModalConfirmar = document.getElementById('clConteudosModalConfirmar');
+
+/* Seleção interna do modal (acumulada antes de confirmar) */
+let _conteudosModalSelecionados = [];
+
+function _renderizarConteudosSelecionados() {
+    elConteudosSelecionadosCount.textContent = _conteudosModalSelecionados.length;
+    elConteudosSelecionadosWrap.style.display = _conteudosModalSelecionados.length ? '' : 'none';
+    elConteudosModalConfirmar.disabled = _conteudosModalSelecionados.length === 0;
+
+    elConteudosSelecionadosLista.innerHTML = '';
+    _conteudosModalSelecionados.forEach((c, idx) => {
+        const el = document.createElement('div');
+        el.className = 'cl-conteudo-item--selecionado';
+        el.innerHTML = `
+            <span>${c.descrConteudo ?? '(sem descrição)'}</span>
+            <button class="cl-conteudo-remover" title="Remover" data-idx="${idx}">✕</button>
+        `;
+        el.querySelector('.cl-conteudo-remover').addEventListener('click', () => {
+            _conteudosModalSelecionados.splice(idx, 1);
+            _renderizarConteudosSelecionados();
+            /* Desmarca checkbox de sugestão, se existir */
+            const descr = c.descrConteudo ?? '';
+            const cb = Array.from(elConteudosSugestoesLista.querySelectorAll('input[type="checkbox"]'))
+                .find(el => el.dataset.key === descr);
+            if (cb) cb.checked = false;
+        });
+        elConteudosSelecionadosLista.appendChild(el);
+    });
+}
+
+function _adicionarConteudo(obj) {
+    const descr = (obj.descrConteudo ?? '').trim();
+    if (!descr) return;
+    if (_conteudosModalSelecionados.some(c => c.descrConteudo === descr)) return; /* sem duplicata */
+    _conteudosModalSelecionados.push(obj);
+    _renderizarConteudosSelecionados();
+}
+
+/* Abre o modal de conteúdos e busca sugestões */
+async function abrirModalConteudos() {
+    _conteudosModalSelecionados = [];
+    _renderizarConteudosSelecionados();
+    elConteudoNovoInput.value = '';
+    elConteudosSugestoesLista.innerHTML = '<div class="cl-loading">Buscando conteúdos…</div>';
+    elConteudosModal.classList.add('cl-modal-overlay--visivel');
+
+    const codClasse = grupoAtivo?.codClasseRco ?? '';
+    try {
+        const sugestoes = codClasse
+            ? await apiRaw(`/rco-lancamento/conteudos-sugeridos?codClasse=${codClasse}`)
+            : [];
+
+        elConteudosSugestoesLista.innerHTML = '';
+        if (!sugestoes.length) {
+            elConteudosSugestoesLista.innerHTML =
+                '<span style="color:var(--text-secondary);font-size:.82rem;font-style:italic">Nenhum conteúdo encontrado em outras avaliações da turma.</span>';
+        } else {
+            sugestoes.forEach(c => {
+                const descr = (c.descrConteudo ?? '').trim();
+                if (!descr) return;
+                const label = document.createElement('label');
+                label.className = 'cl-conteudo-item';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.dataset.key = descr; /* sem escapar — dataset é seguro */
+                const spanCb = document.createElement('span');
+                spanCb.textContent = descr;
+                label.append(cb, spanCb);
+                cb.addEventListener('change', () => {
+                    if (cb.checked) _adicionarConteudo(c);
+                    else {
+                        const i = _conteudosModalSelecionados.findIndex(x => x.descrConteudo === descr);
+                        if (i !== -1) _conteudosModalSelecionados.splice(i, 1);
+                        _renderizarConteudosSelecionados();
+                    }
+                });
+                elConteudosSugestoesLista.appendChild(label);
+            });
+        }
+    } catch (err) {
+        console.warn('[CONTEUDOS] Falha ao buscar sugestões:', err.message);
+        elConteudosSugestoesLista.innerHTML =
+            '<span style="color:var(--text-secondary);font-size:.82rem">Não foi possível carregar sugestões.</span>';
+    }
+}
+
+function fecharModalConteudos() {
+    elConteudosModal.classList.remove('cl-modal-overlay--visivel');
+    _conteudosModalSelecionados = [];
+}
+
+/* Adicionar conteúdo personalizado */
+function adicionarConteudoPersonalizado() {
+    const texto = elConteudoNovoInput.value.trim();
+    if (!texto) return;
+    _adicionarConteudo({ descrConteudo: texto });
+    elConteudoNovoInput.value = '';
+    elConteudoNovoInput.focus();
+}
+
+elConteudoNovoBtn.addEventListener('click', adicionarConteudoPersonalizado);
+elConteudoNovoInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); adicionarConteudoPersonalizado(); }
+});
+
+/* Confirmar — aplica seleção e re-tenta o lançamento */
+elConteudosModalConfirmar.addEventListener('click', async () => {
+    if (!_conteudosModalSelecionados.length) return;
+
+    /* Atualiza o estado global com os conteúdos escolhidos */
+    rcoConteudosSelecionados = [..._conteudosModalSelecionados];
+    fecharModalConteudos();
+
+    /* Re-clica o botão de confirmar lançamento no modal RCO */
+    elRcoModalConfirmar.click();
+});
+
+document.getElementById('clConteudosModalFechar').addEventListener('click',   fecharModalConteudos);
+document.getElementById('clConteudosModalCancelar').addEventListener('click', fecharModalConteudos);
+elConteudosModal.addEventListener('click', e => { if (e.target === elConteudosModal) fecharModalConteudos(); });
 
 /* ══════════════════════════════════════════════════════════════
    INICIA

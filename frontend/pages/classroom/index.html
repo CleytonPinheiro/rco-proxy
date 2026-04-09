@@ -524,6 +524,61 @@
         </div>
     </div>
 
+    <!-- ─── Modal de Seleção de Conteúdos (fallback quando RCO rejeita sem conteúdos) ─── -->
+    <div class="cl-modal-overlay" id="clConteudosModal" role="dialog" aria-modal="true">
+        <div class="cl-modal cl-conteudos-modal">
+            <div class="cl-modal-head">
+                <h3>📚 Vincular conteúdos à avaliação</h3>
+                <button class="cl-modal-close" id="clConteudosModalFechar">✕</button>
+            </div>
+            <div class="cl-modal-body">
+                <p class="cl-rco-desc">
+                    O RCO exige pelo menos 1 conteúdo vinculado à avaliação para aceitar o lançamento de notas.
+                    Selecione os conteúdos abaixo ou adicione um novo.
+                </p>
+
+                <!-- Sugestões de outras avaliações da mesma classe -->
+                <div id="clConteudosSugestoes">
+                    <div class="cl-conteudos-secao-titulo">Conteúdos de outras avaliações da turma</div>
+                    <div id="clConteudosSugestoesLista" class="cl-conteudos-lista">
+                        <div class="cl-loading">Buscando…</div>
+                    </div>
+                </div>
+
+                <!-- Adicionar conteúdo personalizado -->
+                <div class="cl-conteudos-secao-titulo" style="margin-top:16px">Adicionar conteúdo personalizado</div>
+                <div class="cl-conteudos-add-wrap">
+                    <input
+                        type="text"
+                        id="clConteudoNovoInput"
+                        class="cl-conteudos-input"
+                        placeholder="Ex: Funções do 2º grau — interpretação gráfica"
+                        maxlength="300"
+                    />
+                    <button class="cl-btn cl-btn--sm cl-btn--outline" id="clConteudoNovoBtn">+ Adicionar</button>
+                </div>
+
+                <!-- Lista de conteúdos selecionados para enviar -->
+                <div id="clConteudosSelecionadosWrap" style="display:none">
+                    <div class="cl-conteudos-secao-titulo" style="margin-top:16px">
+                        Conteúdos a enviar
+                        <span id="clConteudosSelecionadosCount" class="cl-conteudos-count">0</span>
+                    </div>
+                    <div id="clConteudosSelecionadosLista" class="cl-conteudos-lista cl-conteudos-lista--selecionados"></div>
+                </div>
+            </div>
+            <div class="cl-modal-foot cl-modal-foot--split">
+                <div></div>
+                <div class="cl-rco-foot-right">
+                    <button class="cl-btn cl-btn--outline" id="clConteudosModalCancelar">Cancelar</button>
+                    <button class="cl-btn cl-btn--rco-confirm" id="clConteudosModalConfirmar" disabled>
+                        🚀 Lançar com conteúdos selecionados
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="cl-toast" id="clToast"></div>
 

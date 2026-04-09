@@ -1,9 +1,11 @@
 /**
  * RCO Lançamento — lançamento de notas do Classroom direto no RCO Digital
  *
- * GET  /api/rco-lancamento/avaliacoes          — lista avaliações parciais de uma classe
- * GET  /api/rco-lancamento/avaliacoes/:id      — detalha avaliação (com alunos RCO)
- * POST /api/rco-lancamento/avaliacoes/:id/lancar — executa PUT no RCO com notas calculadas
+ * GET  /api/rco-lancamento/avaliacoes                    — lista avaliações parciais de uma classe
+ * GET  /api/rco-lancamento/avaliacoes/:id               — detalha avaliação (com alunos + conteudos)
+ * GET  /api/rco-lancamento/conteudos-sugeridos          — conteúdos de outras avaliações da classe (para modal)
+ * POST /api/rco-lancamento/avaliacoes/:id/lancar        — executa PUT no RCO com notas + conteudos
+ * POST /api/rco-lancamento/avaliacoes/:id/salvar-db     — persiste no banco sem reenviar ao RCO
  */
 
 import { Router }         from 'express';
@@ -178,11 +180,57 @@ export function createRcoLancamentoRouter(deps = {}) {
         }
     });
 
+    /* ── GET /api/rco-lancamento/conteudos-sugeridos?codClasse=X
+       Retorna conteúdos únicos encontrados nas demais avaliações da classe.
+       Usado pelo modal de seleção de conteúdos quando a avaliação alvo
+       não tem conteúdos vinculados e o RCO rejeita o lançamento.
+    ─────────────────────────────────────────────────────── */
+    router.get('/rco-lancamento/conteudos-sugeridos', async (req, res) => {
+        const { codClasse, codPeriodoAvaliacao = 9, codRegraCalculo = 1, qtdeAvaliacao = 2 } = req.query;
+        if (!codClasse) return res.status(400).json({ erro: 'codClasse é obrigatório.' });
+
+        try {
+            /* Busca lista de avaliações da classe */
+            const listR = await rcoApiService.get(
+                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
+                `&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codRegraCalculo=${codRegraCalculo}` +
+                `&qtdeAvaliacao=${qtdeAvaliacao}&page=1&perPage=50`
+            );
+            const avaliacoes = Array.isArray(listR.data) ? listR.data : (listR.data?.content ?? []);
+
+            /* Para cada avaliação, busca conteúdos com timeout de 3 s por request */
+            const conteudosUnicos = new Map(); /* descrConteudo → objeto completo */
+
+            await Promise.allSettled(
+                avaliacoes.map(async av => {
+                    try {
+                        const r = await rcoApiService.get(
+                            `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=conteudos`
+                        );
+                        const lista = r.data?.conteudos ?? [];
+                        lista.forEach(c => {
+                            const chave = (c.descrConteudo ?? '').trim();
+                            if (chave && !conteudosUnicos.has(chave)) {
+                                conteudosUnicos.set(chave, c);
+                            }
+                        });
+                    } catch { /* ignora falha individual */ }
+                })
+            );
+
+            res.json([...conteudosUnicos.values()]);
+        } catch (e) {
+            console.error('[RCO-LANC] Erro ao buscar conteúdos sugeridos:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── POST /api/rco-lancamento/avaliacoes/:id/lancar
        Lança notas no RCO com três camadas de proteção:
          1. Validação de entrada (antes do PUT)
          2. Verificação pós-PUT: GET confirma o que o RCO realmente salvou
          3. Persistência no banco com os valores VERIFICADOS do RCO
+       Nota: meta.conteudos (se presente) é re-enviado ao RCO via spread do meta.
        Retorna HTTP 207 (Multi-Status) se o PUT ao RCO foi OK mas o banco falhou.
     ─────────────────────────────────────────────────────── */
     router.post('/rco-lancamento/avaliacoes/:id/lancar', async (req, res) => {
