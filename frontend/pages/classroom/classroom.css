@@ -687,7 +687,7 @@ body {
     right: 24px;
     background: #1e293b;
     color: white;
-    padding: 10px 18px;
+    padding: 12px 20px;
     border-radius: 10px;
     font-size: .85rem;
     font-weight: 600;
@@ -697,11 +697,19 @@ body {
     transition: opacity .25s, transform .25s;
     z-index: 500;
     pointer-events: none;
-    max-width: 320px;
+    max-width: 420px;
+    word-break: break-word;
+    line-height: 1.4;
 }
-.cl-toast--visivel { opacity: 1; transform: translateY(0); }
-.cl-toast--erro { background: #dc2626; }
-.cl-toast--ok   { background: #059669; }
+.cl-toast--visivel {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto; /* permite clicar para fechar */
+    cursor: pointer;
+}
+.cl-toast--erro    { background: #dc2626; }
+.cl-toast--ok      { background: #059669; }
+.cl-toast--alerta  { background: #d97706; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {

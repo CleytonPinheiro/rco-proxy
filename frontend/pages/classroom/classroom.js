@@ -107,12 +107,16 @@ const elNotasTitulo    = document.getElementById('clNotasTitulo');
 
 /* ── Toast ── */
 let toastTimer;
-function toast(msg, tipo = '') {
+function toast(msg, tipo = '', duracao = 3500) {
     clearTimeout(toastTimer);
     elToast.textContent = msg;
     elToast.className = `cl-toast cl-toast--visivel${tipo ? ' cl-toast--' + tipo : ''}`;
-    toastTimer = setTimeout(() => elToast.classList.remove('cl-toast--visivel'), 3000);
+    toastTimer = setTimeout(() => elToast.classList.remove('cl-toast--visivel'), duracao);
 }
+elToast.addEventListener('click', () => {
+    clearTimeout(toastTimer);
+    elToast.classList.remove('cl-toast--visivel');
+});
 
 /* ── Escala RCO: divide por 10, 1 casa decimal ── */
 const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
@@ -3003,10 +3007,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         toast(`✅ Notas lançadas e salvas! (${mapeados}/${total} alunos)${verMsg}`, 'ok');
         fecharModalRco();
     } catch (e) {
-        /* Erro na validação (400) ou erro do servidor (500) — PUT não chegou ao RCO */
-        const detalhe = e.detalhes?.join('; ') ?? e.message;
-        toast('Erro ao lançar no RCO: ' + detalhe, 'erro');
-        console.error('[CLASSROOM] Erro no lançamento:', e);
+        /* Distingue erro de validação local vs. resposta de erro do RCO */
+        const msg = e.message || 'Erro desconhecido';
+        const isRcoErro = msg.length > 30; /* mensagens do RCO costumam ser longas */
+        const prefixo   = isRcoErro ? '⚠️ RCO: ' : '❌ Erro: ';
+        toast(prefixo + msg, 'erro', 8000); /* 8 s — tempo suficiente para ler */
+        console.error('[CLASSROOM] Erro no lançamento:', msg);
     } finally {
         elRcoModalConfirmar.disabled    = false;
         elRcoModalConfirmar.textContent = '🚀 Confirmar lançamento';

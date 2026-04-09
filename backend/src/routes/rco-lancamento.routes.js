@@ -252,8 +252,16 @@ export function createRcoLancamentoRouter(deps = {}) {
             );
 
             if (r.status >= 400) {
-                console.error('[RCO-LANC] Erro no PUT RCO:', r.status, JSON.stringify(r.data));
-                return res.status(r.status).json({ erro: 'Erro ao lançar notas no RCO.', detalhe: r.data });
+                /* Extrai a mensagem legível que o RCO retornou (string ou objeto) */
+                const rcoMsg = typeof r.data === 'string'
+                    ? r.data
+                    : (r.data?.message ?? r.data?.erro ?? r.data?.msg ?? JSON.stringify(r.data));
+                console.error(`[RCO-LANC] Erro no PUT RCO (${r.status}):`, rcoMsg);
+                return res.status(r.status).json({
+                    erro:   rcoMsg || 'Erro desconhecido ao lançar notas no RCO.',
+                    detalhe: r.data,
+                    origem: 'RCO',
+                });
             }
 
             console.log(`[RCO-LANC] PUT OK (status ${r.status}). Iniciando verificação pós-PUT...`);
