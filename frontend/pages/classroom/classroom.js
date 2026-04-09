@@ -1054,9 +1054,10 @@ async function carregarResumoGrupo(grupo) {
         const meta  = grupo.pontosMeta;
 
         /* Monta mapa userId → dados de recuperação (se houver grupo de rec. vinculado) */
+        let recMeta = meta;
         const recMap = {};
         if (resumoRec?.alunos) {
-            const recMeta = gruposCache.find(g => String(g.id) === String(grupo.recuperacaoId))?.pontosMeta || meta;
+            recMeta = gruposCache.find(g => String(g.id) === String(grupo.recuperacaoId))?.pontosMeta || meta;
             resumoRec.alunos.forEach(a => {
                 recMap[a.userId] = {
                     soma:     ((a.mediaIndice ?? 0) / 100) * recMeta,
@@ -1100,7 +1101,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, isRec, hasRec, dataInicio: resumo.dataInicio };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
 
@@ -2765,6 +2766,10 @@ async function selecionarAvaliacao(av, itemEl) {
             if (cod) classIdx[String(cod)] = a;
         });
 
+        /* Peso da avaliação no RCO e metas dos grupos para normalização das notas */
+        const { meta: metaG, recMeta: recMetaG } = grupoResumoData;
+        const pesoRco = rcoAvaliacaoSelecionada?.pesoDecimal ?? 1;
+
         rcoAlunosMapeados = alunosRco.map(rcoAluno => {
             /* Match 1º por codMatrizAluno (exato), 2º por nome normalizado (fallback) */
             let classAluno = classIdx[String(rcoAluno.codMatrizAluno)] ?? null;
@@ -2798,10 +2803,14 @@ async function selecionarAvaliacao(av, itemEl) {
             if (classAluno) {
                 const somaRec = classAluno.recData?.soma ?? null;
                 if (somaRec !== null) {
-                    notaCalc = Number(somaRec.toFixed(1));
+                    /* Nota da recuperação: soma em recMeta → normaliza para escala RCO */
+                    const mR = recMetaG > 0 ? recMetaG : 1;
+                    notaCalc = Number(Math.min(somaRec / mR * pesoRco, pesoRco).toFixed(1));
                     usouRec  = true;
                 } else {
-                    notaCalc = Number((classAluno.soma ?? 0).toFixed(1));
+                    /* Nota do grupo principal: soma em meta → normaliza para escala RCO */
+                    const mG = metaG > 0 ? metaG : 1;
+                    notaCalc = Number(Math.min((classAluno.soma ?? 0) / mG * pesoRco, pesoRco).toFixed(1));
                 }
             }
 
@@ -2862,10 +2871,19 @@ async function selecionarAvaliacao(av, itemEl) {
             }
 
             if (temRec) {
-                /* Classroom já calculou soma e somaRec — pega direto do classAluno via _notaCalc */
-                const classAluno = classIdx[String(a.codMatrizAluno)] ?? null;
-                const somaOrig = classAluno ? fmtNota(classAluno.soma) : '—';
-                const somaRec  = classAluno?.recData ? fmtNota(classAluno.recData.soma) : '—';
+                /* Mostra notas do classAluno já normalizadas para escala RCO */
+                const classAluno = classIdx[String(a.codMatrizAluno)]
+                    ?? (a._matched ? alunosClass.find(c =>
+                        normNome(c.aluno?.nome ?? c.nome ?? '') === normNome(a.nome ?? '')
+                    ) : null) ?? null;
+                const mG = metaG  > 0 ? metaG  : 1;
+                const mR = recMetaG > 0 ? recMetaG : 1;
+                const somaOrig = classAluno
+                    ? fmtNota(Math.min((classAluno.soma ?? 0) / mG * pesoRco, pesoRco))
+                    : '—';
+                const somaRec  = classAluno?.recData
+                    ? fmtNota(Math.min(classAluno.recData.soma / mR * pesoRco, pesoRco))
+                    : '—';
 
                 const notaFinalExibir = a._usouRec
                     ? `<strong class="cl-rco-nota-rec">${notaEnviar}</strong>`
