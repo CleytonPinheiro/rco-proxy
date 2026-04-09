@@ -308,32 +308,60 @@ export function createRcoLancamentoRouter(deps = {}) {
                 ` | conteudos=${nConteudos} | codUsuario=${codUsuario}`
             );
 
-            /* Para avaliações de recuperação (tipo=2), envia apenas os campos originais do RCO.
-               codAvaliacaoParcialAluno é o ID do registro individual — obrigatório no PUT.
-               Os campos extras que o EduSync adiciona (nome, numChamada, matched, usouRecuperacao)
-               ficam fora do payload enviado ao RCO, mas são usados para salvar no banco local. */
-            const alunosParaRco = isRec
-                ? alunos.map(({ codAvaliacaoParcialAluno, codMatrizAluno, notaDecimal }) => ({
-                      ...(codAvaliacaoParcialAluno != null ? { codAvaliacaoParcialAluno } : {}),
-                      codMatrizAluno,
-                      notaDecimal,
-                  }))
-                : alunos;
+            /* Alunos limpos para envio ao RCO: só campos originais, sem campos internos do EduSync */
+            const alunosParaRco = alunos.map(({ codAvaliacaoParcialAluno, codMatrizAluno, notaDecimal }) => ({
+                ...(codAvaliacaoParcialAluno != null ? { codAvaliacaoParcialAluno } : {}),
+                codMatrizAluno,
+                notaDecimal,
+            }));
 
-            /* Log do payload completo — inclui amostra dos 3 primeiros alunos para debug */
+            let putPayload;
             if (isRec) {
-                const payloadDebug = {
-                    ...meta, codUsuario, dataAtualizacao: agora,
-                    _qtdeAlunos: alunosParaRco.length,
-                    _amostraAlunos: alunosParaRco.slice(0, 3),
-                    _amostraAlunosOriginal: alunos.slice(0, 1),
+                /* Para tipo=2: busca o estado completo da avaliação no RCO e usa como base do PUT.
+                   O RCO web app faz GET + PUT do objeto completo. Campos como descrAvaliacaoParcial
+                   podem ser obrigatórios mesmo que o GET não os exija. Sobrescrevemos apenas
+                   alunos, codUsuario e dataAtualizacao. */
+                let evalBase = { ...meta }; /* fallback: usa meta do frontend */
+                try {
+                    const gr = await rcoApiService.get(
+                        `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,conteudos`
+                    );
+                    if (gr.status === 200 && gr.data) {
+                        /* Remove alunos aninhados dentro de recuperadas/recuperacaos (não são enviados de volta) */
+                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...rest }) => rest);
+                        evalBase = {
+                            ...gr.data,
+                            recuperadas:  limparAninhados(gr.data.recuperadas),
+                            recuperacaos: limparAninhados(gr.data.recuperacaos),
+                        };
+                        console.log('[RCO-LANC] GET pré-PUT tipo=2 OK — usando estrutura completa do RCO.');
+                    }
+                } catch (e) {
+                    console.warn('[RCO-LANC] GET pré-PUT falhou, usando meta do frontend:', e.message);
+                }
+
+                putPayload = {
+                    ...evalBase,
+                    codUsuario,
+                    dataAtualizacao: agora,
+                    alunos: alunosParaRco,
                 };
-                console.log('[RCO-LANC] Payload PUT recuperação:', JSON.stringify(payloadDebug, null, 2));
+
+                /* Remove campos que nunca devem ir no PUT */
+                delete putPayload.alunos_count;
+
+                console.log('[RCO-LANC] Payload PUT recuperação (base GET):', JSON.stringify({
+                    ...putPayload,
+                    alunos: putPayload.alunos?.slice(0, 3),
+                    _qtdeAlunos: alunosParaRco.length,
+                }, null, 2));
+            } else {
+                putPayload = { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco };
             }
 
             const r = await rcoApiService.put(
                 `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`,
-                { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco },
+                putPayload,
                 { grupo: 'D' }
             );
 
@@ -346,9 +374,11 @@ export function createRcoLancamentoRouter(deps = {}) {
                 console.error(`[RCO-LANC] Erro no PUT RCO (${r.status}):`, rcoMsg);
                 console.error(`[RCO-LANC] Body completo do erro RCO:`, JSON.stringify(r.data, null, 2));
                 if (isRec) {
-                    console.error(`[RCO-LANC] Payload exato enviado ao RCO (tipo=2):`, JSON.stringify(
-                        { ...meta, codUsuario, dataAtualizacao: agora, alunos: alunosParaRco }, null, 2
-                    ));
+                    console.error(`[RCO-LANC] Payload exato enviado ao RCO (tipo=2):`, JSON.stringify({
+                        ...putPayload,
+                        alunos: putPayload?.alunos?.slice(0, 3),
+                        _qtdeAlunos: alunosParaRco.length,
+                    }, null, 2));
                 }
                 return res.status(r.status).json({
                     erro:   rcoMsg || 'Erro desconhecido ao lançar notas no RCO.',
