@@ -338,12 +338,8 @@ export function createRcoLancamentoRouter(deps = {}) {
                         `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
                     );
                     if (gr.status === 200 && gr.data) {
-                        /* Converte para formato RCO: +0000 em vez de Z */
-                        const agoraRco = agora.replace('Z', '+0000');
-                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => ({
-                            ...r,
-                            pesoDecimal: Number(r.pesoDecimal),  /* número, como o top-level */
-                        }));
+                        /* recuperadas: mantém pesoDecimal como string (igual ao nativo RCO) */
+                        const limparAninhados = arr => (arr ?? []).map(({ alunos: _a, ...r }) => r);
                         (gr.data.alunos ?? []).forEach(a => {
                             alunosRcoMap[String(a.codMatrizAluno)] = a;
                         });
@@ -352,12 +348,12 @@ export function createRcoLancamentoRouter(deps = {}) {
                             codTipoAvaliacaoParcial:   gr.data.codTipoAvaliacaoParcial,
                             numAvaliacaoParcial:        gr.data.numAvaliacaoParcial,
                             dataAvaliacaoParcial:       gr.data.dataAvaliacaoParcial,
-                            pesoDecimal:               Number(gr.data.pesoDecimal),
-                            dataAtualizacao:            agoraRco,   /* timestamp atual no formato RCO */
+                            pesoDecimal:               Number(gr.data.pesoDecimal),   /* top-level: número */
+                            dataAtualizacao:            gr.data.dataAtualizacao,       /* ORIGINAL do GET — não usar agora */
                             codUsuario,
-                            recuperadas: limparAninhados(gr.data.recuperadas),
+                            recuperadas: limparAninhados(gr.data.recuperadas),         /* pesoDecimal string, sem alunos */
                         };
-                        console.log(`[RCO-LANC] GET pré-PUT OK — dataAtualizacao=${agoraRco}`);
+                        console.log(`[RCO-LANC] GET pré-PUT OK — dataAtualizacao=${gr.data.dataAtualizacao} (original)`);
                     }
                 } catch (e) {
                     console.warn('[RCO-LANC] GET pré-PUT falhou:', e.message);
@@ -394,20 +390,37 @@ export function createRcoLancamentoRouter(deps = {}) {
                 alunos.forEach(a => { notaMap[String(a.codMatrizAluno)] = a.notaDecimal; });
 
                 /* ── Passo 4: Monta lista final de alunos para o PUT ──
-                   Usa apenas os campos mínimos aceitos pelo RCO:
-                   codAvaliacaoParcialAluno + codMatrizAluno + notaDecimal (string).
-                   Não inclui campos do matrizAlunos pois podem causar rejeição pelo servidor.
-                   - Encontrados no Classroom → nota calculada (string)
-                   - Não encontrados → "0.0" */
+                   Segue exatamente a estrutura do RCO nativo:
+                   - codAvaliacaoParcialAluno, codMatrizAluno, numChamada, nome,
+                     indAtivo, situacaoMatricula, cgmAluno (do matrizAlunos)
+                   - notaDecimal (string): nota calculada ou "0.0" se tem Classroom sem nota
+                   - Alunos sem nota no Classroom E sem nota no RCO: omite notaDecimal */
                 const alunosBase = Object.values(alunosRcoMap);
                 const alunosEnviar = alunosBase.map(a => {
                     const key      = String(a.codMatrizAluno);
                     const notaCalc = notaMap[key];
-                    return {
+                    const mAluno   = matrizMap[key] ?? {};
+
+                    const aluno = {
                         codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
                         codMatrizAluno:           a.codMatrizAluno,
-                        notaDecimal:              notaCalc != null ? Number(notaCalc).toFixed(1) : '0.0',
+                        ...(mAluno.numChamada        != null ? { numChamada: mAluno.numChamada }               : {}),
+                        ...(mAluno.nome              != null ? { nome: mAluno.nome }                           : {}),
+                        ...(mAluno.indAtivo          != null ? { indAtivo: mAluno.indAtivo }                   : {}),
+                        ...(mAluno.situacaoMatricula != null ? { situacaoMatricula: mAluno.situacaoMatricula } : {}),
+                        ...(mAluno.cgmAluno          != null ? { cgmAluno: mAluno.cgmAluno }                   : {}),
                     };
+
+                    /* Nota: inclui se veio do Classroom; omite se aluno não estava em nenhuma turma */
+                    if (notaCalc != null) {
+                        aluno.notaDecimal = Number(notaCalc).toFixed(1);
+                    } else if (a.notaDecimal != null) {
+                        /* mantém nota já existente no RCO */
+                        aluno.notaDecimal = Number(a.notaDecimal).toFixed(1);
+                    }
+                    /* sem nota → omite notaDecimal (comportamento nativo RCO) */
+
+                    return aluno;
                 });
 
                 const base = evalBase ?? {
