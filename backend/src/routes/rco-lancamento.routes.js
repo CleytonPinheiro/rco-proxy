@@ -244,6 +244,11 @@ export function createRcoLancamentoRouter(deps = {}) {
         const { id } = req.params;
         const { meta, alunos } = req.body;
 
+        /* ── Log do body recebido do frontend ── */
+        console.log(`[RCO-LANC] ► BODY recebido (avaliacaoId=${id}):`);
+        console.log(`[RCO-LANC]   meta:`, JSON.stringify(meta, null, 2));
+        console.log(`[RCO-LANC]   alunos (${alunos?.length ?? 0}):`, JSON.stringify(alunos, null, 2));
+
         /* ── 1. Validação de entrada ── */
         const codAvParam = Number(id);
         if (!Number.isFinite(codAvParam) || codAvParam <= 0) {
