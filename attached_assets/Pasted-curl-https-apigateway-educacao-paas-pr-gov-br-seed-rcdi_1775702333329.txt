@@ -1,0 +1,17 @@
+curl 'https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/avaliacaoParcialClasses?codClasse=8979981&codPeriodoAvaliacao=9&codRegraCalculo=3&qtdeAvaliacao=2&page=1&perPage=50' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
+  -H 'Authorization: Bearer eyJraWQiOiIvcHJpdmF0ZUtleS5wZW0iLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGgtY3MuaWRlbnRpZGFkZWRpZ2l0YWwucHIuZ292LmJyIiwianRpIjoiZmVkNTViZmZjZjNhNGY5NWZhMTRjYmI2NjM1MzVmYjkiLCJzdWIiOiJjcy10b2tlbi11c2luZy1qd3QtcmJhYyIsImlhdCI6MTc3NTY4NzEyNiwiYXVkIjoiZjM0MGYxYjFmNjViNmRmNWI1ZTNmOTRkOTViMTFkYWYiLCJncmFudF90eXBlIjoidG9rZW4iLCJzZXNzaW9uIjoiZDIyMTg1MWM5YjlkMGE4OGQ1Mjk2NjY5MGU1MmMwNTcxNzc1Njg3MDkxNTg0IiwiYWNyIjoiMSIsImFtciI6InVzZXJwYXNzIiwicmVzb3VjZW93bmVyX2lkIjoiMTA1MDY2OCIsInVwbiI6IjA2MzU3OTE0OTgzIiwibmFtZSI6IkNMRVlUT04gUElOSEVJUk8gRE9TIFNBTlRPUyIsImxvZ2luIjoiMDYzNTc5MTQ5ODMiLCJuaXZlbENvbmZpYWJpbGlkYWRlQ2FkYXN0cm8iOjQsImVtYWlsIjoiY2xleXRvbl9waW5AaG90bWFpbC5jb20iLCJyZyI6IjEwMzE4MDU0NiIsInVmUmciOiJQUiIsImR0TmFzY2ltZW50byI6IjE5ODktMDYtMTQgMDA6MDA6MDAiLCJkYXRhQ2FkYXN0cm9Vc3VhcmlvIjoiMjAyMC0wMy0xMSAxMTozMDo0NyIsImdyb3VwcyI6WyJSQ08gRG9jZW50ZSIsImVtZ3ByLm1vYmlsZSIsImVtZ3ByLnYxLm9jb3JyZW5jaWEucG9zdCJdLCJleHAiOjE3NzU3MzAzMjZ9.FkQ8AMKuxK0OUOZXu6UrkpSj73VXnVaeMX8j197sss-h6Ag6Df8Hl4ofNkw3qWXeu4kkyvv-E014BcckWOj9al1JFCvI3FCmPUySYeAERr_c_8PaK_d9ArNR4bGOAFPdAA18gWOLG1SVOZij7aRIleQaaaAHuNbjHPRJnEjP01oEORIDai42fSqNKSbRkF_VgTh_wm4CCCwkq3NBBJGhn3ifbvl2A9BA-2jIdCaM8mlnbYlxHwGhH4OZqK0HRnJJz4Rv1tVs02KQ1Don24RRPDKp1exB7V3NDjCPykWV0wfpRjkpTnb45nlV8GbdocofYvy4m-FmbpCA9tIaAYdwTA' \
+  -H 'Cache-Control: no-cache' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: https://rco.paas.pr.gov.br' \
+  -H 'Pragma: no-cache' \
+  -H 'Referer: https://rco.paas.pr.gov.br/' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-site' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+  -H 'consumerId: RCDIGWEB' \
+  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"'
