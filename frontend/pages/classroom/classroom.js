@@ -2879,13 +2879,15 @@ async function selecionarAvaliacao(av, itemEl) {
             /* Badge de status */
             let badge;
             if (!a._matched) {
-                badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não no grupo → 0</span>';
-            } else if (a._usouRec || grupoResumoData?.isRec) {
-                /* _usouRec = aluno tem nota do grupo de rec. vinculado ao principal
-                   isRec    = estamos DENTRO do próprio grupo de recuperação */
-                badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 recuperação</span>';
+                badge = '<span class="cl-rco-badge cl-rco-badge--miss">✕ não encontrado → 0</span>';
+            } else if (grupoResumoData?.isRec) {
+                /* Estamos dentro do próprio grupo de recuperação */
+                badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 grupo de rec.</span>';
+            } else if (a._usouRec) {
+                /* Aluno fez recuperação — a nota da rec. substituirá a nota original */
+                badge = '<span class="cl-rco-badge cl-rco-badge--rec">🔄 usa nota rec.</span>';
             } else {
-                badge = '<span class="cl-rco-badge cl-rco-badge--neutro">📋 grupo principal</span>';
+                badge = '<span class="cl-rco-badge cl-rco-badge--ok">✓ grupo principal</span>';
             }
 
             if (temRec) {

@@ -2013,7 +2013,7 @@ body {
     font-size: .85rem;
 }
 .cl-rco-table th {
-    background: var(--bg-sidebar);
+    background: var(--bg-sidebar, #1e293b);
     padding: 8px 10px;
     text-align: left;
     font-weight: 600;
@@ -2023,8 +2023,10 @@ body {
     letter-spacing: .04em;
     position: sticky;
     top: 0;
-    z-index: 2;
-    border-bottom: 2px solid var(--border);
+    z-index: 10;
+    /* box-shadow substitui border-bottom pois border desaparece no sticky */
+    box-shadow: 0 2px 0 var(--border, #334155);
+    white-space: nowrap;
 }
 .cl-rco-table td {
     padding: 7px 10px;
