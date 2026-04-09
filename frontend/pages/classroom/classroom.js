@@ -1923,6 +1923,7 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
         }
         if (grupoAtivo && String(grupoAtivo.id) === String(grupoId)) {
             grupoAtivo = gruposCache.find(g => String(g.id) === String(grupoId)) || null;
+            if (grupoAtivo) await carregarResumoGrupo(grupoAtivo);
         }
     } catch (e) {
         toast('Erro ao salvar: ' + e.message, 'erro');
