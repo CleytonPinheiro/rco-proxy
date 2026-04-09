@@ -767,6 +767,87 @@ export function createRcoLancamentoRouter(deps = {}) {
         res.json(resultado);
     });
 
+    /* ── GET /api/rco-lancamento/debug/:id/put-variations
+       Testa variações do payload PUT contra o RCO para diagnóstico.
+       Usa alunos: [] em todas as variações (mínimo possível).
+    ─────────────────────────────────────────────────────── */
+    router.get('/rco-lancamento/debug/:id/put-variations', requireAuth, async (req, res) => {
+        const id = req.params.id;
+        const RCO_CLASSE_BASE = process.env.RCO_CLASSE_BASE ?? 'https://rco.apps.seed.pr.gov.br/classe/v1';
+        const resultados = [];
+
+        /* GET avaliação base */
+        let av;
+        try {
+            const gr = await rcoApiService.get(
+                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
+            );
+            av = gr.data;
+        } catch (e) {
+            return res.status(500).json({ erro: 'GET falhou: ' + e.message });
+        }
+
+        const agora = new Date().toISOString().replace('Z', '+0000');
+        const token = req.session?.codUsuario ?? av.codUsuario;
+
+        const limpar = arr => (arr ?? []).map(({ alunos: _a, ...r }) => ({
+            ...r,
+            pesoDecimal: Number(r.pesoDecimal),
+        }));
+
+        const base = {
+            codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+            codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
+            numAvaliacaoParcial:       av.numAvaliacaoParcial,
+            dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
+            pesoDecimal:               Number(av.pesoDecimal),
+            dataAtualizacao:           agora,
+            codUsuario:                token,
+        };
+
+        /* Um aluno de amostra para V5 */
+        const alunoAmostra = (av.alunos ?? []).slice(0, 1).map(a => ({
+            codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
+            codMatrizAluno:           a.codMatrizAluno,
+            notaDecimal:              '0.0',
+        }));
+
+        const variacoes = [
+            { label: 'V1: base + recuperadas originais + alunos: []',   payload: { ...base, recuperadas: limpar(av.recuperadas), alunos: [] } },
+            { label: 'V2: base SEM recuperadas + alunos: []',           payload: { ...base, alunos: [] } },
+            { label: 'V3: base + recuperadas: [] (vazio) + alunos: []', payload: { ...base, recuperadas: [], alunos: [] } },
+            { label: 'V4: SOMENTE codAvaliacaoParcialClasse + alunos: []', payload: { codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse, alunos: [] } },
+            { label: 'V5: base + recuperadas originais + 1 aluno 0.0',  payload: { ...base, recuperadas: limpar(av.recuperadas), alunos: alunoAmostra } },
+            { label: 'V6: base + recuperadas sem descrAvaliacaoParcial + alunos: []', payload: {
+                ...base,
+                recuperadas: limpar(av.recuperadas).map(({ descrAvaliacaoParcial: _d, ...r }) => r),
+                alunos: [],
+            }},
+            { label: 'V7: base + dataAtualizacao original + recuperadas + alunos: []', payload: {
+                ...base,
+                dataAtualizacao: av.dataAtualizacao,
+                recuperadas: limpar(av.recuperadas),
+                alunos: [],
+            }},
+        ];
+
+        for (const { label, payload } of variacoes) {
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}`,
+                    payload
+                );
+                resultados.push({ label, status: r.status, ok: true });
+            } catch (e) {
+                const status = e.response?.status ?? 'ERR';
+                const body   = e.response?.data   ?? e.message;
+                resultados.push({ label, status, ok: false, body });
+            }
+        }
+
+        res.json({ avaliacaoId: id, agora, resultados });
+    });
+
     /* ── PATCH /api/rco-lancamento/grupos/:grupoId/cod-classe
        Salva/atualiza o codClasseRco vinculado a um grupo.
     ─────────────────────────────────────────────────────── */
