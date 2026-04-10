@@ -1303,7 +1303,7 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 .cl-detalhe-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
     padding: 10px 16px;
@@ -1317,13 +1317,60 @@ body.cl-popout .logo-icon { font-size: 15px; }
     font-weight: 500;
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 .cl-detalhe-row-status {
     flex-shrink: 0;
+    padding-top: 1px;
 }
+
+/* ── Bloco Quizizz dentro de cada linha do detalhe do aluno ── */
+.cl-detalhe-qz-tag {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: .72rem;
+    background: rgba(124,58,237,.08);
+    border: 1px solid rgba(124,58,237,.22);
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+.cl-detalhe-qz-ico   { font-size: .85rem; line-height: 1; }
+.cl-detalhe-qz-label {
+    font-weight: 800;
+    color: #7c3aed;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-size: .68rem;
+}
+.cl-detalhe-qz-nome {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.cl-detalhe-qz-questoes {
+    background: rgba(124,58,237,.15);
+    color: #7c3aed;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+.cl-detalhe-qz-status {
+    font-weight: 600;
+}
+.cl-qz-status--ok     { color: #10b981; }
+.cl-qz-status--entrou { color: #ea580c; }
+.cl-qz-status--nao    { color: #6b7280; }
+.cl-qz-status--aguard { color: #4285F4; }
+.cl-detalhe-qz-link {
+    color: #7c3aed;
+    text-decoration: none;
+    font-weight: 700;
+    border-bottom: 1px dashed rgba(124,58,237,.4);
+}
+.cl-detalhe-qz-link:hover { border-bottom-style: solid; }
 
 /* ══════════════════════════════════════════════════════════════
    AUDITORIA DE FREQUÊNCIA

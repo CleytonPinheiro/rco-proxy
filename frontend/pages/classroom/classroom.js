@@ -1674,7 +1674,45 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
             tipo = 'nao-realizada';
         }
 
-        return { atv, statusHtml, tipo, nota, entregue };
+        /* ── Bloco Quizizz (somente para atividades detectadas como Quizizz) ── */
+        let quizizzHtml = '';
+        if (atv.quizizzId) {
+            const qzId  = /^[0-9a-f]{24}$/i.test(atv.quizizzId) ? atv.quizizzId : null;
+            const qzDat = qzId ? quizizzCache[qzId] : null;
+            const qzLink = qzId ? `https://quizizz.com/admin/quiz/${qzId}` : null;
+
+            /* Status do aluno neste quiz */
+            let qzStatusTxt, qzStatusCls;
+            if (entrou) {
+                qzStatusTxt = '↩ Entrou no jogo mas saiu sem realizar — ficou com 0 pts';
+                qzStatusCls = 'cl-qz-status--entrou';
+            } else if (nota !== null && nota > 0) {
+                const ptMax = atv.pontos ?? 0;
+                const pctQ  = ptMax > 0 ? ` (${((nota / ptMax) * 100).toFixed(0)}%)` : '';
+                qzStatusTxt = `✓ Realizou — nota no Quizizz: ${rco(nota)} pts${pctQ}`;
+                qzStatusCls = 'cl-qz-status--ok';
+            } else if (nota === 0 && !entregue) {
+                qzStatusTxt = '✗ Não realizou o quiz';
+                qzStatusCls = 'cl-qz-status--nao';
+            } else if (entregue) {
+                qzStatusTxt = '⏳ Realizou — aguardando correção';
+                qzStatusCls = 'cl-qz-status--aguard';
+            } else {
+                qzStatusTxt = '✗ Não realizou o quiz';
+                qzStatusCls = 'cl-qz-status--nao';
+            }
+
+            quizizzHtml = `
+            <div class="cl-detalhe-qz-tag">
+                <span class="cl-detalhe-qz-ico">🎮</span>
+                <span class="cl-detalhe-qz-label">Quizizz</span>
+                ${qzDat ? `<span class="cl-detalhe-qz-nome">${esc(qzDat.titulo)}</span><span class="cl-detalhe-qz-questoes">${qzDat.totalQ}q</span>` : ''}
+                <span class="cl-detalhe-qz-status ${qzStatusCls}">${qzStatusTxt}</span>
+                ${qzLink ? `<a class="cl-detalhe-qz-link" href="${qzLink}" target="_blank" rel="noopener">Ver quiz ↗</a>` : ''}
+            </div>`;
+        }
+
+        return { atv, statusHtml, tipo, nota, entregue, quizizzHtml };
     });
 
     const totalAtiv     = atividades.length;
@@ -1684,7 +1722,10 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
 
     const rowsHtml = rows.map(r => `
         <div class="cl-detalhe-row" data-tipo="${r.tipo}">
-            <div class="cl-detalhe-row-titulo">${esc(r.atv.titulo)}</div>
+            <div class="cl-detalhe-row-titulo">
+                ${esc(r.atv.titulo)}
+                ${r.quizizzHtml}
+            </div>
             <div class="cl-detalhe-row-status">${r.statusHtml}</div>
         </div>`).join('');
 
