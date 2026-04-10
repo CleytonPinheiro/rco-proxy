@@ -770,15 +770,15 @@ body[data-side="open"] .side-panel {
 .side-nav-chevron-hint {
     margin-left: auto;
     flex-shrink: 0;
+    align-self: stretch;          /* ocupa toda a altura do .side-nav-item */
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 30px;
     border-radius: 8px;
     background: var(--bg-tertiary);
     border: 2px solid #007bff;
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 900;
     color: #007bff;
     line-height: 1;
