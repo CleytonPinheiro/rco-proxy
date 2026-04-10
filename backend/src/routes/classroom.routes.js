@@ -1064,6 +1064,25 @@ export function createClassroomRouter(deps = {}) {
                 [resposta || null, id]
             );
             if (!rows.length) return res.status(404).json({ erro: 'Solicitação não encontrada.' });
+
+            /* Notifica o aluno — bloqueante na próxima visita ao portal */
+            const sol = rows[0];
+            const tipo    = acao === 'aprovar' ? 'reabertura_aprovada' : 'reabertura_negada';
+            const titulo  = acao === 'aprovar' ? '✅ Reabertura aprovada!' : '❌ Reabertura negada';
+            const msgBase = acao === 'aprovar'
+                ? `Sua solicitação para "${sol.coursework_titulo}" foi aprovada. Acesse a atividade e complete-a agora!`
+                : `Sua solicitação para "${sol.coursework_titulo}" foi negada.${resposta ? ` Motivo: ${resposta}` : ''}`;
+            pool.query(
+                `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                 SELECT $1, $2, $3, $4, $5, $6::jsonb
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM notificacoes_aluno
+                     WHERE aluno_email=$1 AND tipo=$2 AND referencia=$3 AND lida=false
+                 )`,
+                [sol.aluno_email, tipo, sol.coursework_id, titulo, msgBase,
+                 JSON.stringify({ coursework_id: sol.coursework_id, curso_nome: sol.curso_nome })]
+            ).catch(() => {});
+
             res.json({ ok: true, solicitacao: rows[0] });
         } catch (e) {
             res.status(500).json({ erro: e.message });

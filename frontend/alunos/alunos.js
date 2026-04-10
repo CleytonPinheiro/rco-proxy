@@ -11,6 +11,11 @@ let _solicitadasMap  = {};   /* courseworkId → { status, criado_em } */
 let _solicitaModal   = null; /* dados da atividade no modal atual */
 let _cursoAtualReq   = null; /* { cursoId, cursoNome } da atividade no modal */
 
+/* ── Estado global de notificações bloqueantes ───────────────────── */
+let _notifQueue   = [];   /* notificações não lidas aguardando exibição */
+let _notifAtual   = null; /* notificação sendo exibida agora */
+let _notifTimerId = null; /* id do setInterval de polling */
+
 const TIPO_LABEL = {
     ASSIGNMENT:                  'Atividade',
     SHORT_ANSWER_QUESTION:       'Pergunta',
@@ -90,6 +95,7 @@ async function verificarStatus() {
         if (data.aluno) {
             mostrarTelaLogado(data.aluno);
             carregarAtividades();
+            iniciarPollingNotificacoes();
         } else {
             mostrarTelaLogin();
             mostrarLoading(false);
@@ -296,12 +302,16 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
         }
     }
 
-    /* "Tentar novamente" só aparece quando a atividade ainda está aberta (não vencida) */
+    /* Botão de acesso: desabilitado quando zerada + vencida (não há como refazer) */
     let linkPart;
     if (aguardando) {
         linkPart = `<span class="pa-aguard-status">Entregue</span>`;
     } else if (zerada && ativ.vencida) {
-        linkPart = ''; /* atividade encerrada — não há como refazer */
+        /* Prazo encerrado — exibe desabilitado para deixar claro o motivo */
+        linkPart = `<button class="pa-link-ativ pa-link-ativ--zerada pa-link-ativ--desabilitado"
+                        disabled title="Prazo encerrado — solicite a reabertura ao professor">
+                        Prazo encerrado ✕
+                    </button>`;
     } else {
         linkPart = `<a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
                ${zerada ? 'Tentar novamente ↗' : 'Abrir ↗'}
@@ -570,12 +580,118 @@ async function enviarSolicitacao() {
     }
 }
 
+/* ══ Sistema de Notificações Bloqueantes ════════════════════════════ */
+
+const NOTIF_ICONE = {
+    reabertura_aprovada: '✅',
+    reabertura_negada:   '❌',
+    prazo_proximo:       '⏰',
+};
+const NOTIF_COR = {
+    reabertura_aprovada: 'verde',
+    reabertura_negada:   'vermelho',
+    prazo_proximo:       'laranja',
+};
+
+function iniciarPollingNotificacoes() {
+    if (_notifTimerId) return; /* já rodando */
+    verificarNotificacoes();   /* imediato na primeira vez */
+    _notifTimerId = setInterval(verificarNotificacoes, 60_000); /* a cada 60 s */
+}
+
+function pararPollingNotificacoes() {
+    clearInterval(_notifTimerId);
+    _notifTimerId = null;
+}
+
+async function verificarNotificacoes() {
+    try {
+        const resp = await fetch('/api/alunos-portal/notificacoes', { credentials: 'include' });
+        if (!resp.ok) return;
+        const { notificacoes } = await resp.json();
+        if (!notificacoes?.length) return;
+
+        /* Adiciona à fila apenas as que ainda não estão nela */
+        const idsNaFila = new Set(_notifQueue.map(n => n.id));
+        if (_notifAtual) idsNaFila.add(_notifAtual.id);
+
+        const novas = notificacoes.filter(n => !idsNaFila.has(n.id));
+        _notifQueue.push(...novas);
+
+        /* Exibe a primeira se nenhuma estiver sendo mostrada */
+        if (!_notifAtual && _notifQueue.length > 0) {
+            mostrarProximaNotif();
+        }
+    } catch (_) { /* silencia erros de rede */ }
+}
+
+function mostrarProximaNotif() {
+    if (!_notifQueue.length) return;
+    _notifAtual = _notifQueue.shift();
+
+    const modal   = $('paNotifModal');
+    const icone   = $('paNotifIcone');
+    const titulo  = $('paNotifTitulo');
+    const msg     = $('paNotifMensagem');
+    const contador= $('paNotifContador');
+    const btnAcao = $('paNotifBtnAcao');
+
+    /* Cor do header conforme tipo */
+    const cor = NOTIF_COR[_notifAtual.tipo] || 'laranja';
+    modal.dataset.cor = cor;
+
+    icone.textContent  = NOTIF_ICONE[_notifAtual.tipo] || '🔔';
+    titulo.textContent = _notifAtual.titulo;
+    msg.textContent    = _notifAtual.mensagem;
+
+    /* Botão de ação extra (ex: abrir atividade reaberta) */
+    const link = _notifAtual.dados?.link;
+    if (link && _notifAtual.tipo === 'reabertura_aprovada') {
+        btnAcao.href         = link;
+        btnAcao.style.display = '';
+    } else {
+        btnAcao.style.display = 'none';
+    }
+
+    /* Contador de fila */
+    const total = _notifQueue.length + 1; /* atual + restantes */
+    const restam = _notifQueue.length;
+    contador.textContent = restam > 0 ? `1 de ${total} avisos` : '';
+    contador.style.display = restam > 0 ? '' : 'none';
+
+    /* Bloqueia página */
+    modal.style.display = 'flex';
+}
+
+async function confirmarNotif() {
+    if (!_notifAtual) return;
+    const id = _notifAtual.id;
+    _notifAtual = null;
+
+    /* Marca como lida no servidor (fire-and-forget) */
+    fetch(`/api/alunos-portal/notificacoes/${id}/ler`, {
+        method: 'POST',
+        credentials: 'include',
+    }).catch(() => {});
+
+    /* Exibe próxima ou fecha modal */
+    if (_notifQueue.length > 0) {
+        mostrarProximaNotif();
+    } else {
+        $('paNotifModal').style.display = 'none';
+    }
+}
+
 /* ── Logout ──────────────────────────────────────────── */
 async function fazerLogout() {
     try {
         await fetch('/api/alunos-portal/logout', { method: 'POST', credentials: 'include' });
     } catch (_) {}
     _solicitadasMap = {};
+    _notifQueue     = [];
+    _notifAtual     = null;
+    pararPollingNotificacoes();
+    $('paNotifModal').style.display = 'none';
     $('paCursos').innerHTML      = '';
     $('paResumoNum').textContent = '0';
     mostrarTelaLogin();

@@ -64,6 +64,21 @@ async function migrarTabela() {
                 UNIQUE(aluno_email, coursework_id)
             )
         `);
+        /* Notificações do aluno — bloqueantes na tela */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notificacoes_aluno (
+                id          SERIAL PRIMARY KEY,
+                aluno_email TEXT        NOT NULL,
+                tipo        VARCHAR(30) NOT NULL,
+                referencia  TEXT,
+                titulo      TEXT        NOT NULL,
+                mensagem    TEXT        NOT NULL,
+                dados       JSONB,
+                lida        BOOLEAN     NOT NULL DEFAULT false,
+                criado_em   TIMESTAMPTZ DEFAULT NOW()
+            )
+        `);
+
         console.log('[ALUNOS-PORTAL] Tabelas OK');
     } catch (e) {
         console.warn('[ALUNOS-PORTAL] Erro na migração:', e.message);
@@ -159,6 +174,27 @@ function prazoVencido(dueDate) {
     if (!dueDate?.year) return false;
     const limite = new Date(dueDate.year, dueDate.month - 1, dueDate.day, 23, 59);
     return limite < new Date();
+}
+
+function prazoProximo(prazoIso) {
+    if (!prazoIso) return false;
+    const limite = new Date(prazoIso).getTime();
+    const diffMs = limite - Date.now();
+    return diffMs > 0 && diffMs < 2 * 60 * 60 * 1000; /* menos de 2 horas */
+}
+
+async function criarNotif(email, tipo, referencia, titulo, mensagem, dados = {}) {
+    try {
+        await pool.query(
+            `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+             SELECT $1, $2, $3, $4, $5, $6::jsonb
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM notificacoes_aluno
+                 WHERE aluno_email=$1 AND tipo=$2 AND referencia=$3 AND lida=false
+             )`,
+            [email, tipo, referencia, titulo, mensagem, JSON.stringify(dados)]
+        );
+    } catch (_) { /* silencia erros de notificação */ }
 }
 
 /* ── Router ───────────────────────────────────────────────────────── */
@@ -493,6 +529,26 @@ export function createAlunosPortalRouter() {
             }));
 
             const cursos = resultados.filter(Boolean);
+
+            /* ── Notificações de prazo próximo (< 2 horas) ────────── */
+            const todasAtiv = cursos.flatMap(c => [
+                ...(c.atividades || []),
+                ...(c.zeradas   || []),
+            ]);
+            for (const ativ of todasAtiv) {
+                if (!ativ.prazoIso || ativ.vencida) continue;
+                if (prazoProximo(ativ.prazoIso)) {
+                    await criarNotif(
+                        aluno.email,
+                        'prazo_proximo',
+                        String(ativ.id),
+                        '⚠️ Prazo encerrando em breve!',
+                        `A atividade "${ativ.titulo}" fecha em menos de 2 horas. Complete-a antes que o prazo se encerre!`,
+                        { coursework_id: String(ativ.id), titulo: ativ.titulo }
+                    );
+                }
+            }
+
             res.json({
                 aluno:            { email: aluno.email, nome: aluno.nome, foto: aluno.foto },
                 cursos,
@@ -535,6 +591,39 @@ export function createAlunosPortalRouter() {
             res.json({ ok: true, id: rows[0].id });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao solicitar reabertura:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* GET /api/alunos-portal/notificacoes — retorna não lidas */
+    router.get('/alunos-portal/notificacoes', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, tipo, referencia, titulo, mensagem, dados, criado_em
+                 FROM notificacoes_aluno
+                 WHERE aluno_email=$1 AND lida=false
+                 ORDER BY criado_em ASC`,
+                [aluno.email]
+            );
+            res.json({ notificacoes: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* POST /api/alunos-portal/notificacoes/:id/ler — marca como lida */
+    router.post('/alunos-portal/notificacoes/:id/ler', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            await pool.query(
+                `UPDATE notificacoes_aluno SET lida=true WHERE id=$1 AND aluno_email=$2`,
+                [req.params.id, aluno.email]
+            );
+            res.json({ ok: true });
+        } catch (e) {
             res.status(500).json({ erro: e.message });
         }
     });

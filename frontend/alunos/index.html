@@ -239,6 +239,37 @@
         </div>
     </div>
 
+    <!-- MODAL BLOQUEANTE DE NOTIFICAÇÕES -->
+    <!-- Não pode ser fechado clicando fora — só pelo botão "Entendido" -->
+    <div id="paNotifModal" class="pa-notif-overlay" style="display:none">
+        <div class="pa-notif-card">
+
+            <!-- Cabeçalho dinâmico (cor muda por tipo via data-cor) -->
+            <div class="pa-notif-head">
+                <span class="pa-notif-icone" id="paNotifIcone">🔔</span>
+                <span id="paNotifContador" class="pa-notif-contador" style="display:none"></span>
+            </div>
+
+            <!-- Corpo -->
+            <div class="pa-notif-body">
+                <div class="pa-notif-titulo" id="paNotifTitulo"></div>
+                <div class="pa-notif-mensagem" id="paNotifMensagem"></div>
+            </div>
+
+            <!-- Rodapé -->
+            <div class="pa-notif-footer">
+                <a id="paNotifBtnAcao" class="pa-notif-btn-acao" href="#"
+                   target="_blank" rel="noopener" style="display:none">
+                    Abrir atividade ↗
+                </a>
+                <button class="pa-notif-btn-ok" onclick="confirmarNotif()">
+                    ✔ Entendido
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     <script src="./alunos.js"></script>
 </body>
 </html>
