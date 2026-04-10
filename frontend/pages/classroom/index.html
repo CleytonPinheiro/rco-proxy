@@ -294,13 +294,17 @@
                         </div>
                         <!-- Seletor: vínculo desconhecido ou usuário clicou em "alterar" -->
                         <div id="clAuditSelWrap">
-                            <label class="cl-audit-label">Turma/Disciplina no RCO</label>
+                            <label class="cl-audit-label">Turma</label>
+                            <select class="cl-select" id="clAuditTurmaSel" style="font-size:.78rem;padding:5px 8px;height:auto">
+                                <option value="">— selecione a turma —</option>
+                            </select>
+                            <label class="cl-audit-label" style="margin-top:6px">Disciplina</label>
                             <select id="clAuditClasseSel" style="display:none">
                                 <option value="">— selecione —</option>
                             </select>
                             <div class="cl-csel">
                                 <button class="cl-csel-btn" type="button" id="clAuditSelBtn">
-                                    <span class="cl-csel-val" id="clAuditSelVal">— selecione a turma/disciplina —</span>
+                                    <span class="cl-csel-val" id="clAuditSelVal">— selecione a disciplina —</span>
                                     <svg class="cl-csel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
                                 </button>
                                 <div class="cl-csel-drop" id="clAuditSelDrop" style="display:none">

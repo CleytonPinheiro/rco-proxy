@@ -63,7 +63,9 @@ let atividadesCache = [];     // todas atividades do curso atual
 let gruposCache     = [];     // todos grupos do curso atual
 let auditResultado  = null;   // resultado da auditoria { atividades, semCorrespondencia }
 let auditAtivAtiva  = null;   // atividade selecionada no modo auditoria
-let auditCodClasse  = null;   // codClasse vinculado ao curso atual
+let auditCodClasse    = null;   // codClasse vinculado ao curso atual
+let auditClassesCache = [];    // todas as classes RCO { codClasse, nomeDisciplina, descrTurma }
+let auditTurmaFiltro  = '';    // turma selecionada para filtrar disciplinas
 let corSelecionada  = '#4285F4';
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
@@ -2072,7 +2074,32 @@ function mostrarSeletorAudit() {
     elAuditHint.textContent = '';
 }
 
-/* ── Carrega acessos e resolve o vínculo RCO, auto-rodando se conhecido ── */
+/* ── Filtra o custom-select de disciplinas conforme a turma selecionada ── */
+function aplicarFiltroDisciplinas() {
+    const turma    = auditTurmaFiltro;
+    const filtradas = turma
+        ? auditClassesCache.filter(c => c.descrTurma === turma)
+        : auditClassesCache;
+
+    const curVal = elAuditClasseSel.value;
+    elAuditClasseSel.innerHTML = '<option value="">— selecione a disciplina —</option>';
+    filtradas.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value       = c.codClasse;
+        opt.textContent = c.nomeDisciplina;
+        elAuditClasseSel.appendChild(opt);
+    });
+    // Preservar seleção se ainda válida após filtro
+    elAuditClasseSel.value = filtradas.some(c => String(c.codClasse) === String(curVal)) ? curVal : '';
+    syncCustomSel();
+}
+
+/* ── Listener: turma mudou → atualiza disciplinas ── */
+document.getElementById('clAuditTurmaSel').addEventListener('change', function () {
+    auditTurmaFiltro = this.value;
+    aplicarFiltroDisciplinas();
+});
+
 async function prepararAuditSelector() {
     if (!cursoAtivo) return;
 
@@ -2108,34 +2135,43 @@ async function prepararAuditSelector() {
 
     // Deduplicar e ordenar
     const vistas = new Set();
-    const classesUnicas = classes.filter(c => {
+    auditClassesCache = classes.filter(c => {
         if (vistas.has(c.codClasse)) return false;
         vistas.add(c.codClasse);
         return true;
     }).sort((a, b) => (a.descrTurma + a.nomeDisciplina).localeCompare(b.descrTurma + b.nomeDisciplina));
 
-    // Popular o <select> oculto (usado pelo syncCustomSel e pelo chip de troca)
-    elAuditClasseSel.innerHTML = '<option value="">— selecione a turma/disciplina —</option>';
-    classesUnicas.forEach(c => {
+    // Popular o seletor de turmas (sem repetição)
+    const turmaSel = document.getElementById('clAuditTurmaSel');
+    const turmasUnicas = [...new Set(auditClassesCache.map(c => c.descrTurma))].sort();
+    turmaSel.innerHTML = '<option value="">— selecione a turma —</option>';
+    turmasUnicas.forEach(t => {
         const opt = document.createElement('option');
-        opt.value       = c.codClasse;
-        opt.textContent = `${c.descrTurma} — ${c.nomeDisciplina}`;
-        elAuditClasseSel.appendChild(opt);
+        opt.value = t;
+        opt.textContent = t;
+        turmaSel.appendChild(opt);
     });
 
     // Determinar vínculo efetivo: salvo > inferido dos grupos
-    const infClasseCod  = inferirCodClasseDosCursos();
-    const codEfetivo    = savedClasse || infClasseCod || null;
+    const infClasseCod = inferirCodClasseDosCursos();
+    const codEfetivo   = savedClasse || infClasseCod || null;
 
     if (codEfetivo) {
         auditCodClasse = codEfetivo;
+
+        // Pré-selecionar turma e disciplina correspondentes ao vínculo
+        const c = auditClassesCache.find(x => String(x.codClasse) === String(codEfetivo));
+        if (c) {
+            auditTurmaFiltro = c.descrTurma;
+            turmaSel.value   = c.descrTurma;
+        }
+        aplicarFiltroDisciplinas();
         elAuditClasseSel.value = codEfetivo;
         syncCustomSel();
 
         // Salvar no localStorage caso tenha sido apenas inferido (sem salvo prévio)
         if (!savedClasse) localStorage.setItem(auditMapKey(cursoAtivo.id), codEfetivo);
 
-        const c = classesUnicas.find(x => String(x.codClasse) === String(codEfetivo));
         const nomeChip = c ? `${c.descrTurma} — ${c.nomeDisciplina}` : `Classe ${codEfetivo}`;
         mostrarChipAudit(nomeChip);
 
@@ -2163,8 +2199,9 @@ elAuditClasseSel.addEventListener('change', () => {
     auditCodClasse = elAuditClasseSel.value || null;
     if (auditCodClasse && cursoAtivo) {
         localStorage.setItem(auditMapKey(cursoAtivo.id), auditCodClasse);
-        const selOpt = [...elAuditClasseSel.options].find(o => o.value === auditCodClasse);
-        mostrarChipAudit(selOpt?.textContent || `Classe ${auditCodClasse}`);
+        const c = auditClassesCache.find(x => String(x.codClasse) === String(auditCodClasse));
+        const nomeChip = c ? `${c.descrTurma} — ${c.nomeDisciplina}` : `Classe ${auditCodClasse}`;
+        mostrarChipAudit(nomeChip);
         auditResultado = null;
         rodarAuditoria();
     } else {
@@ -2513,7 +2550,7 @@ function syncCustomSel() {
     });
 
     const selOpt = sel.options[sel.selectedIndex];
-    const txt    = selOpt?.textContent || '— selecione a turma/disciplina —';
+    const txt    = selOpt?.textContent || '— selecione a disciplina —';
     valEl.textContent = txt;
     valEl.classList.toggle('cl-csel-val--placeholder', !sel.value);
 }
