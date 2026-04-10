@@ -3427,6 +3427,9 @@ function popoutNotas() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('popout') !== '1') return;
 
+    /* Aplica classe que estiliza o header como minimalista */
+    document.body.classList.add('cl-popout');
+
     /* Oculta col1, col2 e handles imediatamente */
     const hide = ids => ids.forEach(id => {
         const el = document.getElementById(id);

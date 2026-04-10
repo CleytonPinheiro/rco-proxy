@@ -130,6 +130,18 @@ body {
 .cl-icon-btn--popout { opacity: .7; }
 .cl-icon-btn--popout:hover { opacity: 1; }
 
+/* ─── Modo popout: header minimalista ───────────────── */
+body.cl-popout .nav-menu,
+body.cl-popout .header-actions,
+body.cl-popout .header-divider,
+body.cl-popout .btn-side-menu { display: none !important; }
+body.cl-popout .header { padding: 5px 14px; border-bottom: 1px solid var(--border); }
+body.cl-popout .header-content { gap: 0; }
+body.cl-popout .logo-link { pointer-events: none; cursor: default; }
+body.cl-popout .logo-link .logo-edu,
+body.cl-popout .logo-link .logo-sync { opacity: .55; font-size: 14px; }
+body.cl-popout .logo-icon { font-size: 15px; }
+
 /* ─── Handles de redimensionamento ──────────────────── */
 .cl-resize-handle {
     width: 4px;
