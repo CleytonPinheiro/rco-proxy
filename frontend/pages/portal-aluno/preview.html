@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prévia — Portal do Aluno</title>
+    <link rel="stylesheet" href="/alunos/alunos.css">
+    <style>
+        body { margin: 0; overflow-x: hidden; background: var(--bg-body, #f8fafc); }
+
+        /* ── Banner de prévia ── */
+        .prev-banner {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            color: #fff;
+            padding: 9px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: .78rem;
+            font-weight: 700;
+            box-shadow: 0 2px 12px rgba(79,70,229,.35);
+        }
+        .prev-pill {
+            background: rgba(255,255,255,.22);
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: .68rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .prev-aluno {
+            flex: 1;
+            font-weight: 500;
+            opacity: .92;
+            font-size: .82rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .prev-tema-btn {
+            background: rgba(255,255,255,.18);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: .78rem;
+            font-weight: 600;
+            transition: background .15s;
+            white-space: nowrap;
+        }
+        .prev-tema-btn:hover { background: rgba(255,255,255,.3); }
+
+        /* ── Tela principal (mostra diretamente sem login) ── */
+        #paTelaAtividades { display: block !important; padding: 20px 18px 40px; }
+        #paTelalogin { display: none !important; }
+        #paLoading  { display: none !important; }
+
+        /* ── Estado de aguardo ── */
+        #prevEspera {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 14px;
+            color: #6b7280;
+        }
+        #prevEspera svg { opacity: .35; }
+        #prevEspera p { margin: 0; font-size: .9rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Banner fixo de prévia -->
+    <div class="prev-banner" id="prevBanner">
+        <span class="prev-pill">👁 PRÉVIA ADMIN</span>
+        <span class="prev-aluno" id="prevNomeAluno">Aguardando dados…</span>
+        <button class="prev-tema-btn" id="prevTemaBtnEl" onclick="alternarTema()">🌙 Escuro</button>
+    </div>
+
+    <!-- Estado de espera (antes de receber dados) -->
+    <div id="prevEspera">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+        </svg>
+        <p>Selecione um aluno na tela do professor…</p>
+    </div>
+
+    <!-- Tela do aluno (idêntica ao portal real) -->
+    <main id="paTelaAtividades" class="pa-section" style="display:none">
+
+        <!-- Resumo de contadores -->
+        <div class="pa-resumo-bar">
+            <div class="pa-resumo" id="paResumo">
+                <div class="pa-resumo-inner">
+                    <div class="pa-resumo-num" id="paResumoNum">0</div>
+                    <div class="pa-resumo-label">pendentes</div>
+                </div>
+            </div>
+            <div class="pa-resumo pa-resumo--zeradas" id="paResumoZeradas" style="display:none">
+                <div class="pa-resumo-inner">
+                    <div class="pa-resumo-num" id="paResumoZeradasNum">0</div>
+                    <div class="pa-resumo-label">⚠️ zeradas</div>
+                </div>
+            </div>
+            <div class="pa-resumo pa-resumo--aguardando" id="paResumoAguardando" style="display:none">
+                <div class="pa-resumo-inner">
+                    <div class="pa-resumo-num" id="paResumoAguardandoNum">0</div>
+                    <div class="pa-resumo-label">⏳ aguardando</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado vazio -->
+        <div id="paVazio" class="pa-vazio" style="display:none">
+            <div class="pa-vazio-icon">🎉</div>
+            <p class="pa-vazio-titulo">Nenhuma atividade pendente!</p>
+            <p class="pa-vazio-sub">Este aluno está em dia com todas as suas atividades no Google Classroom.</p>
+        </div>
+
+        <!-- Aviso sem conexão do professor -->
+        <div id="paSemConexao" class="pa-aviso-info" style="display:none">
+            <span class="pa-aviso-icon">ℹ️</span>
+            <span id="paSemConexaoMsg"></span>
+        </div>
+
+        <!-- Atividades pendentes -->
+        <div id="paCursos" class="pa-cursos-grid"></div>
+
+        <!-- Zeradas -->
+        <div id="paZeradasSection" style="display:none">
+            <div class="pa-zeradas-titulo">
+                <span class="pa-zeradas-icon">🎮</span>
+                <div>
+                    <strong>Entrou mas não realizou</strong>
+                    <span class="pa-zeradas-desc">Acessou a atividade mas saiu com 0 pontos. Refaça antes que o prazo encerre.</span>
+                </div>
+            </div>
+            <div id="paCursosZerados" class="pa-cursos-grid"></div>
+        </div>
+
+        <!-- Aguardando correção -->
+        <div id="paAguardandoSection" style="display:none">
+            <div class="pa-aguardando-titulo">
+                <span class="pa-aguardando-icon">⏳</span>
+                <div>
+                    <strong>Aguardando correção</strong>
+                    <span class="pa-aguardando-desc">Entregou e aguarda a nota do professor.</span>
+                </div>
+            </div>
+            <div id="paCursosAguardando" class="pa-cursos-grid"></div>
+        </div>
+
+        <!-- Solicitações de reabertura -->
+        <div id="paSolicitaSection" style="display:none">
+            <div class="pa-solicita-titulo">
+                <span class="pa-solicita-icon">↩</span>
+                <div>
+                    <strong>Minhas solicitações de reabertura</strong>
+                    <span class="pa-solicita-desc">Atividades para as quais foi solicitada nova tentativa.</span>
+                </div>
+            </div>
+            <div id="paSolicitaLista" class="pa-solicita-lista"></div>
+        </div>
+
+    </main>
+
+    <script src="./preview-frame.js"></script>
+</body>
+</html>

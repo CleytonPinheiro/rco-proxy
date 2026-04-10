@@ -60,6 +60,115 @@
 }
 .pa-btn:hover { background: #4f46e5; }
 
+/* ── Mensagens genéricas ── */
+.pa-msg {
+    font-size: .9rem;
+    color: var(--text-muted);
+    padding: 6px 0;
+    margin: 0;
+}
+.pa-msg--erro { color: #dc2626; }
+
+/* ════════════════════════════════════════════
+   Container da prévia do portal do aluno
+   ════════════════════════════════════════════ */
+.prev-container {
+    margin-top: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--bg-card);
+    box-shadow: 0 4px 24px rgba(99,102,241,.10);
+}
+
+/* Barra de topo do container */
+.prev-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    flex-wrap: wrap;
+}
+
+.prev-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.prev-titulo {
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.prev-aluno-nome {
+    color: rgba(255,255,255,.85);
+    font-size: .82rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+}
+
+.prev-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.prev-btn-tema,
+.prev-btn-abrir {
+    padding: 5px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: .75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+}
+
+.prev-btn-tema {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+}
+.prev-btn-tema:hover { background: rgba(255,255,255,.30); }
+
+.prev-btn-abrir {
+    background: rgba(255,255,255,.95);
+    color: #4f46e5;
+}
+.prev-btn-abrir:hover { background: #fff; }
+
+/* Wrapper do iframe — cria fundo "device" */
+.prev-device {
+    background: #f1f5f9;
+    padding: 0;
+    border-top: 1px solid rgba(0,0,0,.06);
+    position: relative;
+}
+[data-theme="dark"] .prev-device { background: #0f172a; }
+
+/* iframe propriamente dito */
+.prev-iframe {
+    display: block;
+    width: 100%;
+    min-height: 480px;
+    border: none;
+    background: transparent;
+    transition: height .25s ease;
+}
+
+/* ════════════════════════════════════════════
+   Modo: Por disciplina
+   ════════════════════════════════════════════ */
 .pa-curso-card {
     border: 1.5px solid var(--border);
     border-radius: 10px;
@@ -113,23 +222,12 @@
 .pa-ativ--vencida { background: #fff8f8; }
 [data-theme="dark"] .pa-ativ--vencida { background: #2a1a1a; }
 
-/* Atividade que pertence a um grupo */
-.pa-ativ--grupo {
-    border-left: 3px solid #4285F4;
-}
-[data-theme="dark"] .pa-ativ--grupo {
-    border-left-color: #60a5fa;
-}
+.pa-ativ--grupo { border-left: 3px solid #4285F4; }
+[data-theme="dark"] .pa-ativ--grupo { border-left-color: #60a5fa; }
 
-/* Atividade sem grupo */
-.pa-ativ--livre {
-    border-left: 3px solid #f59e0b;
-}
-[data-theme="dark"] .pa-ativ--livre {
-    border-left-color: #fbbf24;
-}
+.pa-ativ--livre { border-left: 3px solid #f59e0b; }
+[data-theme="dark"] .pa-ativ--livre { border-left-color: #fbbf24; }
 
-/* Rótulo separador de seções (Em grupo / Sem grupo) */
 .pa-secao-label {
     font-size: .72rem;
     font-weight: 700;
@@ -159,7 +257,6 @@
     border-left-color: #fbbf24;
 }
 
-/* Tag do nome do grupo */
 .pa-grupo-tag {
     display: inline-flex;
     align-items: center;
@@ -194,3 +291,35 @@
 .pa-link-btn:hover { background: #e0e7ff; }
 [data-theme="dark"] .pa-link-btn { background: #1e1b4b; color: #a5b4fc; }
 [data-theme="dark"] .pa-link-btn:hover { background: #312e81; }
+
+/* Modo disciplina — wrapper */
+.pa-disc-wrap {
+    margin-top: 10px;
+}
+.pa-disc-titulo {
+    font-size: .85rem;
+    color: #4f46e5;
+    font-weight: 700;
+    margin-bottom: 14px;
+    border-top: 1.5px solid #c7d2fe;
+    padding-top: 14px;
+}
+.pa-disc-lista { display: flex; flex-direction: column; gap: 8px; }
+.pa-disc-email {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: .75rem;
+}
+.pa-disc-ativ-titulo {
+    font-size: .83rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pa-disc-ativ-meta {
+    font-size: .75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
