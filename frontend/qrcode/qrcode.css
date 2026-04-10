@@ -395,6 +395,33 @@ html, body {
 .qr-btn--ghost:hover { background: #eef2ff; border-color: var(--qr-accent); }
 [data-theme="dark"] .qr-btn--ghost:hover { background: rgba(99,102,241,.12); }
 
+/* ── Botão "Gerar QR Code" ── */
+.qr-gerar-wrap {
+    display: flex;
+    justify-content: center;
+    padding-top: 8px;
+    border-top: 1.5px solid var(--qr-border);
+    margin-top: 4px;
+}
+
+.qr-btn--gerar {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 13px 40px;
+    border-radius: 12px;
+    gap: 10px;
+    box-shadow: 0 4px 14px rgba(99,102,241,.35);
+    transition: background .15s, box-shadow .15s, transform .1s;
+    letter-spacing: .01em;
+}
+.qr-btn--gerar:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    box-shadow: 0 6px 20px rgba(99,102,241,.45);
+}
+.qr-btn--gerar:active { transform: scale(.97); }
+
 /* ── Toast ── */
 .qr-toast {
     position: fixed;

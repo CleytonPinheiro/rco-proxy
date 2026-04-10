@@ -73,6 +73,7 @@ window.atualizarTituloPrevia = function () {
 
 /* ── Gerar QR ── */
 window.gerarQR = async function () {
+    clearTimeout(_debounceTimer);   /* cancela debounce pendente se vier do botão */
     const texto = $('qrInput').value.trim();
     if (!texto) {
         $('qrVazio').style.display    = '';
