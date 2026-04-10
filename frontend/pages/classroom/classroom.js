@@ -1453,7 +1453,7 @@ function bindColHeaders(container) {
                     colOrder.splice(fromIdx, 1);
                     colOrder.splice(toIdx, 0, dragSrc);
                     try { localStorage.setItem('cl-col-order', JSON.stringify(colOrder)); } catch (_) {}
-                    renderGrupoResumo();
+                    renderListaFiltrada();
                 }
             }
             dragSrc = null;
@@ -1469,7 +1469,7 @@ function bindColHeaders(container) {
                 sortState = { col, dir: 'asc' };
             }
             try { localStorage.setItem('cl-col-sort', JSON.stringify(sortState)); } catch (_) {}
-            renderGrupoResumo();
+            renderListaFiltrada();
         });
     });
 }
