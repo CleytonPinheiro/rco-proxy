@@ -1030,9 +1030,7 @@ function criarRecuperacaoRapida(grupoOrigem) {
     elGrupoPontos.value  = (grupoOrigem.pontosMeta / 10).toFixed(1);
 
     /* 6. Marca as mesmas atividades do grupo de origem */
-    elModalAtivs.querySelectorAll('input[type=checkbox]').forEach(cb => {
-        cb.checked = grupoOrigem.atividades.some(a => String(a.atividade_id) === String(cb.value));
-    });
+    preencherAtividadesDoGrupoPai(grupoOrigem.id);
 
     /* 7. Herda e bloqueia o código de classe RCO do grupo de origem */
     configurarCampoCodClasse(true, grupoOrigem.id);
@@ -1702,10 +1700,22 @@ elTipoGrupo.addEventListener('click', e => {
     configurarCampoCodClasse(isRec, elRecOrigemSel.value || null);
 });
 
-/* Ao trocar o grupo de origem, herda o código imediatamente */
+/* Pré-seleciona no modal as atividades do grupo de origem informado */
+function preencherAtividadesDoGrupoPai(grupoOrigemId) {
+    if (!grupoOrigemId) return;
+    const pai = gruposCache.find(g => String(g.id) === String(grupoOrigemId));
+    if (!pai?.atividades?.length) return;
+    const idsPai = new Set(pai.atividades.map(a => String(a.atividade_id)));
+    elModalAtivs.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.checked = idsPai.has(String(cb.value));
+    });
+}
+
+/* Ao trocar o grupo de origem, herda código e atividades imediatamente */
 elRecOrigemSel.addEventListener('change', () => {
     if (tipoModalAtivo() === 'recuperacao') {
         configurarCampoCodClasse(true, elRecOrigemSel.value || null);
+        preencherAtividadesDoGrupoPai(elRecOrigemSel.value);
     }
 });
 
