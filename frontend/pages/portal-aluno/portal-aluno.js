@@ -20,8 +20,9 @@ function trocarModo(modo) {
     document.getElementById('paModoAluno').style.display      = modo === 'aluno'      ? 'flex' : 'none';
     document.getElementById('paModoDisciplina').style.display = modo === 'disciplina' ? 'flex' : 'none';
     document.getElementById('paResultado').innerHTML = '';
-    _iframeReady = false;
+    _iframeReady       = false;
     _iframePendingData = null;
+    _lastPayload       = null;
 }
 
 /* ════════════════════════════════════════════
@@ -89,6 +90,7 @@ async function carregarAlunos(cursoId) {
    ════════════════════════════════════════════ */
 let _iframeReady       = false;
 let _iframePendingData = null;
+let _lastPayload       = null;   /* sempre guarda o último dado enviado */
 
 /* Envia dados ao iframe assim que ele avisar que está pronto */
 window.addEventListener('message', ev => {
@@ -113,11 +115,12 @@ window.addEventListener('message', ev => {
 function enviarDadosIframe(payload) {
     const iframe = document.getElementById('paPreviaFrame');
     if (!iframe || !iframe.contentWindow) return;
+    _lastPayload = payload;   /* persiste para uso posterior (tema, etc.) */
     iframe.contentWindow.postMessage({
-        tipo:       'edusync:previa-aluno',
-        nomeAluno:  payload.nomeAluno,
-        data:       payload.data,
-        tema:       document.documentElement.getAttribute('data-theme') || 'light',
+        tipo:         'edusync:previa-aluno',
+        nomeAluno:    payload.nomeAluno,
+        data:         payload.data,
+        tema:         document.documentElement.getAttribute('data-theme') || 'light',
         solicitacoes: payload.solicitacoes || [],
     }, window.location.origin);
 }
@@ -169,19 +172,17 @@ function mostrarIframePrevia({ nomeAluno, data, solicitacoes = [] }) {
     }
 }
 
-/* Alterna tema dentro do iframe */
+/* Alterna tema dentro do iframe — envia só o novo tema, sem tocar nos dados */
 window.alternarTemaPrevia = function () {
     const iframe = document.getElementById('paPreviaFrame');
     if (!iframe || !iframe.contentWindow) return;
     const temaAtual = document.documentElement.getAttribute('data-theme') || 'light';
     const novoTema  = temaAtual === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', novoTema);
+    /* Mensagem de tema APENAS — o iframe só troca o atributo, não re-renderiza */
     iframe.contentWindow.postMessage({
-        tipo: 'edusync:previa-aluno',
-        nomeAluno: document.getElementById('prevContainerNome')?.textContent || '',
-        data: _iframePendingData?.data || {},
+        tipo: 'edusync:previa-tema',
         tema: novoTema,
-        solicitacoes: [],
     }, window.location.origin);
 };
 

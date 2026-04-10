@@ -313,7 +313,15 @@ function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0, t
    postMessage handler — recebe dados do pai
    ══════════════════════════════════════════ */
 window.addEventListener('message', (ev) => {
-    if (!ev.data || ev.data.tipo !== 'edusync:previa-aluno') return;
+    if (!ev.data) return;
+
+    /* ── Apenas troca de tema (sem re-renderizar dados) ── */
+    if (ev.data.tipo === 'edusync:previa-tema') {
+        aplicarTema(ev.data.tema);
+        return;
+    }
+
+    if (ev.data.tipo !== 'edusync:previa-aluno') return;
 
     const { nomeAluno, data, tema, solicitacoes } = ev.data;
 
