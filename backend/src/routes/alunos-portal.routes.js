@@ -43,9 +43,28 @@ async function migrarTabela() {
                 criado_em  TIMESTAMPTZ DEFAULT NOW()
             )
         `);
-        /* Limpa sessões expiradas periodicamente */
         await pool.query(`DELETE FROM aluno_portal_sessions WHERE expires_at < NOW()`).catch(() => {});
-        console.log('[ALUNOS-PORTAL] Tabela aluno_portal_sessions OK');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS reabertura_solicitacoes (
+                id                SERIAL PRIMARY KEY,
+                aluno_email       TEXT        NOT NULL,
+                aluno_nome        TEXT,
+                curso_id          TEXT        NOT NULL,
+                curso_nome        TEXT,
+                coursework_id     TEXT        NOT NULL,
+                coursework_titulo TEXT,
+                submission_link   TEXT,
+                justificativa     TEXT,
+                status            TEXT        NOT NULL DEFAULT 'pendente',
+                resposta          TEXT,
+                criado_em         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                respondido_em     TIMESTAMPTZ,
+                respondido_por    TEXT,
+                UNIQUE(aluno_email, coursework_id)
+            )
+        `);
+        console.log('[ALUNOS-PORTAL] Tabelas OK');
     } catch (e) {
         console.warn('[ALUNOS-PORTAL] Erro na migração:', e.message);
     }
@@ -483,6 +502,60 @@ export function createAlunosPortalRouter() {
             });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao buscar atividades:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* POST /api/alunos-portal/solicitar-reabertura */
+    router.post('/alunos-portal/solicitar-reabertura', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { courseworkId, courseworkTitulo, cursoId, cursoNome, submissionLink, justificativa } = req.body;
+        if (!courseworkId || !cursoId) return res.status(400).json({ erro: 'Dados incompletos.' });
+        if (justificativa && justificativa.length > 600)
+            return res.status(400).json({ erro: 'Justificativa muito longa (máx 600 caracteres).' });
+
+        try {
+            const { rows } = await pool.query(
+                `INSERT INTO reabertura_solicitacoes
+                    (aluno_email, aluno_nome, curso_id, curso_nome, coursework_id, coursework_titulo, submission_link, justificativa)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                 ON CONFLICT (aluno_email, coursework_id)
+                    DO UPDATE SET
+                        justificativa   = EXCLUDED.justificativa,
+                        status          = 'pendente',
+                        resposta        = NULL,
+                        respondido_em   = NULL,
+                        respondido_por  = NULL,
+                        criado_em       = NOW()
+                 RETURNING id, status`,
+                [aluno.email, aluno.nome, cursoId, cursoNome, courseworkId, courseworkTitulo, submissionLink || null, justificativa || null]
+            );
+            res.json({ ok: true, id: rows[0].id });
+        } catch (e) {
+            console.error('[ALUNOS-PORTAL] Erro ao solicitar reabertura:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* GET /api/alunos-portal/minhas-solicitacoes */
+    router.get('/alunos-portal/minhas-solicitacoes', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, curso_nome, coursework_id, coursework_titulo,
+                        submission_link, justificativa, status, resposta,
+                        criado_em, respondido_em
+                 FROM reabertura_solicitacoes
+                 WHERE aluno_email = $1
+                 ORDER BY criado_em DESC`,
+                [aluno.email]
+            );
+            res.json({ solicitacoes: rows });
+        } catch (e) {
             res.status(500).json({ erro: e.message });
         }
     });

@@ -1018,5 +1018,57 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
+    /* ─── Solicitações de reabertura ──────────────────────────────── */
+
+    /* GET /api/classroom/solicitacoes/badge — contagem de pendentes */
+    router.get('/classroom/solicitacoes/badge', async (req, res) => {
+        try {
+            const { rows } = await pool.query(
+                `SELECT COUNT(*)::int AS total FROM reabertura_solicitacoes WHERE status = 'pendente'`
+            );
+            res.json({ total: rows[0]?.total ?? 0 });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* GET /api/classroom/solicitacoes — lista todas com filtros */
+    router.get('/classroom/solicitacoes', async (req, res) => {
+        const { status, cursoId } = req.query;
+        try {
+            let q = `SELECT * FROM reabertura_solicitacoes WHERE 1=1`;
+            const params = [];
+            if (status && status !== 'todas') { params.push(status); q += ` AND status = $${params.length}`; }
+            if (cursoId) { params.push(cursoId); q += ` AND curso_id = $${params.length}`; }
+            q += ` ORDER BY criado_em DESC`;
+            const { rows } = await pool.query(q, params);
+            res.json({ solicitacoes: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* POST /api/classroom/solicitacoes/:id/responder */
+    router.post('/classroom/solicitacoes/:id/responder', async (req, res) => {
+        const { id } = req.params;
+        const { acao, resposta } = req.body;  /* acao: 'aprovar' | 'negar' */
+        if (!['aprovar', 'negar'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });
+
+        try {
+            const novoStatus = acao === 'aprovar' ? 'aprovada' : 'negada';
+            const { rows } = await pool.query(
+                `UPDATE reabertura_solicitacoes
+                 SET status='${novoStatus}', resposta=$1, respondido_em=NOW(), respondido_por='professor'
+                 WHERE id=$2
+                 RETURNING *`,
+                [resposta || null, id]
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Solicitação não encontrada.' });
+            res.json({ ok: true, solicitacao: rows[0] });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     return router;
 }

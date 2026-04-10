@@ -6,6 +6,11 @@
 
 const $ = id => document.getElementById(id);
 
+/* ── Estado global de solicitações ──────────────────────────────── */
+let _solicitadasMap  = {};   /* courseworkId → { status, criado_em } */
+let _solicitaModal   = null; /* dados da atividade no modal atual */
+let _cursoAtualReq   = null; /* { cursoId, cursoNome } da atividade no modal */
+
 const TIPO_LABEL = {
     ASSIGNMENT:                  'Atividade',
     SHORT_ANSWER_QUESTION:       'Pergunta',
@@ -174,21 +179,33 @@ async function entrarComGoogle() {
 /* ── Carrega atividades ──────────────────────────────── */
 async function carregarAtividades() {
     mostrarLoading(true);
-    $('paVazio').style.display          = 'none';
-    $('paSemConexao').style.display     = 'none';
-    $('paCursos').innerHTML             = '';
-    $('paCursosZerados').innerHTML      = '';
-    $('paZeradasSection').style.display = 'none';
-    $('paResumoZeradas').style.display  = 'none';
+    $('paVazio').style.display           = 'none';
+    $('paSemConexao').style.display      = 'none';
+    $('paCursos').innerHTML              = '';
+    $('paCursosZerados').innerHTML       = '';
+    $('paZeradasSection').style.display  = 'none';
+    $('paResumoZeradas').style.display   = 'none';
+    $('paSolicitaSection').style.display = 'none';
 
     try {
-        const resp = await fetch('/api/alunos-portal/atividades', { credentials: 'include' });
+        const [respAtiv, respSol] = await Promise.all([
+            fetch('/api/alunos-portal/atividades',          { credentials: 'include' }),
+            fetch('/api/alunos-portal/minhas-solicitacoes', { credentials: 'include' }),
+        ]);
 
-        if (resp.status === 401) { mostrarTelaLogin(); return; }
+        if (respAtiv.status === 401) { mostrarTelaLogin(); return; }
 
-        const data = await resp.json();
+        if (respSol.ok) {
+            const solData = await respSol.json();
+            _solicitadasMap = {};
+            (solData.solicitacoes || []).forEach(s => {
+                _solicitadasMap[s.coursework_id] = s;
+            });
+        }
 
-        if (!resp.ok) {
+        const data = await respAtiv.json();
+
+        if (!respAtiv.ok) {
             $('paSemConexao').style.display  = '';
             $('paSemConexaoMsg').textContent = data.erro || 'Erro ao carregar atividades.';
             $('paResumoNum').textContent     = '0';
@@ -219,7 +236,7 @@ function renderQuizizzTag(ativ) {
     </div>`;
 }
 
-function renderAtivItem(ativ, { zerada = false, aguardando = false } = {}) {
+function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = '', cursoNome = '' } = {}) {
     const li        = document.createElement('li');
     li.className    = 'pa-atividade-item'
         + (zerada     ? ' pa-atividade-item--zerada'     : '')
@@ -249,6 +266,24 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false } = {}) {
 
     const qzPart = renderQuizizzTag(ativ);
 
+    /* ── Botão / badge de reabertura (só para zeradas) ── */
+    let reaberturaPart = '';
+    if (zerada) {
+        const sol = _solicitadasMap[String(ativ.id)];
+        if (!sol) {
+            const dados = esc(JSON.stringify({ id: ativ.id, titulo: ativ.titulo, link: ativ.link, cursoId, cursoNome }));
+            reaberturaPart = `<button class="pa-solicita-btn" onclick="abrirModalSolicitacao('${dados}')">↩ Solicitar reabertura</button>`;
+        } else if (sol.status === 'pendente') {
+            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--pendente">⏳ Reabertura solicitada</span>`;
+        } else if (sol.status === 'aprovada') {
+            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--aprovada">✅ Reabertura aprovada</span>`;
+        } else if (sol.status === 'negada') {
+            const dados = esc(JSON.stringify({ id: ativ.id, titulo: ativ.titulo, link: ativ.link, cursoId, cursoNome }));
+            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--negada">❌ Reabertura negada</span>
+                              <button class="pa-solicita-btn pa-solicita-btn--retry" onclick="abrirModalSolicitacao('${dados}')">Solicitar novamente</button>`;
+        }
+    }
+
     const linkPart = aguardando
         ? `<span class="pa-aguard-status">Entregue</span>`
         : `<a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
@@ -267,6 +302,7 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false } = {}) {
                 ${devolvidaPart}
                 ${pontosPart}
             </div>
+            ${reaberturaPart}
         </div>
         <div class="pa-ativ-right">
             ${linkPart}
@@ -304,7 +340,7 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
     if (zerada) {
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
-        items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada: true })));
+        items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada: true, cursoId: curso.cursoId, cursoNome: curso.nome })));
         card.appendChild(lista);
         return card;
     }
@@ -414,6 +450,106 @@ function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0, t
         gridA.innerHTML = '';
         cursosComAguard.forEach(curso => gridA.appendChild(renderCursoCard(curso, { aguardando: true })));
     }
+
+    /* Seção de solicitações de reabertura */
+    renderSolicitacoesSection(Object.values(_solicitadasMap));
+}
+
+/* ── Seção "Minhas Solicitações" ─────────────────────── */
+function renderSolicitacoesSection(solicitacoes) {
+    if (!solicitacoes.length) return;
+
+    const fmt = iso => iso
+        ? new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : '—';
+    const sLabel = { pendente: '⏳ Aguardando resposta', aprovada: '✅ Aprovada', negada: '❌ Negada' };
+    const sCls   = { pendente: 'pa-sol-status--pend', aprovada: 'pa-sol-status--ok', negada: 'pa-sol-status--neg' };
+
+    const lista = $('paSolicitaLista');
+    lista.innerHTML = solicitacoes.map(s => `
+        <div class="pa-sol-card">
+            <div class="pa-sol-head">
+                <div>
+                    <div class="pa-sol-ativ">${esc(s.coursework_titulo || '—')}</div>
+                    <div class="pa-sol-curso">${esc(s.curso_nome || '—')}</div>
+                </div>
+                <span class="pa-sol-status ${sCls[s.status] || ''}">${sLabel[s.status] || s.status}</span>
+            </div>
+            ${s.justificativa ? `<div class="pa-sol-justi">"${esc(s.justificativa)}"</div>` : ''}
+            ${s.resposta      ? `<div class="pa-sol-resposta">Resposta do professor: ${esc(s.resposta)}</div>` : ''}
+            <div class="pa-sol-data">Solicitado em ${fmt(s.criado_em)}</div>
+        </div>`).join('');
+
+    $('paSolicitaSection').style.display = '';
+}
+
+/* ── Modal de solicitação ────────────────────────────── */
+function abrirModalSolicitacao(dadosJson) {
+    try {
+        _solicitaModal   = JSON.parse(dadosJson);
+        _cursoAtualReq   = { cursoId: _solicitaModal.cursoId, cursoNome: _solicitaModal.cursoNome };
+    } catch (_) { return; }
+
+    $('paSolicitaAtivNome').textContent  = _solicitaModal.titulo || '';
+    $('paSolicitaJusti').value           = '';
+    $('paSolicitaErro').style.display    = 'none';
+    $('paSolicitaEnviar').disabled       = false;
+    $('paSolicitaEnviar').textContent    = 'Enviar solicitação';
+    $('paSolicitaModal').style.display   = 'flex';
+    setTimeout(() => $('paSolicitaJusti').focus(), 100);
+}
+
+function fecharModalSolicitacao(ev) {
+    if (ev instanceof Event && ev.target !== $('paSolicitaModal')) return;
+    $('paSolicitaModal').style.display = 'none';
+    _solicitaModal = null;
+    _cursoAtualReq = null;
+}
+
+async function enviarSolicitacao() {
+    if (!_solicitaModal) return;
+    const justificativa = $('paSolicitaJusti').value.trim();
+    const btn           = $('paSolicitaEnviar');
+    const erroEl        = $('paSolicitaErro');
+    erroEl.style.display = 'none';
+    btn.disabled        = true;
+    btn.textContent     = 'Enviando…';
+
+    try {
+        const resp = await fetch('/api/alunos-portal/solicitar-reabertura', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                courseworkId:     String(_solicitaModal.id),
+                courseworkTitulo: _solicitaModal.titulo,
+                cursoId:          _cursoAtualReq?.cursoId || '',
+                cursoNome:        _cursoAtualReq?.cursoNome || '',
+                submissionLink:   _solicitaModal.link || '',
+                justificativa,
+            }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.erro || 'Erro ao enviar solicitação.');
+        $('paSolicitaModal').style.display = 'none';
+        /* Atualiza map local sem recarregar tudo */
+        _solicitadasMap[String(_solicitaModal.id)] = {
+            coursework_id:     String(_solicitaModal.id),
+            coursework_titulo: _solicitaModal.titulo,
+            curso_nome:        _cursoAtualReq?.cursoNome || '',
+            status:            'pendente',
+            justificativa,
+            criado_em:         new Date().toISOString(),
+        };
+        _solicitaModal = null;
+        /* Re-renderiza sem recarregar da API */
+        carregarAtividades();
+    } catch (e) {
+        erroEl.textContent   = e.message;
+        erroEl.style.display = '';
+        btn.disabled         = false;
+        btn.textContent      = 'Enviar solicitação';
+    }
 }
 
 /* ── Logout ──────────────────────────────────────────── */
@@ -421,6 +557,7 @@ async function fazerLogout() {
     try {
         await fetch('/api/alunos-portal/logout', { method: 'POST', credentials: 'include' });
     } catch (_) {}
+    _solicitadasMap = {};
     $('paCursos').innerHTML      = '';
     $('paResumoNum').textContent = '0';
     mostrarTelaLogin();

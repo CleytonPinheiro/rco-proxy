@@ -159,12 +159,47 @@
             <div id="paCursosAguardando" class="pa-cursos-grid"></div>
         </div>
 
+        <!-- Seção de solicitações de reabertura -->
+        <div id="paSolicitaSection" style="display:none">
+            <div class="pa-solicita-titulo">
+                <span class="pa-solicita-icon">↩</span>
+                <div>
+                    <strong>Minhas solicitações de reabertura</strong>
+                    <span class="pa-solicita-desc">Atividades para as quais você solicitou uma nova tentativa.</span>
+                </div>
+            </div>
+            <div id="paSolicitaLista" class="pa-solicita-lista"></div>
+        </div>
+
     </main>
 
     <!-- LOADING OVERLAY -->
     <div id="paLoading" class="pa-loading-overlay" style="display:none">
         <div class="pa-spinner"></div>
         <p>Buscando atividades…</p>
+    </div>
+
+    <!-- MODAL DE SOLICITAÇÃO DE REABERTURA -->
+    <div id="paSolicitaModal" class="pa-modal-overlay" style="display:none" onclick="fecharModalSolicitacao(event)">
+        <div class="pa-modal-card" onclick="event.stopPropagation()">
+            <div class="pa-modal-head">
+                <div class="pa-modal-titulo">↩ Solicitar reabertura</div>
+                <button class="pa-modal-fechar" onclick="fecharModalSolicitacao()">✕</button>
+            </div>
+            <div class="pa-modal-body">
+                <div class="pa-modal-ativ-nome" id="paSolicitaAtivNome"></div>
+                <label class="pa-modal-label">Justificativa <span class="pa-modal-opt">(opcional)</span></label>
+                <textarea id="paSolicitaJusti" class="pa-modal-textarea" maxlength="600"
+                    placeholder="Explique brevemente por que precisa refazer esta atividade…"></textarea>
+                <div id="paSolicitaErro" class="pa-modal-erro" style="display:none"></div>
+            </div>
+            <div class="pa-modal-footer">
+                <button class="pa-modal-btn pa-modal-btn--cancel" onclick="fecharModalSolicitacao()">Cancelar</button>
+                <button class="pa-modal-btn pa-modal-btn--confirm" id="paSolicitaEnviar" onclick="enviarSolicitacao()">
+                    Enviar solicitação
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="./alunos.js"></script>

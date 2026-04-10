@@ -685,6 +685,216 @@ html, body {
 }
 .pa-qz-link:hover { border-bottom-style: solid; }
 
+/* ══ Botão / Badge de Reabertura (inline na atividade zerada) ═══════ */
+.pa-solicita-btn {
+    display:       inline-flex;
+    align-items:   center;
+    gap:           5px;
+    margin-top:    8px;
+    padding:       5px 12px;
+    background:    #fff7ed;
+    color:         #c2410c;
+    border:        1.5px solid #fdba74;
+    border-radius: 8px;
+    font-size:     .78rem;
+    font-weight:   700;
+    cursor:        pointer;
+    transition:    background .15s, border-color .15s;
+}
+.pa-solicita-btn:hover {
+    background:    #ffedd5;
+    border-color:  #f97316;
+}
+.pa-solicita-btn--retry {
+    background: #fef2f2;
+    color:      #b91c1c;
+    border-color: #fca5a5;
+    margin-left: 6px;
+}
+.pa-solicita-btn--retry:hover {
+    background:   #fee2e2;
+    border-color: #f87171;
+}
+.pa-solicita-badge {
+    display:       inline-flex;
+    align-items:   center;
+    gap:           4px;
+    margin-top:    8px;
+    padding:       4px 10px;
+    border-radius: 8px;
+    font-size:     .76rem;
+    font-weight:   700;
+}
+.pa-solicita-badge--pendente { background: #fef9c3; color: #854d0e; }
+.pa-solicita-badge--aprovada { background: #d1fae5; color: #065f46; }
+.pa-solicita-badge--negada   { background: #fee2e2; color: #991b1b; }
+
+/* ══ Seção "Minhas Solicitações" ════════════════════════════════════ */
+#paSolicitaSection {
+    margin-top: 32px;
+}
+#paSolicitaSection h2 {
+    font-size:    1.1rem;
+    font-weight:  800;
+    margin-bottom: 12px;
+    color:        var(--pa-text-primary, #111);
+}
+.pa-sol-card {
+    background:    var(--bg-card, #fff);
+    border:        1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    padding:       14px 16px;
+    margin-bottom: 10px;
+}
+.pa-sol-head {
+    display:         flex;
+    justify-content: space-between;
+    align-items:     flex-start;
+    gap:             12px;
+    flex-wrap:       wrap;
+}
+.pa-sol-ativ {
+    font-size:   .92rem;
+    font-weight: 700;
+    color:       var(--text-primary, #111);
+}
+.pa-sol-curso {
+    font-size:   .78rem;
+    color:       var(--text-muted, #6b7280);
+    margin-top:  2px;
+}
+.pa-sol-status {
+    font-size:     .72rem;
+    font-weight:   700;
+    padding:       3px 10px;
+    border-radius: 20px;
+    white-space:   nowrap;
+}
+.pa-sol-status--pend { background: #fef9c3; color: #854d0e; }
+.pa-sol-status--ok   { background: #d1fae5; color: #065f46; }
+.pa-sol-status--neg  { background: #fee2e2; color: #991b1b; }
+.pa-sol-justi {
+    font-size:   .82rem;
+    font-style:  italic;
+    color:       var(--text-muted, #6b7280);
+    margin-top:  8px;
+}
+.pa-sol-resposta {
+    font-size:    .82rem;
+    color:        var(--text-primary, #111);
+    margin-top:   6px;
+    padding:      6px 10px;
+    background:   var(--bg-hover, #f3f4f6);
+    border-radius: 6px;
+}
+.pa-sol-data {
+    font-size:  .72rem;
+    color:      var(--text-muted, #9ca3af);
+    margin-top: 8px;
+}
+
+/* ══ Modal de Reabertura ════════════════════════════════════════════ */
+.pa-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    background:      rgba(0,0,0,.45);
+    z-index:         1000;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    padding:         16px;
+}
+.pa-modal-box {
+    background:    var(--bg-card, #fff);
+    border-radius: 14px;
+    padding:       28px 24px;
+    width:         100%;
+    max-width:     460px;
+    box-shadow:    0 20px 60px rgba(0,0,0,.2);
+}
+.pa-modal-box h3 {
+    font-size:     1.1rem;
+    font-weight:   800;
+    margin-bottom: 6px;
+}
+.pa-modal-subtitle {
+    font-size:    .83rem;
+    color:        var(--text-muted, #6b7280);
+    margin-bottom: 14px;
+}
+.pa-modal-ativ-nome {
+    font-size:     .88rem;
+    font-weight:   700;
+    background:    var(--bg-hover, #f3f4f6);
+    padding:       8px 12px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    color:         var(--text-primary, #111);
+}
+.pa-modal-label {
+    font-size:     .83rem;
+    font-weight:   600;
+    margin-bottom: 6px;
+    color:         var(--text-primary, #111);
+    display:       block;
+}
+.pa-modal-textarea {
+    width:         100%;
+    min-height:    100px;
+    padding:       10px 12px;
+    border:        1.5px solid var(--border, #d1d5db);
+    border-radius: 8px;
+    font-size:     .88rem;
+    font-family:   inherit;
+    resize:        vertical;
+    background:    var(--bg-card, #fff);
+    color:         var(--text-primary, #111);
+    box-sizing:    border-box;
+}
+.pa-modal-textarea:focus {
+    outline:      none;
+    border-color: #3b82f6;
+    box-shadow:   0 0 0 3px rgba(59,130,246,.15);
+}
+.pa-modal-erro {
+    font-size:     .82rem;
+    color:         #dc2626;
+    background:    #fef2f2;
+    border:        1px solid #fca5a5;
+    border-radius: 7px;
+    padding:       7px 10px;
+    margin-top:    8px;
+}
+.pa-modal-actions {
+    display:         flex;
+    justify-content: flex-end;
+    gap:             10px;
+    margin-top:      18px;
+}
+.pa-modal-btn {
+    padding:       8px 20px;
+    border-radius: 8px;
+    font-size:     .875rem;
+    font-weight:   700;
+    cursor:        pointer;
+    border:        none;
+    transition:    background .15s;
+}
+.pa-modal-btn--cancel {
+    background: var(--bg-hover, #f3f4f6);
+    color:      var(--text-muted, #6b7280);
+}
+.pa-modal-btn--cancel:hover { background: var(--border, #e5e7eb); }
+.pa-modal-btn--confirm {
+    background: #3b82f6;
+    color:      #fff;
+}
+.pa-modal-btn--confirm:hover   { background: #2563eb; }
+.pa-modal-btn--confirm:disabled {
+    opacity: .6;
+    cursor:  not-allowed;
+}
+
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 600px) {
     .pa-login-card   { padding: 36px 24px; }

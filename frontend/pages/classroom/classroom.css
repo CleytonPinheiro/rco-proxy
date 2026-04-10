@@ -2468,3 +2468,165 @@ body.cl-popout .logo-icon { font-size: 15px; }
     transition: background .15s;
 }
 .cl-qz-badge--link:hover { background: rgba(16,185,129,.22); }
+
+/* ══════════════════════════════════════════════════════════
+   PAINEL DE SOLICITAÇÕES DE REABERTURA
+══════════════════════════════════════════════════════════ */
+
+/* Aba Solicitações */
+.cl-tab--solicita { position: relative; }
+
+.cl-solicita-badge {
+    display:       inline-flex;
+    align-items:   center;
+    justify-content: center;
+    min-width:     18px;
+    height:        18px;
+    padding:       0 5px;
+    background:    #ef4444;
+    color:         #fff;
+    border-radius: 20px;
+    font-size:     .68rem;
+    font-weight:   800;
+    margin-left:   5px;
+    line-height:   1;
+}
+
+/* Filtros do painel */
+.cl-solicita-filtros {
+    display:   flex;
+    gap:       10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    align-items: center;
+}
+.cl-solicita-filtros select,
+.cl-solicita-filtros input {
+    padding:       7px 10px;
+    border:        1.5px solid var(--border);
+    border-radius: 8px;
+    font-size:     .875rem;
+    background:    var(--bg-card);
+    color:         var(--text-primary);
+}
+.cl-solicita-filtros input { flex: 1; min-width: 160px; }
+.cl-solicita-atualizar {
+    padding:       7px 14px;
+    border:        1.5px solid var(--border);
+    border-radius: 8px;
+    font-size:     .85rem;
+    cursor:        pointer;
+    background:    var(--bg-hover);
+    color:         var(--text-primary);
+    font-weight:   600;
+    transition:    background .15s;
+}
+.cl-solicita-atualizar:hover { background: var(--border); }
+
+/* Card de solicitação */
+.cl-sol-card {
+    background:    var(--bg-card);
+    border:        1px solid var(--border);
+    border-radius: 10px;
+    padding:       14px 16px;
+    margin-bottom: 10px;
+    transition:    opacity .2s;
+}
+.cl-sol-header {
+    display:         flex;
+    justify-content: space-between;
+    align-items:     flex-start;
+    gap:             12px;
+    flex-wrap:       wrap;
+    margin-bottom:   8px;
+}
+.cl-sol-aluno {
+    display:        flex;
+    flex-direction: column;
+    gap:            2px;
+}
+.cl-sol-nome {
+    font-size:   .92rem;
+    font-weight: 700;
+    color:       var(--text-primary);
+}
+.cl-sol-email {
+    font-size: .75rem;
+    color:     var(--text-muted);
+}
+.cl-sol-status {
+    font-size:     .72rem;
+    font-weight:   700;
+    padding:       3px 10px;
+    border-radius: 20px;
+    white-space:   nowrap;
+}
+.cl-sol-status--pendente { background: #fef9c3; color: #854d0e; }
+.cl-sol-status--aprovada { background: #d1fae5; color: #065f46; }
+.cl-sol-status--negada   { background: #fee2e2; color: #991b1b; }
+
+.cl-sol-ativ {
+    display:     flex;
+    align-items: center;
+    gap:         6px;
+    flex-wrap:   wrap;
+    font-size:   .82rem;
+    margin-bottom: 6px;
+}
+.cl-sol-disciplina {
+    font-weight: 600;
+    color:       var(--text-primary);
+}
+.cl-sol-sep { color: var(--text-muted); }
+.cl-sol-titulo { color: var(--text-primary); }
+.cl-sol-link {
+    color:           #3b82f6;
+    text-decoration: none;
+    font-size:       .8rem;
+}
+.cl-sol-link:hover { text-decoration: underline; }
+
+.cl-sol-justi {
+    font-size:     .82rem;
+    font-style:    italic;
+    color:         var(--text-muted);
+    margin-bottom: 6px;
+}
+.cl-sol-resposta {
+    font-size:     .82rem;
+    color:         var(--text-primary);
+    background:    var(--bg-hover);
+    border-radius: 6px;
+    padding:       5px 10px;
+    margin-bottom: 6px;
+}
+.cl-sol-footer {
+    display:     flex;
+    align-items: center;
+    gap:         12px;
+    flex-wrap:   wrap;
+}
+.cl-sol-data {
+    font-size: .72rem;
+    color:     var(--text-muted);
+}
+.cl-sol-acoes {
+    display:     flex;
+    gap:         8px;
+    margin-left: auto;
+}
+
+/* Badge inline (dentro de mostrarDetalheAluno) */
+.cl-sol-inline-badge {
+    display:       inline-flex;
+    align-items:   center;
+    gap:           4px;
+    padding:       3px 8px;
+    border-radius: 6px;
+    font-size:     .75rem;
+    font-weight:   700;
+    background:    #fef9c3;
+    color:         #854d0e;
+}
+
+/* Empty state genérico já existe como .cl-empty-state */
