@@ -275,8 +275,10 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
         const sol = _solicitadasMap[String(ativ.id)];
         if (!sol) {
             const dados = esc(JSON.stringify({ id: ativ.id, titulo: ativ.titulo, link: ativ.link, cursoId, cursoNome }));
-            const cls   = reaberturaAberta ? 'pa-solicita-btn pa-solicita-btn--aberta' : 'pa-solicita-btn';
-            reaberturaPart = `<button class="${cls}" onclick="abrirModalSolicitacao('${dados}')">
+            const cls      = reaberturaAberta ? 'pa-solicita-btn pa-solicita-btn--aberta' : 'pa-solicita-btn';
+            const disAttr  = reaberturaAberta ? 'disabled title="Disponível apenas após o encerramento do prazo"' : '';
+            const onclick  = reaberturaAberta ? '' : `onclick="abrirModalSolicitacao('${dados}')"`;
+            reaberturaPart = `<button class="${cls}" ${disAttr} ${onclick}>
                 <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="flex-shrink:0">
                   <path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                   <path d="M2 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
