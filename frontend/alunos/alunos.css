@@ -685,36 +685,35 @@ html, body {
 }
 .pa-qz-link:hover { border-bottom-style: solid; }
 
-/* ══ Botão / Badge de Reabertura (inline na atividade zerada) ═══════ */
+/* ══ Botão / Badge de Reabertura (inline na atividade) ═════════════ */
 .pa-solicita-btn {
     display:       inline-flex;
     align-items:   center;
-    gap:           5px;
-    margin-top:    8px;
-    padding:       5px 12px;
-    background:    #fff7ed;
-    color:         #c2410c;
-    border:        1.5px solid #fdba74;
-    border-radius: 8px;
-    font-size:     .78rem;
+    gap:           6px;
+    margin-top:    10px;
+    padding:       8px 16px;
+    background:    linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color:         #fff;
+    border:        none;
+    border-radius: 9px;
+    font-size:     .82rem;
     font-weight:   700;
     cursor:        pointer;
-    transition:    background .15s, border-color .15s;
+    font-family:   inherit;
+    transition:    opacity .15s, transform .1s, box-shadow .15s;
+    box-shadow:    0 3px 10px rgba(249,115,22,.35);
 }
 .pa-solicita-btn:hover {
-    background:    #ffedd5;
-    border-color:  #f97316;
+    opacity:    .9;
+    box-shadow: 0 5px 16px rgba(249,115,22,.50);
 }
+.pa-solicita-btn:active { transform: scale(.97); }
 .pa-solicita-btn--retry {
-    background: #fef2f2;
-    color:      #b91c1c;
-    border-color: #fca5a5;
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    box-shadow: 0 3px 10px rgba(239,68,68,.3);
     margin-left: 6px;
 }
-.pa-solicita-btn--retry:hover {
-    background:   #fee2e2;
-    border-color: #f87171;
-}
+.pa-solicita-btn--retry:hover { box-shadow: 0 5px 16px rgba(239,68,68,.45); }
 .pa-solicita-badge {
     display:       inline-flex;
     align-items:   center;
@@ -737,11 +736,11 @@ html, body {
     font-size:    1.1rem;
     font-weight:  800;
     margin-bottom: 12px;
-    color:        var(--pa-text-primary, #111);
+    color:        var(--pa-text);
 }
 .pa-sol-card {
-    background:    var(--bg-card, #fff);
-    border:        1px solid var(--border, #e5e7eb);
+    background:    var(--pa-card);
+    border:        1px solid var(--pa-border);
     border-radius: 10px;
     padding:       14px 16px;
     margin-bottom: 10px;
@@ -756,11 +755,11 @@ html, body {
 .pa-sol-ativ {
     font-size:   .92rem;
     font-weight: 700;
-    color:       var(--text-primary, #111);
+    color:       var(--pa-text);
 }
 .pa-sol-curso {
     font-size:   .78rem;
-    color:       var(--text-muted, #6b7280);
+    color:       var(--pa-muted);
     margin-top:  2px;
 }
 .pa-sol-status {
@@ -776,124 +775,207 @@ html, body {
 .pa-sol-justi {
     font-size:   .82rem;
     font-style:  italic;
-    color:       var(--text-muted, #6b7280);
+    color:       var(--pa-muted);
     margin-top:  8px;
 }
 .pa-sol-resposta {
     font-size:    .82rem;
-    color:        var(--text-primary, #111);
+    color:        var(--pa-text);
     margin-top:   6px;
     padding:      6px 10px;
-    background:   var(--bg-hover, #f3f4f6);
+    background:   var(--pa-card2);
     border-radius: 6px;
 }
 .pa-sol-data {
     font-size:  .72rem;
-    color:      var(--text-muted, #9ca3af);
+    color:      var(--pa-muted);
     margin-top: 8px;
 }
 
-/* ══ Modal de Reabertura ════════════════════════════════════════════ */
+/* ══ Modal de Solicitação de Reabertura ═════════════════════════════ */
 .pa-modal-overlay {
     position:        fixed;
     inset:           0;
-    background:      rgba(0,0,0,.45);
+    background:      rgba(0,0,0,.65);
     z-index:         1000;
     display:         flex;
     align-items:     center;
     justify-content: center;
     padding:         16px;
+    backdrop-filter: blur(4px);
 }
-.pa-modal-box {
-    background:    var(--bg-card, #fff);
-    border-radius: 14px;
-    padding:       28px 24px;
+
+.pa-modal-card {
+    background:    var(--pa-card);
+    border-radius: 18px;
     width:         100%;
-    max-width:     460px;
-    box-shadow:    0 20px 60px rgba(0,0,0,.2);
+    max-width:     480px;
+    box-shadow:    0 28px 80px rgba(0,0,0,.55);
+    overflow:      hidden;
+    animation:     paModalEntrar .22s cubic-bezier(.34,1.56,.64,1);
 }
-.pa-modal-box h3 {
-    font-size:     1.1rem;
-    font-weight:   800;
-    margin-bottom: 6px;
+
+@keyframes paModalEntrar {
+    from { opacity: 0; transform: translateY(24px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);   }
 }
-.pa-modal-subtitle {
-    font-size:    .83rem;
-    color:        var(--text-muted, #6b7280);
-    margin-bottom: 14px;
+
+/* ── Cabeçalho laranja ── */
+.pa-modal-head {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    gap:             12px;
+    padding:         18px 20px;
+    background:      linear-gradient(135deg, #f97316 0%, #c2410c 100%);
+}
+.pa-modal-head-left {
+    display:     flex;
+    align-items: center;
+    gap:         12px;
+}
+.pa-modal-head-ico {
+    width:            42px;
+    height:           42px;
+    display:          flex;
+    align-items:      center;
+    justify-content:  center;
+    background:       rgba(255,255,255,.22);
+    border-radius:    11px;
+    flex-shrink:      0;
+    color:            #fff;
+}
+.pa-modal-titulo {
+    font-size:   1rem;
+    font-weight: 800;
+    color:       #fff;
+    line-height: 1.2;
+}
+.pa-modal-subtitulo {
+    font-size:  .74rem;
+    color:      rgba(255,255,255,.82);
+    margin-top: 2px;
+}
+.pa-modal-fechar {
+    background:      rgba(255,255,255,.2);
+    border:          none;
+    color:           #fff;
+    width:           30px;
+    height:          30px;
+    border-radius:   8px;
+    font-size:       .85rem;
+    cursor:          pointer;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    flex-shrink:     0;
+    transition:      background .15s;
+    font-family:     inherit;
+}
+.pa-modal-fechar:hover { background: rgba(255,255,255,.38); }
+
+/* ── Corpo ── */
+.pa-modal-body {
+    padding:        22px 22px 18px;
+    display:        flex;
+    flex-direction: column;
+    gap:            12px;
+}
+.pa-modal-ativ-label {
+    font-size:      .68rem;
+    font-weight:    700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color:          var(--pa-muted);
+    margin-bottom:  -4px;
 }
 .pa-modal-ativ-nome {
-    font-size:     .88rem;
+    font-size:     .9rem;
     font-weight:   700;
-    background:    var(--bg-hover, #f3f4f6);
-    padding:       8px 12px;
-    border-radius: 8px;
-    margin-bottom: 14px;
-    color:         var(--text-primary, #111);
+    color:         var(--pa-text);
+    background:    var(--pa-card2));
+    padding:       10px 14px;
+    border-radius: 9px;
+    border-left:   3px solid #f97316;
+    line-height:   1.4;
 }
 .pa-modal-label {
-    font-size:     .83rem;
-    font-weight:   600;
-    margin-bottom: 6px;
-    color:         var(--text-primary, #111);
-    display:       block;
+    font-size:   .82rem;
+    font-weight: 600;
+    color:       var(--pa-text);
+    display:     block;
+}
+.pa-modal-opt {
+    font-weight: 400;
+    color:       var(--pa-muted);
+    font-size:   .75rem;
 }
 .pa-modal-textarea {
-    width:         100%;
-    min-height:    100px;
-    padding:       10px 12px;
-    border:        1.5px solid var(--border, #d1d5db);
-    border-radius: 8px;
-    font-size:     .88rem;
-    font-family:   inherit;
-    resize:        vertical;
-    background:    var(--bg-card, #fff);
-    color:         var(--text-primary, #111);
-    box-sizing:    border-box;
+    width:        100%;
+    padding:      10px 13px;
+    border:       1.5px solid var(--pa-border));
+    border-radius: 9px;
+    font-size:    .875rem;
+    font-family:  inherit;
+    resize:       vertical;
+    background:   var(--pa-card2));
+    color:        var(--pa-text);
+    box-sizing:   border-box;
+    transition:   border-color .15s, box-shadow .15s;
+    min-height:   96px;
 }
+.pa-modal-textarea::placeholder { color: var(--pa-muted); }
 .pa-modal-textarea:focus {
     outline:      none;
-    border-color: #3b82f6;
-    box-shadow:   0 0 0 3px rgba(59,130,246,.15);
+    border-color: #f97316;
+    box-shadow:   0 0 0 3px rgba(249,115,22,.18);
 }
 .pa-modal-erro {
     font-size:     .82rem;
-    color:         #dc2626;
-    background:    #fef2f2;
-    border:        1px solid #fca5a5;
-    border-radius: 7px;
-    padding:       7px 10px;
-    margin-top:    8px;
+    color:         #fca5a5;
+    background:    rgba(220,38,38,.15);
+    border:        1px solid rgba(220,38,38,.3);
+    border-radius: 8px;
+    padding:       8px 12px;
 }
-.pa-modal-actions {
+
+/* ── Rodapé ── */
+.pa-modal-footer {
     display:         flex;
     justify-content: flex-end;
+    align-items:     center;
     gap:             10px;
-    margin-top:      18px;
+    padding:         14px 22px;
+    border-top:      1px solid var(--pa-border));
+    background:      var(--pa-card2));
 }
 .pa-modal-btn {
-    padding:       8px 20px;
-    border-radius: 8px;
+    display:       inline-flex;
+    align-items:   center;
+    gap:           6px;
+    padding:       9px 20px;
+    border-radius: 9px;
     font-size:     .875rem;
     font-weight:   700;
     cursor:        pointer;
     border:        none;
-    transition:    background .15s;
+    font-family:   inherit;
+    transition:    opacity .15s, transform .1s, box-shadow .15s;
 }
+.pa-modal-btn:active { transform: scale(.97); }
 .pa-modal-btn--cancel {
-    background: var(--bg-hover, #f3f4f6);
-    color:      var(--text-muted, #6b7280);
+    background: var(--pa-card2));
+    color:      var(--pa-muted);
+    border:     1px solid var(--pa-border));
 }
-.pa-modal-btn--cancel:hover { background: var(--border, #e5e7eb); }
+.pa-modal-btn--cancel:hover { background: rgba(255,255,255,.18); }
 .pa-modal-btn--confirm {
-    background: #3b82f6;
-    color:      #fff;
+    background:  linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color:       #fff;
+    box-shadow:  0 4px 14px rgba(249,115,22,.4);
 }
-.pa-modal-btn--confirm:hover   { background: #2563eb; }
-.pa-modal-btn--confirm:disabled {
-    opacity: .6;
-    cursor:  not-allowed;
-}
+.pa-modal-btn--confirm:hover   { opacity: .9; box-shadow: 0 6px 20px rgba(249,115,22,.55); }
+.pa-modal-btn--confirm:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 600px) {

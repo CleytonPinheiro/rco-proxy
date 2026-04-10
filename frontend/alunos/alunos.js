@@ -266,13 +266,19 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
 
     const qzPart = renderQuizizzTag(ativ);
 
-    /* ── Botão / badge de reabertura (só para zeradas) ── */
+    /* ── Botão / badge de reabertura (todas atividades, exceto aguardando) ── */
     let reaberturaPart = '';
-    if (zerada) {
+    if (!aguardando) {
         const sol = _solicitadasMap[String(ativ.id)];
         if (!sol) {
             const dados = esc(JSON.stringify({ id: ativ.id, titulo: ativ.titulo, link: ativ.link, cursoId, cursoNome }));
-            reaberturaPart = `<button class="pa-solicita-btn" onclick="abrirModalSolicitacao('${dados}')">↩ Solicitar reabertura</button>`;
+            reaberturaPart = `<button class="pa-solicita-btn" onclick="abrirModalSolicitacao('${dados}')">
+                <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="flex-shrink:0">
+                  <path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M2 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Solicitar reabertura
+            </button>`;
         } else if (sol.status === 'pendente') {
             reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--pendente">⏳ Reabertura solicitada</span>`;
         } else if (sol.status === 'aprovada') {
@@ -284,11 +290,17 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
         }
     }
 
-    const linkPart = aguardando
-        ? `<span class="pa-aguard-status">Entregue</span>`
-        : `<a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
+    /* "Tentar novamente" só aparece quando a atividade ainda está aberta (não vencida) */
+    let linkPart;
+    if (aguardando) {
+        linkPart = `<span class="pa-aguard-status">Entregue</span>`;
+    } else if (zerada && ativ.vencida) {
+        linkPart = ''; /* atividade encerrada — não há como refazer */
+    } else {
+        linkPart = `<a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
                ${zerada ? 'Tentar novamente ↗' : 'Abrir ↗'}
            </a>`;
+    }
 
     li.innerHTML = `
         <div class="pa-ativ-left">
@@ -380,7 +392,7 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
 
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
-        gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ)));
+        gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
         secao.appendChild(lista);
 
         card.appendChild(secao);
@@ -400,7 +412,7 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
 
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
-        semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ)));
+        semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
         secao.appendChild(lista);
 
         card.appendChild(secao);
