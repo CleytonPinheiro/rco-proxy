@@ -46,6 +46,11 @@ function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Conf
     });
 }
 
+/* ── BroadcastChannel (sync com janela popout) ── */
+const CL_BC_NAME = 'cl-notas-sync';
+let clBc;
+try { clBc = new BroadcastChannel(CL_BC_NAME); } catch(_) { clBc = null; }
+
 /* ── Estado global ── */
 let cursoAtivo      = null;   // { id, nome, link }
 let ativAtiva       = null;   // { id, titulo, pontos }
@@ -619,6 +624,7 @@ async function selecionarAtividade(ativ, itemEl) {
     itemEl.classList.add('cl-ativ-item--ativo');
     ativAtiva  = ativ;
     grupoAtivo = null;
+    clBc?.postMessage({ type: 'atividade', cursoId: cursoAtivo?.id, ativId: ativ.id });
 
     elNotasTitulo.textContent    = 'Notas & Entregas';
     elNotasCount.textContent     = 'Carregando...';
@@ -907,6 +913,7 @@ async function selecionarGrupo(grupo, itemEl) {
     itemEl.classList.add('cl-grupo-item--ativo');
     grupoAtivo = grupo;
     ativAtiva  = null;
+    clBc?.postMessage({ type: 'grupo', cursoId: cursoAtivo?.id, grupoId: grupo.id });
 
     elNotasTitulo.textContent    = `Soma — ${grupo.nome}`;
     elNotasCount.textContent     = 'Carregando...';
@@ -3358,6 +3365,126 @@ elConteudosModalConfirmar.addEventListener('click', async () => {
 document.getElementById('clConteudosModalFechar').addEventListener('click',   fecharModalConteudos);
 document.getElementById('clConteudosModalCancelar').addEventListener('click', fecharModalConteudos);
 elConteudosModal.addEventListener('click', e => { if (e.target === elConteudosModal) fecharModalConteudos(); });
+
+/* ══════════════════════════════════════════════════════════════
+   GAVETA — colapsa col1 + col2 para a esquerda
+══════════════════════════════════════════════════════════════ */
+const CL_LS_GAVETA = 'cl-gaveta-fechada';
+let _gavetaFechada = localStorage.getItem(CL_LS_GAVETA) === '1';
+
+function toggleGaveta(forcarAbrir) {
+    const workspace = document.getElementById('clWorkspace');
+    const tab       = document.getElementById('clGavetaTab');
+    if (!workspace) return;
+
+    if (forcarAbrir === true) _gavetaFechada = false;
+    else _gavetaFechada = !_gavetaFechada;
+
+    workspace.classList.toggle('cl-workspace--gaveta', _gavetaFechada);
+    tab?.classList.toggle('cl-gaveta-tab--visivel', _gavetaFechada);
+
+    /* Se gaveta abriu, restaura widths salvas no resize */
+    if (!_gavetaFechada) {
+        const w1 = parseInt(localStorage.getItem('cl-col1-w') || '260', 10);
+        const w2 = parseInt(localStorage.getItem('cl-col2-w') || '280', 10);
+        workspace.style.gridTemplateColumns = `${w1}px 4px ${w2}px 4px 1fr`;
+    }
+    localStorage.setItem(CL_LS_GAVETA, _gavetaFechada ? '1' : '0');
+}
+
+/* Aplica estado salvo da gaveta ao abrir a página */
+(function initGaveta() {
+    if (!_gavetaFechada) return;
+    /* Espera o workspace aparecer */
+    const obs = new MutationObserver(() => {
+        const ws = document.getElementById('clWorkspace');
+        if (ws && ws.style.display !== 'none') {
+            ws.classList.add('cl-workspace--gaveta');
+            document.getElementById('clGavetaTab')?.classList.add('cl-gaveta-tab--visivel');
+            obs.disconnect();
+        }
+    });
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true });
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   POPOUT — abre Notas & Entregas em janela separada
+══════════════════════════════════════════════════════════════ */
+function popoutNotas() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('popout', '1');
+    url.searchParams.delete('code');
+    const w = window.open(
+        url.toString(),
+        'cl-notas-popout',
+        'width=1100,height=780,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
+    );
+    if (!w) toast('⚠ Popup bloqueado — permita popups para este site.', 'erro', 6000);
+}
+
+/* ── Modo popout: colapsa col1+col2, escuta broadcast ── */
+(function initPopout() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('popout') !== '1') return;
+
+    /* Oculta col1, col2 e handles imediatamente */
+    const hide = ids => ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    hide(['clCol1', 'clHandle1', 'clCol2', 'clHandle2', 'clGavetaTab', 'clBtnGaveta', 'clBtnPopout']);
+
+    /* Ajusta grid para 1 coluna */
+    const applyGrid = () => {
+        const ws = document.getElementById('clWorkspace');
+        if (ws) ws.style.gridTemplateColumns = '1fr';
+    };
+    applyGrid();
+    new MutationObserver(applyGrid).observe(document.body, { childList: true, subtree: true, attributes: true });
+
+    /* Atualiza title da janela */
+    document.title = 'EduSync — Notas & Entregas';
+
+    /* Escuta mensagens da janela principal */
+    if (!clBc) return;
+    clBc.onmessage = async ({ data }) => {
+        try {
+            if (data.type === 'grupo') {
+                /* Seleciona curso e grupo automaticamente */
+                if (!cursoAtivo || cursoAtivo.id !== data.cursoId) {
+                    /* Carrega lista de cursos e seleciona o certo */
+                    const cursos = await api('/courses');
+                    const curso = cursos.find(c => c.id === data.cursoId);
+                    if (!curso) return;
+                    const itemFake = { classList: { add: ()=>{}, remove: ()=>{} } };
+                    await selecionarCurso(curso, itemFake, curso.cor);
+                }
+                /* Agora seleciona o grupo */
+                await new Promise(r => setTimeout(r, 400)); /* aguarda render */
+                const grupo = gruposCache.find(g => g.id === data.grupoId);
+                if (grupo) {
+                    const itemEl = document.querySelector(`.cl-grupo-item[data-id="${grupo.id}"]`)
+                        || { classList: { add: ()=>{}, remove: ()=>{} } };
+                    await selecionarGrupo(grupo, itemEl);
+                }
+            } else if (data.type === 'atividade') {
+                if (!cursoAtivo || cursoAtivo.id !== data.cursoId) {
+                    const cursos = await api('/courses');
+                    const curso = cursos.find(c => c.id === data.cursoId);
+                    if (!curso) return;
+                    const itemFake = { classList: { add: ()=>{}, remove: ()=>{} } };
+                    await selecionarCurso(curso, itemFake, curso.cor);
+                }
+                await new Promise(r => setTimeout(r, 400));
+                const ativ = atividadesCache.find(a => a.id === data.ativId);
+                if (ativ) {
+                    const itemFake = { classList: { add: ()=>{}, remove: ()=>{} } };
+                    await selecionarAtividade(ativ, itemFake);
+                }
+            }
+        } catch(e) { console.warn('[POPOUT]', e); }
+    };
+})();
 
 /* ══════════════════════════════════════════════════════════════
    INICIA

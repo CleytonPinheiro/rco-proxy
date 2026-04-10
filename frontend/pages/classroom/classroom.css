@@ -72,12 +72,63 @@ body {
     flex: 1;
     overflow: hidden;
     border-top: 1px solid var(--border);
+    transition: grid-template-columns .26s ease;
+}
+/* Gaveta fechada: col1 + handles + col2 colapsam */
+.cl-workspace--gaveta {
+    grid-template-columns: 0px 0px 0px 0px 1fr !important;
+}
+.cl-workspace--gaveta .cl-col--cursos,
+.cl-workspace--gaveta .cl-col--atividades,
+.cl-workspace--gaveta .cl-resize-handle {
+    min-width: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 .cl-col {
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
+
+/* ─── Tab flutuante para reabrir gaveta ────────────── */
+.cl-gaveta-tab {
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) translateX(-100%);
+    writing-mode: vertical-rl;
+    background: #4285F4;
+    color: #fff;
+    border: none;
+    padding: 14px 8px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 0 6px 6px 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: .92;
+    transition: transform .26s ease, opacity .15s;
+    box-shadow: 2px 0 10px rgba(0,0,0,.25);
+    user-select: none;
+}
+.cl-gaveta-tab:hover { opacity: 1; }
+.cl-gaveta-tab--visivel {
+    transform: translateY(-50%) translateX(0);
+}
+
+/* ─── Botão gaveta no header da col2 ───────────────── */
+.cl-icon-btn--gaveta svg { transition: transform .2s; }
+.cl-workspace--gaveta .cl-icon-btn--gaveta svg { transform: rotate(180deg); }
+
+/* ─── Botão popout no header da col3 ───────────────── */
+.cl-icon-btn--popout { opacity: .7; }
+.cl-icon-btn--popout:hover { opacity: 1; }
 
 /* ─── Handles de redimensionamento ──────────────────── */
 .cl-resize-handle {

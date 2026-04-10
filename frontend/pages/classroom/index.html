@@ -204,6 +204,12 @@
             </div>
         </div>
 
+        <!-- Tab flutuante para reabrir gaveta -->
+        <button class="cl-gaveta-tab" id="clGavetaTab" onclick="toggleGaveta()" title="Abrir painéis">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
+            Painéis
+        </button>
+
         <!-- ─── Interface principal (3 colunas) ─── -->
         <div class="cl-workspace" id="clWorkspace" style="display:none">
 
@@ -248,6 +254,9 @@
                         </button>
                         <button class="cl-icon-btn cl-icon-btn--criar-rec" id="clBtnCriarRec" style="display:none" title="Criar grupo de recuperação para o grupo selecionado (data de hoje como corte)">
                             🔄
+                        </button>
+                        <button class="cl-icon-btn cl-icon-btn--gaveta" id="clBtnGaveta" onclick="toggleGaveta()" title="Recolher painéis laterais">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
                         </button>
                     </div>
                 </div>
@@ -312,6 +321,9 @@
                         <h2 class="cl-col-titulo" id="clNotasTitulo">Notas & Entregas</h2>
                         <p class="cl-col-sub" id="clNotasCount">Selecione uma atividade</p>
                     </div>
+                    <button class="cl-icon-btn cl-icon-btn--popout" id="clBtnPopout" onclick="popoutNotas()" title="Abrir em janela separada (multi-monitor)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </button>
                     <div class="cl-col-head-actions" id="clNotasActions" style="display:none">
                         <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnAtualizar" title="Buscar dados atualizados do Google Classroom">
                             <svg id="clBtnAtualizarIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
