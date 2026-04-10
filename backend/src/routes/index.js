@@ -21,6 +21,7 @@ import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
 import { createAlunosPortalRouter }  from './alunos-portal.routes.js';
 import { createRcoLancamentoRouter } from './rco-lancamento.routes.js';
+import { createQRCodeRouter }        from './qrcode.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -30,6 +31,9 @@ export function createApiRouter(deps) {
 
     /* ── Portal do Aluno (público — sem sessão EduSync) ── */
     router.use('/', createAlunosPortalRouter());
+
+    /* ── Gerador de QR Code (público) ── */
+    router.use('/', createQRCodeRouter());
 
     /* ══════════════════════════════════════════════════════════════════
      * BARREIRA DE AUTENTICAÇÃO GLOBAL

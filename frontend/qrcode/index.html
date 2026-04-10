@@ -133,7 +133,8 @@
                 <!-- QR gerado -->
                 <div class="qr-resultado" id="qrResultado" style="display:none">
                     <div class="qr-canvas-wrap" id="qrCanvasWrap">
-                        <canvas id="qrCanvas"></canvas>
+                        <img id="qrImg" alt="QR Code gerado" style="display:block;border-radius:8px;">
+                        <canvas id="qrPrintCanvas" style="display:none"></canvas>
                     </div>
                     <div class="qr-url-preview" id="qrUrlPreview"></div>
                 </div>
@@ -174,12 +175,11 @@
     <div class="qr-print-area" id="qrPrintArea">
         <div class="qr-print-logo">⚡ EduSync</div>
         <div class="qr-print-titulo" id="qrPrintTitulo"></div>
-        <canvas id="qrPrintCanvas"></canvas>
+        <img id="qrPrintImg" alt="QR Code" style="width:512px;height:512px;display:block;margin:0 auto;">
         <div class="qr-print-url" id="qrPrintUrl"></div>
         <div class="qr-print-rodape">Gerado em <span id="qrPrintData"></span> · EduSync — Portal do Aluno</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="./qrcode-page.js"></script>
 </body>
 </html>
