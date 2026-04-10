@@ -766,7 +766,7 @@ body[data-side="open"] .side-panel {
     margin-bottom: 4px;
 }
 
-/* Indicador de submenu no item pai */
+/* ── Indicador de submenu (badge ›) ─────────────────────────── */
 .side-nav-chevron-hint {
     margin-left: auto;
     flex-shrink: 0;
@@ -776,87 +776,98 @@ body[data-side="open"] .side-panel {
     width: 20px;
     height: 20px;
     border-radius: 6px;
-    background: rgba(66,133,244,.18);
-    border: 1px solid rgba(66,133,244,.35);
-    font-size: .8rem;
-    font-weight: 700;
-    color: #4285F4;
+    background: var(--bg-tertiary);
+    border: 1.5px solid var(--border);
+    font-size: .78rem;
+    font-weight: 800;
+    color: var(--text-secondary);
     line-height: 1;
-    letter-spacing: 0;
     opacity: 1;
-    transition: background .15s, border-color .15s, transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s;
+    transition: background .15s, border-color .15s, color .15s,
+                transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s;
 }
 .side-nav-group:hover .side-nav-chevron-hint {
-    background: #4285F4;
-    border-color: #4285F4;
+    background: #007bff;
+    border-color: #007bff;
     color: #fff;
-    transform: translateX(3px);
-    box-shadow: 0 2px 8px rgba(66,133,244,.4);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,123,255,.35);
 }
 
-/* Flyout — posicionado via JS (position: fixed), oculto por padrão */
+/* ── Flyout — posicionado via JS (position:fixed no <body>) ─── */
 .side-nav-sub-static {
     position: fixed;
-    width: 220px;
-    background: var(--bg-primary);
-    border: 1.5px solid rgba(66,133,244,.4);
-    border-radius: 12px;
-    box-shadow: 0 8px 28px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
-    padding: 6px;
+    width: 240px;
+    /* Mesma cor de fundo que o painel lateral */
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    /* Sombra igual ao .side-panel */
+    box-shadow: 4px 0 32px rgba(0,0,0,.22);
+    padding: 8px 10px 10px;
     z-index: 9999;
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-6px);
-    transition: opacity .16s ease, transform .16s ease;
+    transform: translateX(-8px);
+    transition: opacity .18s ease, transform .18s cubic-bezier(.4,0,.2,1);
 }
 .side-nav-sub-static.flyout-open {
     opacity: 1;
     pointer-events: auto;
     transform: translateX(0);
 }
-[data-theme="dark"] .side-nav-sub-static {
-    border-color: rgba(96,165,250,.4);
-    box-shadow: 0 8px 28px rgba(0,0,0,.4);
-}
 
-/* Rótulo do flyout */
+/* ── Rótulo de seção do flyout — igual a .side-panel-section-label */
 .side-nav-sub-label {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .9px;
+    letter-spacing: 1px;
     color: var(--text-muted);
-    padding: 5px 12px 3px;
+    padding: 4px 8px 6px;
+    margin-bottom: 2px;
 }
 
+/* Separador visual abaixo do label */
+.side-nav-sub-label::after {
+    content: '';
+    display: block;
+    margin-top: 6px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* ── Itens do flyout — espelham .side-nav-item ─────────────── */
 .side-nav-sub-item {
     display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 9px 12px;
-    font-size: .855rem;
-    font-weight: 500;
-    color: var(--text-secondary);
+    gap: 14px;
+    padding: 11px 12px;
+    border-radius: 10px;
     text-decoration: none;
-    border-radius: 8px;
-    transition: background .13s, color .13s;
-    margin: 1px 0;
+    color: var(--text-primary);
+    font-size: .9rem;
+    font-weight: 500;
+    border: 1.5px solid transparent;
+    transition: background .15s, transform .1s, border-color .15s, color .15s;
+    margin: 2px 0;
 }
 .side-nav-sub-item:hover {
-    background: rgba(66,133,244,.1);
-    color: #4285F4;
+    background: var(--bg-secondary);
+    transform: translateX(3px);
 }
 .side-nav-sub-item--active {
-    background: rgba(66,133,244,.12);
-    color: #4285F4;
+    background: var(--bg-tertiary);
+    border-color: #007bff;
+    color: #007bff;
     font-weight: 600;
 }
 [data-theme="dark"] .side-nav-sub-item:hover {
-    background: rgba(96,165,250,.12);
-    color: #60a5fa;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
 }
 [data-theme="dark"] .side-nav-sub-item--active {
-    background: rgba(96,165,250,.14);
+    background: var(--bg-tertiary);
+    border-color: #60a5fa;
     color: #60a5fa;
 }
 
