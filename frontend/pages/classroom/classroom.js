@@ -84,6 +84,9 @@ const elAuditClasseSel = document.getElementById('clAuditClasseSel');
 const elAuditResults   = document.getElementById('clAuditResults');
 const elAuditAtivLista = document.getElementById('clAuditAtivLista');
 const elAuditHint      = document.getElementById('clAuditHint');
+const elAuditChipWrap  = document.getElementById('clAuditChipWrap');
+const elAuditChipNome  = document.getElementById('clAuditChipNome');
+const elAuditSelWrap   = document.getElementById('clAuditSelWrap');
 const elNotasLista     = document.getElementById('clNotasLista');
 const elCursosCount    = document.getElementById('clCursosCount');
 const elAtivCount      = document.getElementById('clAtivCount');
@@ -560,7 +563,7 @@ function setTab(tab) {
     } else {
         elAtivCount.textContent = auditResultado
             ? `${auditResultado.atividades.length} atividade${auditResultado.atividades.length !== 1 ? 's' : ''} auditadas`
-            : 'Selecione o vinculo RCO';
+            : 'Analisando...';
     }
 
     if (tab === 'atividades' && (grupoAtivo || auditAtivAtiva)) {
@@ -2043,11 +2046,36 @@ async function excluirGrupo(grupo) {
    AUDITORIA DE FREQUÊNCIA
 ══════════════════════════════════════════════════════════════ */
 
-/* ── Carrega acessos e popula seletor de classe RCO ── */
+/* ── Infere o codClasse RCO mais comum nos grupos do curso atual ── */
+function inferirCodClasseDosCursos() {
+    if (!gruposCache?.length) return null;
+    const counts = {};
+    gruposCache.forEach(g => {
+        if (g.codClasseRco) counts[String(g.codClasseRco)] = (counts[String(g.codClasseRco)] || 0) + 1;
+    });
+    const entries = Object.entries(counts);
+    if (!entries.length) return null;
+    return entries.sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/* ── Exibe o chip de vínculo (modo compacto) ── */
+function mostrarChipAudit(nomeClasse) {
+    elAuditChipNome.textContent = nomeClasse;
+    elAuditChipWrap.style.display = '';
+    elAuditSelWrap.style.display  = 'none';
+}
+
+/* ── Exibe o seletor manual de classe ── */
+function mostrarSeletorAudit() {
+    elAuditChipWrap.style.display = 'none';
+    elAuditSelWrap.style.display  = '';
+    elAuditHint.textContent = '';
+}
+
+/* ── Carrega acessos e resolve o vínculo RCO, auto-rodando se conhecido ── */
 async function prepararAuditSelector() {
     if (!cursoAtivo) return;
 
-    // Recuperar classe salva para este curso
     const savedClasse = localStorage.getItem(auditMapKey(cursoAtivo.id));
 
     if (!acessosCache) {
@@ -2078,7 +2106,7 @@ async function prepararAuditSelector() {
         }
     }
 
-    // Deduplicar por codClasse
+    // Deduplicar e ordenar
     const vistas = new Set();
     const classesUnicas = classes.filter(c => {
         if (vistas.has(c.codClasse)) return false;
@@ -2086,40 +2114,68 @@ async function prepararAuditSelector() {
         return true;
     }).sort((a, b) => (a.descrTurma + a.nomeDisciplina).localeCompare(b.descrTurma + b.nomeDisciplina));
 
+    // Popular o <select> oculto (usado pelo syncCustomSel e pelo chip de troca)
     elAuditClasseSel.innerHTML = '<option value="">— selecione a turma/disciplina —</option>';
     classesUnicas.forEach(c => {
         const opt = document.createElement('option');
         opt.value       = c.codClasse;
         opt.textContent = `${c.descrTurma} — ${c.nomeDisciplina}`;
-        if (String(c.codClasse) === String(savedClasse)) opt.selected = true;
         elAuditClasseSel.appendChild(opt);
     });
-    syncCustomSel();
 
-    if (savedClasse) {
-        auditCodClasse = savedClasse;
-        elAuditHint.textContent = '✓ Vínculo RCO salvo para esta disciplina';
-        elAuditHint.style.color = 'var(--text-muted)';
+    // Determinar vínculo efetivo: salvo > inferido dos grupos
+    const infClasseCod  = inferirCodClasseDosCursos();
+    const codEfetivo    = savedClasse || infClasseCod || null;
+
+    if (codEfetivo) {
+        auditCodClasse = codEfetivo;
+        elAuditClasseSel.value = codEfetivo;
+        syncCustomSel();
+
+        // Salvar no localStorage caso tenha sido apenas inferido (sem salvo prévio)
+        if (!savedClasse) localStorage.setItem(auditMapKey(cursoAtivo.id), codEfetivo);
+
+        const c = classesUnicas.find(x => String(x.codClasse) === String(codEfetivo));
+        const nomeChip = c ? `${c.descrTurma} — ${c.nomeDisciplina}` : `Classe ${codEfetivo}`;
+        mostrarChipAudit(nomeChip);
+
+        // Auto-rodar se ainda não há resultado e a análise não está em andamento
+        const _btnAudit = document.getElementById('clBtnRodarAudit');
+        if (!auditResultado && !_btnAudit?.disabled) {
+            rodarAuditoria();
+        } else {
+            elAuditResults.style.display = '';
+            renderAuditAtividades();
+        }
     } else {
-        elAuditHint.textContent = '';
-    }
-
-    // Mostrar resultados anteriores se existirem
-    if (auditResultado) {
-        elAuditResults.style.display = '';
-        renderAuditAtividades();
+        // Vínculo desconhecido: exibir seletor manual
+        syncCustomSel();
+        mostrarSeletorAudit();
+        if (auditResultado) {
+            elAuditResults.style.display = '';
+            renderAuditAtividades();
+        }
     }
 }
 
+/* ── Ao selecionar manualmente: salva, muda para chip e auto-roda ── */
 elAuditClasseSel.addEventListener('change', () => {
     auditCodClasse = elAuditClasseSel.value || null;
     if (auditCodClasse && cursoAtivo) {
         localStorage.setItem(auditMapKey(cursoAtivo.id), auditCodClasse);
-        elAuditHint.textContent = '✓ Vínculo salvo';
-        elAuditHint.style.color = '#16a34a';
+        const selOpt = [...elAuditClasseSel.options].find(o => o.value === auditCodClasse);
+        mostrarChipAudit(selOpt?.textContent || `Classe ${auditCodClasse}`);
+        auditResultado = null;
+        rodarAuditoria();
     } else {
         elAuditHint.textContent = '';
     }
+});
+
+/* ── Botão "alterar": volta ao seletor manual ── */
+document.getElementById('clAuditChipAlter').addEventListener('click', () => {
+    mostrarSeletorAudit();
+    syncCustomSel();
 });
 
 document.getElementById('clBtnRodarAudit').addEventListener('click', rodarAuditoria);

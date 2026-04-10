@@ -283,23 +283,35 @@
                 <!-- Painel de Auditoria -->
                 <div class="cl-audit-panel" id="clAuditPanel" style="display:none">
                     <div class="cl-audit-config" id="clAuditConfig" style="overflow-y:auto">
-                        <label class="cl-audit-label">Turma/Disciplina no RCO</label>
-                        <select id="clAuditClasseSel" style="display:none">
-                            <option value="">— selecione —</option>
-                        </select>
-                        <div class="cl-csel">
-                            <button class="cl-csel-btn" type="button" id="clAuditSelBtn">
-                                <span class="cl-csel-val" id="clAuditSelVal">— selecione a turma/disciplina —</span>
-                                <svg class="cl-csel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
-                            </button>
-                            <div class="cl-csel-drop" id="clAuditSelDrop" style="display:none">
-                                <div class="cl-csel-list" id="clAuditSelList"></div>
+                        <!-- Chip: vínculo RCO já conhecido (inferido dos grupos ou salvo) -->
+                        <div class="cl-audit-chip-wrap" id="clAuditChipWrap" style="display:none">
+                            <span class="cl-audit-chip-label">TURMA/DISCIPLINA RCO</span>
+                            <div class="cl-audit-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="flex-shrink:0;opacity:.6"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                <span class="cl-audit-chip-nome" id="clAuditChipNome"></span>
+                                <button class="cl-audit-chip-alter" id="clAuditChipAlter" type="button" title="Alterar vínculo">✎ alterar</button>
                             </div>
                         </div>
-                        <button class="cl-btn cl-btn--primary cl-btn--sm" id="clBtnRodarAudit" style="margin-top:8px;width:100%">
-                            Analisar frequência
-                        </button>
-                        <p class="cl-audit-hint" id="clAuditHint"></p>
+                        <!-- Seletor: vínculo desconhecido ou usuário clicou em "alterar" -->
+                        <div id="clAuditSelWrap">
+                            <label class="cl-audit-label">Turma/Disciplina no RCO</label>
+                            <select id="clAuditClasseSel" style="display:none">
+                                <option value="">— selecione —</option>
+                            </select>
+                            <div class="cl-csel">
+                                <button class="cl-csel-btn" type="button" id="clAuditSelBtn">
+                                    <span class="cl-csel-val" id="clAuditSelVal">— selecione a turma/disciplina —</span>
+                                    <svg class="cl-csel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="cl-csel-drop" id="clAuditSelDrop" style="display:none">
+                                    <div class="cl-csel-list" id="clAuditSelList"></div>
+                                </div>
+                            </div>
+                            <button class="cl-btn cl-btn--primary cl-btn--sm" id="clBtnRodarAudit" style="margin-top:8px;width:100%">
+                                Analisar frequência
+                            </button>
+                            <p class="cl-audit-hint" id="clAuditHint"></p>
+                        </div>
                     </div>
                     <!-- Handle vertical auditoria -->
                     <div class="cl-hresize-handle" id="clAuditConfigHandle"></div>
