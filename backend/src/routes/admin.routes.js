@@ -466,17 +466,31 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         try {
             const classroom = google.classroom({ version: 'v1', auth });
 
-            let todosCursos = [], pageToken;
-            do {
-                const r = await classroom.courses.list({
-                    studentId:    email,
-                    courseStates: ['ACTIVE'],
-                    pageSize:     50,
-                    pageToken,
-                });
-                todosCursos.push(...(r.data.courses || []));
-                pageToken = r.data.nextPageToken;
-            } while (pageToken);
+            /* Busca em paralelo: cursos do professor e cursos do aluno */
+            const [profResp, alunoResp] = await Promise.all([
+                (async () => {
+                    const cursos = []; let pt;
+                    do {
+                        const r = await classroom.courses.list({ teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken: pt });
+                        cursos.push(...(r.data.courses || []));
+                        pt = r.data.nextPageToken;
+                    } while (pt);
+                    return cursos;
+                })(),
+                (async () => {
+                    const cursos = []; let pt;
+                    do {
+                        const r = await classroom.courses.list({ studentId: email, courseStates: ['ACTIVE'], pageSize: 50, pageToken: pt });
+                        cursos.push(...(r.data.courses || []));
+                        pt = r.data.nextPageToken;
+                    } while (pt);
+                    return cursos;
+                })(),
+            ]);
+
+            /* Intersecção: só cursos onde o titular leciona E o aluno está matriculado */
+            const profIds = new Set(profResp.map(c => c.id));
+            const todosCursos = alunoResp.filter(c => profIds.has(c.id));
 
             if (!todosCursos.length) {
                 return res.json({ email, cursos: [], totalPendentes: 0 });

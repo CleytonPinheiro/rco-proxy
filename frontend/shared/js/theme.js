@@ -71,6 +71,33 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
+/* ── Submenu Classroom ───────────────────────────────────────────────────── */
+window.toggleSideClassroom = function (btn) {
+    var sub = document.getElementById('sideClassroomSub');
+    if (!sub) return;
+    var open = sub.classList.toggle('open');
+    btn.classList.toggle('side-nav-item--parent-open', open);
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    /* Exibe itens de admin apenas para perfil admin */
+    var perfil = localStorage.getItem('edusync_perfil') || '';
+    if (perfil === 'admin') {
+        document.querySelectorAll('.side-nav-sub-admin').forEach(function (el) {
+            el.style.display = 'flex';
+        });
+    }
+    /* Auto-expande submenu na página do Classroom */
+    if (window.location.pathname.startsWith('/pages/classroom')) {
+        var sub = document.getElementById('sideClassroomSub');
+        var btn = document.querySelector('.side-nav-item--parent');
+        if (sub && btn) {
+            sub.classList.add('open');
+            btn.classList.add('side-nav-item--parent-open');
+        }
+    }
+});
+
 /* ── Pré-carrega CSS de nav/perfil e guard de autenticação (exceto páginas públicas) ── */
 (function () {
     const paginasPublicas = ['/login', '/termos', '/privacidade'];

@@ -697,3 +697,16 @@ function renderPreviewDisciplina({ curso, alunos, totalAlunos, totalComPendencia
 carregarUsuarios();
 carregarEscolas();
 carregarCursosPortal();
+
+/* ── Abre seção/modo via query param (ex: ?tab=portal&modo=aluno) ── */
+(function () {
+    const params = new URLSearchParams(location.search);
+    const tab    = params.get('tab');
+    const modo   = params.get('modo');
+    if (tab === 'portal') {
+        document.getElementById('cardPortalAluno')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (modo === 'aluno' || modo === 'disciplina') trocarModoPortal(modo);
+        /* Limpa o param da URL sem recarregar */
+        history.replaceState(null, '', location.pathname);
+    }
+})();
