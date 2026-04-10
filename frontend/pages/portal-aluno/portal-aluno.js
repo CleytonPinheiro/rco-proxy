@@ -73,15 +73,56 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
     wrap.innerHTML = html;
 }
 
+/* ── Extrai a turma do nome do curso (ex: "Matemática - 2º Ano C Manha - Médio Integrado") ── */
+function extrairTurma(nome) {
+    /* Procura padrão: Nº Ano X Período (Manha/Tarde/Noite) */
+    const m = nome.match(/(\d+[ºª°]?\s*Ano\s+\w+\s+(?:Manha|Tarde|Noite)[^·]*)/i);
+    if (m) return m[1].trim().replace(/\s*-\s*$/, '');
+    /* Fallback: usa a parte após o primeiro " - " */
+    const idx = nome.indexOf(' - ');
+    if (idx !== -1) return nome.slice(idx + 3).trim();
+    return 'Outras';
+}
+
+/* ── Extrai só o nome da disciplina (antes da turma) ── */
+function extrairDisciplina(nome) {
+    const idx = nome.indexOf(' - ');
+    return idx !== -1 ? nome.slice(0, idx).trim() : nome;
+}
+
 /* ── Modo: Por disciplina ── */
 async function carregarCursos() {
     try {
         const res    = await api('/admin/portal-aluno/cursos');
         const cursos = await res.json();
         if (!res.ok) throw new Error(cursos.erro || 'Erro');
+
+        /* Agrupa por turma */
+        const grupos = {};
+        for (const c of cursos) {
+            const turma = extrairTurma(c.nome);
+            if (!grupos[turma]) grupos[turma] = [];
+            grupos[turma].push(c);
+        }
+
+        /* Ordena turmas: 1º Ano → 2º Ano → 3º Ano → resto */
+        const turmasOrdenadas = Object.keys(grupos).sort((a, b) => {
+            const na = parseInt(a) || 99;
+            const nb = parseInt(b) || 99;
+            if (na !== nb) return na - nb;
+            return a.localeCompare(b, 'pt-BR');
+        });
+
+        /* Monta o <select> com <optgroup> por turma */
         const sel = document.getElementById('paCursoSelect');
         sel.innerHTML = '<option value="">— Selecione uma disciplina —</option>' +
-            cursos.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}${c.secao ? ` · ${esc(c.secao)}` : ''}</option>`).join('');
+            turmasOrdenadas.map(turma => {
+                const itens = grupos[turma]
+                    .sort((a, b) => extrairDisciplina(a.nome).localeCompare(extrairDisciplina(b.nome), 'pt-BR'))
+                    .map(c => `<option value="${esc(c.id)}">${esc(extrairDisciplina(c.nome))}</option>`)
+                    .join('');
+                return `<optgroup label="${esc(turma)}">${itens}</optgroup>`;
+            }).join('');
     } catch (e) {
         document.getElementById('paCursoSelect').innerHTML = `<option value="">Erro ao carregar: ${esc(e.message)}</option>`;
     }
