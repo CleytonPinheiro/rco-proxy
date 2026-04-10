@@ -580,7 +580,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                     };
 
                     const atividades = (subsPendResp.data.studentSubmissions || [])
-                        .map(s => mapAtiv(s, { estado: s.state }))
+                        .map(s => mapAtiv(s, { estado: s.state, devolvida: s.state === 'RECLAIMED_BY_STUDENT' }))
                         .filter(Boolean).sort(sortPrazo);
 
                     const zeradas = (subsZerResp.data.studentSubmissions || [])

@@ -107,12 +107,14 @@ function renderPreviewAluno({ email, cursos, totalPendentes, totalZeradas = 0, t
         /* status badges */
         statusAguard:'display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;background:rgba(29,78,216,.12);color:#1d4ed8;border:1px solid rgba(29,78,216,.25);border-radius:4px;padding:1px 7px',
         statusZer:   'display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;background:rgba(249,115,22,.12);color:#c2410c;border:1px solid rgba(249,115,22,.25);border-radius:4px;padding:1px 7px',
+        statusDev:   'display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;background:rgba(242,153,0,.12);color:#b45309;border:1px solid rgba(242,153,0,.3);border-radius:4px;padding:1px 7px',
         /* Quizizz tag */
         qzTag:       'display:inline-flex;align-items:center;gap:4px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);border-radius:5px;padding:1px 7px;font-size:.68rem',
         qzLabel:     'font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.04em;font-size:.64rem',
         qzLink:      'color:#7c3aed;text-decoration:none;font-weight:700;border-bottom:1px dashed rgba(124,58,237,.4)',
-        /* botão abrir */
+        /* botões direita */
         btn:         'padding:4px 10px;border-radius:6px;background:#1e1b4b;color:#a5b4fc;font-size:.75rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;margin-top:1px',
+        btnZer:      'padding:4px 10px;border-radius:6px;background:#f97316;color:#fff;font-size:.75rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;margin-top:1px',
         btnEntregue: 'font-size:.75rem;font-weight:600;color:#1d4ed8;white-space:nowrap;flex-shrink:0;margin-top:3px',
     };
 
@@ -134,15 +136,18 @@ function renderPreviewAluno({ email, cursos, totalPendentes, totalZeradas = 0, t
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.75rem;color:var(--text-muted)">
                     <span>${TIPO_LABEL[a.tipo] || a.tipo}</span>
-                    ${a.prazo ? `<span>·</span><span style="color:${a.vencida ? '#dc2626' : 'inherit'}">${a.vencida ? '⚠ Vencida' : '📅'} ${esc(a.prazo)}</span>` : '<span>· Sem prazo</span>'}
+                    ${a.prazo ? `<span>·</span><span style="color:${a.vencida ? '#dc2626' : 'inherit'}">${a.vencida ? '⚠️ Vencida' : '📅'} ${esc(a.prazo)}</span>` : '<span>· Sem prazo</span>'}
                     ${a.pontos != null ? `<span>·</span><span>${a.pontos} pts</span>` : ''}
-                    ${tipo === 'aguard' ? `<span style="${S.statusAguard}">⏳ Aguardando correção</span>` : ''}
-                    ${tipo === 'zer'    ? `<span style="${S.statusZer}">↩ Entrou com 0 pts</span>` : ''}
+                    ${tipo === 'aguard'       ? `<span style="${S.statusAguard}">⏳ Aguardando correção</span>` : ''}
+                    ${tipo === 'zer'          ? `<span style="${S.statusZer}">↩ Entrou com 0 pts</span>` : ''}
+                    ${a.devolvida            ? `<span style="${S.statusDev}">↩ Devolvida</span>` : ''}
                 </div>
             </div>
             ${tipo === 'aguard'
                 ? `<span style="${S.btnEntregue}">Entregue</span>`
-                : (a.link ? `<a href="${esc(a.link)}" target="_blank" style="${S.btn}">Abrir</a>` : '')
+                : tipo === 'zer'
+                    ? (a.link ? `<a href="${esc(a.link)}" target="_blank" style="${S.btnZer}">Tentar novamente ↗</a>` : '')
+                    : (a.link ? `<a href="${esc(a.link)}" target="_blank" style="${S.btn}">Abrir ↗</a>` : '')
             }
         </div>`;
 
