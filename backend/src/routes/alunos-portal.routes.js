@@ -535,15 +535,46 @@ export function createAlunosPortalRouter() {
                 ...(c.atividades || []),
                 ...(c.zeradas   || []),
             ]);
+            const HORAS_2   = 2  * 60 * 60 * 1000;
+            const DIAS_AVISO = 3;
+            const hoje = new Date().toISOString().slice(0, 10); /* YYYY-MM-DD */
+
             for (const ativ of todasAtiv) {
                 if (!ativ.prazoIso || ativ.vencida) continue;
-                if (prazoProximo(ativ.prazoIso)) {
+                const limite = new Date(ativ.prazoIso).getTime();
+                const diffMs = limite - Date.now();
+                if (diffMs <= 0) continue; /* já vencida */
+
+                /* Alerta imediato: menos de 2 horas */
+                if (diffMs < HORAS_2) {
                     await criarNotif(
                         aluno.email,
                         'prazo_proximo',
                         String(ativ.id),
                         '⚠️ Prazo encerrando em breve!',
                         `A atividade "${ativ.titulo}" fecha em menos de 2 horas. Complete-a antes que o prazo se encerre!`,
+                        { coursework_id: String(ativ.id), titulo: ativ.titulo }
+                    );
+                }
+
+                /* Lembrete diário: de 2 horas até 3 dias antes
+                   referencia inclui a data de hoje → 1 notif por dia por atividade */
+                const diasMs = DIAS_AVISO * 24 * 60 * 60 * 1000;
+                if (diffMs >= HORAS_2 && diffMs <= diasMs) {
+                    const diasRestantes = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+                    const refDiaria     = `${ativ.id}_${hoje}`;
+                    const titulo = diasRestantes === 1
+                        ? '📅 Prazo encerra amanhã!'
+                        : `📅 Prazo em ${diasRestantes} dias`;
+                    const mensagem = diasRestantes === 1
+                        ? `A atividade "${ativ.titulo}" fecha amanhã. Realize-a antes que o prazo se encerre!`
+                        : `A atividade "${ativ.titulo}" fecha em ${diasRestantes} dias. Não deixe acumular!`;
+                    await criarNotif(
+                        aluno.email,
+                        'prazo_dias',
+                        refDiaria,
+                        titulo,
+                        mensagem,
                         { coursework_id: String(ativ.id), titulo: ativ.titulo }
                     );
                 }

@@ -586,11 +586,13 @@ const NOTIF_ICONE = {
     reabertura_aprovada: '✅',
     reabertura_negada:   '❌',
     prazo_proximo:       '⏰',
+    prazo_dias:          '📅',
 };
 const NOTIF_COR = {
     reabertura_aprovada: 'verde',
     reabertura_negada:   'vermelho',
     prazo_proximo:       'laranja',
+    prazo_dias:          'amarelo',
 };
 
 function iniciarPollingNotificacoes() {

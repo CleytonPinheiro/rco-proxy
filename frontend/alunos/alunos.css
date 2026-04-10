@@ -1160,3 +1160,8 @@ html, body {
     .pa-notif-titulo { font-size: 1rem; }
     .pa-notif-btn-ok { padding: 9px 20px; }
 }
+
+/* Variante amarelo — lembrete diário de prazo (prazo_dias) */
+.pa-notif-overlay[data-cor="amarelo"] .pa-notif-head {
+    background: linear-gradient(135deg, #d97706, #92400e);
+}
