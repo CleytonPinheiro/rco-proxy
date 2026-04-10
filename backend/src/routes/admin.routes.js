@@ -455,10 +455,12 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
-    /* GET /api/admin/portal-aluno/preview?email=xxx — atividades de um aluno */
+    /* GET /api/admin/portal-aluno/preview — atividades de um aluno
+       Aceita ?email=xxx  OU  ?userId=xxx (Google Classroom userId) */
     router.get('/admin/portal-aluno/preview', async (req, res) => {
-        const { email } = req.query;
-        if (!email) return res.status(400).json({ erro: 'email é obrigatório.' });
+        const { email, userId } = req.query;
+        const studentId = (email || userId || '').trim();
+        if (!studentId) return res.status(400).json({ erro: 'email ou userId é obrigatório.' });
 
         const auth = getTeacherAuth();
         if (!auth) return res.status(503).json({ erro: 'Google Classroom não conectado.' });
@@ -480,7 +482,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 (async () => {
                     const cursos = []; let pt;
                     do {
-                        const r = await classroom.courses.list({ studentId: email, courseStates: ['ACTIVE'], pageSize: 50, pageToken: pt });
+                        const r = await classroom.courses.list({ studentId, courseStates: ['ACTIVE'], pageSize: 50, pageToken: pt });
                         cursos.push(...(r.data.courses || []));
                         pt = r.data.nextPageToken;
                     } while (pt);
@@ -493,7 +495,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             const todosCursos = alunoResp.filter(c => profIds.has(c.id));
 
             if (!todosCursos.length) {
-                return res.json({ email, cursos: [], totalPendentes: 0 });
+                return res.json({ email: studentId, cursos: [], totalPendentes: 0 });
             }
 
             const resultados = await Promise.all(todosCursos.map(async curso => {
@@ -502,7 +504,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                         classroom.courses.courseWork.studentSubmissions.list({
                             courseId:     curso.id,
                             courseWorkId: '-',
-                            userId:       email,
+                            userId:       studentId,
                             states:       ['NEW', 'CREATED', 'RECLAIMED_BY_STUDENT'],
                             pageSize:     100,
                         }),
@@ -556,7 +558,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             }));
 
             const cursos = resultados.filter(Boolean);
-            res.json({ email, cursos, totalPendentes: cursos.reduce((s, c) => s + c.atividades.length, 0) });
+            res.json({ email: studentId, cursos, totalPendentes: cursos.reduce((s, c) => s + c.atividades.length, 0) });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

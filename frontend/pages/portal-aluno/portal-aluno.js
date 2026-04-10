@@ -22,15 +22,22 @@ function trocarModo(modo) {
 
 /* ── Modo: Por aluno ── */
 async function buscarPortalAluno() {
-    const sel   = document.getElementById('paAlunoSelect');
-    const email = sel ? sel.value : '';
-    if (!email) { alert('Selecione um aluno.'); return; }
-    const wrap = document.getElementById('paResultado');
+    const sel    = document.getElementById('paAlunoSelect');
+    const userId = sel ? sel.value : '';
+    const nome   = sel && sel.selectedIndex > 0 ? sel.options[sel.selectedIndex].text : '';
+    const wrap   = document.getElementById('paResultado');
+
+    if (!userId) {
+        wrap.innerHTML = '<p style="color:#dc2626;font-size:.88rem;padding:8px 0">⚠ Selecione um aluno na lista acima.</p>';
+        return;
+    }
     wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem">Buscando atividades...</p>';
     try {
-        const res  = await api(`/admin/portal-aluno/preview?email=${encodeURIComponent(email)}`);
+        const res  = await api(`/admin/portal-aluno/preview?userId=${encodeURIComponent(userId)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.erro || 'Erro desconhecido.');
+        /* Substitui o studentId pela nome legível no cabeçalho do resultado */
+        if (nome) data.email = nome;
         renderPreviewAluno(data, wrap);
     } catch (e) {
         wrap.innerHTML = `<p style="color:#dc2626;font-size:.9rem">Erro: ${esc(e.message)}</p>`;
@@ -64,7 +71,7 @@ async function carregarAlunos(cursoId) {
         }
 
         selAluno.innerHTML = '<option value="">— Selecione um aluno —</option>' +
-            alunos.map(a => `<option value="${esc(a.email)}">${esc(a.nome)}</option>`).join('');
+            alunos.map(a => `<option value="${esc(a.id)}">${esc(a.nome)}</option>`).join('');
         selAluno.disabled = false;
     } catch (e) {
         selAluno.innerHTML = `<option value="">Erro: ${esc(e.message)}</option>`;
