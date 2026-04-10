@@ -773,14 +773,14 @@ body[data-side="open"] .side-panel {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
     background: var(--bg-tertiary);
-    border: 1.5px solid var(--border);
-    font-size: .78rem;
-    font-weight: 800;
-    color: var(--text-secondary);
+    border: 2px solid #007bff;
+    font-size: 1rem;
+    font-weight: 900;
+    color: #007bff;
     line-height: 1;
     opacity: 1;
     transition: background .15s, border-color .15s, color .15s,
@@ -790,8 +790,18 @@ body[data-side="open"] .side-panel {
     background: #007bff;
     border-color: #007bff;
     color: #fff;
-    transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(0,123,255,.35);
+    transform: translateX(5px);
+    box-shadow: 0 3px 12px rgba(0,123,255,.45);
+}
+[data-theme="dark"] .side-nav-chevron-hint {
+    border-color: #60a5fa;
+    color: #60a5fa;
+}
+[data-theme="dark"] .side-nav-group:hover .side-nav-chevron-hint {
+    background: #60a5fa;
+    border-color: #60a5fa;
+    color: #0f1117;
+    box-shadow: 0 3px 12px rgba(96,165,250,.4);
 }
 
 /* ── Flyout — posicionado via JS (position:fixed no <body>) ─── */
