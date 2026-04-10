@@ -266,38 +266,64 @@ function renderSolicitacoesSection(solicitacoes) {
     $('paSolicitaSection').style.display = '';
 }
 
-/* ── Banner de notificações de prazo (exclusivo da prévia admin) ── */
+/* ── Sino + dropdown de notificações (exclusivo da prévia admin) ── */
 function renderBannerNotificacoes(notificacoes = []) {
-    const banner = $('prevNotifBanner');
-    if (!banner) return;
+    const wrap   = $('prevSinoWrap');
+    const badge  = $('prevSinoBadge');
+    const lista  = $('prevNotifLista');
+    const count  = $('prevNotifCount');
+    const btn    = $('prevSinoBtn');
+    if (!wrap) return;
 
     if (!notificacoes.length) {
-        banner.style.display = 'none';
-        banner.innerHTML     = '';
+        wrap.style.display = 'none';
         return;
     }
 
     /* Ordena: urgentes primeiro */
     const ORDEM = { prazo_proximo: 0, prazo_dias: 1 };
-    const lista  = [...notificacoes].sort((a, b) => (ORDEM[a.tipo] ?? 9) - (ORDEM[b.tipo] ?? 9));
+    const sorted = [...notificacoes].sort((a, b) => (ORDEM[a.tipo] ?? 9) - (ORDEM[b.tipo] ?? 9));
+    const temUrgente = sorted.some(n => n.tipo === 'prazo_proximo');
 
-    banner.innerHTML = `
-        <div class="prev-notif-cabecalho">
-            🔔 Notificações que este aluno receberá (${lista.length})
-        </div>
-        ${lista.map(n => `
-        <div class="prev-notif-item prev-notif-item--${esc(n.cor)}">
+    /* Badge do sino */
+    badge.textContent   = sorted.length;
+    badge.className     = 'prev-sino-badge' + (temUrgente ? '' : ' prev-sino-badge--dias');
+
+    /* Itens do dropdown */
+    lista.innerHTML = sorted.map(n => {
+        const cls = n.tipo === 'prazo_proximo' ? 'prev-notif-item--urgente' : 'prev-notif-item--dias';
+        return `<div class="prev-notif-item ${cls}">
             <span class="prev-notif-icone">${n.icone}</span>
-            <div style="flex:1;min-width:0">
+            <div class="prev-notif-texto">
                 <div class="prev-notif-titulo">${esc(n.titulo)}</div>
                 <div class="prev-notif-detalhe">${esc(n.detalhe)}</div>
             </div>
             ${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener"
                            class="prev-notif-link">Abrir ↗</a>` : ''}
-        </div>`).join('')}`;
+        </div>`;
+    }).join('');
 
-    banner.style.display = 'flex';
+    count.textContent  = sorted.length;
+    wrap.style.display = '';
 }
+
+/* Abre/fecha o dropdown do sino */
+window.toggleNotifDropdown = function () {
+    const drop = $('prevNotifDropdown');
+    const btn  = $('prevSinoBtn');
+    if (!drop) return;
+    const aberto = drop.style.display !== 'none';
+    drop.style.display = aberto ? 'none' : '';
+    btn.classList.toggle('ativo', !aberto);
+};
+
+/* Fecha ao clicar fora */
+document.addEventListener('click', e => {
+    const wrap = $('prevSinoWrap');
+    const drop = $('prevNotifDropdown');
+    if (!wrap || !drop) return;
+    if (!wrap.contains(e.target)) drop.style.display = 'none';
+});
 
 /* ── Render principal (idêntico ao alunos.js) ── */
 function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0, totalAguardando = 0, solicitacoes = [] }) {
@@ -387,6 +413,11 @@ window.addEventListener('message', (ev) => {
     $('paResumoZeradas').style.display  = 'none';
     $('paResumoAguardando').style.display = 'none';
     $('paSolicitaSection').style.display = 'none';
+    /* Fecha dropdown do sino ao trocar de aluno */
+    const _drop = $('prevNotifDropdown');
+    if (_drop) _drop.style.display = 'none';
+    const _sinoBtn = $('prevSinoBtn');
+    if (_sinoBtn) _sinoBtn.classList.remove('ativo');
 
     /* Renderiza banner de notificações e lista de atividades */
     renderBannerNotificacoes(data.notificacoes || []);
