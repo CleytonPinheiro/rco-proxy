@@ -267,12 +267,16 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
     const qzPart = renderQuizizzTag(ativ);
 
     /* ── Botão / badge de reabertura (todas atividades, exceto aguardando) ── */
+    /* Atividade aberta (pendente, prazo ok, sem nota 0) = botão discreto.
+       Atividade zerada ou vencida = botão destaque laranja.              */
+    const reaberturaAberta = !zerada && !ativ.vencida; /* ainda aberta e acessível */
     let reaberturaPart = '';
     if (!aguardando) {
         const sol = _solicitadasMap[String(ativ.id)];
         if (!sol) {
             const dados = esc(JSON.stringify({ id: ativ.id, titulo: ativ.titulo, link: ativ.link, cursoId, cursoNome }));
-            reaberturaPart = `<button class="pa-solicita-btn" onclick="abrirModalSolicitacao('${dados}')">
+            const cls   = reaberturaAberta ? 'pa-solicita-btn pa-solicita-btn--aberta' : 'pa-solicita-btn';
+            reaberturaPart = `<button class="${cls}" onclick="abrirModalSolicitacao('${dados}')">
                 <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="flex-shrink:0">
                   <path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                   <path d="M2 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>

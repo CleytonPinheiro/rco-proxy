@@ -708,6 +708,23 @@ html, body {
     box-shadow: 0 5px 16px rgba(249,115,22,.50);
 }
 .pa-solicita-btn:active { transform: scale(.97); }
+/* Versão discreta — atividade ainda aberta/acessível */
+.pa-solicita-btn--aberta {
+    background: transparent;
+    color:       var(--pa-muted);
+    border:      1px dashed var(--pa-border);
+    box-shadow:  none;
+    font-weight: 500;
+    opacity:     .75;
+}
+.pa-solicita-btn--aberta:hover {
+    opacity:     1;
+    background:  var(--pa-card2);
+    box-shadow:  none;
+    border-style: solid;
+}
+.pa-solicita-btn--aberta:active { transform: scale(.97); }
+
 .pa-solicita-btn--retry {
     background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
     box-shadow: 0 3px 10px rgba(239,68,68,.3);
