@@ -267,9 +267,9 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
     const qzPart = renderQuizizzTag(ativ);
 
     /* ── Botão / badge de reabertura (todas atividades, exceto aguardando) ── */
-    /* Atividade aberta (pendente, prazo ok, sem nota 0) = botão discreto.
-       Atividade zerada ou vencida = botão destaque laranja.              */
-    const reaberturaAberta = !zerada && !ativ.vencida; /* ainda aberta e acessível */
+    /* prazo não encerrado (vencida=false) → botão discreto, pois o aluno ainda consegue acessar.
+       prazo encerrado (vencida=true)      → botão destaque laranja, pois é a única saída.       */
+    const reaberturaAberta = !ativ.vencida; /* prazo não encerrado → atividade "aberta" → botão discreto */
     let reaberturaPart = '';
     if (!aguardando) {
         const sol = _solicitadasMap[String(ativ.id)];
