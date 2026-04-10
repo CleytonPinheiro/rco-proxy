@@ -119,7 +119,7 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
             <div class="pa-atividades">
                 ${emGrupo.length ? `
                     ${c.temGrupos ? `<div class="pa-secao-label pa-secao-label--grupo">Em grupo · ${emGrupo.length}</div>` : ''}
-                    ${emGrupo.map(a => renderAtiv(a, 'grupo')).join('')}
+                    ${emGrupo.map(a => renderAtiv(a, c.temGrupos ? 'grupo' : '')).join('')}
                 ` : ''}
                 ${semGrupo.length ? `
                     <div class="pa-secao-label pa-secao-label--livre">Sem grupo · ${semGrupo.length}</div>
