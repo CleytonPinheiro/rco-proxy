@@ -205,9 +205,25 @@ async function carregarAtividades() {
 }
 
 /* ── Render de um item de atividade ─────────────────── */
-function renderAtivItem(ativ, { zerada = false } = {}) {
+function renderQuizizzTag(ativ) {
+    if (!ativ.quizizzId) return '';
+    const isId   = /^[0-9a-f]{24}$/i.test(ativ.quizizzId);
+    const link   = isId ? `https://quizizz.com/admin/quiz/${ativ.quizizzId}` : null;
+    const linkPart = link
+        ? `<a href="${esc(link)}" target="_blank" rel="noopener" class="pa-qz-link">Ver quiz ↗</a>`
+        : '';
+    return `<div class="pa-qz-tag">
+        <span class="pa-qz-ico">🎮</span>
+        <span class="pa-qz-label">Quizizz</span>
+        ${linkPart}
+    </div>`;
+}
+
+function renderAtivItem(ativ, { zerada = false, aguardando = false } = {}) {
     const li        = document.createElement('li');
-    li.className    = 'pa-atividade-item' + (zerada ? ' pa-atividade-item--zerada' : '');
+    li.className    = 'pa-atividade-item'
+        + (zerada     ? ' pa-atividade-item--zerada'     : '')
+        + (aguardando ? ' pa-atividade-item--aguardando' : '');
 
     const tipoLabel = TIPO_LABEL[ativ.tipo] || ativ.tipo;
     const tipoCls   = `pa-tipo-${ativ.tipo}`;
@@ -225,39 +241,54 @@ function renderAtivItem(ativ, { zerada = false } = {}) {
     const zerouPart = zerada
         ? '<span class="pa-zerada-badge">↩ Entrou com 0 pts</span>' : '';
 
+    const aguardPart = aguardando
+        ? '<span class="pa-aguard-badge">⏳ Realizou — aguardando correção</span>' : '';
+
     const pontosPart = ativ.pontos != null
         ? `<span class="pa-pontos">${ativ.pontos} pts</span>` : '';
+
+    const qzPart = renderQuizizzTag(ativ);
+
+    const linkPart = aguardando
+        ? `<span class="pa-aguard-status">Entregue</span>`
+        : `<a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
+               ${zerada ? 'Tentar novamente ↗' : 'Abrir ↗'}
+           </a>`;
 
     li.innerHTML = `
         <div class="pa-ativ-left">
             <div class="pa-ativ-titulo">${esc(ativ.titulo)}</div>
+            ${qzPart}
             <div class="pa-ativ-meta">
                 <span class="pa-tipo-badge ${tipoCls}">${esc(tipoLabel)}</span>
                 ${prazoPart}
                 ${zerouPart}
+                ${aguardPart}
                 ${devolvidaPart}
                 ${pontosPart}
             </div>
         </div>
         <div class="pa-ativ-right">
-            <a href="${esc(ativ.link)}" target="_blank" rel="noopener" class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
-                ${zerada ? 'Tentar novamente ↗' : 'Abrir ↗'}
-            </a>
+            ${linkPart}
         </div>
     `;
     return li;
 }
 
 /* ── Render de um card de curso ─────────────────────── */
-function renderCursoCard(curso, { zerada = false } = {}) {
+function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
     const card = document.createElement('div');
-    card.className = 'pa-curso-card' + (zerada ? ' pa-curso-card--zerada' : '');
+    card.className = 'pa-curso-card'
+        + (zerada     ? ' pa-curso-card--zerada'     : '')
+        + (aguardando ? ' pa-curso-card--aguardando' : '');
 
-    const items = zerada ? curso.zeradas : curso.atividades;
+    const items = zerada     ? curso.zeradas
+                : aguardando ? curso.aguardando
+                             : curso.atividades;
     const qtd   = items.length;
-    const badgeLabel = zerada
-        ? `${qtd} zerada${qtd !== 1 ? 's' : ''}`
-        : `${qtd} pendente${qtd !== 1 ? 's' : ''}`;
+    const badgeLabel = zerada     ? `${qtd} zerada${qtd !== 1 ? 's' : ''}`
+                     : aguardando ? `${qtd} aguardando`
+                                  : `${qtd} pendente${qtd !== 1 ? 's' : ''}`;
 
     const header = document.createElement('div');
     header.className = 'pa-curso-header';
@@ -266,15 +297,22 @@ function renderCursoCard(curso, { zerada = false } = {}) {
             <div class="pa-curso-nome" title="${esc(curso.nome)}">${esc(curso.nome)}</div>
             ${curso.secao ? `<div class="pa-curso-secao">${esc(curso.secao)}</div>` : ''}
         </div>
-        <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}">${badgeLabel}</span>
+        <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}${aguardando ? ' pa-curso-badge--aguardando' : ''}">${badgeLabel}</span>
     `;
     card.appendChild(header);
 
     if (zerada) {
-        /* Atividades zeradas: sem agrupamento por grupo */
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
         items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada: true })));
+        card.appendChild(lista);
+        return card;
+    }
+
+    if (aguardando) {
+        const lista = document.createElement('ul');
+        lista.className = 'pa-atividade-lista';
+        items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { aguardando: true })));
         card.appendChild(lista);
         return card;
     }
@@ -336,15 +374,14 @@ function renderCursoCard(curso, { zerada = false } = {}) {
 }
 
 /* ── Render principal ────────────────────────────────── */
-function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0 }) {
+function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0, totalAguardando = 0 }) {
     $('paResumoNum').textContent = totalPendentes;
 
-    /* Cursos com pendentes */
-    const cursosComPend = cursos.filter(c => c.atividades.length > 0);
-    /* Cursos com zeradas */
-    const cursosComZer  = cursos.filter(c => c.zeradas  && c.zeradas.length > 0);
+    const cursosComPend  = cursos.filter(c => c.atividades.length > 0);
+    const cursosComZer   = cursos.filter(c => c.zeradas    && c.zeradas.length    > 0);
+    const cursosComAguard = cursos.filter(c => c.aguardando && c.aguardando.length > 0);
 
-    if (!cursosComPend.length && !cursosComZer.length) {
+    if (!cursosComPend.length && !cursosComZer.length && !cursosComAguard.length) {
         $('paVazio').style.display = '';
         return;
     }
@@ -366,6 +403,16 @@ function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0 })
         const gridZ = $('paCursosZerados');
         gridZ.innerHTML = '';
         cursosComZer.forEach(curso => gridZ.appendChild(renderCursoCard(curso, { zerada: true })));
+    }
+
+    /* Seção aguardando correção */
+    if (cursosComAguard.length > 0) {
+        $('paResumoAguardando').style.display  = '';
+        $('paResumoAguardandoNum').textContent = totalAguardando;
+        $('paAguardandoSection').style.display = '';
+        const gridA = $('paCursosAguardando');
+        gridA.innerHTML = '';
+        cursosComAguard.forEach(curso => gridA.appendChild(renderCursoCard(curso, { aguardando: true })));
     }
 }
 

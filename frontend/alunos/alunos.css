@@ -593,6 +593,98 @@ html, body {
 }
 .pa-link-ativ--zerada:hover { background: #c2410c; }
 
+/* ── Aguardando correção ─────────────────────────────── */
+.pa-aguardando-titulo {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: rgba(29, 78, 216, .08);
+    border: 1px solid rgba(29, 78, 216, .25);
+    border-radius: var(--pa-radius);
+    padding: 16px 20px;
+    margin-top: 36px;
+    margin-bottom: 16px;
+}
+.pa-aguardando-icon { font-size: 1.8rem; flex-shrink: 0; line-height: 1.2; }
+.pa-aguardando-titulo strong {
+    display: block;
+    color: #1d4ed8;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+[data-theme="dark"] .pa-aguardando-titulo strong { color: #93c5fd; }
+.pa-aguardando-desc {
+    font-size: .88rem;
+    color: var(--pa-sub);
+    display: block;
+}
+
+.pa-resumo--aguardando .pa-resumo-num { color: #1d4ed8; }
+[data-theme="dark"] .pa-resumo--aguardando .pa-resumo-num { color: #93c5fd; }
+
+.pa-curso-card--aguardando {
+    border-color: rgba(29, 78, 216, .35);
+}
+.pa-curso-card--aguardando .pa-curso-header {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+.pa-curso-badge--aguardando {
+    background: rgba(255, 255, 255, .2);
+}
+
+.pa-atividade-item--aguardando { background: rgba(29, 78, 216, .03); }
+.pa-atividade-item--aguardando:hover { background: rgba(29, 78, 216, .07); }
+
+.pa-aguard-badge {
+    font-size: .7rem;
+    font-weight: 700;
+    background: rgba(29, 78, 216, .10);
+    color: #1d4ed8;
+    border-radius: 4px;
+    padding: 2px 7px;
+    border: 1px solid rgba(29, 78, 216, .22);
+}
+[data-theme="dark"] .pa-aguard-badge { color: #93c5fd; background: rgba(147,197,253,.12); }
+
+.pa-aguard-status {
+    font-size: .82rem;
+    font-weight: 600;
+    color: #1d4ed8;
+    white-space: nowrap;
+}
+[data-theme="dark"] .pa-aguard-status { color: #93c5fd; }
+
+/* ── Bloco Quizizz inline na atividade ───────────────── */
+.pa-qz-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(124, 58, 237, .08);
+    border: 1px solid rgba(124, 58, 237, .22);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: .72rem;
+    margin-bottom: 2px;
+    width: fit-content;
+}
+.pa-qz-ico   { font-size: .85rem; line-height: 1; }
+.pa-qz-label {
+    font-weight: 800;
+    color: #7c3aed;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-size: .67rem;
+}
+.pa-qz-link {
+    color: #7c3aed;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: .72rem;
+    border-bottom: 1px dashed rgba(124, 58, 237, .4);
+}
+.pa-qz-link:hover { border-bottom-style: solid; }
+
 /* ── Mobile ──────────────────────────────────────────── */
 @media (max-width: 600px) {
     .pa-login-card   { padding: 36px 24px; }

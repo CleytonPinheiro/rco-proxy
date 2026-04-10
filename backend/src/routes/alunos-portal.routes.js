@@ -111,6 +111,20 @@ async function getAlunoSession(req) {
     } catch (_) { return null; }
 }
 
+/* ── Detecção Quizizz (mesmo critério do classroom.routes.js) ─────── */
+function detectarQuizizzId(cw) {
+    const materiais = cw.materials || [];
+    for (const mat of materiais) {
+        const url = mat.link?.url || mat.driveFile?.driveFile?.alternateLink || '';
+        if (/quizizz\.com/i.test(url)) {
+            const match = url.match(/\/quiz\/([0-9a-f]{24})/i);
+            return match ? match[1] : 'LINK';
+        }
+    }
+    if (/quiziz{1,2}/i.test(cw.title || '')) return 'TITULO';
+    return null;
+}
+
 /* ── Formatação de prazo ──────────────────────────────────────────── */
 function formatarPrazo(dueDate, dueTime) {
     if (!dueDate?.year) return null;
@@ -267,7 +281,7 @@ export function createAlunosPortalRouter() {
             /* 2. Para cada curso: submissions pendentes + zeradas + coursework — em paralelo */
             const resultados = await Promise.all(todosCursos.map(async (curso) => {
                 try {
-                    const [subsPendResp, subsZerResp, cwResp] = await Promise.all([
+                    const [subsPendResp, subsZerResp, subsAguardResp, cwResp] = await Promise.all([
                         /* Pendentes: nunca abriu / abriu mas não entregou / recolheu */
                         classroom.courses.courseWork.studentSubmissions.list({
                             courseId:     curso.id,
@@ -284,6 +298,14 @@ export function createAlunosPortalRouter() {
                             states:       ['RETURNED'],
                             pageSize:     100,
                         }),
+                        /* Entregues mas sem nota: TURNED_IN */
+                        classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     curso.id,
+                            courseWorkId: '-',
+                            userId:       aluno.email,
+                            states:       ['TURNED_IN'],
+                            pageSize:     100,
+                        }),
                         /* Metadados de todos os courseworks publicados */
                         classroom.courses.courseWork.list({
                             courseId:         curso.id,
@@ -295,6 +317,13 @@ export function createAlunosPortalRouter() {
 
                     const cwMap = {};
                     (cwResp.data.courseWork || []).forEach(cw => { cwMap[cw.id] = cw; });
+
+                    const sortPrazo = (a, b) => {
+                        if (!a.prazoIso && !b.prazoIso) return 0;
+                        if (!a.prazoIso) return 1;
+                        if (!b.prazoIso) return -1;
+                        return a.prazoIso.localeCompare(b.prazoIso);
+                    };
 
                     /* ── Atividades pendentes ─────────────────────────── */
                     const pendingSubs = subsPendResp.data.studentSubmissions || [];
@@ -314,15 +343,11 @@ export function createAlunosPortalRouter() {
                                 pontos:    cw.maxPoints ?? null,
                                 link:      cw.alternateLink || '',
                                 devolvida: sub.state === 'RECLAIMED',
+                                quizizzId: detectarQuizizzId(cw),
                             };
                         })
                         .filter(Boolean)
-                        .sort((a, b) => {
-                            if (!a.prazoIso && !b.prazoIso) return 0;
-                            if (!a.prazoIso) return 1;
-                            if (!b.prazoIso) return -1;
-                            return a.prazoIso.localeCompare(b.prazoIso);
-                        });
+                        .sort(sortPrazo);
 
                     /* ── Atividades zeradas (RETURNED + assignedGrade=0) ─ */
                     const returnedSubs = subsZerResp.data.studentSubmissions || [];
@@ -334,30 +359,50 @@ export function createAlunosPortalRouter() {
                             const prazo   = formatarPrazo(cw.dueDate, cw.dueTime);
                             const vencida = prazoVencido(cw.dueDate);
                             return {
-                                id:       cw.id,
-                                titulo:   cw.title,
-                                tipo:     cw.workType || 'ASSIGNMENT',
-                                prazo:    prazo?.br  || null,
-                                prazoIso: prazo?.iso || null,
+                                id:        cw.id,
+                                titulo:    cw.title,
+                                tipo:      cw.workType || 'ASSIGNMENT',
+                                prazo:     prazo?.br  || null,
+                                prazoIso:  prazo?.iso || null,
                                 vencida,
-                                pontos:   cw.maxPoints ?? null,
-                                link:     cw.alternateLink || '',
+                                pontos:    cw.maxPoints ?? null,
+                                link:      cw.alternateLink || '',
+                                quizizzId: detectarQuizizzId(cw),
                             };
                         })
                         .filter(Boolean)
-                        .sort((a, b) => {
-                            if (!a.prazoIso && !b.prazoIso) return 0;
-                            if (!a.prazoIso) return 1;
-                            if (!b.prazoIso) return -1;
-                            return a.prazoIso.localeCompare(b.prazoIso);
-                        });
+                        .sort(sortPrazo);
 
-                    if (!atividades.length && !zeradas.length) return null;
+                    /* ── Aguardando correção (TURNED_IN sem nota atribuída) ─ */
+                    const aguardSubs = subsAguardResp.data.studentSubmissions || [];
+                    const aguardando = aguardSubs
+                        .filter(sub => sub.assignedGrade == null && sub.draftGrade == null)
+                        .map(sub => {
+                            const cw = cwMap[sub.courseWorkId];
+                            if (!cw) return null;
+                            const prazo   = formatarPrazo(cw.dueDate, cw.dueTime);
+                            const vencida = prazoVencido(cw.dueDate);
+                            return {
+                                id:        cw.id,
+                                titulo:    cw.title,
+                                tipo:      cw.workType || 'ASSIGNMENT',
+                                prazo:     prazo?.br  || null,
+                                prazoIso:  prazo?.iso || null,
+                                vencida,
+                                pontos:    cw.maxPoints ?? null,
+                                link:      cw.alternateLink || '',
+                                quizizzId: detectarQuizizzId(cw),
+                                aguardando: true,
+                            };
+                        })
+                        .filter(Boolean)
+                        .sort(sortPrazo);
 
-                    /* ── Anota grupo de cada atividade (pendentes + zeradas) e filtra ── */
+                    if (!atividades.length && !zeradas.length && !aguardando.length) return null;
+
+                    /* ── Anota grupo de cada atividade (pendentes + zeradas + aguardando) ── */
                     let temGrupos = false;
                     try {
-                        /* Verifica se o CURSO tem grupos normais definidos (independente das atividades do aluno) */
                         const { rows: cursoPossuiGrupos } = await pool.query(
                             `SELECT 1 FROM classroom_grupos
                              WHERE curso_id = $1 AND tipo = 'normal'
@@ -368,10 +413,10 @@ export function createAlunosPortalRouter() {
                         if (cursoPossuiGrupos.length > 0) {
                             temGrupos = true;
 
-                            /* Quais atividades do aluno pertencem a algum grupo deste curso? */
                             const todosIds = [
                                 ...atividades.map(a => a.id),
                                 ...zeradas.map(a => a.id),
+                                ...aguardando.map(a => a.id),
                             ];
 
                             let grupoMap = {};
@@ -388,34 +433,39 @@ export function createAlunosPortalRouter() {
                                 grupoRows.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
                             }
 
-                            /* Anota e filtra pendentes — remove as que NÃO estão em nenhum grupo */
                             atividades.forEach(a => {
                                 const g = grupoMap[String(a.id)];
                                 if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
                             });
                             atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
 
-                            /* Anota e filtra zeradas */
                             zeradas.forEach(a => {
                                 const g = grupoMap[String(a.id)];
                                 if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
                             });
                             zeradas.splice(0, zeradas.length, ...zeradas.filter(a => a.grupoId));
+
+                            aguardando.forEach(a => {
+                                const g = grupoMap[String(a.id)];
+                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                            });
+                            aguardando.splice(0, aguardando.length, ...aguardando.filter(a => a.grupoId));
                         }
                     } catch (e) {
                         console.warn('[ALUNOS-PORTAL] Erro ao buscar grupos:', e.message);
                     }
 
-                    if (!atividades.length && !zeradas.length) return null;
+                    if (!atividades.length && !zeradas.length && !aguardando.length) return null;
 
                     return {
-                        cursoId:  curso.id,
-                        nome:     curso.name,
-                        secao:    curso.section || '',
-                        link:     curso.alternateLink || '',
+                        cursoId:   curso.id,
+                        nome:      curso.name,
+                        secao:     curso.section || '',
+                        link:      curso.alternateLink || '',
                         temGrupos,
                         atividades,
                         zeradas,
+                        aguardando,
                     };
                 } catch (e) {
                     console.warn(`[ALUNOS-PORTAL] Curso ${curso.id} ignorado:`, e.message);
@@ -425,10 +475,11 @@ export function createAlunosPortalRouter() {
 
             const cursos = resultados.filter(Boolean);
             res.json({
-                aluno:          { email: aluno.email, nome: aluno.nome, foto: aluno.foto },
+                aluno:            { email: aluno.email, nome: aluno.nome, foto: aluno.foto },
                 cursos,
-                totalPendentes: cursos.reduce((s, c) => s + c.atividades.length, 0),
-                totalZeradas:   cursos.reduce((s, c) => s + c.zeradas.length,    0),
+                totalPendentes:   cursos.reduce((s, c) => s + c.atividades.length,  0),
+                totalZeradas:     cursos.reduce((s, c) => s + c.zeradas.length,     0),
+                totalAguardando:  cursos.reduce((s, c) => s + c.aguardando.length,  0),
             });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao buscar atividades:', e.message);

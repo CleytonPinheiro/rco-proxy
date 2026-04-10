@@ -111,6 +111,12 @@
                     <div class="pa-resumo-label">⚠️ zeradas</div>
                 </div>
             </div>
+            <div class="pa-resumo pa-resumo--aguardando" id="paResumoAguardando" style="display:none">
+                <div class="pa-resumo-inner">
+                    <div class="pa-resumo-num" id="paResumoAguardandoNum">0</div>
+                    <div class="pa-resumo-label">⏳ aguardando</div>
+                </div>
+            </div>
         </div>
 
         <!-- Estado vazio -->
@@ -139,6 +145,18 @@
                 </div>
             </div>
             <div id="paCursosZerados" class="pa-cursos-grid"></div>
+        </div>
+
+        <!-- Seção de atividades entregues aguardando correção -->
+        <div id="paAguardandoSection" style="display:none">
+            <div class="pa-aguardando-titulo">
+                <span class="pa-aguardando-icon">⏳</span>
+                <div>
+                    <strong>Aguardando correção</strong>
+                    <span class="pa-aguardando-desc">Você entregou essas atividades e está aguardando a nota do professor.</span>
+                </div>
+            </div>
+            <div id="paCursosAguardando" class="pa-cursos-grid"></div>
         </div>
 
     </main>
