@@ -72,6 +72,11 @@ window.abrirSidePanel  = function () { document.body.setAttribute('data-side', '
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
 /* ── Submenu Classroom — flyout à direita no hover (admin only) ─────────── */
+/*
+ * NOTA: position:fixed dentro de um elemento com transform (side-panel usa
+ * translateX para o slide) fica preso ao pai transformado, não ao viewport.
+ * Solução: mover o flyout para document.body em tempo de execução.
+ */
 document.addEventListener('DOMContentLoaded', function () {
     var perfil = '';
     try {
@@ -81,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var isAdmin = (perfil === 'admin');
 
-    /* Percorre todos os grupos com submenu */
     document.querySelectorAll('.side-nav-group').forEach(function (group) {
         var flyout = group.querySelector('.side-nav-sub-static');
         if (!flyout) return;
@@ -94,12 +98,16 @@ document.addEventListener('DOMContentLoaded', function () {
             flyout.insertBefore(lbl, flyout.firstChild);
         }
 
-        if (!isAdmin) return; /* Não admin: sem chevron e sem hover */
+        if (!isAdmin) return;
 
-        /* Exibe o container do sub-item */
+        /*
+         * Move o flyout para <body> — escapa do transform do .side-panel.
+         * position:fixed passa a ser relativo ao viewport, como esperado.
+         */
+        document.body.appendChild(flyout);
         flyout.style.display = 'block';
 
-        /* Injeta indicador ›  no item pai */
+        /* Injeta indicador › no item pai */
         var parentItem = group.querySelector('.side-nav-item');
         if (parentItem && !parentItem.querySelector('.side-nav-chevron-hint')) {
             var hint = document.createElement('span');
@@ -112,32 +120,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function openFlyout() {
             if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-            var rect        = group.getBoundingClientRect();
-            var flyoutW     = 230;
-            var gap         = 10;
-            var leftPos     = rect.right + gap;
-            /* Se não couber à direita, posiciona à esquerda do painel */
-            if (leftPos + flyoutW > window.innerWidth) {
-                leftPos = rect.left - flyoutW - gap;
-            }
+            /* getBoundingClientRect() retorna coordenadas de viewport —
+               funciona corretamente mesmo com o transform do painel */
+            var rect    = group.getBoundingClientRect();
+            var fw      = 230;
+            var gap     = 10;
+            var left    = rect.right + gap;
+            if (left + fw > window.innerWidth) left = rect.left - fw - gap;
             flyout.style.top  = Math.max(8, rect.top) + 'px';
-            flyout.style.left = leftPos + 'px';
+            flyout.style.left = left + 'px';
             flyout.classList.add('flyout-open');
         }
 
-        function scheduleFlyoutClose() {
-            hideTimer = setTimeout(function () {
-                flyout.classList.remove('flyout-open');
-                hideTimer = null;
-            }, 120);
+        function closeFlyout() {
+            flyout.classList.remove('flyout-open');
+            hideTimer = null;
+        }
+
+        function scheduleClose() {
+            hideTimer = setTimeout(closeFlyout, 140);
+        }
+
+        function cancelClose() {
+            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
         }
 
         group.addEventListener('mouseenter', openFlyout);
-        group.addEventListener('mouseleave', scheduleFlyoutClose);
-        flyout.addEventListener('mouseenter', function () {
-            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        group.addEventListener('mouseleave', scheduleClose);
+        flyout.addEventListener('mouseenter', cancelClose);
+        flyout.addEventListener('mouseleave', scheduleClose);
+
+        /* Fecha ao fechar o painel lateral */
+        document.addEventListener('click', function (e) {
+            if (e.target.closest && e.target.closest('.side-close-btn')) closeFlyout();
         });
-        flyout.addEventListener('mouseleave', scheduleFlyoutClose);
     });
 });
 
