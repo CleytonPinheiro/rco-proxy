@@ -166,17 +166,114 @@
                         <!-- Estrela -->
                         <button class="qr-estilo-btn" data-estilo="star" onclick="selecionarEstilo(this)" title="Estrela">
                             <svg viewBox="0 0 36 36" width="36" height="36">
-                                <polygon points="6.5,2 7.8,5.7 11.5,5.7 8.6,7.8 9.9,11.5 6.5,9.3 3.1,11.5 4.4,7.8 1.5,5.7 5.2,5.7" fill="currentColor"/>
-                                <polygon points="18,2 19.3,5.7 23,5.7 20.1,7.8 21.4,11.5 18,9.3 14.6,11.5 15.9,7.8 13,5.7 16.7,5.7" fill="currentColor"/>
-                                <polygon points="29.5,2 30.8,5.7 34.5,5.7 31.6,7.8 32.9,11.5 29.5,9.3 26.1,11.5 27.4,7.8 24.5,5.7 28.2,5.7" fill="currentColor"/>
-                                <polygon points="6.5,13.5 7.8,17.2 11.5,17.2 8.6,19.3 9.9,23 6.5,20.8 3.1,23 4.4,19.3 1.5,17.2 5.2,17.2" fill="currentColor"/>
-                                <polygon points="18,13.5 19.3,17.2 23,17.2 20.1,19.3 21.4,23 18,20.8 14.6,23 15.9,19.3 13,17.2 16.7,17.2" fill="currentColor"/>
-                                <polygon points="29.5,13.5 30.8,17.2 34.5,17.2 31.6,19.3 32.9,23 29.5,20.8 26.1,23 27.4,19.3 24.5,17.2 28.2,17.2" fill="currentColor"/>
-                                <polygon points="6.5,25 7.8,28.7 11.5,28.7 8.6,30.8 9.9,34.5 6.5,32.3 3.1,34.5 4.4,30.8 1.5,28.7 5.2,28.7" fill="currentColor"/>
-                                <polygon points="18,25 19.3,28.7 23,28.7 20.1,30.8 21.4,34.5 18,32.3 14.6,34.5 15.9,30.8 13,28.7 16.7,28.7" fill="currentColor"/>
-                                <polygon points="29.5,25 30.8,28.7 34.5,28.7 31.6,30.8 32.9,34.5 29.5,32.3 26.1,34.5 27.4,30.8 24.5,28.7 28.2,28.7" fill="currentColor"/>
+                                <defs><path id="st" d="M0,-4.5 L1.05,-1.4 4.3,-1.4 1.75,0.55 2.7,3.6 0,1.75 -2.7,3.6 -1.75,0.55 -4.3,-1.4 -1.05,-1.4Z"/></defs>
+                                <use href="#st" transform="translate(6,6.5)"   fill="currentColor"/>
+                                <use href="#st" transform="translate(18,6.5)"  fill="currentColor"/>
+                                <use href="#st" transform="translate(30,6.5)"  fill="currentColor"/>
+                                <use href="#st" transform="translate(6,18)"    fill="currentColor"/>
+                                <use href="#st" transform="translate(18,18)"   fill="currentColor"/>
+                                <use href="#st" transform="translate(30,18)"   fill="currentColor"/>
+                                <use href="#st" transform="translate(6,29.5)"  fill="currentColor"/>
+                                <use href="#st" transform="translate(18,29.5)" fill="currentColor"/>
+                                <use href="#st" transform="translate(30,29.5)" fill="currentColor"/>
                             </svg>
                             <span>Estrela</span>
+                        </button>
+                        <!-- Cruz -->
+                        <button class="qr-estilo-btn" data-estilo="cross" onclick="selecionarEstilo(this)" title="Cruz">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <defs><path id="cr" d="M-4,-1.3h8v2.6h-8zM-1.3,-4h2.6v8h-2.6z"/></defs>
+                                <use href="#cr" transform="translate(6,6)"   fill="currentColor"/>
+                                <use href="#cr" transform="translate(18,6)"  fill="currentColor"/>
+                                <use href="#cr" transform="translate(30,6)"  fill="currentColor"/>
+                                <use href="#cr" transform="translate(6,18)"  fill="currentColor"/>
+                                <use href="#cr" transform="translate(18,18)" fill="currentColor"/>
+                                <use href="#cr" transform="translate(30,18)" fill="currentColor"/>
+                                <use href="#cr" transform="translate(6,30)"  fill="currentColor"/>
+                                <use href="#cr" transform="translate(18,30)" fill="currentColor"/>
+                                <use href="#cr" transform="translate(30,30)" fill="currentColor"/>
+                            </svg>
+                            <span>Cruz</span>
+                        </button>
+                        <!-- Hexágono -->
+                        <button class="qr-estilo-btn" data-estilo="hexagon" onclick="selecionarEstilo(this)" title="Hexágono">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <defs><polygon id="hx" points="4.5,0 2.25,-3.9 -2.25,-3.9 -4.5,0 -2.25,3.9 2.25,3.9"/></defs>
+                                <use href="#hx" transform="translate(6,6.5)"   fill="currentColor"/>
+                                <use href="#hx" transform="translate(18,6.5)"  fill="currentColor"/>
+                                <use href="#hx" transform="translate(30,6.5)"  fill="currentColor"/>
+                                <use href="#hx" transform="translate(6,18)"    fill="currentColor"/>
+                                <use href="#hx" transform="translate(18,18)"   fill="currentColor"/>
+                                <use href="#hx" transform="translate(30,18)"   fill="currentColor"/>
+                                <use href="#hx" transform="translate(6,29.5)"  fill="currentColor"/>
+                                <use href="#hx" transform="translate(18,29.5)" fill="currentColor"/>
+                                <use href="#hx" transform="translate(30,29.5)" fill="currentColor"/>
+                            </svg>
+                            <span>Hexágono</span>
+                        </button>
+                        <!-- Folha -->
+                        <button class="qr-estilo-btn" data-estilo="leaf" onclick="selecionarEstilo(this)" title="Folha">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <defs><ellipse id="lf" cx="0" cy="0" rx="2.4" ry="4.4" transform="rotate(45)"/></defs>
+                                <use href="#lf" transform="translate(6,6)"   fill="currentColor"/>
+                                <use href="#lf" transform="translate(18,6)"  fill="currentColor"/>
+                                <use href="#lf" transform="translate(30,6)"  fill="currentColor"/>
+                                <use href="#lf" transform="translate(6,18)"  fill="currentColor"/>
+                                <use href="#lf" transform="translate(18,18)" fill="currentColor"/>
+                                <use href="#lf" transform="translate(30,18)" fill="currentColor"/>
+                                <use href="#lf" transform="translate(6,30)"  fill="currentColor"/>
+                                <use href="#lf" transform="translate(18,30)" fill="currentColor"/>
+                                <use href="#lf" transform="translate(30,30)" fill="currentColor"/>
+                            </svg>
+                            <span>Folha</span>
+                        </button>
+                        <!-- Triângulo -->
+                        <button class="qr-estilo-btn" data-estilo="triangle" onclick="selecionarEstilo(this)" title="Triângulo">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <defs><polygon id="tr" points="0,-4.5 4,3.5 -4,3.5"/></defs>
+                                <use href="#tr" transform="translate(6,6.5)"   fill="currentColor"/>
+                                <use href="#tr" transform="translate(18,6.5)"  fill="currentColor"/>
+                                <use href="#tr" transform="translate(30,6.5)"  fill="currentColor"/>
+                                <use href="#tr" transform="translate(6,18)"    fill="currentColor"/>
+                                <use href="#tr" transform="translate(18,18)"   fill="currentColor"/>
+                                <use href="#tr" transform="translate(30,18)"   fill="currentColor"/>
+                                <use href="#tr" transform="translate(6,29.5)"  fill="currentColor"/>
+                                <use href="#tr" transform="translate(18,29.5)" fill="currentColor"/>
+                                <use href="#tr" transform="translate(30,29.5)" fill="currentColor"/>
+                            </svg>
+                            <span>Triângulo</span>
+                        </button>
+                        <!-- Coração -->
+                        <button class="qr-estilo-btn" data-estilo="heart" onclick="selecionarEstilo(this)" title="Coração">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <defs><path id="ht" d="M0,-2 C0.1,-4 4.5,-4 4.5,-1.6 C4.5,0.5 2.25,2.3 0,4.1 C-2.25,2.3 -4.5,0.5 -4.5,-1.6 C-4.5,-4 -0.1,-4 0,-2Z"/></defs>
+                                <use href="#ht" transform="translate(6,6)"   fill="currentColor"/>
+                                <use href="#ht" transform="translate(18,6)"  fill="currentColor"/>
+                                <use href="#ht" transform="translate(30,6)"  fill="currentColor"/>
+                                <use href="#ht" transform="translate(6,18)"  fill="currentColor"/>
+                                <use href="#ht" transform="translate(18,18)" fill="currentColor"/>
+                                <use href="#ht" transform="translate(30,18)" fill="currentColor"/>
+                                <use href="#ht" transform="translate(6,30)"  fill="currentColor"/>
+                                <use href="#ht" transform="translate(18,30)" fill="currentColor"/>
+                                <use href="#ht" transform="translate(30,30)" fill="currentColor"/>
+                            </svg>
+                            <span>Coração</span>
+                        </button>
+                        <!-- Pixel -->
+                        <button class="qr-estilo-btn" data-estilo="pixel" onclick="selecionarEstilo(this)" title="Pixel">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <defs><rect id="px" x="-3" y="-3" width="6" height="6"/></defs>
+                                <use href="#px" transform="translate(6,6)"   fill="currentColor"/>
+                                <use href="#px" transform="translate(18,6)"  fill="currentColor"/>
+                                <use href="#px" transform="translate(30,6)"  fill="currentColor"/>
+                                <use href="#px" transform="translate(6,18)"  fill="currentColor"/>
+                                <use href="#px" transform="translate(18,18)" fill="currentColor"/>
+                                <use href="#px" transform="translate(30,18)" fill="currentColor"/>
+                                <use href="#px" transform="translate(6,30)"  fill="currentColor"/>
+                                <use href="#px" transform="translate(18,30)" fill="currentColor"/>
+                                <use href="#px" transform="translate(30,30)" fill="currentColor"/>
+                            </svg>
+                            <span>Pixel</span>
                         </button>
                     </div>
                 </div>
@@ -212,6 +309,42 @@
                         <button class="qr-tema-preset" data-dark="#92400e" data-light="#fffbeb" onclick="selecionarTema(this)" title="Âmbar">
                             <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#92400e 50%,#fffbeb 50%);"></span>
                             <span>Âmbar</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#7c3aed" data-light="#f5f3ff" onclick="selecionarTema(this)" title="Violeta">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#7c3aed 50%,#f5f3ff 50%);"></span>
+                            <span>Violeta</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#be185d" data-light="#fdf2f8" onclick="selecionarTema(this)" title="Rosa">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#be185d 50%,#fdf2f8 50%);"></span>
+                            <span>Rosa</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#c2410c" data-light="#fff7ed" onclick="selecionarTema(this)" title="Laranja">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#c2410c 50%,#fff7ed 50%);"></span>
+                            <span>Laranja</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#0e7490" data-light="#ecfeff" onclick="selecionarTema(this)" title="Ciano">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#0e7490 50%,#ecfeff 50%);"></span>
+                            <span>Ciano</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#a16207" data-light="#fefce8" onclick="selecionarTema(this)" title="Dourado">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#a16207 50%,#fefce8 50%);"></span>
+                            <span>Dourado</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#0f766e" data-light="#f0fdfa" onclick="selecionarTema(this)" title="Petróleo">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#0f766e 50%,#f0fdfa 50%);"></span>
+                            <span>Petróleo</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#475569" data-light="#f8fafc" onclick="selecionarTema(this)" title="Grafite">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#475569 50%,#f8fafc 50%);"></span>
+                            <span>Grafite</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#ffffff" data-light="#1e1b4b" onclick="selecionarTema(this)" title="Índigo Escuro">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#1e1b4b 50%,#ffffff 50%);"></span>
+                            <span>Índigo</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#ffffff" data-light="#064e3b" onclick="selecionarTema(this)" title="Mata">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#064e3b 50%,#ffffff 50%);"></span>
+                            <span>Mata</span>
                         </button>
                     </div>
                 </div>

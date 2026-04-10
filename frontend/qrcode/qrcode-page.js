@@ -240,16 +240,53 @@ function desenharPonto(ctx, x, y, cell, estilo) {
             break;
         case 'diamond':
             ctx.beginPath();
-            ctx.moveTo(cx,       y + pad);
+            ctx.moveTo(cx,             y + pad);
             ctx.lineTo(x + cell - pad, cy);
-            ctx.lineTo(cx,       y + cell - pad);
-            ctx.lineTo(x + pad,  cy);
+            ctx.lineTo(cx,             y + cell - pad);
+            ctx.lineTo(x + pad,        cy);
             ctx.closePath();
             ctx.fill();
             break;
         case 'star':
             desenharEstrela(ctx, cx, cy, r * 0.9, 5);
             break;
+        case 'cross': {
+            const arm = s * 0.33;
+            const hl  = (s - arm) / 2;
+            ctx.fillRect(x + pad,      y + pad + hl, s,   arm);
+            ctx.fillRect(x + pad + hl, y + pad,      arm, s  );
+            break;
+        }
+        case 'hexagon':
+            desenharHexagono(ctx, cx, cy, r * 0.95);
+            break;
+        case 'leaf': {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(Math.PI / 4);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r * 0.52, r * 0.95, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            break;
+        }
+        case 'triangle':
+            ctx.beginPath();
+            ctx.moveTo(cx,             y + pad);
+            ctx.lineTo(x + cell - pad, y + cell - pad);
+            ctx.lineTo(x + pad,        y + cell - pad);
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'heart':
+            desenharCoracao(ctx, cx, cy, r * 0.88);
+            break;
+        case 'pixel': {
+            const ps = s * 0.7;
+            const po = (s - ps) / 2;
+            ctx.fillRect(x + pad + po, y + pad + po, ps, ps);
+            break;
+        }
         default: /* square */
             ctx.fillRect(x + pad, y + pad, s, s);
     }
@@ -283,6 +320,34 @@ function desenharEstrela(ctx, cx, cy, r, pontas) {
     }
     ctx.closePath();
     ctx.fill();
+}
+
+function desenharHexagono(ctx, cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const ang = (i * Math.PI / 3) - Math.PI / 6;
+        const px  = cx + Math.cos(ang) * r;
+        const py  = cy + Math.sin(ang) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
+function desenharCoracao(ctx, cx, cy, r) {
+    ctx.save();
+    ctx.translate(cx, cy + r * 0.12);
+    ctx.scale(r, r);
+    ctx.beginPath();
+    ctx.moveTo(0, -0.45);
+    ctx.bezierCurveTo( 0.02, -0.9,  1,   -0.9,  1,   -0.35);
+    ctx.bezierCurveTo( 1,     0.1,  0.5,  0.52,  0,    0.92);
+    ctx.bezierCurveTo(-0.5,   0.52, -1,   0.1,  -1,   -0.35);
+    ctx.bezierCurveTo(-1,    -0.9, -0.02, -0.9,  0,   -0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 }
 
 /* ── Logo centralizada ── */
