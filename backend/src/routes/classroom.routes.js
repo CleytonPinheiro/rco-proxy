@@ -774,6 +774,22 @@ export function createClassroomRouter(deps = {}) {
 
             const results = await Promise.all(ativs.map(async (a) => {
                 try {
+                    /* Se pontos_max não está definido no DB, busca maxPoints real do Classroom */
+                    let pontosMaxReal = (a.pontos_max != null && Number(a.pontos_max) > 0)
+                        ? Number(a.pontos_max)
+                        : null;
+
+                    if (pontosMaxReal === null) {
+                        try {
+                            const cwResp = await classroom.courses.courseWork.get({
+                                courseId, id: a.atividade_id,
+                            });
+                            pontosMaxReal = cwResp.data.maxPoints > 0
+                                ? Number(cwResp.data.maxPoints)
+                                : null;
+                        } catch (_) { /* mantém null se não conseguir buscar */ }
+                    }
+
                     const allSubs = [];
                     let pageToken;
                     do {
@@ -783,22 +799,27 @@ export function createClassroomRouter(deps = {}) {
                         allSubs.push(...(resp.data.studentSubmissions || []));
                         pageToken = resp.data.nextPageToken;
                     } while (pageToken);
-                    return { atividade: a, submissions: allSubs };
+                    return { atividade: { ...a, _pontosMaxReal: pontosMaxReal }, submissions: allSubs };
                 } catch (e) {
-                    return { atividade: a, submissions: [], erro: e.message };
+                    return { atividade: { ...a, _pontosMaxReal: null }, submissions: [], erro: e.message };
                 }
             }));
 
-            // totalPossivel = soma dos pontos_max de TODAS as atividades do grupo
-            // Atividades sem pontos_max definido assumem 100 apenas para o peso relativo
+            /* pontosMaxEfetivo: usa valor do DB se disponível, senão maxPoints do Classroom,
+               senão null (atividade sem escala → excluída do denominador para não distorcer) */
+            const resolverPontosMax = (atividade) => atividade._pontosMaxReal;
+
+            // totalPossivel = soma dos pontos_max efetivos de TODAS as atividades do grupo
+            // Atividades sem maxPoints em lugar nenhum (ex: atividades sem pontuação) são excluídas
             const totalPossivel = results.reduce((acc, { atividade }) => {
-                return acc + (atividade.pontos_max > 0 ? Number(atividade.pontos_max) : 100);
+                const pm = resolverPontosMax(atividade);
+                return acc + (pm !== null ? pm : 0);
             }, 0);
 
             const alunoMap = {};
             results.forEach(({ atividade, submissions }) => {
-                // pontos_max da atividade — se null/0 assume 100 (escala relativa)
-                const pontosMax = atividade.pontos_max > 0 ? Number(atividade.pontos_max) : 100;
+                // pontos_max efetivo: DB → Classroom → null (excluída da contagem)
+                const pontosMax = resolverPontosMax(atividade);
                 submissions.forEach(s => {
                     if (!alunoMap[s.userId]) {
                         alunoMap[s.userId] = {
@@ -822,8 +843,11 @@ export function createClassroomRouter(deps = {}) {
                         nota, estado: s.state, entregue, atrasado, updateTime,
                     };
 
-                    if (nota !== null) {
-                        // Soma os pontos brutos obtidos (atividades faltantes ficam como 0)
+                    if (pontosMax === null) {
+                        /* Atividade sem escala de pontos definida em nenhum lugar:
+                           não participa do cálculo de nota (ignorada no numerador e denominador) */
+                    } else if (nota !== null) {
+                        // Soma os pontos brutos obtidos (capped no máximo da atividade)
                         alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
                     } else if (!entregue) {
                         // Atividade não entregue / atrasada sem nota = 0 pontos + conta como pendente
@@ -888,8 +912,9 @@ export function createClassroomRouter(deps = {}) {
             }
 
             res.json({
-                atividades: ativs.map(a => ({
-                    id: a.atividade_id, titulo: a.atividade_titulo, pontos: a.pontos_max !== null ? Number(a.pontos_max) : null,
+                atividades: results.map(({ atividade: a }) => ({
+                    id: a.atividade_id, titulo: a.atividade_titulo,
+                    pontos: a._pontosMaxReal !== null ? a._pontosMaxReal : null,
                 })),
                 alunos,
                 isRecuperacao,

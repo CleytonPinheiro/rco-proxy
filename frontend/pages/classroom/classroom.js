@@ -1705,6 +1705,7 @@ function abrirModalGrupo(grupo = null) {
     } else {
         elModalAtivs.innerHTML = atividadesCache.map(a => {
             // Para atividades já no grupo: usa pontos_max do banco (editável pelo professor)
+            // Se pontos_max do banco for null, cai para maxPoints do Classroom como fallback
             // Para atividades novas (não vinculadas): usa maxPoints da API do Classroom
             const pontosInterno = ativsNoGrupo.has(a.id) && pontosNoGrupo[a.id] != null
                 ? Number(pontosNoGrupo[a.id])
