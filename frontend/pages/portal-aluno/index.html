@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Portal do Aluno</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./portal-aluno.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+                <a href="/pages/classroom/" class="active">Classroom</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Side Panel -->
+    <div class="side-panel" id="sidePanel">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">⚡ EduSync</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()">✕</button>
+        </div>
+        <nav class="side-panel-nav">
+            <div class="side-panel-section-label">Navegação</div>
+            <a href="/pages/dashboard/" class="side-nav-item">
+                <span class="side-nav-icon">🏠</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Dashboard</span>
+                    <span class="side-nav-desc">Visão geral das turmas</span>
+                </div>
+            </a>
+            <a href="/pages/frequencias/" class="side-nav-item">
+                <span class="side-nav-icon">📋</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Frequências</span>
+                    <span class="side-nav-desc">Registro de presença</span>
+                </div>
+            </a>
+            <a href="/pages/atividades/" class="side-nav-item">
+                <span class="side-nav-icon">📝</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Atividades</span>
+                    <span class="side-nav-desc">Registro de atividades de sala</span>
+                </div>
+            </a>
+            <div class="side-nav-group">
+                <a href="/pages/classroom/" class="side-nav-item">
+                    <span class="side-nav-icon side-nav-icon-svg">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                    </span>
+                    <div class="side-nav-info">
+                        <span class="side-nav-nome">Classroom</span>
+                        <span class="side-nav-desc">Atividades e notas do Google</span>
+                    </div>
+                </a>
+                <div class="side-nav-sub-static side-nav-sub-admin">
+                    <a href="/pages/portal-aluno/" class="side-nav-sub-item side-nav-sub-item--active">
+                        <span>👤</span> Portal do Aluno
+                    </a>
+                </div>
+            </div>
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/comportamento/" class="side-nav-item">
+                <span class="side-nav-icon">⚡</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Comportamento</span>
+                    <span class="side-nav-desc">Registro de ocorrências</span>
+                </div>
+            </a>
+            <a href="/pages/mapa-sala/" class="side-nav-item">
+                <span class="side-nav-icon">🗺</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Mapa de Sala</span>
+                    <span class="side-nav-desc">Organização dos assentos</span>
+                </div>
+            </a>
+            <a href="/pages/pedagogico/" class="side-nav-item">
+                <span class="side-nav-icon">🎓</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Painel Pedagógico</span>
+                    <span class="side-nav-desc">Notas e desempenho geral</span>
+                </div>
+            </a>
+            <a href="/pages/materiais/" class="side-nav-item">
+                <span class="side-nav-icon">📦</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Materiais</span>
+                    <span class="side-nav-desc">Controle de materiais</span>
+                </div>
+            </a>
+            <a href="/pages/emprestimos/" class="side-nav-item">
+                <span class="side-nav-icon">📚</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Empréstimos</span>
+                    <span class="side-nav-desc">Livros didáticos</span>
+                </div>
+            </a>
+            <a href="/pages/comunicados/" class="side-nav-item">
+                <span class="side-nav-icon">📢</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Comunicados</span>
+                    <span class="side-nav-desc">Envie avisos às turmas</span>
+                </div>
+            </a>
+            <a href="/pages/crachas/" class="side-nav-item">
+                <span class="side-nav-icon">🪪</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Crachás</span>
+                    <span class="side-nav-desc">Imprima crachás de alunos</span>
+                </div>
+            </a>
+            <a href="/pages/circulacao/" class="side-nav-item">
+                <span class="side-nav-icon">🚪</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Circulação</span>
+                    <span class="side-nav-desc">Controle de entrada e saída</span>
+                </div>
+            </a>
+            <a href="/pages/presenca/" class="side-nav-item">
+                <span class="side-nav-icon">✅</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Presença</span>
+                    <span class="side-nav-desc">Lista de presença digital</span>
+                </div>
+            </a>
+        </nav>
+    </div>
+    <div class="side-overlay" onclick="fecharSidePanel()"></div>
+
+    <div class="container" style="max-width:900px;margin-top:32px">
+
+        <div style="margin-bottom:24px">
+            <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:4px">👤 Portal do Aluno</h1>
+            <p style="color:var(--text-muted);font-size:.9rem">Simule a visão do portal por aluno (e-mail) ou por disciplina — sem precisar de login Google.</p>
+        </div>
+
+        <!-- Seletor de modo -->
+        <div class="pa-modos-wrap">
+            <button class="pa-modo-btn pa-modo-btn--ativo" data-modo="aluno" onclick="trocarModo('aluno')">
+                👤 Por aluno
+            </button>
+            <button class="pa-modo-btn" data-modo="disciplina" onclick="trocarModo('disciplina')">
+                📚 Por disciplina
+            </button>
+        </div>
+
+        <!-- Modo: Por aluno -->
+        <div id="paModoAluno" class="pa-input-row">
+            <input id="paEmail" type="email" placeholder="email.do.aluno@escola.com" class="pa-input"
+                onkeydown="if(event.key==='Enter')buscarPortalAluno()">
+            <button onclick="buscarPortalAluno()" class="pa-btn">Ver atividades</button>
+        </div>
+
+        <!-- Modo: Por disciplina -->
+        <div id="paModoDisciplina" class="pa-input-row" style="display:none">
+            <select id="paCursoSelect" class="pa-input">
+                <option value="">— Carregando disciplinas... —</option>
+            </select>
+            <button onclick="buscarPortalDisciplina()" class="pa-btn">Ver alunos pendentes</button>
+        </div>
+
+        <!-- Resultado -->
+        <div id="paResultado" style="margin-top:20px"></div>
+
+    </div>
+
+    <script src="../../shared/js/auth.js" type="module"></script>
+    <script src="./portal-aluno.js"></script>
+</body>
+</html>

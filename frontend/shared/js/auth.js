@@ -34,6 +34,7 @@
         '/pages/emprestimos/':            'emprestimos',
         '/pages/cozinha/':                'cozinha',
         '/pages/admin/':                  'admin',
+        '/pages/portal-aluno/':           'portal-aluno',
         '/pages/planos/':                 'planos',
     };
 

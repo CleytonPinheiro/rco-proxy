@@ -760,126 +760,49 @@ body[data-side="open"] .side-panel {
     .side-panel { width: 280px; }
 }
 
-/* ── Classroom sidebar submenu ─────────────────────────────── */
+/* ── Classroom sidebar — grupo com sub-item estático ────────── */
 .side-nav-group {
-    position: relative;
     margin-bottom: 4px;
 }
 
-/* Item pai: link + chevron lado a lado */
-.side-nav-item--parent {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 0;
-    border: 1.5px solid transparent;
-    border-radius: 12px;
-    overflow: hidden;
-    transition: border-color .15s, background .15s;
+/* Sub-item estático — indentado abaixo do item pai */
+.side-nav-sub-static {
+    margin: 2px 0 4px 18px;
+    border-left: 2px solid rgba(66,133,244,.3);
+    padding-left: 4px;
+    border-radius: 0 0 6px 6px;
 }
-.side-nav-item--parent:hover { background: var(--bg-secondary); }
-
-/* Link principal dentro do item pai */
-.side-nav-item-link {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 10px 12px 14px;
-    text-decoration: none;
-    color: inherit;
-    min-width: 0;
-}
-.side-nav-item-link:hover { color: inherit; }
-
-/* Botão do chevron — área separada e clicável */
-.side-nav-chevron-btn {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    border-left: 1px solid rgba(0,0,0,.06);
-    cursor: pointer;
-    padding: 0 12px;
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    color: var(--text-muted);
-    transition: background .15s, color .15s;
-    border-radius: 0 10px 10px 0;
-}
-.side-nav-chevron-btn:hover { background: rgba(66,133,244,.1); color: #4285F4; }
-[data-theme="dark"] .side-nav-chevron-btn { border-left-color: rgba(255,255,255,.06); }
-[data-theme="dark"] .side-nav-chevron-btn:hover { background: rgba(96,165,250,.12); color: #60a5fa; }
-
-.side-nav-chevron {
-    font-size: 1.25rem;
-    line-height: 1;
-    transition: transform 0.2s ease;
-    display: block;
-}
-
-/* Estado aberto */
-.side-nav-item--parent-open { border-color: #4285F4 !important; background: var(--bg-secondary) !important; }
-.side-nav-item--parent-open .side-nav-nome { color: #4285F4; }
-.side-nav-item--parent-open .side-nav-chevron { transform: rotate(90deg); color: #4285F4; }
-[data-theme="dark"] .side-nav-item--parent-open { border-color: #60a5fa !important; }
-[data-theme="dark"] .side-nav-item--parent-open .side-nav-nome { color: #60a5fa; }
-[data-theme="dark"] .side-nav-item--parent-open .side-nav-chevron { color: #60a5fa; }
-
-/* Flyout — posição fixa, aparece à direita do item */
-.side-nav-submenu {
-    position: fixed;
-    width: 230px;
-    background: var(--bg-primary);
-    border: 1.5px solid rgba(66,133,244,.35);
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
-    padding: 6px;
-    z-index: 9999;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateX(-6px);
-    transition: opacity .18s ease, transform .18s ease;
-}
-.side-nav-submenu.open {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(0);
-}
-[data-theme="dark"] .side-nav-submenu {
-    border-color: rgba(96,165,250,.35);
-    box-shadow: 0 8px 30px rgba(0,0,0,.35);
-}
-
-/* Rótulo no topo do flyout */
-.side-nav-submenu-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .9px;
-    color: var(--text-muted);
-    padding: 6px 12px 4px;
-}
+[data-theme="dark"] .side-nav-sub-static { border-color: rgba(96,165,250,.3); }
 
 .side-nav-sub-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    font-size: .85rem;
+    gap: 9px;
+    padding: 8px 12px;
+    font-size: .83rem;
     font-weight: 500;
     color: var(--text-secondary);
     text-decoration: none;
-    transition: background .15s, color .15s;
     border-radius: 8px;
-    margin: 2px 0;
+    transition: background .15s, color .15s;
 }
 .side-nav-sub-item:hover {
     background: rgba(66,133,244,.1);
     color: #4285F4;
 }
+.side-nav-sub-item--active {
+    background: rgba(66,133,244,.12);
+    color: #4285F4;
+    font-weight: 600;
+}
 [data-theme="dark"] .side-nav-sub-item:hover {
     background: rgba(96,165,250,.12);
     color: #60a5fa;
 }
+[data-theme="dark"] .side-nav-sub-item--active {
+    background: rgba(96,165,250,.14);
+    color: #60a5fa;
+}
+
+/* Oculto por padrão; theme.js exibe para admin */
 .side-nav-sub-admin { display: none; }

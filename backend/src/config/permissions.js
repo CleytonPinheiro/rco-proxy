@@ -7,7 +7,7 @@
 export const PERFIS = {
     admin: {
         nome: 'Administrador',
-        modulos: ['*'],
+        modulos: ['*'],   /* inclui portal-aluno */
     },
     professor: {
         nome: 'Professor',
