@@ -113,6 +113,34 @@
 .pa-ativ--vencida { background: #fff8f8; }
 [data-theme="dark"] .pa-ativ--vencida { background: #2a1a1a; }
 
+/* Atividade que pertence a um grupo */
+.pa-ativ--grupo {
+    border-left: 3px solid #4285F4;
+}
+[data-theme="dark"] .pa-ativ--grupo {
+    border-left-color: #60a5fa;
+}
+
+/* Tag do nome do grupo */
+.pa-grupo-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: .68rem;
+    font-weight: 700;
+    color: #4285F4;
+    background: rgba(66,133,244,.12);
+    border: 1px solid rgba(66,133,244,.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .pa-grupo-tag {
+    color: #93c5fd;
+    background: rgba(96,165,250,.12);
+    border-color: rgba(96,165,250,.3);
+}
+
 .pa-link-btn {
     padding: 4px 10px;
     border-radius: 6px;

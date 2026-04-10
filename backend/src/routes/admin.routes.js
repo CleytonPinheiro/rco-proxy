@@ -553,7 +553,43 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                     });
 
                     if (!atividades.length) return null;
-                    return { cursoId: curso.id, nome: curso.name, secao: curso.section || '', link: curso.alternateLink || '', atividades };
+
+                    /* ── Filtra e anota grupos — espelha lógica do portal real do aluno ── */
+                    let temGrupos = false;
+                    try {
+                        const { rows: comGrupos } = await pool.query(
+                            `SELECT 1 FROM classroom_grupos
+                             WHERE curso_id = $1 AND tipo = 'normal' LIMIT 1`,
+                            [String(curso.id)]
+                        );
+                        if (comGrupos.length > 0) {
+                            temGrupos = true;
+                            const todosIds = atividades.map(a => a.id);
+                            let grupoMap = {};
+                            if (todosIds.length > 0) {
+                                const { rows: gr } = await pool.query(
+                                    `SELECT ga.atividade_id::text, g.id AS grupo_id, g.nome AS grupo_nome
+                                     FROM classroom_grupo_atividades ga
+                                     JOIN classroom_grupos g ON g.id = ga.grupo_id
+                                     WHERE ga.atividade_id = ANY($1::bigint[])
+                                       AND g.curso_id = $2 AND g.tipo = 'normal'`,
+                                    [todosIds, String(curso.id)]
+                                );
+                                gr.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
+                            }
+                            atividades.forEach(a => {
+                                const g = grupoMap[String(a.id)];
+                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                            });
+                            /* Idêntico ao portal real: remove atividades sem grupo */
+                            atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
+                        }
+                    } catch (e) {
+                        console.warn('[PREVIEW-GRUPOS]', e.message);
+                    }
+
+                    if (!atividades.length) return null;
+                    return { cursoId: curso.id, nome: curso.name, secao: curso.section || '', temGrupos, link: curso.alternateLink || '', atividades };
                 } catch { return null; }
             }));
 

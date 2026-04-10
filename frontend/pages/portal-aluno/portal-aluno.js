@@ -92,15 +92,20 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
         ${cursos.map(c => `
         <div class="pa-curso-card">
             <div class="pa-curso-header">
-                <span>📚 ${esc(c.nome)}${c.secao ? ` <span style="font-weight:400;color:var(--text-muted)">· ${esc(c.secao)}</span>` : ''}</span>
+                <span>📚 ${esc(c.nome)}${c.secao ? ` <span style="font-weight:400;color:var(--text-muted)">· ${esc(c.secao)}</span>` : ''}
+                ${c.temGrupos ? `<span style="margin-left:6px;font-size:.7rem;font-weight:600;background:rgba(66,133,244,.15);color:#4285F4;border:1px solid rgba(66,133,244,.3);border-radius:4px;padding:1px 6px">com grupos</span>` : ''}
+                </span>
                 <span class="pa-badge">${c.atividades.length}</span>
             </div>
             <div class="pa-atividades">
                 ${c.atividades.map(a => `
-                <div class="pa-ativ-item ${a.vencida ? 'pa-ativ--vencida' : ''}">
+                <div class="pa-ativ-item ${a.vencida ? 'pa-ativ--vencida' : ''}${a.grupoId ? ' pa-ativ--grupo' : ''}">
                     <div style="flex:1;min-width:0">
-                        <div style="font-size:.83rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-                             title="${esc(a.titulo)}">${esc(a.titulo)}</div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                            <span style="font-size:.83rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%"
+                                  title="${esc(a.titulo)}">${esc(a.titulo)}</span>
+                            ${a.grupoNome ? `<span class="pa-grupo-tag">${esc(a.grupoNome)}</span>` : ''}
+                        </div>
                         <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">
                             ${TIPO_LABEL[a.tipo] || a.tipo}
                             ${a.prazo ? ` · <span style="color:${a.vencida ? '#dc2626' : 'var(--text-muted)'}">${a.vencida ? '⚠ Vencida' : '📅'} ${a.prazo}</span>` : ' · Sem prazo'}
