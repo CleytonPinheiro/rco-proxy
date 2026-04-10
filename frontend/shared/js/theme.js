@@ -71,30 +71,67 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Submenu Classroom ───────────────────────────────────────────────────── */
-window.toggleSideClassroom = function (btn) {
-    var sub = document.getElementById('sideClassroomSub');
+/* ── Submenu Classroom (flyout à direita) ───────────────────────────────── */
+window.toggleSideClassroom = function (evt, chevronBtn) {
+    evt.preventDefault();
+    evt.stopPropagation();
+
+    var sub     = document.getElementById('sideClassroomSub');
+    var parent  = chevronBtn ? chevronBtn.closest('.side-nav-item--parent') : null;
     if (!sub) return;
-    var open = sub.classList.toggle('open');
-    btn.classList.toggle('side-nav-item--parent-open', open);
+
+    var isOpen = sub.classList.contains('open');
+
+    /* Fecha qualquer flyout aberto */
+    _closeSideClassroom();
+
+    if (!isOpen) {
+        /* Posiciona o flyout à direita do item pai */
+        var anchor = parent || chevronBtn;
+        if (anchor) {
+            var rect = anchor.getBoundingClientRect();
+            sub.style.top  = rect.top + 'px';
+            sub.style.left = (rect.right + 10) + 'px';
+        }
+        sub.classList.add('open');
+        if (parent) parent.classList.add('side-nav-item--parent-open');
+    }
 };
 
+function _closeSideClassroom() {
+    var sub = document.getElementById('sideClassroomSub');
+    if (!sub) return;
+    sub.classList.remove('open');
+    var parent = document.querySelector('.side-nav-item--parent');
+    if (parent) parent.classList.remove('side-nav-item--parent-open');
+}
+
+/* Fecha o flyout ao clicar fora */
+document.addEventListener('click', function (e) {
+    var sub = document.getElementById('sideClassroomSub');
+    if (!sub || !sub.classList.contains('open')) return;
+    if (!e.target.closest('.side-nav-group') && !e.target.closest('#sideClassroomSub')) {
+        _closeSideClassroom();
+    }
+});
+
+/* Fecha o flyout ao scrollar ou redimensionar */
+window.addEventListener('scroll', _closeSideClassroom, true);
+window.addEventListener('resize', _closeSideClassroom);
+
 document.addEventListener('DOMContentLoaded', function () {
-    /* Exibe itens de admin apenas para perfil admin */
-    var perfil = localStorage.getItem('edusync_perfil') || '';
-    if (perfil === 'admin') {
+    /* Perfil vem do cache de nav (chave edusync_nav_cache) */
+    var perfil = '';
+    try {
+        var cache = JSON.parse(localStorage.getItem('edusync_nav_cache') || 'null');
+        perfil = (cache && cache.perfil) || '';
+    } catch (e) {}
+
+    /* Exibe itens de portal para admin e professor (ambos usam Classroom) */
+    if (perfil === 'admin' || perfil === 'professor') {
         document.querySelectorAll('.side-nav-sub-admin').forEach(function (el) {
             el.style.display = 'flex';
         });
-    }
-    /* Auto-expande submenu na página do Classroom */
-    if (window.location.pathname.startsWith('/pages/classroom')) {
-        var sub = document.getElementById('sideClassroomSub');
-        var btn = document.querySelector('.side-nav-item--parent');
-        if (sub && btn) {
-            sub.classList.add('open');
-            btn.classList.add('side-nav-item--parent-open');
-        }
     }
 });
 

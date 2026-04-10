@@ -326,23 +326,25 @@
                 </div>
             </a>
             <div class="side-nav-group">
-                <button class="side-nav-item side-nav-item--parent" onclick="toggleSideClassroom(this)" type="button">
-                    <span class="side-nav-icon side-nav-icon-svg">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                        </svg>
-                    </span>
-                    <div class="side-nav-info">
-                        <span class="side-nav-nome">Classroom</span>
-                        <span class="side-nav-desc">Atividades e notas do Google</span>
-                    </div>
-                    <span class="side-nav-chevron">›</span>
-                </button>
-                <div class="side-nav-submenu" id="sideClassroomSub">
-                    <a href="/pages/classroom/" class="side-nav-sub-item">
-                        <span>📖</span> Ir para Classroom
+                <div class="side-nav-item side-nav-item--parent">
+                    <a href="/pages/classroom/" class="side-nav-item-link">
+                        <span class="side-nav-icon side-nav-icon-svg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                            </svg>
+                        </span>
+                        <div class="side-nav-info">
+                            <span class="side-nav-nome">Classroom</span>
+                            <span class="side-nav-desc">Atividades e notas do Google</span>
+                        </div>
                     </a>
+                    <button class="side-nav-chevron-btn" onclick="toggleSideClassroom(event,this)" type="button" title="Abrir submenu">
+                        <span class="side-nav-chevron">›</span>
+                    </button>
+                </div>
+                <div class="side-nav-submenu" id="sideClassroomSub">
+                    <div class="side-nav-submenu-label">Portal do aluno</div>
                     <a href="/pages/admin/?tab=portal&modo=aluno" class="side-nav-sub-item side-nav-sub-admin">
                         <span>👤</span> Visualizar por aluno
                     </a>
