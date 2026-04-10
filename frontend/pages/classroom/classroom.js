@@ -546,7 +546,7 @@ function setTab(tab) {
     elAuditPanel.style.display       = tab === 'auditoria' ? '' : 'none';
     elAtivLink.style.display         = tab === 'atividades' && cursoAtivo?.link ? 'flex' : 'none';
     elBtnNovoGrupo.style.display     = tab === 'grupos' && cursoAtivo ? 'flex' : 'none';
-    elBtnCriarRec.style.display      = tab === 'grupos' && grupoAtivo?.tipo === 'normal' && !grupoAtivo?.recuperacaoId ? 'flex' : 'none';
+    elBtnCriarRec.style.display      = tab === 'grupos' && grupoAtivo?.tipo === 'normal' ? 'flex' : 'none';
     elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : tab === 'auditoria' ? 'Auditoria' : 'Atividades';
 
     if (tab === 'atividades') {
@@ -924,8 +924,8 @@ async function selecionarGrupo(grupo, itemEl) {
     elBtnLivro.style.display     = 'inline-flex';
     atualizarBtnLivro(grupo);
     elBtnRco.style.display       = grupo.codClasseRco ? 'inline-flex' : 'none';
-    /* Atalho "Criar Recuperação": só aparece para grupos normais sem recuperação vinculada */
-    elBtnCriarRec.style.display = (grupo.tipo === 'normal' && !grupo.recuperacaoId) ? 'flex' : 'none';
+    /* Atalho "Criar Recuperação": aparece para qualquer grupo normal; oculto em grupos de recuperação */
+    elBtnCriarRec.style.display = grupo.tipo === 'normal' ? 'flex' : 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Calculando somas...</div>';
 
     if (!grupo.atividades.length) {
