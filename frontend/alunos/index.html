@@ -28,6 +28,17 @@
             <!-- Área do usuário (visível após login) -->
             <div id="paUserArea" class="pa-user-area" style="display:none">
 
+                <!-- Link QR Code -->
+                <a href="/qrcode/" class="pa-qr-btn" title="Gerador de QR Code">
+                    <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
+                        <rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
+                        <rect x="12" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
+                        <rect x="2" y="12" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M12 12h2v2h-2zM14 14h2v2h-2zM16 12h2v2h-2zM12 16h2v2h-2zM16 16h2v2h-2z" fill="currentColor"/>
+                    </svg>
+                    QR Code
+                </a>
+
                 <!-- Botão de tema -->
                 <button class="pa-theme-btn" id="paThemeBtn" onclick="toggleTema()" title="Alternar tema claro/escuro">
                     <span id="paThemeIcon" class="pa-theme-icon"></span>

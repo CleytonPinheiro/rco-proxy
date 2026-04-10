@@ -904,3 +904,30 @@ html, body {
     .pa-link-ativ    { width: 100%; justify-content: center; }
     .pa-logo-sub     { display: none; }
 }
+
+/* ── Botão QR Code no header ──────────────────────── */
+.pa-qr-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    background: rgba(99,102,241,.12);
+    color: var(--pa-accent, #6366f1);
+    font-size: .78rem;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid rgba(99,102,241,.25);
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.pa-qr-btn:hover {
+    background: rgba(99,102,241,.22);
+    border-color: rgba(99,102,241,.45);
+}
+[data-theme="dark"] .pa-qr-btn {
+    background: rgba(99,102,241,.18);
+    border-color: rgba(99,102,241,.35);
+    color: #a5b4fc;
+}

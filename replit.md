@@ -1,7 +1,7 @@
 # EduSync
 
 ## Visão Geral
-Sistema de gestão escolar para professores do Paraná. Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática via Puppeteer/Chromium. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop, atividades de sala (checklist diário por turma/data), Painel Pedagógico e **integração com Google Classroom**.
+Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR Code** em `/qrcode/` (sem auth, acessível por alunos e professores). Consome a API do RCO Digital (Registro de Classe Online) com autenticação automática via Puppeteer/Chromium. Inclui módulos de turmas, frequências, crachás, grupos, comportamento, materiais, empréstimos, presença diária, painel da cozinha, circulação de alunos, comunicados de falta via WhatsApp (N8n), mapa de sala com drag-and-drop, atividades de sala (checklist diário por turma/data), Painel Pedagógico e **integração com Google Classroom**.
 
 ### Autenticação Multi-usuário (RBAC)
 - Login via CPF + senha do RCO Digital (Puppeteer valida as credenciais)

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Gerador de QR Code</title>
+    <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
+    <!-- Anti-flash de tema -->
+    <script>
+        (function () {
+            const t = localStorage.getItem('aluno_tema') || localStorage.getItem('edusync_theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="stylesheet" href="./qrcode.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="qr-header">
+        <div class="qr-header-inner">
+            <!-- Logo -->
+            <a class="qr-logo" href="javascript:history.length>1?history.back():location.href='/'">
+                <span class="qr-logo-icon">⚡</span>
+                <span class="qr-logo-edu">Edu</span><span class="qr-logo-sync">Sync</span>
+            </a>
+
+            <div class="qr-header-title">
+                <span class="qr-header-icon">◼</span>
+                Gerador de QR Code
+            </div>
+
+            <!-- Ações do header -->
+            <div class="qr-header-actions">
+                <button class="qr-tema-btn" id="qrTemaBtn" onclick="alternarTema()" title="Alternar tema">🌙</button>
+                <a class="qr-voltar-btn" href="javascript:history.length>1?history.back():location.href='/'">← Voltar</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="qr-main">
+        <div class="qr-card">
+
+            <!-- Título -->
+            <div class="qr-card-top">
+                <h1 class="qr-titulo">◼ Gerador de QR Code</h1>
+                <p class="qr-desc">Cole um link ou texto abaixo para gerar o QR Code para impressão ou compartilhamento.</p>
+            </div>
+
+            <!-- Formulário -->
+            <div class="qr-form">
+                <div class="qr-input-wrap">
+                    <label class="qr-label" for="qrInput">Link ou texto</label>
+                    <div class="qr-input-row">
+                        <input type="text" id="qrInput" class="qr-input"
+                               placeholder="https://exemplo.com/link-da-atividade"
+                               autocomplete="off" spellcheck="false"
+                               oninput="onInputChange()">
+                        <button class="qr-btn-limpar" id="qrBtnLimpar" onclick="limpar()" title="Limpar" style="display:none">✕</button>
+                    </div>
+                </div>
+
+                <div class="qr-opcoes">
+                    <!-- Título personalizado -->
+                    <div class="qr-opcao-group qr-opcao-group--full">
+                        <label class="qr-label-sm" for="qrTitulo">Título para impressão <span class="qr-opt">(opcional)</span></label>
+                        <input type="text" id="qrTitulo" class="qr-input-sm"
+                               placeholder="Ex: Atividade de Matemática — 2º Ano"
+                               maxlength="120" oninput="atualizarTituloPrevia()">
+                    </div>
+
+                    <!-- Tamanho -->
+                    <div class="qr-opcao-group">
+                        <label class="qr-label-sm" for="qrTamanho">Tamanho</label>
+                        <select id="qrTamanho" class="qr-select" onchange="gerarQR()">
+                            <option value="160">Pequeno</option>
+                            <option value="256" selected>Médio</option>
+                            <option value="400">Grande</option>
+                            <option value="512">Extra grande</option>
+                        </select>
+                    </div>
+
+                    <!-- Nível de correção -->
+                    <div class="qr-opcao-group">
+                        <label class="qr-label-sm" for="qrCorrecao">Qualidade</label>
+                        <select id="qrCorrecao" class="qr-select" onchange="gerarQR()">
+                            <option value="L">Baixa (L)</option>
+                            <option value="M" selected>Média (M)</option>
+                            <option value="Q">Alta (Q)</option>
+                            <option value="H">Máxima (H)</option>
+                        </select>
+                    </div>
+
+                    <!-- Cor do QR -->
+                    <div class="qr-opcao-group">
+                        <label class="qr-label-sm" for="qrCor">Cor</label>
+                        <div class="qr-cor-wrap">
+                            <input type="color" id="qrCor" class="qr-cor-input" value="#000000" oninput="gerarQR()">
+                            <span class="qr-cor-label" id="qrCorLabel">#000000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prévia do QR Code -->
+            <div class="qr-preview-area">
+
+                <!-- Estado vazio -->
+                <div class="qr-vazio" id="qrVazio">
+                    <div class="qr-vazio-icon">◼</div>
+                    <p class="qr-vazio-txt">Cole um link acima para gerar o QR Code</p>
+                </div>
+
+                <!-- QR gerado -->
+                <div class="qr-resultado" id="qrResultado" style="display:none">
+                    <div class="qr-canvas-wrap" id="qrCanvasWrap">
+                        <canvas id="qrCanvas"></canvas>
+                    </div>
+                    <div class="qr-url-preview" id="qrUrlPreview"></div>
+                </div>
+
+            </div>
+
+            <!-- Ações -->
+            <div class="qr-actions" id="qrActions" style="display:none">
+                <button class="qr-btn qr-btn--primary" onclick="imprimir()">
+                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                        <path d="M5 7V3h10v4M5 15H3a1 1 0 01-1-1V8a1 1 0 011-1h14a1 1 0 011 1v6a1 1 0 01-1 1h-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        <rect x="5" y="11" width="10" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
+                    </svg>
+                    Imprimir
+                </button>
+                <button class="qr-btn qr-btn--secondary" onclick="baixarPNG()">
+                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                        <path d="M10 3v10M6 9l4 4 4-4M4 17h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Baixar PNG
+                </button>
+                <button class="qr-btn qr-btn--ghost" onclick="copiarLink()">
+                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                        <rect x="7" y="7" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M13 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                    Copiar link
+                </button>
+            </div>
+
+            <!-- Toast -->
+            <div class="qr-toast" id="qrToast"></div>
+
+        </div>
+    </main>
+
+    <!-- ÁREA DE IMPRESSÃO (visível apenas na impressão) -->
+    <div class="qr-print-area" id="qrPrintArea">
+        <div class="qr-print-logo">⚡ EduSync</div>
+        <div class="qr-print-titulo" id="qrPrintTitulo"></div>
+        <canvas id="qrPrintCanvas"></canvas>
+        <div class="qr-print-url" id="qrPrintUrl"></div>
+        <div class="qr-print-rodape">Gerado em <span id="qrPrintData"></span> · EduSync — Portal do Aluno</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="./qrcode-page.js"></script>
+</body>
+</html>
