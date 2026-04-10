@@ -770,13 +770,29 @@ body[data-side="open"] .side-panel {
 .side-nav-chevron-hint {
     margin-left: auto;
     flex-shrink: 0;
-    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: rgba(66,133,244,.18);
+    border: 1px solid rgba(66,133,244,.35);
+    font-size: .8rem;
+    font-weight: 700;
     color: #4285F4;
     line-height: 1;
-    opacity: .7;
-    transition: opacity .15s, transform .15s;
+    letter-spacing: 0;
+    opacity: 1;
+    transition: background .15s, border-color .15s, transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s;
 }
-.side-nav-group:hover .side-nav-chevron-hint { opacity: 1; transform: translateX(2px); }
+.side-nav-group:hover .side-nav-chevron-hint {
+    background: #4285F4;
+    border-color: #4285F4;
+    color: #fff;
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(66,133,244,.4);
+}
 
 /* Flyout — posicionado via JS (position: fixed), oculto por padrão */
 .side-nav-sub-static {
