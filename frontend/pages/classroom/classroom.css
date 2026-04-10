@@ -707,6 +707,7 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-nota-status--pendente  { background: #fef9c3; color: #854d0e; }
 .cl-nota-status--devolvido { background: #ede9fe; color: #5b21b6; }
 .cl-nota-status--entrou    { background: #ffedd5; color: #9a3412; font-weight: 600; border: 1px solid #f97316; }
+.cl-nota-status--aguard    { background: #dbeafe; color: #1d4ed8; }
 
 .cl-nota-input {
     width: 100%;

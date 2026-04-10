@@ -1661,7 +1661,7 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
             statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(nota)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
             tipo = 'realizada';
         } else if (entregue) {
-            statusHtml = `<span class="cl-nota-status-badge cl-nota-status--pendente">Entregue – sem nota</span>`;
+            statusHtml = `<span class="cl-nota-status-badge cl-nota-status--aguard">⏳ Realizou — aguardando correção</span>`;
             tipo = 'realizada';
         } else if (atrasado) {
             statusHtml = `<span class="cl-nota-status-badge" style="background:#fff3e0;color:#c05621">Atrasado</span>`;
