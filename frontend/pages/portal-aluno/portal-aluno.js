@@ -89,17 +89,12 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
         <div style="font-size:.85rem;color:#4f46e5;font-weight:700;margin-bottom:14px">
             📋 Portal de <strong>${esc(email)}</strong> — ${totalPendentes} atividade(s) pendente(s)
         </div>
-        ${cursos.map(c => `
-        <div class="pa-curso-card">
-            <div class="pa-curso-header">
-                <span>📚 ${esc(c.nome)}${c.secao ? ` <span style="font-weight:400;color:var(--text-muted)">· ${esc(c.secao)}</span>` : ''}
-                ${c.temGrupos ? `<span style="margin-left:6px;font-size:.7rem;font-weight:600;background:rgba(66,133,244,.15);color:#4285F4;border:1px solid rgba(66,133,244,.3);border-radius:4px;padding:1px 6px">com grupos</span>` : ''}
-                </span>
-                <span class="pa-badge">${c.atividades.length}</span>
-            </div>
-            <div class="pa-atividades">
-                ${c.atividades.map(a => `
-                <div class="pa-ativ-item ${a.vencida ? 'pa-ativ--vencida' : ''}${a.grupoId ? ' pa-ativ--grupo' : ''}">
+        ${cursos.map(c => {
+            const emGrupo   = c.temGrupos ? c.atividades.filter(a => a.emGrupo)  : c.atividades;
+            const semGrupo  = c.temGrupos ? c.atividades.filter(a => !a.emGrupo) : [];
+
+            const renderAtiv = (a, tipo) => `
+                <div class="pa-ativ-item ${a.vencida ? 'pa-ativ--vencida' : ''} ${tipo === 'grupo' ? 'pa-ativ--grupo' : tipo === 'livre' ? 'pa-ativ--livre' : ''}">
                     <div style="flex:1;min-width:0">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                             <span style="font-size:.83rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%"
@@ -113,9 +108,26 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
                         </div>
                     </div>
                     ${a.link ? `<a href="${esc(a.link)}" target="_blank" class="pa-link-btn">Abrir</a>` : ''}
-                </div>`).join('')}
+                </div>`;
+
+            return `
+        <div class="pa-curso-card">
+            <div class="pa-curso-header">
+                <span>📚 ${esc(c.nome)}${c.secao ? ` <span style="font-weight:400;color:var(--text-muted)">· ${esc(c.secao)}</span>` : ''}</span>
+                <span class="pa-badge">${c.atividades.length}</span>
             </div>
-        </div>`).join('')}
+            <div class="pa-atividades">
+                ${emGrupo.length ? `
+                    ${c.temGrupos ? `<div class="pa-secao-label pa-secao-label--grupo">Em grupo · ${emGrupo.length}</div>` : ''}
+                    ${emGrupo.map(a => renderAtiv(a, 'grupo')).join('')}
+                ` : ''}
+                ${semGrupo.length ? `
+                    <div class="pa-secao-label pa-secao-label--livre">Sem grupo · ${semGrupo.length}</div>
+                    ${semGrupo.map(a => renderAtiv(a, 'livre')).join('')}
+                ` : ''}
+            </div>
+        </div>`;
+        }).join('')}
     </div>`;
     wrap.innerHTML = html;
 }

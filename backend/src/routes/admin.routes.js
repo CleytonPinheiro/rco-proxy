@@ -580,9 +580,10 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                             atividades.forEach(a => {
                                 const g = grupoMap[String(a.id)];
                                 if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                                /* emGrupo = true/false para separação visual no frontend */
+                                a.emGrupo = !!g;
                             });
-                            /* Idêntico ao portal real: remove atividades sem grupo */
-                            atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
+                            /* Não filtra: mostra ambas as seções (em grupo + sem grupo) */
                         }
                     } catch (e) {
                         console.warn('[PREVIEW-GRUPOS]', e.message);
