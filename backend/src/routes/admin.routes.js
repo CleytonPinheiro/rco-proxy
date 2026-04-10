@@ -16,6 +16,19 @@ const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEACHER_TOKEN_FILE = path.join(__dirname, '../../data/classroom_token.json');
 
+function detectarQuizizzId(cw) {
+    const materiais = cw.materials || [];
+    for (const mat of materiais) {
+        const url = mat.link?.url || mat.driveFile?.driveFile?.alternateLink || '';
+        if (/quizizz\.com/i.test(url)) {
+            const match = url.match(/\/quiz\/([0-9a-f]{24})/i);
+            return match ? match[1] : 'LINK';
+        }
+    }
+    if (/quiziz{1,2}/i.test(cw.title || '')) return 'TITULO';
+    return null;
+}
+
 function getTeacherAuth() {
     const id  = process.env.GOOGLE_CLIENT_ID;
     const sec = process.env.GOOGLE_CLIENT_SECRET;
@@ -500,12 +513,26 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
 
             const resultados = await Promise.all(todosCursos.map(async curso => {
                 try {
-                    const [subsResp, cwResp] = await Promise.all([
+                    const [subsPendResp, subsZerResp, subsAguardResp, cwResp] = await Promise.all([
                         classroom.courses.courseWork.studentSubmissions.list({
                             courseId:     curso.id,
                             courseWorkId: '-',
                             userId:       studentId,
                             states:       ['NEW', 'CREATED', 'RECLAIMED_BY_STUDENT'],
+                            pageSize:     100,
+                        }),
+                        classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     curso.id,
+                            courseWorkId: '-',
+                            userId:       studentId,
+                            states:       ['RETURNED'],
+                            pageSize:     100,
+                        }),
+                        classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     curso.id,
+                            courseWorkId: '-',
+                            userId:       studentId,
+                            states:       ['TURNED_IN'],
                             pageSize:     100,
                         }),
                         classroom.courses.courseWork.list({
@@ -516,45 +543,59 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                         }),
                     ]);
 
-                    const pendingSubs = subsResp.data.studentSubmissions || [];
-                    if (!pendingSubs.length) return null;
-
                     const cwMap = {};
                     (cwResp.data.courseWork || []).forEach(cw => { cwMap[cw.id] = cw; });
 
-                    const atividades = pendingSubs.map(sub => {
+                    const mapAtiv = (sub, extra = {}) => {
                         const cw = cwMap[sub.courseWorkId];
                         if (!cw) return null;
                         const dueDate = cw.dueDate;
                         let prazo = null, prazoIso = null, vencida = false;
                         if (dueDate?.year) {
-                            const d = String(dueDate.day).padStart(2,'0');
-                            const m = String(dueDate.month).padStart(2,'0');
+                            const d = String(dueDate.day).padStart(2, '0');
+                            const m = String(dueDate.month).padStart(2, '0');
                             prazo    = `${d}/${m}/${dueDate.year}`;
                             prazoIso = `${dueDate.year}-${m}-${d}`;
                             vencida  = new Date(prazoIso) < new Date();
                         }
                         return {
-                            id:       cw.id,
-                            titulo:   cw.title,
-                            tipo:     cw.workType || 'ASSIGNMENT',
+                            id:        cw.id,
+                            titulo:    cw.title,
+                            tipo:      cw.workType || 'ASSIGNMENT',
                             prazo,
                             prazoIso,
                             vencida,
-                            pontos:   cw.maxPoints ?? null,
-                            link:     cw.alternateLink || '',
-                            estado:   sub.state,
+                            pontos:    cw.maxPoints ?? null,
+                            link:      cw.alternateLink || '',
+                            quizizzId: detectarQuizizzId(cw),
+                            ...extra,
                         };
-                    }).filter(Boolean).sort((a, b) => {
+                    };
+
+                    const sortPrazo = (a, b) => {
                         if (!a.prazoIso && !b.prazoIso) return 0;
                         if (!a.prazoIso) return 1;
                         if (!b.prazoIso) return -1;
                         return a.prazoIso.localeCompare(b.prazoIso);
-                    });
+                    };
 
-                    if (!atividades.length) return null;
+                    const atividades = (subsPendResp.data.studentSubmissions || [])
+                        .map(s => mapAtiv(s, { estado: s.state }))
+                        .filter(Boolean).sort(sortPrazo);
 
-                    /* ── Filtra e anota grupos — espelha lógica do portal real do aluno ── */
+                    const zeradas = (subsZerResp.data.studentSubmissions || [])
+                        .filter(s => (s.assignedGrade ?? null) === 0)
+                        .map(s => mapAtiv(s))
+                        .filter(Boolean).sort(sortPrazo);
+
+                    const aguardando = (subsAguardResp.data.studentSubmissions || [])
+                        .filter(s => s.assignedGrade == null && s.draftGrade == null)
+                        .map(s => mapAtiv(s, { aguardando: true }))
+                        .filter(Boolean).sort(sortPrazo);
+
+                    if (!atividades.length && !zeradas.length && !aguardando.length) return null;
+
+                    /* ── Anota grupo de cada atividade ── */
                     let temGrupos = false;
                     try {
                         const { rows: comGrupos } = await pool.query(
@@ -564,7 +605,11 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                         );
                         if (comGrupos.length > 0) {
                             temGrupos = true;
-                            const todosIds = atividades.map(a => a.id);
+                            const todosIds = [
+                                ...atividades.map(a => a.id),
+                                ...zeradas.map(a => a.id),
+                                ...aguardando.map(a => a.id),
+                            ];
                             let grupoMap = {};
                             if (todosIds.length > 0) {
                                 const { rows: gr } = await pool.query(
@@ -577,25 +622,37 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                                 );
                                 gr.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
                             }
-                            atividades.forEach(a => {
+                            [...atividades, ...zeradas, ...aguardando].forEach(a => {
                                 const g = grupoMap[String(a.id)];
                                 if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                                /* emGrupo = true/false para separação visual no frontend */
                                 a.emGrupo = !!g;
                             });
-                            /* Não filtra: mostra ambas as seções (em grupo + sem grupo) */
                         }
                     } catch (e) {
                         console.warn('[PREVIEW-GRUPOS]', e.message);
                     }
 
-                    if (!atividades.length) return null;
-                    return { cursoId: curso.id, nome: curso.name, secao: curso.section || '', temGrupos, link: curso.alternateLink || '', atividades };
+                    return {
+                        cursoId:   curso.id,
+                        nome:      curso.name,
+                        secao:     curso.section || '',
+                        temGrupos,
+                        link:      curso.alternateLink || '',
+                        atividades,
+                        zeradas,
+                        aguardando,
+                    };
                 } catch { return null; }
             }));
 
             const cursos = resultados.filter(Boolean);
-            res.json({ email: studentId, cursos, totalPendentes: cursos.reduce((s, c) => s + c.atividades.length, 0) });
+            res.json({
+                email:           studentId,
+                cursos,
+                totalPendentes:  cursos.reduce((s, c) => s + c.atividades.length,  0),
+                totalZeradas:    cursos.reduce((s, c) => s + c.zeradas.length,     0),
+                totalAguardando: cursos.reduce((s, c) => s + c.aguardando.length,  0),
+            });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
