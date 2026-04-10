@@ -357,39 +357,50 @@ export function createAlunosPortalRouter() {
                     /* ── Anota grupo de cada atividade (pendentes + zeradas) e filtra ── */
                     let temGrupos = false;
                     try {
-                        const todosIds = [
-                            ...atividades.map(a => a.id),
-                            ...zeradas.map(a => a.id),
-                        ];
-                        if (todosIds.length > 0) {
-                            const { rows: grupoRows } = await pool.query(
-                                `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome
-                                 FROM classroom_grupo_atividades ga
-                                 JOIN classroom_grupos g ON g.id = ga.grupo_id
-                                 WHERE ga.atividade_id = ANY($1::bigint[])
-                                   AND g.tipo = 'normal'`,
-                                [todosIds]
-                            );
-                            if (grupoRows.length > 0) {
-                                temGrupos = true;
-                                const grupoMap = {};
+                        /* Verifica se o CURSO tem grupos normais definidos (independente das atividades do aluno) */
+                        const { rows: cursoPossuiGrupos } = await pool.query(
+                            `SELECT 1 FROM classroom_grupos
+                             WHERE curso_id = $1 AND tipo = 'normal'
+                             LIMIT 1`,
+                            [String(curso.id)]
+                        );
+
+                        if (cursoPossuiGrupos.length > 0) {
+                            temGrupos = true;
+
+                            /* Quais atividades do aluno pertencem a algum grupo deste curso? */
+                            const todosIds = [
+                                ...atividades.map(a => a.id),
+                                ...zeradas.map(a => a.id),
+                            ];
+
+                            let grupoMap = {};
+                            if (todosIds.length > 0) {
+                                const { rows: grupoRows } = await pool.query(
+                                    `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome
+                                     FROM classroom_grupo_atividades ga
+                                     JOIN classroom_grupos g ON g.id = ga.grupo_id
+                                     WHERE ga.atividade_id = ANY($1::bigint[])
+                                       AND g.curso_id = $2
+                                       AND g.tipo = 'normal'`,
+                                    [todosIds, String(curso.id)]
+                                );
                                 grupoRows.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
-
-                                /* Anota e filtra pendentes */
-                                atividades.forEach(a => {
-                                    const g = grupoMap[String(a.id)];
-                                    if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                                });
-                                /* Remove pendentes não pertencentes a nenhum grupo selecionado */
-                                atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
-
-                                /* Anota e filtra zeradas */
-                                zeradas.forEach(a => {
-                                    const g = grupoMap[String(a.id)];
-                                    if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                                });
-                                zeradas.splice(0, zeradas.length, ...zeradas.filter(a => a.grupoId));
                             }
+
+                            /* Anota e filtra pendentes — remove as que NÃO estão em nenhum grupo */
+                            atividades.forEach(a => {
+                                const g = grupoMap[String(a.id)];
+                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                            });
+                            atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
+
+                            /* Anota e filtra zeradas */
+                            zeradas.forEach(a => {
+                                const g = grupoMap[String(a.id)];
+                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
+                            });
+                            zeradas.splice(0, zeradas.length, ...zeradas.filter(a => a.grupoId));
                         }
                     } catch (e) {
                         console.warn('[ALUNOS-PORTAL] Erro ao buscar grupos:', e.message);
