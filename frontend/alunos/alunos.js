@@ -223,7 +223,7 @@ function renderAtivItem(ativ, { zerada = false } = {}) {
         ? '<span class="pa-devolvida-badge">↩ Devolvida</span>' : '';
 
     const zerouPart = zerada
-        ? '<span class="pa-zerada-badge">🎮 Entrou com 0 pts</span>' : '';
+        ? '<span class="pa-zerada-badge">↩ Entrou com 0 pts</span>' : '';
 
     const pontosPart = ativ.pontos != null
         ? `<span class="pa-pontos">${ativ.pontos} pts</span>` : '';

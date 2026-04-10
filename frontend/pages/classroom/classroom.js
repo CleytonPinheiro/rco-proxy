@@ -1262,7 +1262,7 @@ function renderListaFiltrada() {
             ${chip('meta',    '#10b981', 'Meta',          nMeta)}
             ${chip('prog',    '#4285F4', 'Em progresso',  nProg)}
             ${chip('abaixo',  '#f59e0b', 'Abaixo',       nAbaixo)}
-            ${nEntrou > 0 ? chip('entrou', '#f97316', '🎮 Entrou (0 pts)', nEntrou) : ''}
+            ${nEntrou > 0 ? chip('entrou', '#f97316', '↩ Entrou (0 pts)', nEntrou) : ''}
         </div>
         <div class="cl-resumo-header${hasRec ? ' cl-resumo-header--com-rec' : ''}">
             <span></span>
@@ -1532,7 +1532,7 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
 
         if (entrou) {
             const ptMax = atv.pontos ?? 100;
-            statusHtml  = `<span class="cl-nota-status-badge cl-nota-status--entrou">🎮 Entrou (0 / ${rco(ptMax)} pts)</span>`;
+            statusHtml  = `<span class="cl-nota-status-badge cl-nota-status--entrou">↩ Entrou (0 / ${rco(ptMax)} pts)</span>`;
             tipo        = 'entrou';
         } else if (nota !== null) {
             const ptMax  = atv.pontos ?? 100;
