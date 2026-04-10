@@ -71,7 +71,7 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Submenu Classroom — exibe sub-itens para admin ────────────────────── */
+/* ── Submenu Classroom — flyout à direita no hover (admin only) ─────────── */
 document.addEventListener('DOMContentLoaded', function () {
     var perfil = '';
     try {
@@ -79,11 +79,66 @@ document.addEventListener('DOMContentLoaded', function () {
         perfil = (cache && cache.perfil) || '';
     } catch (e) {}
 
-    if (perfil === 'admin') {
-        document.querySelectorAll('.side-nav-sub-admin').forEach(function (el) {
-            el.style.display = 'block';
+    var isAdmin = (perfil === 'admin');
+
+    /* Percorre todos os grupos com submenu */
+    document.querySelectorAll('.side-nav-group').forEach(function (group) {
+        var flyout = group.querySelector('.side-nav-sub-static');
+        if (!flyout) return;
+
+        /* Injeta rótulo no topo do flyout (só uma vez) */
+        if (!flyout.querySelector('.side-nav-sub-label')) {
+            var lbl = document.createElement('div');
+            lbl.className   = 'side-nav-sub-label';
+            lbl.textContent = 'Classroom';
+            flyout.insertBefore(lbl, flyout.firstChild);
+        }
+
+        if (!isAdmin) return; /* Não admin: sem chevron e sem hover */
+
+        /* Exibe o container do sub-item */
+        flyout.style.display = 'block';
+
+        /* Injeta indicador ›  no item pai */
+        var parentItem = group.querySelector('.side-nav-item');
+        if (parentItem && !parentItem.querySelector('.side-nav-chevron-hint')) {
+            var hint = document.createElement('span');
+            hint.className   = 'side-nav-chevron-hint';
+            hint.textContent = '›';
+            parentItem.appendChild(hint);
+        }
+
+        var hideTimer = null;
+
+        function openFlyout() {
+            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+            var rect        = group.getBoundingClientRect();
+            var flyoutW     = 230;
+            var gap         = 10;
+            var leftPos     = rect.right + gap;
+            /* Se não couber à direita, posiciona à esquerda do painel */
+            if (leftPos + flyoutW > window.innerWidth) {
+                leftPos = rect.left - flyoutW - gap;
+            }
+            flyout.style.top  = Math.max(8, rect.top) + 'px';
+            flyout.style.left = leftPos + 'px';
+            flyout.classList.add('flyout-open');
+        }
+
+        function scheduleFlyoutClose() {
+            hideTimer = setTimeout(function () {
+                flyout.classList.remove('flyout-open');
+                hideTimer = null;
+            }, 120);
+        }
+
+        group.addEventListener('mouseenter', openFlyout);
+        group.addEventListener('mouseleave', scheduleFlyoutClose);
+        flyout.addEventListener('mouseenter', function () {
+            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
         });
-    }
+        flyout.addEventListener('mouseleave', scheduleFlyoutClose);
+    });
 });
 
 /* ── Pré-carrega CSS de nav/perfil e guard de autenticação (exceto páginas públicas) ── */

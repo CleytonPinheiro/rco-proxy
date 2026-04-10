@@ -760,31 +760,71 @@ body[data-side="open"] .side-panel {
     .side-panel { width: 280px; }
 }
 
-/* ── Classroom sidebar — grupo com sub-item estático ────────── */
+/* ── Classroom sidebar — flyout à direita no hover ──────────── */
 .side-nav-group {
+    position: relative;
     margin-bottom: 4px;
 }
 
-/* Sub-item estático — indentado abaixo do item pai */
-.side-nav-sub-static {
-    margin: 2px 0 4px 18px;
-    border-left: 2px solid rgba(66,133,244,.3);
-    padding-left: 4px;
-    border-radius: 0 0 6px 6px;
+/* Indicador de submenu no item pai */
+.side-nav-chevron-hint {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    color: #4285F4;
+    line-height: 1;
+    opacity: .7;
+    transition: opacity .15s, transform .15s;
 }
-[data-theme="dark"] .side-nav-sub-static { border-color: rgba(96,165,250,.3); }
+.side-nav-group:hover .side-nav-chevron-hint { opacity: 1; transform: translateX(2px); }
+
+/* Flyout — posicionado via JS (position: fixed), oculto por padrão */
+.side-nav-sub-static {
+    position: fixed;
+    width: 220px;
+    background: var(--bg-primary);
+    border: 1.5px solid rgba(66,133,244,.4);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
+    padding: 6px;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-6px);
+    transition: opacity .16s ease, transform .16s ease;
+}
+.side-nav-sub-static.flyout-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+[data-theme="dark"] .side-nav-sub-static {
+    border-color: rgba(96,165,250,.4);
+    box-shadow: 0 8px 28px rgba(0,0,0,.4);
+}
+
+/* Rótulo do flyout */
+.side-nav-sub-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .9px;
+    color: var(--text-muted);
+    padding: 5px 12px 3px;
+}
 
 .side-nav-sub-item {
     display: flex;
     align-items: center;
     gap: 9px;
-    padding: 8px 12px;
-    font-size: .83rem;
+    padding: 9px 12px;
+    font-size: .855rem;
     font-weight: 500;
     color: var(--text-secondary);
     text-decoration: none;
     border-radius: 8px;
-    transition: background .15s, color .15s;
+    transition: background .13s, color .13s;
+    margin: 1px 0;
 }
 .side-nav-sub-item:hover {
     background: rgba(66,133,244,.1);
