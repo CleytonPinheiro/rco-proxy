@@ -67,6 +67,20 @@ let auditCodClasse    = null;   // codClasse vinculado ao curso atual
 let auditClassesCache = [];    // todas as classes RCO { codClasse, nomeDisciplina, descrTurma }
 let auditTurmaFiltro  = '';    // turma selecionada para filtrar disciplinas
 let corSelecionada  = '#4285F4';
+
+/* ── Colunas da listagem de alunos ── */
+const RESUMO_COLS = {
+    aluno:     { label: 'Aluno',     width: '1fr'   },
+    soma:      { label: 'Soma',      width: '100px' },
+    rec:       { label: 'Rec.',      width: '72px'  },
+    pendentes: { label: 'Pendentes', width: '90px'  },
+};
+let colOrder  = ['aluno', 'soma', 'rec', 'pendentes'];
+let sortState = { col: null, dir: 'asc' };
+try {
+    const sc = JSON.parse(localStorage.getItem('cl-col-order')); if (Array.isArray(sc)) colOrder = sc;
+    const ss = JSON.parse(localStorage.getItem('cl-col-sort'));  if (ss?.col !== undefined)  sortState = ss;
+} catch (_) {}
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
 let filtrosGrupoAtivos = new Set(['todos']); // filtros de faixa de cor ativos (múltiplos)
@@ -1234,11 +1248,25 @@ function renderListaFiltrada() {
         </button>`;
     };
 
-    const filtrados = filtrosGrupoAtivos.has('todos')
+    let filtrados = filtrosGrupoAtivos.has('todos')
         ? alunosResumo
         : filtrosGrupoAtivos.has('entrou')
             ? alunosResumo.filter(a => a.temEntrou)
             : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
+
+    /* ── Ordenação ── */
+    if (sortState.col) {
+        const mult = sortState.dir === 'asc' ? 1 : -1;
+        filtrados = [...filtrados].sort((a, b) => {
+            switch (sortState.col) {
+                case 'aluno':     return mult * (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR');
+                case 'soma':      return mult * ((a.soma ?? 0) - (b.soma ?? 0));
+                case 'rec':       return mult * ((a.recData?.soma ?? -1) - (b.recData?.soma ?? -1));
+                case 'pendentes': return mult * ((a.pendentes ?? 0) - (b.pendentes ?? 0));
+                default:          return 0;
+            }
+        });
+    }
 
     /* Banner de grupo de recuperação / aviso de corte no grupo original */
     const dataInicioStr      = fmtDatetime(dataInicio);
@@ -1261,10 +1289,29 @@ function renderListaFiltrada() {
            </div>`
         : '';
 
-    /* Coluna extra para nota de recuperação (só quando o grupo principal tem rec. vinculada) */
-    const recColHeader = hasRec
-        ? `<span style="text-align:center">Rec.</span>`
-        : '';
+    /* ── Colunas visíveis (filtra 'rec' se grupo não tem recuperação) ── */
+    const colsVisiveis = colOrder.filter(k => k !== 'rec' || hasRec);
+    const gridTpl = ['36px', ...colsVisiveis.map(k => RESUMO_COLS[k].width)].join(' ');
+
+    /* ── Rótulo dinâmico para coluna soma ── */
+    const somaLabel = `Soma / ${rco(meta)} pts`;
+
+    /* ── Header com drag + sort ── */
+    const sortIcon = (col) => {
+        if (sortState.col !== col) return `<span class="cl-sort-ico cl-sort-ico--none">⇅</span>`;
+        return sortState.dir === 'asc'
+            ? `<span class="cl-sort-ico cl-sort-ico--asc">↑</span>`
+            : `<span class="cl-sort-ico cl-sort-ico--desc">↓</span>`;
+    };
+
+    const colLabels = { aluno: 'Aluno', soma: somaLabel, rec: 'Rec.', pendentes: 'Pendentes' };
+
+    const headerCols = colsVisiveis.map(k =>
+        `<span class="cl-col-header" data-col="${k}" draggable="true"
+              title="Arrastar para reordenar · Clique para ordenar">
+            ${colLabels[k]}${sortIcon(k)}
+        </span>`
+    ).join('');
 
     elNotasLista.innerHTML = `
         ${recBannerHtml}
@@ -1283,16 +1330,13 @@ function renderListaFiltrada() {
             ${chip('abaixo',  '#f59e0b', 'Abaixo',       nAbaixo)}
             ${nEntrou > 0 ? chip('entrou', '#f97316', '↩ Entrou (0 pts)', nEntrou) : ''}
         </div>
-        <div class="cl-resumo-header${hasRec ? ' cl-resumo-header--com-rec' : ''}">
+        <div class="cl-resumo-header" style="grid-template-columns:${gridTpl}">
             <span></span>
-            <span>Aluno</span>
-            <span>Soma / ${rco(meta)} pts</span>
-            ${recColHeader}
-            <span style="text-align:center">Pendentes</span>
+            ${headerCols}
         </div>
         <div class="cl-faixa-lista" id="clFaixaLista">
             ${filtrados.length
-                ? filtrados.map(a => renderResumoRow(a, meta, atividades, hasRec)).join('')
+                ? filtrados.map(a => renderResumoRow(a, meta, atividades, hasRec, colsVisiveis, gridTpl)).join('')
                 : `<div class="cl-empty-state"><p>Nenhum aluno nessa faixa.</p></div>`}
         </div>`;
 
@@ -1307,12 +1351,15 @@ function renderListaFiltrada() {
         row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta));
     });
 
+    // Headers → drag-to-reorder + click-to-sort
+    bindColHeaders(elNotasLista);
+
     // Renderiza painel Quizizz com dados já em cache (se houver)
     const painel = document.getElementById('clQuizizzPainel');
     if (painel) renderQuizizzPainel(atividades, painel);
 }
 
-function renderResumoRow(a, meta, atividades = [], hasRec = false) {
+function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis = ['aluno','soma','pendentes'], gridTpl = '36px 1fr 100px 90px') {
     const al       = a.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
@@ -1326,7 +1373,6 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false) {
         const nota   = sub?.nota ?? null;
         const ent    = sub?.entregue ?? false;
         const fezRec = sub?.fezRec ?? false;
-        // verde = nota > 0 | laranja = entrou (0 pts, devolvido) | azul = entregue s/ nota | cinza = pendente
         const entrou = nota === 0 && ent;
         const cor    = entrou             ? '#f97316'
                      : nota !== null      ? '#10b981'
@@ -1341,35 +1387,91 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false) {
         return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}${fezRec ? ' cl-passo--rec' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
     }).join('');
 
-    /* Coluna de nota de recuperação */
-    const recCelHtml = hasRec
-        ? (a.recData
-            ? `<div style="text-align:center">
-                   <span class="cl-rec-nota-badge" title="Nota da recuperação">
-                       🔄 ${rco(a.recData.soma)}
-                   </span>
-               </div>`
-            : `<div style="text-align:center"><span class="cl-rec-nota-badge cl-rec-nota-badge--vazio">—</span></div>`)
-        : '';
-
     const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
-    return `<div class="cl-resumo-row${hasRec ? ' cl-resumo-row--com-rec' : ''}">
-        <div class="cl-nota-avatar">${fotoHtml}</div>
-        <div class="cl-resumo-info">
+
+    /* Células indexadas por chave */
+    const cells = {
+        aluno: `<div class="cl-resumo-info">
             <div class="cl-nota-nome" title="${esc(al.email)}">${numBadge}${esc(al.nome || '—')}</div>
             <div class="cl-passos-barra">${stepsHtml || '<span class="cl-passos-vazia">—</span>'}</div>
-        </div>
-        <div class="cl-resumo-soma">
+        </div>`,
+        soma: `<div class="cl-resumo-soma">
             <span class="cl-resumo-num" style="color:${somaCor}">${rco(soma)}</span>
             <span class="cl-resumo-den">/${rco(meta)}</span>
-        </div>
-        ${recCelHtml}
-        <div style="text-align:center">
+        </div>`,
+        rec: hasRec
+            ? (a.recData
+                ? `<div style="text-align:center"><span class="cl-rec-nota-badge" title="Nota da recuperação">🔄 ${rco(a.recData.soma)}</span></div>`
+                : `<div style="text-align:center"><span class="cl-rec-nota-badge cl-rec-nota-badge--vazio">—</span></div>`)
+            : '',
+        pendentes: `<div style="text-align:center">
             ${a.pendentes > 0
                 ? `<span class="cl-nota-status-badge cl-nota-status--pendente">${a.pendentes} pend.</span>`
                 : `<span class="cl-nota-status-badge cl-nota-status--entregue">✓</span>`}
-        </div>
+        </div>`,
+    };
+
+    const cellsHtml = colsVisiveis.map(k => cells[k] || '').join('');
+
+    return `<div class="cl-resumo-row" style="grid-template-columns:${gridTpl}">
+        <div class="cl-nota-avatar">${fotoHtml}</div>
+        ${cellsHtml}
     </div>`;
+}
+
+/* ── Drag-to-reorder + click-to-sort nos cabeçalhos de coluna ── */
+function bindColHeaders(container) {
+    const headers = Array.from(container.querySelectorAll('.cl-col-header[data-col]'));
+    let dragSrc = null;
+
+    headers.forEach(th => {
+        /* Drag */
+        th.addEventListener('dragstart', e => {
+            dragSrc = th.dataset.col;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragSrc);
+            th.classList.add('cl-col--dragging');
+        });
+        th.addEventListener('dragend', () => {
+            th.classList.remove('cl-col--dragging');
+            headers.forEach(h => h.classList.remove('cl-col--drag-over'));
+        });
+        th.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            headers.forEach(h => h.classList.remove('cl-col--drag-over'));
+            if (th.dataset.col !== dragSrc) th.classList.add('cl-col--drag-over');
+        });
+        th.addEventListener('dragleave', () => th.classList.remove('cl-col--drag-over'));
+        th.addEventListener('drop', e => {
+            e.preventDefault();
+            const target = th.dataset.col;
+            if (dragSrc && dragSrc !== target) {
+                const fromIdx = colOrder.indexOf(dragSrc);
+                const toIdx   = colOrder.indexOf(target);
+                if (fromIdx !== -1 && toIdx !== -1) {
+                    colOrder.splice(fromIdx, 1);
+                    colOrder.splice(toIdx, 0, dragSrc);
+                    try { localStorage.setItem('cl-col-order', JSON.stringify(colOrder)); } catch (_) {}
+                    renderGrupoResumo();
+                }
+            }
+            dragSrc = null;
+        });
+
+        /* Sort ao clicar (não dispara se houve arraste) */
+        th.addEventListener('click', () => {
+            if (dragSrc) return; // estava arrastando
+            const col = th.dataset.col;
+            if (sortState.col === col) {
+                sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState = { col, dir: 'asc' };
+            }
+            try { localStorage.setItem('cl-col-sort', JSON.stringify(sortState)); } catch (_) {}
+            renderGrupoResumo();
+        });
+    });
 }
 
 function exportarGrupoCSV() {

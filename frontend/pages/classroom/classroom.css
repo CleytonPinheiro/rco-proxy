@@ -1077,7 +1077,6 @@ body.cl-popout .logo-icon { font-size: 15px; }
 ══════════════════════════════════════════════════════════════ */
 .cl-resumo-header {
     display: grid;
-    grid-template-columns: 36px 1fr 100px 90px;
     gap: 8px;
     padding: 9px 14px;
     background: var(--bg);
@@ -1093,7 +1092,6 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 .cl-resumo-row {
     display: grid;
-    grid-template-columns: 36px 1fr 100px 90px;
     align-items: center;
     gap: 8px;
     padding: 10px 14px;
@@ -1778,9 +1776,37 @@ body.cl-popout .logo-icon { font-size: 15px; }
     font-style: italic;
 }
 
-/* Grade extra para a coluna de recuperação */
-.cl-resumo-header--com-rec { grid-template-columns: 36px 1fr 100px 72px 90px; }
-.cl-resumo-row--com-rec    { grid-template-columns: 36px 1fr 100px 72px 90px; }
+/* ── Cabeçalho de coluna drag+sort ── */
+.cl-col-header {
+    cursor: grab;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: background .12s, opacity .12s;
+    white-space: nowrap;
+}
+.cl-col-header:hover { background: var(--border); }
+.cl-col-header:active { cursor: grabbing; }
+
+.cl-col--dragging   { opacity: .35; cursor: grabbing; }
+.cl-col--drag-over  {
+    background: rgba(66,133,244,.18);
+    border-left: 2px solid #4285F4;
+    padding-left: 6px;
+}
+
+.cl-sort-ico {
+    font-size: .8em;
+    line-height: 1;
+    font-style: normal;
+}
+.cl-sort-ico--none  { opacity: .35; }
+.cl-sort-ico--asc   { color: #4285F4; }
+.cl-sort-ico--desc  { color: #4285F4; }
 
 /* Badge de nota de recuperação na linha do aluno */
 .cl-rec-nota-badge {
