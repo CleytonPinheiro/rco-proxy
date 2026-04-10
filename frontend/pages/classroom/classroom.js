@@ -2094,9 +2094,10 @@ function aplicarFiltroDisciplinas() {
     syncCustomSel();
 }
 
-/* ── Listener: turma mudou → atualiza disciplinas ── */
+/* ── Listener: turma mudou → atualiza disciplinas e sincroniza custom select ── */
 document.getElementById('clAuditTurmaSel').addEventListener('change', function () {
     auditTurmaFiltro = this.value;
+    syncTurmaSel();
     aplicarFiltroDisciplinas();
 });
 
@@ -2165,6 +2166,7 @@ async function prepararAuditSelector() {
             auditTurmaFiltro = c.descrTurma;
             turmaSel.value   = c.descrTurma;
         }
+        syncTurmaSel();
         aplicarFiltroDisciplinas();
         elAuditClasseSel.value = codEfetivo;
         syncCustomSel();
@@ -2185,7 +2187,8 @@ async function prepararAuditSelector() {
         }
     } else {
         // Vínculo desconhecido: exibir seletor manual
-        syncCustomSel();
+        syncTurmaSel();
+        aplicarFiltroDisciplinas();
         mostrarSeletorAudit();
         if (auditResultado) {
             elAuditResults.style.display = '';
@@ -2212,6 +2215,7 @@ elAuditClasseSel.addEventListener('change', () => {
 /* ── Botão "alterar": volta ao seletor manual ── */
 document.getElementById('clAuditChipAlter').addEventListener('click', () => {
     mostrarSeletorAudit();
+    syncTurmaSel();
     syncCustomSel();
 });
 
@@ -2522,55 +2526,79 @@ function exportarAuditCSV() {
 })();
 
 /* ══════════════════════════════════════════════════════════════
-   CUSTOM SELECT — AUDITORIA
+   CUSTOM SELECTS — AUDITORIA (Turma + Disciplina)
 ══════════════════════════════════════════════════════════════ */
-let _cselClose = null;   // fecha o dropdown de qualquer lugar
+let _cselClose  = null;   // fecha o dropdown de disciplina
+let _tselClose  = null;   // fecha o dropdown de turma
 
-function syncCustomSel() {
-    const sel   = elAuditClasseSel;
-    const valEl = document.getElementById('clAuditSelVal');
-    const list  = document.getElementById('clAuditSelList');
-    if (!list || !valEl) return;
+/* ── Helpers genéricos para qualquer custom-select ── */
+function _syncCsel(selId, valId, listId, onSelect, placeholder) {
+    const sel   = document.getElementById(selId);
+    const valEl = document.getElementById(valId);
+    const list  = document.getElementById(listId);
+    if (!sel || !valEl || !list) return;
 
     list.innerHTML = '';
     [...sel.options].forEach(opt => {
         const item = document.createElement('div');
         item.className = 'cl-csel-item'
             + (opt.value === '' ? ' cl-csel-item--placeholder' : '')
-            + (opt.selected  ? ' cl-csel-item--sel' : '');
+            + (opt.selected     ? ' cl-csel-item--sel' : '');
         item.textContent = opt.textContent;
         item.title = opt.textContent;
         item.addEventListener('click', () => {
             sel.value = opt.value;
             sel.dispatchEvent(new Event('change'));
-            syncCustomSel();
-            _cselClose?.();
+            onSelect?.();
         });
         list.appendChild(item);
     });
 
     const selOpt = sel.options[sel.selectedIndex];
-    const txt    = selOpt?.textContent || '— selecione a disciplina —';
-    valEl.textContent = txt;
+    valEl.textContent = selOpt?.textContent || placeholder;
     valEl.classList.toggle('cl-csel-val--placeholder', !sel.value);
 }
 
-function initCustomSel() {
-    const btn  = document.getElementById('clAuditSelBtn');
-    const drop = document.getElementById('clAuditSelDrop');
-    if (!btn || !drop) return;
+function _initCsel(btnId, dropId, openCb, closeSibling) {
+    const btn  = document.getElementById(btnId);
+    const drop = document.getElementById(dropId);
+    if (!btn || !drop) return () => {};
 
-    function openDrop()  { drop.style.display = ''; btn.classList.add('cl-csel-btn--open'); }
-    function closeDrop() { drop.style.display = 'none'; btn.classList.remove('cl-csel-btn--open'); }
-    _cselClose = closeDrop;
+    const open  = () => { closeSibling?.(); drop.style.display = ''; btn.classList.add('cl-csel-btn--open'); openCb?.(); };
+    const close = () => { drop.style.display = 'none'; btn.classList.remove('cl-csel-btn--open'); };
 
-    btn.addEventListener('click', e => {
-        e.stopPropagation();
-        drop.style.display === 'none' ? openDrop() : closeDrop();
-    });
+    btn.addEventListener('click', e => { e.stopPropagation(); drop.style.display === 'none' ? open() : close(); });
     drop.addEventListener('click', e => e.stopPropagation());
-    document.addEventListener('click', () => closeDrop());
+    document.addEventListener('click', close);
 
+    return close;
+}
+
+/* ── Turma ── */
+function syncTurmaSel() {
+    _syncCsel('clAuditTurmaSel', 'clAuditTurmaVal', 'clAuditTurmaList',
+        () => { syncTurmaSel(); _tselClose?.(); },
+        '— selecione a turma —');
+}
+
+function initTurmaSel() {
+    _tselClose = _initCsel('clAuditTurmaBtn', 'clAuditTurmaDrop',
+        null,
+        () => _cselClose?.());
+    syncTurmaSel();
+}
+
+/* ── Disciplina ── */
+function syncCustomSel() {
+    _syncCsel('clAuditClasseSel', 'clAuditSelVal', 'clAuditSelList',
+        () => { syncCustomSel(); _cselClose?.(); },
+        '— selecione a disciplina —');
+}
+
+function initCustomSel() {
+    _cselClose = _initCsel('clAuditSelBtn', 'clAuditSelDrop',
+        null,
+        () => _tselClose?.());
     syncCustomSel();
 }
 
@@ -2675,6 +2703,7 @@ function initAuditConfigHandle() {
     });
 }
 initAuditConfigHandle();
+initTurmaSel();
 initCustomSel();
 
 /* ══════════════════════════════════════════════════════════════

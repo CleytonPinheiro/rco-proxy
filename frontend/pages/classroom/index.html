@@ -295,9 +295,18 @@
                         <!-- Seletor: vínculo desconhecido ou usuário clicou em "alterar" -->
                         <div id="clAuditSelWrap">
                             <label class="cl-audit-label">Turma</label>
-                            <select class="cl-select" id="clAuditTurmaSel" style="font-size:.78rem;padding:5px 8px;height:auto">
+                            <select id="clAuditTurmaSel" style="display:none">
                                 <option value="">— selecione a turma —</option>
                             </select>
+                            <div class="cl-csel">
+                                <button class="cl-csel-btn" type="button" id="clAuditTurmaBtn">
+                                    <span class="cl-csel-val" id="clAuditTurmaVal">— selecione a turma —</span>
+                                    <svg class="cl-csel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="cl-csel-drop" id="clAuditTurmaDrop" style="display:none">
+                                    <div class="cl-csel-list" id="clAuditTurmaList"></div>
+                                </div>
+                            </div>
                             <label class="cl-audit-label" style="margin-top:6px">Disciplina</label>
                             <select id="clAuditClasseSel" style="display:none">
                                 <option value="">— selecione —</option>
