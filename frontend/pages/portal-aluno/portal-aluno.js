@@ -86,30 +86,30 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
 
     /* ── estilos inline (imunes a cache de CSS) ── */
     const S = {
-        card:      'border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px',
-        header:    'display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--bg-hover);font-size:.83rem;font-weight:700;color:var(--text-primary);gap:8px',
+        outerWrap: 'display:flex;flex-direction:column;gap:10px;margin-top:14px',
+        /* card do curso */
+        card:      'border:1px solid var(--border);border-radius:10px;overflow:hidden',
+        header:    'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-hover);font-size:.83rem;font-weight:700;color:var(--text-primary);gap:8px',
         badge:     'display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#6366f1;color:#fff;font-size:.72rem;font-weight:700;flex-shrink:0',
-        list:      'display:flex;flex-direction:column',
-        /* faixa separadora de seção */
-        secGrupo:  'font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:7px 14px;border-top:1px solid var(--border);border-left:3px solid #4285F4;background:rgba(59,130,246,.22);color:#93c5fd',
-        secLivre:  'font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:7px 14px;border-top:1px solid var(--border);border-left:3px solid #f59e0b;background:rgba(245,158,11,.22);color:#fcd34d',
-        /* item de atividade */
-        itemBase:  'display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--border);background:var(--bg-card)',
-        itemGrupo: 'border-left:3px solid #4285F4',
-        itemLivre: 'border-left:3px solid #f59e0b',
+        /* sub-card de seção */
+        subGrupo:  'border-left:4px solid #4285F4;background:rgba(59,130,246,.07);margin:8px 10px;border-radius:6px;overflow:hidden',
+        subLivre:  'border-left:4px solid #f59e0b;background:rgba(245,158,11,.07);margin:8px 10px;border-radius:6px;overflow:hidden',
+        /* cabeçalho do sub-card */
+        subHdrGrupo: 'padding:6px 12px;background:rgba(59,130,246,.30);font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#93c5fd',
+        subHdrLivre: 'padding:6px 12px;background:rgba(245,158,11,.35);font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fcd34d',
+        /* item de atividade dentro do sub-card */
+        itemBase:  'display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid rgba(255,255,255,.06);',
         /* tag do grupo */
         tag:       'display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;color:#93c5fd;background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.35);border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0',
         /* botão abrir */
         btn:       'padding:4px 10px;border-radius:6px;background:#1e1b4b;color:#a5b4fc;font-size:.75rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0',
     };
 
-    const renderAtiv = (a, tipo) => {
-        const borderExtra = tipo === 'grupo' ? S.itemGrupo : tipo === 'livre' ? S.itemLivre : '';
-        return `
-        <div style="${S.itemBase};${borderExtra}">
+    const renderAtiv = (a) => `
+        <div style="${S.itemBase}">
             <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <span style="font-size:.83rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%"
+                    <span style="font-size:.83rem;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;max-width:100%"
                           title="${esc(a.titulo)}">${esc(a.titulo)}</span>
                     ${a.grupoNome ? `<span style="${S.tag}">${esc(a.grupoNome)}</span>` : ''}
                 </div>
@@ -121,34 +121,37 @@ function renderPreviewAluno({ email, cursos, totalPendentes }, wrap) {
             </div>
             ${a.link ? `<a href="${esc(a.link)}" target="_blank" style="${S.btn}">Abrir</a>` : ''}
         </div>`;
-    };
 
     const html = `
-    <div style="border-top:1.5px solid #c7d2fe;padding-top:16px">
-        <div style="font-size:.85rem;color:#4f46e5;font-weight:700;margin-bottom:14px">
+    <div style="border-top:1.5px solid #c7d2fe;padding-top:14px">
+        <div style="font-size:.85rem;color:#4f46e5;font-weight:700;margin-bottom:2px">
             📋 Portal de <strong>${esc(email)}</strong> — ${totalPendentes} atividade(s) pendente(s)
         </div>
+        <div style="${S.outerWrap}">
         ${cursos.map(c => {
             const emGrupo  = c.temGrupos ? c.atividades.filter(a =>  a.emGrupo) : c.atividades;
             const semGrupo = c.temGrupos ? c.atividades.filter(a => !a.emGrupo) : [];
             return `
         <div style="${S.card}">
             <div style="${S.header}">
-                <span>📚 ${esc(c.nome)}${c.secao ? ` <span style="font-weight:400;color:var(--text-muted)">· ${esc(c.secao)}</span>` : ''}</span>
+                <span>📚 ${esc(c.nome)}${c.secao ? ` <span style="font-weight:400;color:var(--text-muted)"> · ${esc(c.secao)}</span>` : ''}</span>
                 <span style="${S.badge}">${c.atividades.length}</span>
             </div>
-            <div style="${S.list}">
-                ${emGrupo.length ? `
-                    ${c.temGrupos ? `<div style="${S.secGrupo}">EM GRUPO · ${emGrupo.length}</div>` : ''}
-                    ${emGrupo.map(a => renderAtiv(a, c.temGrupos ? 'grupo' : '')).join('')}
-                ` : ''}
-                ${semGrupo.length ? `
-                    <div style="${S.secLivre}">SEM GRUPO · ${semGrupo.length}</div>
-                    ${semGrupo.map(a => renderAtiv(a, 'livre')).join('')}
-                ` : ''}
-            </div>
+            ${emGrupo.length ? `
+                <div style="${c.temGrupos ? S.subGrupo : 'margin:8px 10px;border-radius:6px;overflow:hidden;border:1px solid var(--border)'}">
+                    ${c.temGrupos ? `<div style="${S.subHdrGrupo}">EM GRUPO · ${emGrupo.length}</div>` : ''}
+                    ${emGrupo.map(renderAtiv).join('')}
+                </div>
+            ` : ''}
+            ${semGrupo.length ? `
+                <div style="${S.subLivre}">
+                    <div style="${S.subHdrLivre}">SEM GRUPO · ${semGrupo.length}</div>
+                    ${semGrupo.map(renderAtiv).join('')}
+                </div>
+            ` : ''}
         </div>`;
         }).join('')}
+        </div>
     </div>`;
     wrap.innerHTML = html;
 }
