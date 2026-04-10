@@ -768,6 +768,23 @@ export function createClassroomRouter(deps = {}) {
                 ? new Date(grupoInfo.data_inicio)
                 : null;
 
+            /* Para grupos NORMAIS (avaliação principal): busca a data_inicio do grupo de
+               recuperação vinculado. Submissions com updateTime >= esse corte NÃO entram
+               no cálculo do grupo original — foram re-enviadas para a recuperação e a nota
+               atual reflete a recuperação, não a avaliação original. */
+            let dataCorteOriginal = null;
+            if (!isRecuperacao) {
+                const { rows: recRows } = await pool.query(
+                    `SELECT data_inicio FROM classroom_grupos
+                     WHERE grupo_origem_id = $1 AND tipo = 'recuperacao' AND data_inicio IS NOT NULL
+                     ORDER BY data_inicio ASC LIMIT 1`,
+                    [req.params.id]
+                );
+                if (recRows.length && recRows[0].data_inicio) {
+                    dataCorteOriginal = new Date(recRows[0].data_inicio);
+                }
+            }
+
             const { rows: ativs } = await pool.query(
                 `SELECT * FROM classroom_grupo_atividades WHERE grupo_id=$1 ORDER BY id`,
                 [req.params.id]
@@ -858,13 +875,24 @@ export function createClassroomRouter(deps = {}) {
                     /* updateTime → detectar submissões pós data de recuperação */
                     const updateTime = s.updateTime ? new Date(s.updateTime) : null;
 
+                    /* Submission pertence à recuperação se ultrapassou o corte do grupo original */
+                    const eDeRecuperacao = dataCorteOriginal && updateTime
+                        ? updateTime >= dataCorteOriginal
+                        : false;
+
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
                         nota, estado: s.state, entregue, atrasado, updateTime,
+                        eDeRecuperacao,
                     };
 
                     if (pontosMax === null) {
                         /* Atividade sem escala de pontos definida em nenhum lugar:
                            não participa do cálculo de nota (ignorada no numerador e denominador) */
+                    } else if (eDeRecuperacao) {
+                        /* Submission foi re-enviada após o início da recuperação:
+                           a nota atual reflete a recuperação, não a avaliação original.
+                           Exclui do totalGanho do grupo original (mantém avaliação original intacta).
+                           Esta submission será contabilizada somente no grupo de recuperação. */
                     } else if (nota !== null) {
                         // Soma os pontos brutos obtidos (capped no máximo da atividade)
                         alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
@@ -903,32 +931,28 @@ export function createClassroomRouter(deps = {}) {
                 alunos = alunos.filter(a => alunoFezRecuperacao(a));
             }
 
-            /* Marca per-submission se é uma entrega de recuperação (pós data_inicio) */
-            if (dataInicio) {
-                alunos = alunos.map(a => ({
-                    ...a,
-                    atividades: Object.fromEntries(
-                        Object.entries(a.atividades).map(([id, atv]) => [
-                            id,
-                            {
-                                ...atv,
-                                fezRec: atv.entregue && atv.updateTime ? atv.updateTime >= dataInicio : false,
-                                updateTime: atv.updateTime ? atv.updateTime.toISOString() : null,
-                            }
-                        ])
-                    ),
-                }));
-            } else {
-                alunos = alunos.map(a => ({
-                    ...a,
-                    atividades: Object.fromEntries(
-                        Object.entries(a.atividades).map(([id, atv]) => [
-                            id,
-                            { ...atv, fezRec: false, updateTime: atv.updateTime ? atv.updateTime.toISOString() : null }
-                        ])
-                    ),
-                }));
-            }
+            /* Marca per-submission se é uma entrega de recuperação.
+               - Em grupos de recuperação: usa data_inicio do próprio grupo.
+               - Em grupos normais: usa dataCorteOriginal (data_inicio do grupo de rec. vinculado).
+               O flag fezRec = true indica que a submission pertence à recuperação. */
+            const dataCorte = isRecuperacao ? dataInicio : dataCorteOriginal;
+            alunos = alunos.map(a => ({
+                ...a,
+                atividades: Object.fromEntries(
+                    Object.entries(a.atividades).map(([id, atv]) => [
+                        id,
+                        {
+                            ...atv,
+                            fezRec: atv.eDeRecuperacao || (
+                                dataCorte && atv.entregue && atv.updateTime
+                                    ? atv.updateTime >= dataCorte
+                                    : false
+                            ),
+                            updateTime: atv.updateTime ? atv.updateTime.toISOString() : null,
+                        }
+                    ])
+                ),
+            }));
 
             res.json({
                 atividades: results.map(({ atividade: a }) => ({
@@ -938,7 +962,8 @@ export function createClassroomRouter(deps = {}) {
                 })),
                 alunos,
                 isRecuperacao,
-                dataInicio: dataInicio ? dataInicio.toISOString() : null,
+                dataInicio:         dataInicio         ? dataInicio.toISOString()         : null,
+                dataCorteOriginal:  dataCorteOriginal  ? dataCorteOriginal.toISOString()  : null,
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
             });
         } catch (e) {

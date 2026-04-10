@@ -1113,7 +1113,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
 
@@ -1212,7 +1212,7 @@ function toggleFiltro(chave) {
 
 function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio } = grupoResumoData;
+    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal } = grupoResumoData;
 
     // Contagens por faixa
     const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
@@ -1237,14 +1237,23 @@ function renderListaFiltrada() {
             ? alunosResumo.filter(a => a.temEntrou)
             : alunosResumo.filter(a => filtrosGrupoAtivos.has(faixaCor(a.soma, meta)));
 
-    /* Banner de grupo de recuperação */
-    const dataInicioStr = fmtDatetime(dataInicio);
+    /* Banner de grupo de recuperação / aviso de corte no grupo original */
+    const dataInicioStr      = fmtDatetime(dataInicio);
+    const dataCorteStr       = fmtDatetime(dataCorteOriginal);
     const recBannerHtml = isRec
         ? `<div class="cl-rec-banner">
                <span class="cl-rec-banner-icon">🔄</span>
                <div>
                    <div>Grupo de <strong>Recuperação</strong> — exibindo apenas alunos que entregaram após a data e horário de corte.</div>
                    ${dataInicioStr ? `<div class="cl-rec-banner-data">📅 A partir de <strong>${dataInicioStr}</strong></div>` : ''}
+               </div>
+           </div>`
+        : dataCorteOriginal
+        ? `<div class="cl-rec-banner cl-rec-banner--corte">
+               <span class="cl-rec-banner-icon">🔒</span>
+               <div>
+                   <div><strong>Avaliação original protegida</strong> — entregas após o início da recuperação não alteram esta nota.</div>
+                   <div class="cl-rec-banner-data">📅 Corte da recuperação: <strong>${dataCorteStr}</strong> &nbsp;·&nbsp; <span class="cl-rec-banner-hint">Entregas pós-corte mostradas com 🔄</span></div>
                </div>
            </div>`
         : '';

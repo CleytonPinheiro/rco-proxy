@@ -1721,6 +1721,15 @@ body.cl-popout .logo-icon { font-size: 15px; }
     font-size: .79rem;
     color: var(--text-secondary);
 }
+/* Variante: aviso de proteção no grupo original */
+.cl-rec-banner--corte {
+    background: color-mix(in srgb, #3b82f6 8%, var(--bg-card));
+    border-color: color-mix(in srgb, #3b82f6 30%, transparent);
+}
+.cl-rec-banner-hint {
+    opacity: .75;
+    font-style: italic;
+}
 
 /* Grade extra para a coluna de recuperação */
 .cl-resumo-header--com-rec { grid-template-columns: 36px 1fr 100px 72px 90px; }
