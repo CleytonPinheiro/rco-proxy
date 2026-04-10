@@ -646,12 +646,52 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             }));
 
             const cursos = resultados.filter(Boolean);
+
+            /* ── Notificações de prazo (mesma lógica do portal real) ── */
+            const HORAS_2 = 2  * 60 * 60 * 1000;
+            const DIAS_3  = 3  * 24 * 60 * 60 * 1000;
+            const agora   = Date.now();
+            const notificacoes = [];
+
+            for (const curso of cursos) {
+                const todasAtiv = [...(curso.atividades || []), ...(curso.zeradas || [])];
+                for (const ativ of todasAtiv) {
+                    if (!ativ.prazoIso || ativ.vencida) continue;
+                    const limite = new Date(ativ.prazoIso).getTime();
+                    const diffMs = limite - agora;
+                    if (diffMs <= 0) continue;
+
+                    if (diffMs < HORAS_2) {
+                        const minutos = Math.ceil(diffMs / 60_000);
+                        notificacoes.push({
+                            tipo:    'prazo_proximo',
+                            icone:   '⏰',
+                            cor:     'laranja',
+                            titulo:  'Prazo encerrando em breve!',
+                            detalhe: `"${ativ.titulo}" fecha em ${minutos < 60 ? minutos + ' min' : '< 2 h'}.`,
+                            link:    ativ.link || '',
+                        });
+                    } else if (diffMs <= DIAS_3) {
+                        const dias = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+                        notificacoes.push({
+                            tipo:    'prazo_dias',
+                            icone:   '📅',
+                            cor:     'amarelo',
+                            titulo:  dias === 1 ? 'Prazo encerra amanhã!' : `Prazo em ${dias} dias`,
+                            detalhe: `"${ativ.titulo}" ${dias === 1 ? 'fecha amanhã' : `fecha em ${dias} dias`}.`,
+                            link:    ativ.link || '',
+                        });
+                    }
+                }
+            }
+
             res.json({
                 email:           studentId,
                 cursos,
                 totalPendentes:  cursos.reduce((s, c) => s + c.atividades.length,  0),
                 totalZeradas:    cursos.reduce((s, c) => s + c.zeradas.length,     0),
                 totalAguardando: cursos.reduce((s, c) => s + c.aguardando.length,  0),
+                notificacoes,
             });
         } catch (e) {
             res.status(500).json({ erro: e.message });

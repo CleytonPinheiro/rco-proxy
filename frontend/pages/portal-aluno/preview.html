@@ -60,6 +60,65 @@
         #paTelalogin { display: none !important; }
         #paLoading  { display: none !important; }
 
+        /* ── Banner de notificações de prazo ── */
+        #prevNotifBanner {
+            margin: 0 0 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 0 0 4px;
+        }
+        .prev-notif-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: .82rem;
+            line-height: 1.4;
+            border-left: 4px solid transparent;
+        }
+        .prev-notif-item--laranja {
+            background: rgba(249,115,22,.1);
+            border-color: #f97316;
+            color: #9a3412;
+        }
+        .prev-notif-item--amarelo {
+            background: rgba(217,119,6,.1);
+            border-color: #d97706;
+            color: #78350f;
+        }
+        [data-theme="dark"] .prev-notif-item--laranja {
+            background: rgba(249,115,22,.18);
+            color: #fed7aa;
+        }
+        [data-theme="dark"] .prev-notif-item--amarelo {
+            background: rgba(217,119,6,.18);
+            color: #fde68a;
+        }
+        .prev-notif-icone { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+        .prev-notif-titulo { font-weight: 700; }
+        .prev-notif-detalhe { opacity: .85; }
+        .prev-notif-link {
+            margin-left: auto;
+            font-size: .75rem;
+            font-weight: 600;
+            color: inherit;
+            opacity: .8;
+            white-space: nowrap;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .prev-notif-cabecalho {
+            font-size: .7rem;
+            font-weight: 800;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            color: #6b7280;
+            padding: 12px 2px 2px;
+        }
+        [data-theme="dark"] .prev-notif-cabecalho { color: #9ca3af; }
+
         /* ── Estado de aguardo ── */
         #prevEspera {
             display: flex;
@@ -94,6 +153,9 @@
 
     <!-- Tela do aluno (idêntica ao portal real) -->
     <main id="paTelaAtividades" class="pa-section" style="display:none">
+
+        <!-- Banner de notificações de prazo (visível apenas na prévia admin) -->
+        <div id="prevNotifBanner" style="display:none"></div>
 
         <!-- Resumo de contadores -->
         <div class="pa-resumo-bar">

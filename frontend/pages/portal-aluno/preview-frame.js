@@ -266,6 +266,39 @@ function renderSolicitacoesSection(solicitacoes) {
     $('paSolicitaSection').style.display = '';
 }
 
+/* ── Banner de notificações de prazo (exclusivo da prévia admin) ── */
+function renderBannerNotificacoes(notificacoes = []) {
+    const banner = $('prevNotifBanner');
+    if (!banner) return;
+
+    if (!notificacoes.length) {
+        banner.style.display = 'none';
+        banner.innerHTML     = '';
+        return;
+    }
+
+    /* Ordena: urgentes primeiro */
+    const ORDEM = { prazo_proximo: 0, prazo_dias: 1 };
+    const lista  = [...notificacoes].sort((a, b) => (ORDEM[a.tipo] ?? 9) - (ORDEM[b.tipo] ?? 9));
+
+    banner.innerHTML = `
+        <div class="prev-notif-cabecalho">
+            🔔 Notificações que este aluno receberá (${lista.length})
+        </div>
+        ${lista.map(n => `
+        <div class="prev-notif-item prev-notif-item--${esc(n.cor)}">
+            <span class="prev-notif-icone">${n.icone}</span>
+            <div style="flex:1;min-width:0">
+                <div class="prev-notif-titulo">${esc(n.titulo)}</div>
+                <div class="prev-notif-detalhe">${esc(n.detalhe)}</div>
+            </div>
+            ${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener"
+                           class="prev-notif-link">Abrir ↗</a>` : ''}
+        </div>`).join('')}`;
+
+    banner.style.display = 'flex';
+}
+
 /* ── Render principal (idêntico ao alunos.js) ── */
 function renderAtividades({ cursos = [], totalPendentes = 0, totalZeradas = 0, totalAguardando = 0, solicitacoes = [] }) {
     $('paResumoNum').textContent = totalPendentes;
@@ -355,7 +388,8 @@ window.addEventListener('message', (ev) => {
     $('paResumoAguardando').style.display = 'none';
     $('paSolicitaSection').style.display = 'none';
 
-    /* Renderiza */
+    /* Renderiza banner de notificações e lista de atividades */
+    renderBannerNotificacoes(data.notificacoes || []);
     renderAtividades({ ...data, solicitacoes: solicitacoes || [] });
 
     /* Ajusta altura do iframe para o conteúdo */
