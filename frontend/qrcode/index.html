@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Gerador de QR Code</title>
     <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
-    <!-- Anti-flash de tema -->
     <script>
         (function () {
             const t = localStorage.getItem('aluno_tema') || localStorage.getItem('edusync_theme');
@@ -19,18 +18,14 @@
     <!-- HEADER -->
     <header class="qr-header">
         <div class="qr-header-inner">
-            <!-- Logo -->
             <a class="qr-logo" href="javascript:history.length>1?history.back():location.href='/'">
                 <span class="qr-logo-icon">⚡</span>
                 <span class="qr-logo-edu">Edu</span><span class="qr-logo-sync">Sync</span>
             </a>
-
             <div class="qr-header-title">
                 <span class="qr-header-icon">◼</span>
                 Gerador de QR Code
             </div>
-
-            <!-- Ações do header -->
             <div class="qr-header-actions">
                 <button class="qr-tema-btn" id="qrTemaBtn" onclick="alternarTema()" title="Alternar tema">🌙</button>
                 <a class="qr-voltar-btn" href="javascript:history.length>1?history.back():location.href='/'">← Voltar</a>
@@ -42,14 +37,14 @@
     <main class="qr-main">
         <div class="qr-card">
 
-            <!-- Título -->
             <div class="qr-card-top">
                 <h1 class="qr-titulo">◼ Gerador de QR Code</h1>
-                <p class="qr-desc">Cole um link ou texto abaixo para gerar o QR Code para impressão ou compartilhamento.</p>
+                <p class="qr-desc">Cole um link ou texto, escolha o estilo e gere o QR Code para impressão ou compartilhamento.</p>
             </div>
 
-            <!-- Formulário -->
             <div class="qr-form">
+
+                <!-- Link / texto -->
                 <div class="qr-input-wrap">
                     <label class="qr-label" for="qrInput">Link ou texto</label>
                     <div class="qr-input-row">
@@ -62,18 +57,19 @@
                 </div>
 
                 <div class="qr-opcoes">
-                    <!-- Título personalizado -->
+
+                    <!-- Título para impressão -->
                     <div class="qr-opcao-group qr-opcao-group--full">
                         <label class="qr-label-sm" for="qrTitulo">Título para impressão <span class="qr-opt">(opcional)</span></label>
                         <input type="text" id="qrTitulo" class="qr-input-sm"
                                placeholder="Ex: Atividade de Matemática — 2º Ano"
-                               maxlength="120" oninput="atualizarTituloPrevia()">
+                               maxlength="120">
                     </div>
 
                     <!-- Tamanho -->
                     <div class="qr-opcao-group">
                         <label class="qr-label-sm" for="qrTamanho">Tamanho</label>
-                        <select id="qrTamanho" class="qr-select" onchange="gerarQR()">
+                        <select id="qrTamanho" class="qr-select" onchange="reRender()">
                             <option value="160">Pequeno</option>
                             <option value="256" selected>Médio</option>
                             <option value="400">Grande</option>
@@ -92,29 +88,171 @@
                         </select>
                     </div>
 
-                    <!-- Cor do QR -->
+                    <!-- Cor personalizada -->
                     <div class="qr-opcao-group">
-                        <label class="qr-label-sm" for="qrCor">Cor</label>
+                        <label class="qr-label-sm">Cor personalizada</label>
                         <div class="qr-cor-wrap">
-                            <input type="color" id="qrCor" class="qr-cor-input" value="#000000" oninput="gerarQR()">
+                            <input type="color" id="qrCor" class="qr-cor-input" value="#000000" oninput="onCorPersonalizada()">
                             <span class="qr-cor-label" id="qrCorLabel">#000000</span>
                         </div>
                     </div>
+
                 </div>
 
+                <!-- ── Estilo dos pontos ── -->
+                <div class="qr-secao">
+                    <label class="qr-label-sm">Estilo dos pontos</label>
+                    <div class="qr-estilos" id="qrEstilos">
+                        <!-- Quadrado -->
+                        <button class="qr-estilo-btn qr-estilo-btn--ativo" data-estilo="square" onclick="selecionarEstilo(this)" title="Quadrado">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <rect x="2"  y="2"  width="9" height="9" fill="currentColor"/>
+                                <rect x="14" y="2"  width="9" height="9" fill="currentColor"/>
+                                <rect x="26" y="2"  width="9" height="9" fill="currentColor"/>
+                                <rect x="2"  y="14" width="9" height="9" fill="currentColor"/>
+                                <rect x="14" y="14" width="9" height="9" fill="currentColor"/>
+                                <rect x="26" y="14" width="9" height="9" fill="currentColor"/>
+                                <rect x="2"  y="26" width="9" height="9" fill="currentColor"/>
+                                <rect x="14" y="26" width="9" height="9" fill="currentColor"/>
+                                <rect x="26" y="26" width="9" height="9" fill="currentColor"/>
+                            </svg>
+                            <span>Quadrado</span>
+                        </button>
+                        <!-- Redondo -->
+                        <button class="qr-estilo-btn" data-estilo="circle" onclick="selecionarEstilo(this)" title="Redondo">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <circle cx="6.5"  cy="6.5"  r="4.5" fill="currentColor"/>
+                                <circle cx="18"   cy="6.5"  r="4.5" fill="currentColor"/>
+                                <circle cx="29.5" cy="6.5"  r="4.5" fill="currentColor"/>
+                                <circle cx="6.5"  cy="18"   r="4.5" fill="currentColor"/>
+                                <circle cx="18"   cy="18"   r="4.5" fill="currentColor"/>
+                                <circle cx="29.5" cy="18"   r="4.5" fill="currentColor"/>
+                                <circle cx="6.5"  cy="29.5" r="4.5" fill="currentColor"/>
+                                <circle cx="18"   cy="29.5" r="4.5" fill="currentColor"/>
+                                <circle cx="29.5" cy="29.5" r="4.5" fill="currentColor"/>
+                            </svg>
+                            <span>Redondo</span>
+                        </button>
+                        <!-- Arredondado -->
+                        <button class="qr-estilo-btn" data-estilo="rounded" onclick="selecionarEstilo(this)" title="Arredondado">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <rect x="2"  y="2"  width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="14" y="2"  width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="26" y="2"  width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="2"  y="14" width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="14" y="14" width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="26" y="14" width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="2"  y="26" width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="14" y="26" width="9" height="9" rx="3" fill="currentColor"/>
+                                <rect x="26" y="26" width="9" height="9" rx="3" fill="currentColor"/>
+                            </svg>
+                            <span>Arredondado</span>
+                        </button>
+                        <!-- Diamante -->
+                        <button class="qr-estilo-btn" data-estilo="diamond" onclick="selecionarEstilo(this)" title="Diamante">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <polygon points="6.5,2 11,6.5 6.5,11 2,6.5"   fill="currentColor"/>
+                                <polygon points="18,2 22.5,6.5 18,11 13.5,6.5" fill="currentColor"/>
+                                <polygon points="29.5,2 34,6.5 29.5,11 25,6.5" fill="currentColor"/>
+                                <polygon points="6.5,13.5 11,18 6.5,22.5 2,18"   fill="currentColor"/>
+                                <polygon points="18,13.5 22.5,18 18,22.5 13.5,18" fill="currentColor"/>
+                                <polygon points="29.5,13.5 34,18 29.5,22.5 25,18" fill="currentColor"/>
+                                <polygon points="6.5,25 11,29.5 6.5,34 2,29.5"   fill="currentColor"/>
+                                <polygon points="18,25 22.5,29.5 18,34 13.5,29.5" fill="currentColor"/>
+                                <polygon points="29.5,25 34,29.5 29.5,34 25,29.5" fill="currentColor"/>
+                            </svg>
+                            <span>Diamante</span>
+                        </button>
+                        <!-- Estrela -->
+                        <button class="qr-estilo-btn" data-estilo="star" onclick="selecionarEstilo(this)" title="Estrela">
+                            <svg viewBox="0 0 36 36" width="36" height="36">
+                                <polygon points="6.5,2 7.8,5.7 11.5,5.7 8.6,7.8 9.9,11.5 6.5,9.3 3.1,11.5 4.4,7.8 1.5,5.7 5.2,5.7" fill="currentColor"/>
+                                <polygon points="18,2 19.3,5.7 23,5.7 20.1,7.8 21.4,11.5 18,9.3 14.6,11.5 15.9,7.8 13,5.7 16.7,5.7" fill="currentColor"/>
+                                <polygon points="29.5,2 30.8,5.7 34.5,5.7 31.6,7.8 32.9,11.5 29.5,9.3 26.1,11.5 27.4,7.8 24.5,5.7 28.2,5.7" fill="currentColor"/>
+                                <polygon points="6.5,13.5 7.8,17.2 11.5,17.2 8.6,19.3 9.9,23 6.5,20.8 3.1,23 4.4,19.3 1.5,17.2 5.2,17.2" fill="currentColor"/>
+                                <polygon points="18,13.5 19.3,17.2 23,17.2 20.1,19.3 21.4,23 18,20.8 14.6,23 15.9,19.3 13,17.2 16.7,17.2" fill="currentColor"/>
+                                <polygon points="29.5,13.5 30.8,17.2 34.5,17.2 31.6,19.3 32.9,23 29.5,20.8 26.1,23 27.4,19.3 24.5,17.2 28.2,17.2" fill="currentColor"/>
+                                <polygon points="6.5,25 7.8,28.7 11.5,28.7 8.6,30.8 9.9,34.5 6.5,32.3 3.1,34.5 4.4,30.8 1.5,28.7 5.2,28.7" fill="currentColor"/>
+                                <polygon points="18,25 19.3,28.7 23,28.7 20.1,30.8 21.4,34.5 18,32.3 14.6,34.5 15.9,30.8 13,28.7 16.7,28.7" fill="currentColor"/>
+                                <polygon points="29.5,25 30.8,28.7 34.5,28.7 31.6,30.8 32.9,34.5 29.5,32.3 26.1,34.5 27.4,30.8 24.5,28.7 28.2,28.7" fill="currentColor"/>
+                            </svg>
+                            <span>Estrela</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── Tema de cores ── -->
+                <div class="qr-secao">
+                    <label class="qr-label-sm">Tema de cores</label>
+                    <div class="qr-temas" id="qrTemas">
+                        <button class="qr-tema-preset qr-tema-preset--ativo" data-dark="#000000" data-light="#ffffff" onclick="selecionarTema(this)" title="Clássico">
+                            <span class="qr-tema-amostra" style="background:#000000;"></span>
+                            <span>Clássico</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#6366f1" data-light="#ffffff" onclick="selecionarTema(this)" title="EduSync">
+                            <span class="qr-tema-amostra" style="background:#6366f1;"></span>
+                            <span>EduSync</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#1e40af" data-light="#eff6ff" onclick="selecionarTema(this)" title="Oceano">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#1e40af 50%,#eff6ff 50%);"></span>
+                            <span>Oceano</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#166534" data-light="#f0fdf4" onclick="selecionarTema(this)" title="Floresta">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#166534 50%,#f0fdf4 50%);"></span>
+                            <span>Floresta</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#b91c1c" data-light="#fff1f2" onclick="selecionarTema(this)" title="Rubi">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#b91c1c 50%,#fff1f2 50%);"></span>
+                            <span>Rubi</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#f8fafc" data-light="#1e293b" onclick="selecionarTema(this)" title="Noite">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#1e293b 50%,#f8fafc 50%);"></span>
+                            <span>Noite</span>
+                        </button>
+                        <button class="qr-tema-preset" data-dark="#92400e" data-light="#fffbeb" onclick="selecionarTema(this)" title="Âmbar">
+                            <span class="qr-tema-amostra" style="background:linear-gradient(135deg,#92400e 50%,#fffbeb 50%);"></span>
+                            <span>Âmbar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── Logo no centro ── -->
+                <div class="qr-secao">
+                    <label class="qr-label-sm">Logo no centro <span class="qr-opt">(opcional — recomenda-se qualidade Máxima)</span></label>
+                    <div class="qr-logo-upload" id="qrLogoUpload">
+                        <button class="qr-btn-logo-escolher" onclick="escolherLogo()">
+                            <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                                <path d="M3 14l4-4 3 3 3-4 4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/>
+                                <rect x="1" y="1" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                            Escolher imagem
+                        </button>
+                        <div class="qr-logo-info">
+                            <span class="qr-logo-nome" id="qrLogoNome">Nenhuma imagem selecionada</span>
+                            <button class="qr-btn-logo-remover" id="qrBtnRemoverLogo" onclick="removerLogo()" style="display:none">✕ Remover</button>
+                        </div>
+                        <div class="qr-logo-preview-wrap" id="qrLogoPreviewWrap" style="display:none">
+                            <img id="qrLogoPreview" class="qr-logo-preview-img" alt="Preview da logo">
+                        </div>
+                        <input type="file" id="qrLogoInput" accept="image/*" style="display:none" onchange="logoEscolhida(this)">
+                    </div>
+                </div>
+
+                <!-- Botão gerar -->
                 <div class="qr-gerar-wrap">
                     <button class="qr-btn qr-btn--gerar" onclick="gerarQR()" id="qrBtnGerar">
                         <svg viewBox="0 0 20 20" fill="none" width="17" height="17">
                             <rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
                             <rect x="12" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
                             <rect x="2" y="12" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.6"/>
-                            <rect x="12" y="12" width="2" height="2" stroke="none" fill="currentColor"/>
-                            <rect x="15" y="12" width="2" height="2" stroke="none" fill="currentColor"/>
-                            <rect x="12" y="15" width="2" height="2" stroke="none" fill="currentColor"/>
-                            <rect x="15" y="15" width="2" height="2" stroke="none" fill="currentColor"/>
-                            <rect x="18" y="12" width="2" height="2" stroke="none" fill="currentColor"/>
-                            <rect x="18" y="15" width="2" height="2" stroke="none" fill="currentColor"/>
-                            <rect x="12" y="18" width="2" height="2" stroke="none" fill="currentColor"/>
+                            <rect x="12" y="12" width="2" height="2" fill="currentColor"/>
+                            <rect x="15" y="12" width="2" height="2" fill="currentColor"/>
+                            <rect x="12" y="15" width="2" height="2" fill="currentColor"/>
+                            <rect x="15" y="15" width="2" height="2" fill="currentColor"/>
+                            <rect x="18" y="12" width="2" height="2" fill="currentColor"/>
+                            <rect x="18" y="15" width="2" height="2" fill="currentColor"/>
+                            <rect x="12" y="18" width="2" height="2" fill="currentColor"/>
                         </svg>
                         Gerar QR Code
                     </button>
@@ -123,22 +261,16 @@
 
             <!-- Prévia do QR Code -->
             <div class="qr-preview-area">
-
-                <!-- Estado vazio -->
                 <div class="qr-vazio" id="qrVazio">
                     <div class="qr-vazio-icon">◼</div>
                     <p class="qr-vazio-txt">Cole um link acima para gerar o QR Code</p>
                 </div>
-
-                <!-- QR gerado -->
                 <div class="qr-resultado" id="qrResultado" style="display:none">
                     <div class="qr-canvas-wrap" id="qrCanvasWrap">
-                        <img id="qrImg" alt="QR Code gerado" style="display:block;border-radius:8px;">
-                        <canvas id="qrPrintCanvas" style="display:none"></canvas>
+                        <canvas id="qrCanvas"></canvas>
                     </div>
                     <div class="qr-url-preview" id="qrUrlPreview"></div>
                 </div>
-
             </div>
 
             <!-- Ações -->
@@ -165,19 +297,18 @@
                 </button>
             </div>
 
-            <!-- Toast -->
             <div class="qr-toast" id="qrToast"></div>
 
         </div>
     </main>
 
-    <!-- ÁREA DE IMPRESSÃO (visível apenas na impressão) -->
+    <!-- ÁREA DE IMPRESSÃO -->
     <div class="qr-print-area" id="qrPrintArea">
         <div class="qr-print-logo">⚡ EduSync</div>
         <div class="qr-print-titulo" id="qrPrintTitulo"></div>
-        <img id="qrPrintImg" alt="QR Code" style="width:512px;height:512px;display:block;margin:0 auto;">
+        <canvas id="qrPrintCanvas" style="display:block;margin:0 auto;"></canvas>
         <div class="qr-print-url" id="qrPrintUrl"></div>
-        <div class="qr-print-rodape">Gerado em <span id="qrPrintData"></span> · EduSync — Portal do Aluno</div>
+        <div class="qr-print-rodape">Gerado em <span id="qrPrintData"></span> · EduSync</div>
     </div>
 
     <script src="./qrcode-page.js"></script>

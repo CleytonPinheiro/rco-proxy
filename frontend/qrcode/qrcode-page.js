@@ -1,20 +1,23 @@
 'use strict';
 
 /* ══════════════════════════════════════════════════════
-   EduSync — Gerador de QR Code (API-based)
+   EduSync — Gerador de QR Code (canvas renderer)
    ══════════════════════════════════════════════════════ */
 
 const $ = id => document.getElementById(id);
 
+/* ── Estado global ── */
 let _debounceTimer = null;
 let _ultimoTexto   = '';
-let _ultimoDataUrl = '';   /* última imagem recebida do servidor */
+let _ultimoMatrix  = null;   /* { moduleCount, data } */
+let _logoDataUrl   = null;   /* imagem carregada pelo usuário */
+let _estilo        = 'square';
+let _corEscura     = '#000000';
+let _corClara      = '#ffffff';
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
     atualizarIconeTema();
-
-    /* URL via query string: /qrcode/?url=https://... */
     const params   = new URLSearchParams(location.search);
     const urlParam = params.get('url') || params.get('link') || '';
     if (urlParam) {
@@ -22,22 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
         $('qrBtnLimpar').style.display = '';
         onInputChange();
     }
-
     $('qrInput').focus();
 });
 
-/* ── Tema ── */
-const TEMA_KEY_ALUNO = 'aluno_tema';
-const TEMA_KEY_APP   = 'edusync_theme';
-
-function temaAtual() {
-    return document.documentElement.getAttribute('data-theme') || 'light';
-}
+/* ══════════════════════════════════════════════════════
+   TEMA
+   ══════════════════════════════════════════════════════ */
+function temaAtual() { return document.documentElement.getAttribute('data-theme') || 'light'; }
 
 function aplicarTema(tema) {
     document.documentElement.setAttribute('data-theme', tema);
-    localStorage.setItem(TEMA_KEY_ALUNO, tema);
-    localStorage.setItem(TEMA_KEY_APP, tema);
+    localStorage.setItem('aluno_tema',    tema);
+    localStorage.setItem('edusync_theme', tema);
     atualizarIconeTema(tema);
 }
 
@@ -46,11 +45,11 @@ function atualizarIconeTema(tema = temaAtual()) {
     if (btn) btn.textContent = tema === 'dark' ? '☀️' : '🌙';
 }
 
-window.alternarTema = function () {
-    aplicarTema(temaAtual() === 'dark' ? 'light' : 'dark');
-};
+window.alternarTema = function () { aplicarTema(temaAtual() === 'dark' ? 'light' : 'dark'); };
 
-/* ── Input ── */
+/* ══════════════════════════════════════════════════════
+   INPUT
+   ══════════════════════════════════════════════════════ */
 window.onInputChange = function () {
     const val = $('qrInput').value.trim();
     $('qrBtnLimpar').style.display = val ? '' : 'none';
@@ -64,14 +63,77 @@ window.limpar = function () {
     $('qrVazio').style.display     = '';
     $('qrResultado').style.display = 'none';
     $('qrActions').style.display   = 'none';
-    _ultimoTexto   = '';
-    _ultimoDataUrl = '';
+    _ultimoTexto  = '';
+    _ultimoMatrix = null;
     $('qrInput').focus();
 };
 
-window.atualizarTituloPrevia = function () { /* atualizado apenas na impressão */ };
+/* ══════════════════════════════════════════════════════
+   SELETORES DE ESTILO E TEMA
+   ══════════════════════════════════════════════════════ */
+window.selecionarEstilo = function (btn) {
+    document.querySelectorAll('.qr-estilo-btn').forEach(b => b.classList.remove('qr-estilo-btn--ativo'));
+    btn.classList.add('qr-estilo-btn--ativo');
+    _estilo = btn.dataset.estilo;
+    if (_ultimoMatrix) reRender();
+};
 
-/* ── Gerar QR via API ── */
+window.selecionarTema = function (btn) {
+    document.querySelectorAll('.qr-tema-preset').forEach(b => b.classList.remove('qr-tema-preset--ativo'));
+    btn.classList.add('qr-tema-preset--ativo');
+    _corEscura = btn.dataset.dark;
+    _corClara  = btn.dataset.light;
+    $('qrCor').value          = _corEscura;
+    $('qrCorLabel').textContent = _corEscura;
+    if (_ultimoMatrix) reRender();
+};
+
+window.onCorPersonalizada = function () {
+    /* Remove seleção de tema, usa cor livre */
+    document.querySelectorAll('.qr-tema-preset').forEach(b => b.classList.remove('qr-tema-preset--ativo'));
+    _corEscura = $('qrCor').value;
+    _corClara  = '#ffffff';
+    $('qrCorLabel').textContent = _corEscura;
+    if (_ultimoMatrix) reRender();
+};
+
+/* ══════════════════════════════════════════════════════
+   LOGO
+   ══════════════════════════════════════════════════════ */
+window.escolherLogo = function () { $('qrLogoInput').click(); };
+
+window.logoEscolhida = function (input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+        mostrarToast('⚠️ Imagem muito grande. Use até 3 MB.');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+        _logoDataUrl = e.target.result;
+        $('qrLogoNome').textContent = file.name;
+        $('qrBtnRemoverLogo').style.display  = '';
+        $('qrLogoPreviewWrap').style.display = '';
+        $('qrLogoPreview').src               = _logoDataUrl;
+        if (_ultimoMatrix) reRender();
+    };
+    reader.readAsDataURL(file);
+};
+
+window.removerLogo = function () {
+    _logoDataUrl = null;
+    $('qrLogoInput').value               = '';
+    $('qrLogoNome').textContent          = 'Nenhuma imagem selecionada';
+    $('qrBtnRemoverLogo').style.display  = 'none';
+    $('qrLogoPreviewWrap').style.display = 'none';
+    $('qrLogoPreview').src               = '';
+    if (_ultimoMatrix) reRender();
+};
+
+/* ══════════════════════════════════════════════════════
+   GERAR QR — busca matriz no servidor
+   ══════════════════════════════════════════════════════ */
 window.gerarQR = async function () {
     clearTimeout(_debounceTimer);
 
@@ -83,47 +145,32 @@ window.gerarQR = async function () {
         return;
     }
 
-    const tamanho = parseInt($('qrTamanho').value) || 256;
-    const nivel   = $('qrCorrecao').value || 'M';
-    const cor     = ($('qrCor').value || '#000000').replace('#', '');
+    /* Se logo presente, force qualidade H para maior resiliência */
+    let nivel = $('qrCorrecao').value || 'M';
+    if (_logoDataUrl && nivel === 'L') nivel = 'M';
 
-    /* Atualiza label da cor */
-    $('qrCorLabel').textContent = '#' + cor;
-
-    /* Feedback visual: desativa botão durante geração */
     const btnGerar = $('qrBtnGerar');
     if (btnGerar) { btnGerar.disabled = true; btnGerar.style.opacity = '0.7'; }
 
     try {
-        const params = new URLSearchParams({ text: texto, size: tamanho, level: nivel, color: cor });
-        const resp   = await fetch(`/api/qrcode/generate?${params}`);
-
+        const params = new URLSearchParams({ text: texto, level: nivel });
+        const resp   = await fetch(`/api/qrcode/matrix?${params}`);
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({}));
             throw new Error(err.error || `HTTP ${resp.status}`);
         }
+        const matrix = await resp.json();
+        _ultimoTexto  = texto;
+        _ultimoMatrix = matrix;
 
-        const { dataUrl } = await resp.json();
-        _ultimoTexto   = texto;
-        _ultimoDataUrl = dataUrl;
+        await renderizarQR(matrix, 'qrCanvas', parseInt($('qrTamanho').value) || 256);
 
-        /* Exibe a imagem */
-        const img = $('qrImg');
-        img.src   = dataUrl;
-        img.style.width  = tamanho + 'px';
-        img.style.height = tamanho + 'px';
-
-        /* Preview URL */
         $('qrUrlPreview').textContent =
             texto.length > 80 ? texto.slice(0, 77) + '…' : texto;
 
-        /* Mostra área de resultado */
         $('qrVazio').style.display     = 'none';
         $('qrResultado').style.display = '';
         $('qrActions').style.display   = '';
-
-        /* Imagem de alta resolução para impressão */
-        await carregarQRImpressao(texto, nivel);
 
     } catch (e) {
         console.error('[QRCode]', e);
@@ -133,53 +180,196 @@ window.gerarQR = async function () {
     }
 };
 
-/* ── Imagem de impressão (512 px, preto) ── */
-async function carregarQRImpressao(texto, nivel) {
-    try {
-        const params  = new URLSearchParams({ text: texto, size: 512, level: nivel, color: '000000' });
-        const resp    = await fetch(`/api/qrcode/generate?${params}`);
-        if (!resp.ok) return;
-        const { dataUrl } = await resp.json();
+/* Re-renderiza no canvas sem buscar nova matriz (só mudou estilo/cores/logo/tamanho) */
+window.reRender = async function () {
+    if (!_ultimoMatrix) return;
+    await renderizarQR(_ultimoMatrix, 'qrCanvas', parseInt($('qrTamanho').value) || 256);
+};
 
-        const printImg = $('qrPrintImg');
-        if (printImg) printImg.src = dataUrl;
+/* ══════════════════════════════════════════════════════
+   RENDERIZADOR CANVAS
+   ══════════════════════════════════════════════════════ */
+async function renderizarQR(matrix, canvasId, canvasSize) {
+    const { moduleCount, data } = matrix;
+    const canvas = $(canvasId);
+    canvas.width  = canvasSize;
+    canvas.height = canvasSize;
+    const ctx = canvas.getContext('2d');
 
-        const printUrl = $('qrPrintUrl');
-        if (printUrl) printUrl.textContent = texto;
+    /* Fundo */
+    ctx.fillStyle = _corClara;
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-        const printData = $('qrPrintData');
-        if (printData) {
-            printData.textContent = new Date().toLocaleString('pt-BR', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-            });
+    /* Módulos */
+    ctx.fillStyle = _corEscura;
+    const margem = 2.2;            /* margem em módulos */
+    const total  = moduleCount + margem * 2;
+    const cell   = canvasSize / total;
+
+    for (let row = 0; row < moduleCount; row++) {
+        for (let col = 0; col < moduleCount; col++) {
+            if (!data[row * moduleCount + col]) continue;
+            const x = (col + margem) * cell;
+            const y = (row + margem) * cell;
+            desenharPonto(ctx, x, y, cell, _estilo);
         }
+    }
 
-        const titulo     = $('qrTitulo').value.trim();
-        const printTitulo = $('qrPrintTitulo');
-        if (printTitulo) printTitulo.textContent = titulo;
-    } catch (_) { /* silencioso — impressão não essencial */ }
+    /* Logo no centro */
+    if (_logoDataUrl) {
+        await desenharLogo(ctx, canvasSize);
+    }
 }
 
-/* ── Imprimir ── */
+/* ── Formas dos pontos ── */
+function desenharPonto(ctx, x, y, cell, estilo) {
+    const pad = cell * 0.07;
+    const s   = cell - pad * 2;
+    const cx  = x + cell / 2;
+    const cy  = y + cell / 2;
+    const r   = s / 2;
+
+    switch (estilo) {
+        case 'circle':
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        case 'rounded':
+            drawRoundRect(ctx, x + pad, y + pad, s, s, s * 0.33);
+            break;
+        case 'diamond':
+            ctx.beginPath();
+            ctx.moveTo(cx,       y + pad);
+            ctx.lineTo(x + cell - pad, cy);
+            ctx.lineTo(cx,       y + cell - pad);
+            ctx.lineTo(x + pad,  cy);
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'star':
+            desenharEstrela(ctx, cx, cy, r * 0.9, 5);
+            break;
+        default: /* square */
+            ctx.fillRect(x + pad, y + pad, s, s);
+    }
+}
+
+function drawRoundRect(ctx, x, y, w, h, rx) {
+    ctx.beginPath();
+    ctx.moveTo(x + rx, y);
+    ctx.lineTo(x + w - rx, y);
+    ctx.arcTo(x + w, y,     x + w, y + rx,     rx);
+    ctx.lineTo(x + w, y + h - rx);
+    ctx.arcTo(x + w, y + h, x + w - rx, y + h, rx);
+    ctx.lineTo(x + rx, y + h);
+    ctx.arcTo(x,     y + h, x,     y + h - rx, rx);
+    ctx.lineTo(x,     y + rx);
+    ctx.arcTo(x,     y,     x + rx, y,          rx);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function desenharEstrela(ctx, cx, cy, r, pontas) {
+    const ri = r * 0.42;
+    ctx.beginPath();
+    for (let i = 0; i < pontas * 2; i++) {
+        const ang  = (i * Math.PI / pontas) - Math.PI / 2;
+        const dist = i % 2 === 0 ? r : ri;
+        const px   = cx + Math.cos(ang) * dist;
+        const py   = cy + Math.sin(ang) * dist;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
+/* ── Logo centralizada ── */
+async function desenharLogo(ctx, size) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            const logoSz  = size * 0.22;
+            const pad     = logoSz * 0.2;
+            const boxSz   = logoSz + pad * 2;
+            const bx      = (size - boxSz) / 2;
+            const by      = (size - boxSz) / 2;
+            const rx      = boxSz * 0.15;
+
+            /* Sombra suave atrás da caixa */
+            ctx.save();
+            ctx.shadowColor   = 'rgba(0,0,0,.18)';
+            ctx.shadowBlur    = boxSz * 0.12;
+            ctx.fillStyle     = _corClara;
+            drawRoundRect(ctx, bx, by, boxSz, boxSz, rx);
+            ctx.restore();
+
+            /* Borda da caixa */
+            ctx.save();
+            ctx.strokeStyle = 'rgba(0,0,0,.08)';
+            ctx.lineWidth   = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(bx + rx, by);
+            ctx.lineTo(bx + boxSz - rx, by);
+            ctx.arcTo(bx + boxSz, by,     bx + boxSz, by + rx,       rx);
+            ctx.lineTo(bx + boxSz, by + boxSz - rx);
+            ctx.arcTo(bx + boxSz, by + boxSz, bx + boxSz - rx, by + boxSz, rx);
+            ctx.lineTo(bx + rx, by + boxSz);
+            ctx.arcTo(bx,       by + boxSz, bx, by + boxSz - rx,     rx);
+            ctx.lineTo(bx,       by + rx);
+            ctx.arcTo(bx,       by,     bx + rx, by,                 rx);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+
+            /* Imagem */
+            ctx.drawImage(img, bx + pad, by + pad, logoSz, logoSz);
+            resolve();
+        };
+        img.onerror = resolve;
+        img.src     = _logoDataUrl;
+    });
+}
+
+/* ══════════════════════════════════════════════════════
+   IMPRIMIR
+   ══════════════════════════════════════════════════════ */
 window.imprimir = async function () {
-    if (!_ultimoTexto) return;
-    const nivel = $('qrCorrecao').value || 'M';
-    await carregarQRImpressao(_ultimoTexto, nivel);
+    if (!_ultimoMatrix) return;
+
+    const printCanvas = $('qrPrintCanvas');
+    await renderizarQR(_ultimoMatrix, 'qrPrintCanvas', 512);
+    printCanvas.style.width  = '512px';
+    printCanvas.style.height = '512px';
+
+    const titulo = $('qrTitulo').value.trim();
+    $('qrPrintTitulo').textContent = titulo;
+    $('qrPrintUrl').textContent    = _ultimoTexto;
+    $('qrPrintData').textContent   = new Date().toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+
     window.print();
 };
 
-/* ── Baixar PNG ── */
+/* ══════════════════════════════════════════════════════
+   BAIXAR PNG
+   ══════════════════════════════════════════════════════ */
 window.baixarPNG = function () {
-    if (!_ultimoDataUrl) return;
-    const link    = document.createElement('a');
+    if (!_ultimoMatrix) return;
+    const canvas = $('qrCanvas');
+    const link   = document.createElement('a');
     link.download = 'qrcode-edusync.png';
-    link.href     = _ultimoDataUrl;
+    link.href     = canvas.toDataURL('image/png');
     link.click();
     mostrarToast('✅ QR Code baixado!');
 };
 
-/* ── Copiar link ── */
+/* ══════════════════════════════════════════════════════
+   COPIAR LINK
+   ══════════════════════════════════════════════════════ */
 window.copiarLink = async function () {
     const texto = $('qrInput').value.trim();
     if (!texto) return;
@@ -191,9 +381,10 @@ window.copiarLink = async function () {
     }
 };
 
-/* ── Toast ── */
+/* ══════════════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════════════ */
 let _toastTimer = null;
-
 function mostrarToast(msg, duracao = 3500) {
     const el = $('qrToast');
     el.textContent = msg;

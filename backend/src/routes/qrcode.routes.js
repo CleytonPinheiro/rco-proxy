@@ -43,5 +43,36 @@ export function createQRCodeRouter() {
         }
     });
 
+    /**
+     * GET /api/qrcode/matrix
+     * Retorna a matriz booleana do QR Code para renderização customizada no frontend.
+     * Parâmetros:
+     *   text  — texto/URL a codificar (obrigatório)
+     *   level — nível de correção L/M/Q/H (padrão: M)
+     * Retorna: { moduleCount, data: boolean[] }
+     */
+    router.get('/qrcode/matrix', async (req, res) => {
+        const { text, level = 'M' } = req.query;
+
+        if (!text?.trim()) {
+            return res.status(400).json({ error: 'Parâmetro "text" é obrigatório.' });
+        }
+
+        const validLevels = ['L', 'M', 'Q', 'H'];
+        const errorCorrectionLevel = validLevels.includes(level.toUpperCase())
+            ? level.toUpperCase()
+            : 'M';
+
+        try {
+            const qr          = QRCode.create(text.trim(), { errorCorrectionLevel });
+            const moduleCount = qr.modules.size;
+            const data        = Array.from(qr.modules.data).map(v => v > 0);
+            res.json({ moduleCount, data });
+        } catch (err) {
+            console.error('[QRCode Matrix] Erro ao gerar:', err.message);
+            res.status(500).json({ error: 'Falha ao gerar a matriz QR.' });
+        }
+    });
+
     return router;
 }
