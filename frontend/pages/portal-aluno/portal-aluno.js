@@ -22,8 +22,9 @@ function trocarModo(modo) {
 
 /* ── Modo: Por aluno ── */
 async function buscarPortalAluno() {
-    const email = document.getElementById('paEmail').value.trim();
-    if (!email) { alert('Digite o e-mail do aluno.'); return; }
+    const sel   = document.getElementById('paAlunoSelect');
+    const email = sel ? sel.value : '';
+    if (!email) { alert('Selecione um aluno.'); return; }
     const wrap = document.getElementById('paResultado');
     wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem">Buscando atividades...</p>';
     try {
@@ -33,6 +34,40 @@ async function buscarPortalAluno() {
         renderPreviewAluno(data, wrap);
     } catch (e) {
         wrap.innerHTML = `<p style="color:#dc2626;font-size:.9rem">Erro: ${esc(e.message)}</p>`;
+    }
+}
+
+/* ── Carrega alunos de um curso (2ª etapa do "Por aluno") ── */
+async function carregarAlunos(cursoId) {
+    const selAluno  = document.getElementById('paAlunoSelect');
+    const resultado = document.getElementById('paResultado');
+
+    if (!cursoId) {
+        selAluno.innerHTML = '<option value="">— Selecione primeiro uma turma —</option>';
+        selAluno.disabled  = true;
+        resultado.innerHTML = '';
+        return;
+    }
+
+    selAluno.innerHTML = '<option value="">— Carregando alunos... —</option>';
+    selAluno.disabled  = true;
+    resultado.innerHTML = '';
+
+    try {
+        const res    = await api(`/admin/portal-aluno/alunos?cursoId=${encodeURIComponent(cursoId)}`);
+        const alunos = await res.json();
+        if (!res.ok) throw new Error(alunos.erro || 'Erro');
+
+        if (!alunos.length) {
+            selAluno.innerHTML = '<option value="">Nenhum aluno encontrado nesta turma</option>';
+            return;
+        }
+
+        selAluno.innerHTML = '<option value="">— Selecione um aluno —</option>' +
+            alunos.map(a => `<option value="${esc(a.email)}">${esc(a.nome)}</option>`).join('');
+        selAluno.disabled = false;
+    } catch (e) {
+        selAluno.innerHTML = `<option value="">Erro: ${esc(e.message)}</option>`;
     }
 }
 
@@ -113,9 +148,9 @@ async function carregarCursos() {
             return a.localeCompare(b, 'pt-BR');
         });
 
-        /* Monta o <select> com <optgroup> por turma */
-        const sel = document.getElementById('paCursoSelect');
-        sel.innerHTML = '<option value="">— Selecione uma disciplina —</option>' +
+        /* ── Seletor de disciplina: optgroup por turma ── */
+        const selDisciplina = document.getElementById('paCursoSelect');
+        selDisciplina.innerHTML = '<option value="">— Selecione uma disciplina —</option>' +
             turmasOrdenadas.map(turma => {
                 const itens = grupos[turma]
                     .sort((a, b) => extrairDisciplina(a.nome).localeCompare(extrairDisciplina(b.nome), 'pt-BR'))
@@ -123,8 +158,21 @@ async function carregarCursos() {
                     .join('');
                 return `<optgroup label="${esc(turma)}">${itens}</optgroup>`;
             }).join('');
+
+        /* ── Seletor de turma (modo "Por aluno"): 1 option por turma,
+              value = cursoId do primeiro curso da turma (para buscar o roster) ── */
+        const selTurma = document.getElementById('paTurmaSelect');
+        if (selTurma) {
+            selTurma.innerHTML = '<option value="">— Selecione uma turma —</option>' +
+                turmasOrdenadas.map(turma => {
+                    const primeiroId = grupos[turma][0].id;
+                    return `<option value="${esc(primeiroId)}">${esc(turma)}</option>`;
+                }).join('');
+        }
     } catch (e) {
         document.getElementById('paCursoSelect').innerHTML = `<option value="">Erro ao carregar: ${esc(e.message)}</option>`;
+        const selTurma = document.getElementById('paTurmaSelect');
+        if (selTurma) selTurma.innerHTML = `<option value="">Erro ao carregar turmas</option>`;
     }
 }
 

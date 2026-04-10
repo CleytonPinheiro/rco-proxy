@@ -562,6 +562,41 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* GET /api/admin/portal-aluno/alunos?cursoId=xxx — lista alunos matriculados num curso */
+    router.get('/admin/portal-aluno/alunos', async (req, res) => {
+        const { cursoId } = req.query;
+        if (!cursoId) return res.status(400).json({ erro: 'cursoId é obrigatório.' });
+
+        const auth = getTeacherAuth();
+        if (!auth) return res.status(503).json({ erro: 'Google Classroom não conectado.' });
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+            const alunos = [];
+            let pageToken;
+            do {
+                const r = await classroom.courses.students.list({
+                    courseId: cursoId,
+                    pageSize: 200,
+                    pageToken,
+                });
+                for (const s of (r.data.students || [])) {
+                    alunos.push({
+                        id:    s.userId,
+                        nome:  s.profile?.name?.fullName  || s.userId,
+                        email: s.profile?.emailAddress    || '',
+                    });
+                }
+                pageToken = r.data.nextPageToken;
+            } while (pageToken);
+
+            alunos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+            res.json(alunos);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* GET /api/admin/portal-aluno/disciplina?cursoId=xxx — todos alunos pendentes numa disciplina */
     router.get('/admin/portal-aluno/disciplina', async (req, res) => {
         const { cursoId } = req.query;

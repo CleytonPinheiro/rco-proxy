@@ -171,11 +171,19 @@
             </button>
         </div>
 
-        <!-- Modo: Por aluno -->
-        <div id="paModoAluno" class="pa-input-row">
-            <input id="paEmail" type="email" placeholder="email.do.aluno@escola.com" class="pa-input"
-                onkeydown="if(event.key==='Enter')buscarPortalAluno()">
-            <button onclick="buscarPortalAluno()" class="pa-btn">Ver atividades</button>
+        <!-- Modo: Por aluno (2 etapas: turma → aluno) -->
+        <div id="paModoAluno" style="display:flex;flex-direction:column;gap:10px">
+            <div class="pa-input-row">
+                <select id="paTurmaSelect" class="pa-input" onchange="carregarAlunos(this.value)">
+                    <option value="">— Carregando turmas... —</option>
+                </select>
+            </div>
+            <div class="pa-input-row">
+                <select id="paAlunoSelect" class="pa-input" disabled>
+                    <option value="">— Selecione primeiro uma turma —</option>
+                </select>
+                <button onclick="buscarPortalAluno()" class="pa-btn">Ver atividades</button>
+            </div>
         </div>
 
         <!-- Modo: Por disciplina -->
