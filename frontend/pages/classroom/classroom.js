@@ -63,6 +63,7 @@ let corSelecionada  = '#4285F4';
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
 let filtrosGrupoAtivos = new Set(['todos']); // filtros de faixa de cor ativos (múltiplos)
+let quizizzCache     = {};    // quizId → dados retornados pela API do Quizizz
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -1111,6 +1112,9 @@ async function carregarResumoGrupo(grupo) {
 
         toast('Dados atualizados do Classroom', 'ok');
 
+        /* Enriquece atividades Quizizz em background (sem bloquear a UI) */
+        enriquecerQuizizz(resumo.atividades);
+
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
         toast(e.message, 'erro');
@@ -1125,6 +1129,63 @@ function faixaCor(soma, meta) {
     if (pct >= 100) return 'meta';
     if (pct >= 60)  return 'prog';
     return 'abaixo';
+}
+
+/* Busca dados oficiais do Quizizz para atividades detectadas e re-renderiza o painel */
+async function enriquecerQuizizz(atividades = []) {
+    const aQuizizz = atividades.filter(a => a.quizizzId && /^[0-9a-f]{24}$/i.test(a.quizizzId));
+    if (!aQuizizz.length) return;
+
+    await Promise.allSettled(aQuizizz.map(async atv => {
+        if (quizizzCache[atv.quizizzId]) return; // já buscado
+        try {
+            const r = await fetch(`/api/classroom/quizizz/quiz/${atv.quizizzId}`);
+            if (r.ok) quizizzCache[atv.quizizzId] = await r.json();
+        } catch (_) { /* silencioso */ }
+    }));
+
+    /* Re-renderiza se o grupo ainda está aberto (dados não mudaram, só enriquece o painel) */
+    const painel = document.getElementById('clQuizizzPainel');
+    if (painel) renderQuizizzPainel(atividades, painel);
+}
+
+function renderQuizizzPainel(atividades, container) {
+    const aQuizizz = atividades.filter(a => a.quizizzId);
+    if (!aQuizizz.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+
+    container.style.display = 'block';
+    container.innerHTML = `
+        <div class="cl-quizizz-painel">
+            <div class="cl-quizizz-header">
+                <span class="cl-quizizz-logo">🎮</span>
+                <strong>Atividades Quizizz detectadas</strong>
+                <span class="cl-quizizz-count">${aQuizizz.length}</span>
+            </div>
+            <div class="cl-quizizz-lista">
+                ${aQuizizz.map(atv => {
+                    const qz   = /^[0-9a-f]{24}$/i.test(atv.quizizzId) ? quizizzCache[atv.quizizzId] : null;
+                    const link = /^[0-9a-f]{24}$/i.test(atv.quizizzId)
+                        ? `https://quizizz.com/admin/quiz/${atv.quizizzId}` : null;
+                    const carregando = /^[0-9a-f]{24}$/i.test(atv.quizizzId) && !qz;
+                    return `<div class="cl-quizizz-item">
+                        <div class="cl-quizizz-ativ-titulo">${esc(atv.titulo)}</div>
+                        ${carregando
+                            ? `<div class="cl-quizizz-loading">Buscando dados no Quizizz…</div>`
+                            : qz
+                                ? `<div class="cl-quizizz-dados">
+                                    <span class="cl-qz-badge cl-qz-badge--titulo">${esc(qz.titulo)}</span>
+                                    <span class="cl-qz-badge">${qz.totalQ} questões</span>
+                                    ${qz.assunto  ? `<span class="cl-qz-badge">${esc(qz.assunto)}</span>`  : ''}
+                                    ${qz.topico   ? `<span class="cl-qz-badge">${esc(qz.topico)}</span>`   : ''}
+                                    ${qz.criador  ? `<span class="cl-qz-badge cl-qz-badge--criador">por ${esc(qz.criador)}</span>` : ''}
+                                    ${link ? `<a class="cl-qz-badge cl-qz-badge--link" href="${link}" target="_blank" rel="noopener">Ver no Quizizz ↗</a>` : ''}
+                                   </div>`
+                                : `<div class="cl-quizizz-loading">Detectado pelo título — ID do quiz não disponível</div>`
+                        }
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
 }
 
 function toggleFiltro(chave) {
@@ -1188,6 +1249,7 @@ function renderListaFiltrada() {
 
     elNotasLista.innerHTML = `
         ${recBannerHtml}
+        <div id="clQuizizzPainel" style="display:none"></div>
         <div class="cl-passos-legenda">
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#f97316"></span>Entrou (0 pts)</span>
@@ -1225,6 +1287,10 @@ function renderListaFiltrada() {
         row.style.cursor = 'pointer';
         row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta));
     });
+
+    // Renderiza painel Quizizz com dados já em cache (se houver)
+    const painel = document.getElementById('clQuizizzPainel');
+    if (painel) renderQuizizzPainel(atividades, painel);
 }
 
 function renderResumoRow(a, meta, atividades = [], hasRec = false) {

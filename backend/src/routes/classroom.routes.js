@@ -285,8 +285,12 @@ export function createClassroomRouter(deps = {}) {
                 if (w.dueDate) {
                     prazo = `${String(w.dueDate.day).padStart(2,'0')}/${String(w.dueDate.month).padStart(2,'0')}/${w.dueDate.year}`;
                 }
+                const materiais = (w.materials || [])
+                    .map(m => m.link?.url || m.driveFile?.alternateLink || null)
+                    .filter(Boolean);
                 return { id: w.id, titulo: w.title, descricao: w.description || '', tipo: w.workType,
-                    pontos: w.maxPoints ?? null, prazo, link: w.alternateLink || '', criadoEm: w.creationTime };
+                    pontos: w.maxPoints ?? null, prazo, link: w.alternateLink || '', criadoEm: w.creationTime,
+                    materiais };
             }));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar atividades:', e.message);
@@ -774,20 +778,35 @@ export function createClassroomRouter(deps = {}) {
 
             const results = await Promise.all(ativs.map(async (a) => {
                 try {
-                    /* Se pontos_max não está definido no DB, busca maxPoints real do Classroom */
                     let pontosMaxReal = (a.pontos_max != null && Number(a.pontos_max) > 0)
                         ? Number(a.pontos_max)
                         : null;
+                    let quizizzId    = null;
 
-                    if (pontosMaxReal === null) {
-                        try {
-                            const cwResp = await classroom.courses.courseWork.get({
-                                courseId, id: a.atividade_id,
-                            });
-                            pontosMaxReal = cwResp.data.maxPoints > 0
-                                ? Number(cwResp.data.maxPoints)
-                                : null;
-                        } catch (_) { /* mantém null se não conseguir buscar */ }
+                    /* Sempre busca o courseWork para:
+                       1. Obter maxPoints real quando o DB não tem
+                       2. Detectar link Quizizz nos materiais */
+                    try {
+                        const cwResp = await classroom.courses.courseWork.get({
+                            courseId, id: a.atividade_id,
+                        });
+                        if (pontosMaxReal === null && cwResp.data.maxPoints > 0) {
+                            pontosMaxReal = Number(cwResp.data.maxPoints);
+                        }
+                        const materiais = cwResp.data.materials || [];
+                        for (const m of materiais) {
+                            const url = m.link?.url || '';
+                            if (/quizizz\.com/i.test(url)) {
+                                const match = url.match(/([0-9a-f]{24})/i);
+                                quizizzId = match ? match[1] : 'LINK';
+                                break;
+                            }
+                        }
+                    } catch (_) { /* mantém valores já resolvidos */ }
+
+                    /* Fallback: detecta pelo título (ex: "Quizziz — Funções C") */
+                    if (!quizizzId && /quiziz{1,2}/i.test(a.atividade_titulo)) {
+                        quizizzId = 'TITULO';
                     }
 
                     const allSubs = [];
@@ -799,9 +818,9 @@ export function createClassroomRouter(deps = {}) {
                         allSubs.push(...(resp.data.studentSubmissions || []));
                         pageToken = resp.data.nextPageToken;
                     } while (pageToken);
-                    return { atividade: { ...a, _pontosMaxReal: pontosMaxReal }, submissions: allSubs };
+                    return { atividade: { ...a, _pontosMaxReal: pontosMaxReal, _quizizzId: quizizzId }, submissions: allSubs };
                 } catch (e) {
-                    return { atividade: { ...a, _pontosMaxReal: null }, submissions: [], erro: e.message };
+                    return { atividade: { ...a, _pontosMaxReal: null, _quizizzId: null }, submissions: [], erro: e.message };
                 }
             }));
 
@@ -915,6 +934,7 @@ export function createClassroomRouter(deps = {}) {
                 atividades: results.map(({ atividade: a }) => ({
                     id: a.atividade_id, titulo: a.atividade_titulo,
                     pontos: a._pontosMaxReal !== null ? a._pontosMaxReal : null,
+                    quizizzId: a._quizizzId || null,
                 })),
                 alunos,
                 isRecuperacao,
@@ -923,6 +943,52 @@ export function createClassroomRouter(deps = {}) {
             });
         } catch (e) {
             console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Proxy para API pública do Quizizz ── */
+    router.get('/classroom/quizizz/quiz/:quizId', async (req, res) => {
+        const { quizId } = req.params;
+        if (!/^[0-9a-f]{24}$/i.test(quizId)) {
+            return res.status(400).json({ erro: 'Quiz ID inválido' });
+        }
+        try {
+            const resp = await fetch(`https://quizizz.com/api/v2/quiz/${quizId}`, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; EduSync/1.0)',
+                    'Accept': 'application/json',
+                },
+                signal: AbortSignal.timeout(8000),
+            });
+            if (!resp.ok) {
+                return res.status(resp.status).json({ erro: `Quizizz retornou ${resp.status}` });
+            }
+            const data = await resp.json();
+            const quiz = data?.data?.quiz;
+            if (!quiz) return res.status(404).json({ erro: 'Quiz não encontrado no Quizizz' });
+
+            const info      = quiz.info || {};
+            const questoes  = info.questions || [];
+            const pontosTot = questoes.reduce((s, q) => s + (Number(q.points) || 0), 0);
+
+            res.json({
+                quizId    : quiz._id,
+                titulo    : info.name || info.title || '(sem título)',
+                totalQ    : questoes.length,
+                pontosTotal: pontosTot,
+                assunto   : (info.subjects || [])[0] || null,
+                topico    : (info.topics   || [])[0] || null,
+                criador   : info.createdBy?.local?.username || null,
+                questoes  : questoes.map((q, i) => ({
+                    num    : i + 1,
+                    tipo   : q.type,
+                    pontos : Number(q.points) || 0,
+                    tempo  : q.time,
+                })),
+            });
+        } catch (e) {
+            console.error('[QUIZIZZ] Erro ao buscar quiz:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });
