@@ -150,12 +150,12 @@
 }
 [data-theme="dark"] .pa-secao-label--grupo {
     color: #93c5fd;
-    background: rgba(66,133,244,.18);
+    background: rgba(66,133,244,.28);
     border-left-color: #60a5fa;
 }
 [data-theme="dark"] .pa-secao-label--livre {
     color: #fcd34d;
-    background: rgba(245,158,11,.18);
+    background: rgba(245,158,11,.28);
     border-left-color: #fbbf24;
 }
 
