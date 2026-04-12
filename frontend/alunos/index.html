@@ -28,6 +28,10 @@
             <!-- Área do usuário (visível após login) -->
             <div id="paUserArea" class="pa-user-area" style="display:none">
 
+                <!-- Botão de ajuda / tour -->
+                <button id="paTourBtn" class="pa-tour-help-btn" onclick="abrirTour()"
+                        title="Abrir guia de ajuda" style="display:none">?</button>
+
                 <!-- Link QR Code -->
                 <a href="/qrcode/" class="pa-qr-btn" title="Gerador de QR Code">
                     <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
@@ -236,6 +240,40 @@
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <!-- ══ TOUR GUIADO ══════════════════════════════════════════════ -->
+    <div id="paTourOverlay" class="pa-tour-overlay" style="display:none">
+
+        <!-- Spotlight: anel recortado ao redor do elemento-alvo -->
+        <div id="paTourSpot" class="pa-tour-spot"></div>
+
+        <!-- Card de cada passo -->
+        <div id="paTourCard" class="pa-tour-card">
+
+            <div class="pa-tour-card-top">
+                <span class="pa-tour-icone" id="paTourIcone"></span>
+                <span class="pa-tour-progresso">
+                    Passo <strong id="paTourPassoNum">1</strong> de <strong id="paTourTotal">11</strong>
+                </span>
+                <!-- Botão fechar — visível apenas no tour opcional -->
+                <button class="pa-tour-fechar" id="paTourFechar"
+                        onclick="fecharTour()" title="Fechar guia" style="display:none">✕</button>
+            </div>
+
+            <div class="pa-tour-titulo" id="paTourTitulo"></div>
+            <div class="pa-tour-texto"  id="paTourTexto"></div>
+
+            <!-- Indicador de passos (dots) -->
+            <div class="pa-tour-dots" id="paTourDots"></div>
+
+            <div class="pa-tour-footer">
+                <button class="pa-tour-btn pa-tour-btn--prev"
+                        id="paTourBtnPrev" onclick="paTourAnterior()">← Anterior</button>
+                <button class="pa-tour-btn pa-tour-btn--next"
+                        id="paTourBtnNext" onclick="paTourProximo()">Próximo →</button>
+            </div>
         </div>
     </div>
 

@@ -96,6 +96,8 @@ async function verificarStatus() {
             mostrarTelaLogado(data.aluno);
             carregarAtividades();
             iniciarPollingNotificacoes();
+            /* Lança o tour após as atividades terem tempo de renderizar */
+            setTimeout(iniciarTourSeNecessario, 900);
         } else {
             mostrarTelaLogin();
             mostrarLoading(false);
@@ -112,6 +114,8 @@ function mostrarTelaLogin() {
     $('paTelaAtividades').style.display = 'none';
     $('paUserArea').style.display       = 'none';
     $('paThemeBtnPre').style.display    = 'flex';
+    $('paTourBtn').style.display        = 'none';
+    $('paTourOverlay').style.display    = 'none';
 }
 
 function mostrarTelaLogado(aluno) {
@@ -119,6 +123,7 @@ function mostrarTelaLogado(aluno) {
     $('paTelaAtividades').style.display = '';
     $('paUserArea').style.display       = 'flex';
     $('paThemeBtnPre').style.display    = 'none';
+    $('paTourBtn').style.display        = 'flex';
 
     const inicial = (aluno.nome || aluno.email || '?')[0].toUpperCase();
 
@@ -697,6 +702,232 @@ async function fazerLogout() {
     $('paCursos').innerHTML      = '';
     $('paResumoNum').textContent = '0';
     mostrarTelaLogin();
+}
+
+/* ══ Tour Guiado ════════════════════════════════════════════════════ */
+
+const PA_TOUR_KEY = 'pa_tour_concluido';
+
+const PA_TOUR_PASSOS = [
+    {
+        alvo: null, pos: 'center',
+        icone: '👋', titulo: 'Bem-vindo ao Portal do Aluno!',
+        texto: 'Este é o seu espaço pessoal para acompanhar suas atividades do Google Classroom, solicitar reaberturas e receber avisos dos seus professores.<br><br>Vamos fazer um tour rápido — leva menos de 2 minutos! 🚀',
+    },
+    {
+        alvo: '.pa-resumo-bar', pos: 'bottom',
+        icone: '📊', titulo: 'Painel de resumo',
+        texto: 'Aqui você vê de relance quantas atividades estão <strong>pendentes</strong>, <strong>zeradas</strong> e <strong>aguardando correção</strong>. Os contadores são atualizados a cada acesso.',
+    },
+    {
+        alvo: '#paCursos', pos: 'top',
+        icone: '📚', titulo: 'Atividades Pendentes',
+        texto: 'Suas atividades do Classroom que ainda precisam ser feitas aparecem aqui, organizadas por disciplina. Clique em <strong>"Abrir ↗"</strong> para ir diretamente à atividade.',
+    },
+    {
+        alvo: null, pos: 'center',
+        icone: '🎮', titulo: 'Atividades Zeradas',
+        texto: 'Se você abriu uma atividade e saiu sem responder, ela aparece em <strong>"Entrou mas não realizou"</strong> com pontuação 0. Ainda é possível pedir ao professor que reabra!',
+    },
+    {
+        alvo: null, pos: 'center',
+        icone: '↩', titulo: 'Solicitar Reabertura',
+        texto: 'Em atividades zeradas, clique em <strong>"Solicitar reabertura"</strong> e escreva uma justificativa. O professor decidirá se aprova. Se aprovado, você poderá tentar novamente!',
+    },
+    {
+        alvo: null, pos: 'center',
+        icone: '⏳', titulo: 'Aguardando Correção',
+        texto: 'Quando você entrega uma atividade subjetiva (redação, resposta aberta), ela aparece em <strong>"Aguardando correção"</strong> até o professor lançar a nota.',
+    },
+    {
+        alvo: null, pos: 'center',
+        icone: '📋', titulo: 'Minhas Solicitações',
+        texto: 'Acompanhe o histórico de todas as suas solicitações de reabertura: <strong>⏳ pendente</strong>, <strong>✅ aprovada</strong> ou <strong>❌ negada</strong> — tudo em um só lugar.',
+    },
+    {
+        alvo: '.pa-qr-btn', pos: 'bottom',
+        icone: '📲', titulo: 'Gerador de QR Code',
+        texto: 'Crie QR Codes personalizados com diferentes <strong>estilos, cores e temas</strong>. Use para compartilhar links, textos ou qualquer outra informação de forma visual.',
+    },
+    {
+        alvo: null, pos: 'center',
+        icone: '🔔', titulo: 'Notificações de Prazo',
+        texto: 'Quando uma atividade estiver próxima do vencimento (menos de 2h ou até 3 dias), você receberá um <strong>aviso automático</strong> na tela que precisa ser confirmado antes de continuar.',
+    },
+    {
+        alvo: '#paTourBtn', pos: 'bottom',
+        icone: '❓', titulo: 'Precisa de ajuda?',
+        texto: 'Você pode rever este guia a qualquer momento clicando neste botão <strong>"?"</strong> aqui no cabeçalho. Ele estará sempre disponível.',
+    },
+    {
+        alvo: null, pos: 'center',
+        icone: '🎓', titulo: 'Você está pronto!',
+        texto: 'Agora você conhece todos os recursos do Portal do Aluno. Bons estudos e aproveite a plataforma ao máximo! 🌟',
+        ultimo: true,
+    },
+];
+
+let _tourAtivo       = false;
+let _tourObrigatorio = false; /* true = primeiro acesso, sem botão fechar */
+let _tourPasso       = 0;
+
+function iniciarTourSeNecessario() {
+    if (!localStorage.getItem(PA_TOUR_KEY)) {
+        _tourObrigatorio = true;
+        iniciarTour();
+    }
+}
+
+window.abrirTour = function () {
+    _tourObrigatorio = false;
+    iniciarTour();
+};
+
+function iniciarTour() {
+    _tourAtivo = true;
+    _tourPasso = 0;
+    $('paTourOverlay').style.display = '';
+    $('paTourTotal').textContent     = PA_TOUR_PASSOS.length;
+    /* Mostra/oculta botão fechar conforme modo */
+    $('paTourFechar').style.display  = _tourObrigatorio ? 'none' : '';
+    _renderizarPassoTour();
+}
+
+window.fecharTour = function () {
+    if (_tourObrigatorio) return; /* bloqueado no primeiro acesso */
+    _encerrarTour();
+};
+
+function _encerrarTour() {
+    _tourAtivo = false;
+    $('paTourOverlay').style.display = 'none';
+    _limparSpotlight();
+}
+
+function _concluirTour() {
+    localStorage.setItem(PA_TOUR_KEY, '1');
+    _tourObrigatorio = false;
+    _encerrarTour();
+}
+
+window.paTourProximo = function () {
+    if (_tourPasso < PA_TOUR_PASSOS.length - 1) {
+        _tourPasso++;
+        _renderizarPassoTour();
+    } else {
+        _concluirTour();
+    }
+};
+
+window.paTourAnterior = function () {
+    if (_tourPasso > 0) {
+        _tourPasso--;
+        _renderizarPassoTour();
+    }
+};
+
+function _renderizarPassoTour() {
+    const passo = PA_TOUR_PASSOS[_tourPasso];
+    const total = PA_TOUR_PASSOS.length;
+
+    /* Conteúdo */
+    $('paTourIcone').textContent      = passo.icone;
+    $('paTourTitulo').textContent     = passo.titulo;
+    $('paTourTexto').innerHTML        = passo.texto;
+    $('paTourPassoNum').textContent   = _tourPasso + 1;
+
+    /* Dots */
+    const dots = $('paTourDots');
+    dots.innerHTML = PA_TOUR_PASSOS.map((_, i) =>
+        `<div class="pa-tour-dot${i === _tourPasso ? ' pa-tour-dot--ativo' : ''}"></div>`
+    ).join('');
+
+    /* Botões */
+    const btnPrev = $('paTourBtnPrev');
+    const btnNext = $('paTourBtnNext');
+    btnPrev.style.display = _tourPasso === 0 ? 'none' : '';
+    if (passo.ultimo) {
+        btnNext.textContent = '✅ Concluir';
+        btnNext.className   = 'pa-tour-btn pa-tour-btn--concluir';
+    } else {
+        btnNext.textContent = 'Próximo →';
+        btnNext.className   = 'pa-tour-btn pa-tour-btn--next';
+    }
+
+    /* Spotlight + posição do card */
+    const alvoEl = passo.alvo ? document.querySelector(passo.alvo) : null;
+    const alvoVisivel = alvoEl && _elVisivel(alvoEl);
+
+    if (alvoVisivel) {
+        alvoEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        /* Pequeno delay para o scroll completar */
+        setTimeout(() => _posicionarComAlvo(alvoEl, passo.pos), 350);
+    } else {
+        _limparSpotlight();
+        _posicionarCentro();
+    }
+}
+
+function _elVisivel(el) {
+    if (!el) return false;
+    const s = window.getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+}
+
+function _posicionarComAlvo(el, pos) {
+    const PAD  = 10;
+    const r    = el.getBoundingClientRect();
+    const spot = $('paTourSpot');
+    const card = $('paTourCard');
+
+    /* Spotlight */
+    spot.className = 'pa-tour-spot';
+    spot.style.top    = (r.top    - PAD) + 'px';
+    spot.style.left   = (r.left   - PAD) + 'px';
+    spot.style.width  = (r.width  + PAD * 2) + 'px';
+    spot.style.height = (r.height + PAD * 2) + 'px';
+
+    /* Posição do card */
+    const cardW = Math.min(380, window.innerWidth * 0.9);
+    const GAP   = 14;
+    let top, left;
+
+    if (pos === 'bottom' || r.bottom + GAP + 260 < window.innerHeight) {
+        top  = r.bottom + PAD + GAP;
+    } else {
+        top  = r.top - PAD - GAP - 260; /* acima */
+    }
+    /* Centraliza horizontalmente sobre o elemento, clamped */
+    left = r.left + r.width / 2 - cardW / 2;
+    left = Math.max(12, Math.min(left, window.innerWidth - cardW - 12));
+    top  = Math.max(12, top);
+
+    card.style.position = 'fixed';
+    card.style.top      = top  + 'px';
+    card.style.left     = left + 'px';
+    card.style.width    = cardW + 'px';
+    card.style.transform = '';
+    card.className = 'pa-tour-card';
+}
+
+function _posicionarCentro() {
+    const card = $('paTourCard');
+    card.style.position  = 'fixed';
+    card.style.top       = '50%';
+    card.style.left      = '50%';
+    card.style.width     = '';
+    card.style.transform = 'translate(-50%,-50%)';
+}
+
+function _limparSpotlight() {
+    const spot = $('paTourSpot');
+    spot.className    = 'pa-tour-spot pa-tour-spot--oculto';
+    spot.style.top    = '50%';
+    spot.style.left   = '50%';
+    spot.style.width  = '0';
+    spot.style.height = '0';
 }
 
 /* ── Utils ───────────────────────────────────────────── */

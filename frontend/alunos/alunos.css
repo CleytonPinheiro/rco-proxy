@@ -1165,3 +1165,194 @@ html, body {
 .pa-notif-overlay[data-cor="amarelo"] .pa-notif-head {
     background: linear-gradient(135deg, #d97706, #92400e);
 }
+
+/* ══ Tour Guiado ════════════════════════════════════════════════════ */
+
+/* Botão "?" no header */
+.pa-tour-help-btn {
+    display:       flex;
+    align-items:   center;
+    justify-content: center;
+    width:          26px;
+    height:         26px;
+    border-radius:  50%;
+    border:         2px solid var(--pa-primary);
+    background:     transparent;
+    color:          var(--pa-primary);
+    font-size:      .78rem;
+    font-weight:    900;
+    cursor:         pointer;
+    font-family:    inherit;
+    transition:     background .15s, color .15s;
+    flex-shrink:    0;
+}
+.pa-tour-help-btn:hover {
+    background: var(--pa-primary);
+    color:      #fff;
+}
+
+/* Overlay escurecido (bloqueia toda interação) */
+.pa-tour-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         3000;
+    pointer-events:  all;
+}
+
+/* Anel de spotlight ao redor do elemento-alvo */
+.pa-tour-spot {
+    position:       fixed;
+    border-radius:  12px;
+    box-shadow:     0 0 0 9999px rgba(0, 0, 0, .72);
+    transition:     top .35s cubic-bezier(.4,0,.2,1),
+                    left .35s cubic-bezier(.4,0,.2,1),
+                    width .35s cubic-bezier(.4,0,.2,1),
+                    height .35s cubic-bezier(.4,0,.2,1),
+                    border-radius .35s;
+    pointer-events: none;
+    z-index:        3001;
+    outline:        3px solid var(--pa-primary);
+    outline-offset: 2px;
+}
+/* Quando não há alvo (modo center): spotlight invisível */
+.pa-tour-spot--oculto {
+    box-shadow:     0 0 0 9999px rgba(0, 0, 0, .72);
+    outline:        none;
+    width:          0 !important;
+    height:         0 !important;
+    top:            50% !important;
+    left:           50% !important;
+    border-radius:  0;
+}
+
+/* Card do passo */
+.pa-tour-card {
+    position:      fixed;
+    z-index:       3002;
+    width:         min(380px, 90vw);
+    background:    var(--pa-card);
+    border-radius: 18px;
+    box-shadow:    0 24px 70px rgba(0,0,0,.55);
+    overflow:      hidden;
+    animation:     paTourEntrar .25s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: all;
+}
+@keyframes paTourEntrar {
+    from { opacity: 0; transform: translateY(18px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+
+/* Topo do card */
+.pa-tour-card-top {
+    display:         flex;
+    align-items:     center;
+    gap:             8px;
+    padding:         14px 16px 0;
+}
+.pa-tour-icone {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+.pa-tour-progresso {
+    font-size:  .72rem;
+    color:      var(--pa-muted);
+    flex:       1;
+}
+.pa-tour-progresso strong { color: var(--pa-primary); }
+
+/* Botão fechar (tour opcional) */
+.pa-tour-fechar {
+    background:    none;
+    border:        none;
+    color:         var(--pa-muted);
+    font-size:     1rem;
+    cursor:        pointer;
+    padding:       2px 6px;
+    border-radius: 6px;
+    transition:    background .15s, color .15s;
+    font-family:   inherit;
+    line-height:   1;
+}
+.pa-tour-fechar:hover { background: rgba(0,0,0,.07); color: var(--pa-text); }
+
+/* Título e texto */
+.pa-tour-titulo {
+    font-size:     1.05rem;
+    font-weight:   800;
+    color:         var(--pa-text);
+    padding:       10px 16px 4px;
+    line-height:   1.3;
+}
+.pa-tour-texto {
+    font-size:     .88rem;
+    color:         var(--pa-sub);
+    line-height:   1.65;
+    padding:       0 16px 12px;
+}
+.pa-tour-texto strong { color: var(--pa-text); }
+
+/* Dots indicadores */
+.pa-tour-dots {
+    display:         flex;
+    justify-content: center;
+    gap:             5px;
+    padding:         0 16px 12px;
+}
+.pa-tour-dot {
+    width:         7px;
+    height:        7px;
+    border-radius: 50%;
+    background:    var(--pa-border);
+    transition:    background .2s, transform .2s;
+}
+.pa-tour-dot--ativo {
+    background: var(--pa-primary);
+    transform:  scale(1.3);
+}
+
+/* Rodapé com botões */
+.pa-tour-footer {
+    display:         flex;
+    justify-content: space-between;
+    align-items:     center;
+    padding:         10px 16px 16px;
+    border-top:      1px solid var(--pa-border);
+    gap:             8px;
+}
+.pa-tour-btn {
+    padding:       9px 20px;
+    border-radius: 10px;
+    font-size:     .85rem;
+    font-weight:   700;
+    cursor:        pointer;
+    font-family:   inherit;
+    transition:    background .15s, opacity .15s, transform .1s;
+    border:        none;
+}
+.pa-tour-btn:active { transform: scale(.97); }
+.pa-tour-btn--prev {
+    background: var(--pa-card2);
+    color:      var(--pa-muted);
+    border:     1px solid var(--pa-border);
+}
+.pa-tour-btn--prev:hover { color: var(--pa-text); }
+.pa-tour-btn--next {
+    background: linear-gradient(135deg, var(--pa-primary), var(--pa-primary-dark));
+    color:      #fff;
+    box-shadow: 0 4px 14px rgba(26,115,232,.35);
+    flex:       1;
+}
+.pa-tour-btn--next:hover { opacity: .92; }
+.pa-tour-btn--concluir {
+    background: linear-gradient(135deg, #16a34a, #065f46);
+    color:      #fff;
+    box-shadow: 0 4px 14px rgba(22,163,74,.35);
+    flex:       1;
+}
+.pa-tour-btn--concluir:hover { opacity: .92; }
+
+@media (max-width: 480px) {
+    .pa-tour-card  { border-radius: 14px; width: 92vw; }
+    .pa-tour-titulo { font-size: .95rem; }
+    .pa-tour-btn   { padding: 8px 14px; font-size: .8rem; }
+}
