@@ -1,8 +1,9 @@
-import express    from 'express';
-import path       from 'path';
+import express      from 'express';
+import path         from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import helmet       from 'helmet';
+import rateLimit    from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -23,6 +24,28 @@ app.use('/api', (req, res, next) => {
     res.set('Pragma', 'no-cache');
     next();
 });
+
+// Rate limiting — Portal do Aluno: 60 req/min por IP
+const alunosPortalLimiter = rateLimit({
+    windowMs:        60 * 1000,
+    max:             60,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message:         { erro: 'Muitas requisições. Aguarde um momento e tente novamente.' },
+    skip:            (req) => req.path === '/api/alunos-portal/status',
+});
+app.use('/api/alunos-portal', alunosPortalLimiter);
+
+// Rate limiting — Login do portal (anti força-bruta): 10 req/min por IP
+const loginLimiter = rateLimit({
+    windowMs:        60 * 1000,
+    max:             10,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message:         { erro: 'Muitas tentativas de login. Aguarde um momento.' },
+});
+app.use('/api/alunos-portal/auth-url', loginLimiter);
+app.use('/api/alunos-portal/callback', loginLimiter);
 
 // Health checks registrados antes de qualquer middleware pesado
 app.get('/health', (_req, res) => res.status(200).send('OK'));

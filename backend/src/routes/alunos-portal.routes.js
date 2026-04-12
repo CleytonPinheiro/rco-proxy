@@ -203,12 +203,8 @@ export function createAlunosPortalRouter() {
 
     /* GET /api/alunos-portal/status — estado da conexão */
     router.get('/alunos-portal/status', async (req, res) => {
-        const hasCredentials   = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-        const professorConect  = !!loadTeacherToken();
-        const aluno            = await getAlunoSession(req);
+        const aluno = await getAlunoSession(req);
         res.json({
-            hasCredentials,
-            professorConectado: professorConect,
             aluno: aluno
                 ? { email: aluno.email, nome: aluno.nome, foto: aluno.foto }
                 : null,
@@ -589,7 +585,7 @@ export function createAlunosPortalRouter() {
             });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao buscar atividades:', e.message);
-            res.status(500).json({ erro: e.message });
+            res.status(500).json({ erro: 'Erro interno ao buscar atividades. Tente novamente.' });
         }
     });
 
@@ -622,7 +618,7 @@ export function createAlunosPortalRouter() {
             res.json({ ok: true, id: rows[0].id });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao solicitar reabertura:', e.message);
-            res.status(500).json({ erro: e.message });
+            res.status(500).json({ erro: 'Não foi possível registrar a solicitação. Tente novamente.' });
         }
     });
 
@@ -640,7 +636,8 @@ export function createAlunosPortalRouter() {
             );
             res.json({ notificacoes: rows });
         } catch (e) {
-            res.status(500).json({ erro: e.message });
+            console.error('[ALUNOS-PORTAL] Erro ao buscar notificações:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar notificações.' });
         }
     });
 
@@ -655,7 +652,8 @@ export function createAlunosPortalRouter() {
             );
             res.json({ ok: true });
         } catch (e) {
-            res.status(500).json({ erro: e.message });
+            console.error('[ALUNOS-PORTAL] Erro ao marcar notificação:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao atualizar notificação.' });
         }
     });
 
@@ -676,7 +674,8 @@ export function createAlunosPortalRouter() {
             );
             res.json({ solicitacoes: rows });
         } catch (e) {
-            res.status(500).json({ erro: e.message });
+            console.error('[ALUNOS-PORTAL] Erro ao buscar solicitações:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar solicitações.' });
         }
     });
 
