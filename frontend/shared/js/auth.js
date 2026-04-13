@@ -104,6 +104,7 @@
 
             const p = cached.impersonando ? cached.impersonandoPerfil : cached.perfil;
             document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+                if (link.closest('.side-nav-sub-admin')) return;
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
                 if (!podeAcessar(p, modulo)) {
@@ -202,6 +203,7 @@
         const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
 
         document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+            if (link.closest('.side-nav-sub-admin')) return;
             const href   = link.getAttribute('href');
             const modulo = MODULO_URLS[href];
 
