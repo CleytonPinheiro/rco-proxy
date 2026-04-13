@@ -71,120 +71,38 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Submenu Classroom — flyout à direita no hover (admin only) ─────────── */
+/* ── Submenu Classroom — accordion inline no hover ─────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
-    var perfil = '';
-    try {
-        var cache = JSON.parse(localStorage.getItem('edusync_nav_cache') || 'null');
-        perfil = (cache && cache.perfil) || '';
-    } catch (e) {}
-
-    var isAdmin = (perfil === 'admin');
-
     document.querySelectorAll('.side-nav-group').forEach(function (group) {
-        var flyout = group.querySelector('.side-nav-sub-static');
-        if (!flyout) return;
-
-        if (!flyout.querySelector('.side-nav-sub-label')) {
-            var lbl = document.createElement('div');
-            lbl.className   = 'side-nav-sub-label';
-            lbl.textContent = 'Classroom';
-            flyout.insertBefore(lbl, flyout.firstChild);
-        }
-
-        if (!isAdmin) return;
-
-        document.body.appendChild(flyout);
-
-        flyout.querySelectorAll('[data-admin-only]').forEach(function (el) {
-            el.removeAttribute('data-perm-hidden');
-            el.style.display = '';
-        });
-
-        var parentItem = group.querySelector('.side-nav-item');
-        if (parentItem && !parentItem.querySelector('.side-nav-chevron-hint')) {
-            var hint = document.createElement('span');
-            hint.className   = 'side-nav-chevron-hint';
-            hint.textContent = '›';
-            parentItem.appendChild(hint);
-        }
+        var parentLink = group.querySelector('.side-nav-item--parent');
+        if (!parentLink) return;
 
         var hideTimer = null;
 
-        function openFlyout() {
+        function openGroup() {
             if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-            flyout.classList.add('flyout-open');
-
-            flyout.querySelectorAll('.side-nav-sub-item').forEach(function (item) {
-                item.style.display = 'flex';
-                item.style.visibility = 'visible';
-                item.style.opacity = '1';
-                item.style.height = 'auto';
-                item.style.overflow = 'visible';
-                item.removeAttribute('data-perm-hidden');
-            });
-
-            var labelEl = flyout.querySelector('.side-nav-sub-label');
-            if (labelEl) {
-                labelEl.style.display = 'block';
-                labelEl.style.visibility = 'visible';
-            }
-
-            flyout.style.height = 'auto';
-            flyout.style.overflow = 'visible';
-
-            requestAnimationFrame(function () {
-                var rect = group.getBoundingClientRect();
-                var fh   = flyout.scrollHeight || 200;
-                var fw   = flyout.offsetWidth  || 240;
-                var vw   = window.innerWidth;
-                var vh   = window.innerHeight;
-
-                var left = rect.right + 4;
-                if (left + fw > vw - 4) left = rect.left - fw - 4;
-                if (left < 4) left = 4;
-
-                var top = rect.bottom - fh;
-                if (top < 8) top = 8;
-                if (top + fh > vh - 8) top = vh - fh - 8;
-                if (top < 8) top = 8;
-
-                flyout.style.top  = top + 'px';
-                flyout.style.left = left + 'px';
-            });
+            group.classList.add('open');
         }
 
-        function closeFlyout() {
-            flyout.classList.remove('flyout-open');
+        function closeGroup() {
+            group.classList.remove('open');
             hideTimer = null;
         }
 
         function scheduleClose() {
-            hideTimer = setTimeout(closeFlyout, 180);
+            hideTimer = setTimeout(closeGroup, 250);
         }
 
-        function cancelClose() {
-            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-        }
-
-        group.addEventListener('mouseenter', openFlyout);
+        group.addEventListener('mouseenter', openGroup);
         group.addEventListener('mouseleave', scheduleClose);
-        flyout.addEventListener('mouseenter', cancelClose);
-        flyout.addEventListener('mouseleave', scheduleClose);
 
-        parentItem.addEventListener('click', function (e) {
+        parentLink.addEventListener('click', function (e) {
             e.preventDefault();
-            if (flyout.classList.contains('flyout-open')) {
-                closeFlyout();
+            if (group.classList.contains('open')) {
+                closeGroup();
             } else {
-                openFlyout();
+                openGroup();
             }
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!flyout.classList.contains('flyout-open')) return;
-            if (e.target.closest && (e.target.closest('.side-nav-sub-static') || e.target.closest('.side-nav-group'))) return;
-            closeFlyout();
         });
     });
 });

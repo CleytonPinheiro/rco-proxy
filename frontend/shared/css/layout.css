@@ -804,86 +804,61 @@ body[data-side="open"] .side-panel {
     box-shadow: 0 3px 12px rgba(96,165,250,.4);
 }
 
-/* ── Flyout — posicionado via JS (position:fixed no <body>) ─── */
-.side-nav-sub-static {
-    display: none;
+/* ── Submenu inline (accordion dentro do sidebar) ─── */
+.side-nav-group {
+    position: relative;
 }
-.side-nav-sub-static.flyout-open {
-    display: block !important;
-    position: fixed;
-    width: 240px;
-    max-height: calc(100vh - 16px);
-    overflow-y: auto;
-    overflow-x: visible;
-    background: var(--bg-card);
-    border: 1.5px solid var(--border);
-    border-radius: 14px;
-    box-shadow: 4px 0 32px rgba(0,0,0,.22);
-    padding: 8px 10px 10px;
-    z-index: 9999;
-    height: auto !important;
+.side-nav-item--parent {
+    position: relative;
 }
-.side-nav-sub-static.flyout-open > * {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-}
-.side-nav-sub-static.flyout-open > .side-nav-sub-label {
-    display: block !important;
-}
-
-/* ── Rótulo de seção do flyout — igual a .side-panel-section-label */
-.side-nav-sub-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.side-nav-chevron {
+    margin-left: auto;
+    font-size: 13px;
     color: var(--text-muted);
-    padding: 4px 8px 6px;
-    margin-bottom: 2px;
+    transition: transform .2s ease;
+    flex-shrink: 0;
 }
-
-/* Separador visual abaixo do label */
-.side-nav-sub-label::after {
-    content: '';
-    display: block;
-    margin-top: 6px;
-    border-bottom: 1px solid var(--border-light);
+.side-nav-group.open > .side-nav-item--parent .side-nav-chevron {
+    transform: rotate(90deg);
 }
-
-/* ── Itens do flyout — espelham .side-nav-item ─────────────── */
-.side-nav-sub-item {
+.side-nav-children {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+    padding-left: 20px;
+}
+.side-nav-group.open > .side-nav-children {
+    max-height: 300px;
+}
+.side-nav-child-item {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 11px 12px;
+    gap: 10px;
+    padding: 9px 12px;
     border-radius: 10px;
     text-decoration: none;
     color: var(--text-primary);
-    font-size: .9rem;
+    font-size: .85rem;
     font-weight: 500;
     border: 1.5px solid transparent;
     transition: background .15s, transform .1s, border-color .15s, color .15s;
     margin: 2px 0;
 }
-.side-nav-sub-item:hover {
+.side-nav-child-item:hover {
     background: var(--bg-secondary);
     transform: translateX(3px);
 }
-.side-nav-sub-item--active {
+.side-nav-child-item--active {
     background: var(--bg-tertiary);
     border-color: #007bff;
     color: #007bff;
     font-weight: 600;
 }
-[data-theme="dark"] .side-nav-sub-item:hover {
+[data-theme="dark"] .side-nav-child-item:hover {
     background: var(--bg-secondary);
     color: var(--text-primary);
 }
-[data-theme="dark"] .side-nav-sub-item--active {
+[data-theme="dark"] .side-nav-child-item--active {
     background: var(--bg-tertiary);
     border-color: #60a5fa;
     color: #60a5fa;
