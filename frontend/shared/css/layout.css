@@ -806,25 +806,33 @@ body[data-side="open"] .side-panel {
 
 /* ── Flyout — posicionado via JS (position:fixed no <body>) ─── */
 .side-nav-sub-static {
+    display: none;
+}
+.side-nav-sub-static.flyout-open {
+    display: block !important;
     position: fixed;
     width: 240px;
     max-height: calc(100vh - 16px);
     overflow-y: auto;
+    overflow-x: visible;
     background: var(--bg-card);
     border: 1.5px solid var(--border);
     border-radius: 14px;
     box-shadow: 4px 0 32px rgba(0,0,0,.22);
     padding: 8px 10px 10px;
     z-index: 9999;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateX(-8px);
-    transition: opacity .18s ease, transform .18s cubic-bezier(.4,0,.2,1);
+    height: auto !important;
 }
-.side-nav-sub-static.flyout-open {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(0);
+.side-nav-sub-static.flyout-open > * {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+.side-nav-sub-static.flyout-open > .side-nav-sub-label {
+    display: block !important;
 }
 
 /* ── Rótulo de seção do flyout — igual a .side-panel-section-label */
@@ -881,5 +889,3 @@ body[data-side="open"] .side-panel {
     color: #60a5fa;
 }
 
-/* Oculto por padrão; theme.js exibe para admin */
-.side-nav-sub-admin { display: none; }

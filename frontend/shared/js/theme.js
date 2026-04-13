@@ -95,7 +95,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isAdmin) return;
 
         document.body.appendChild(flyout);
-        flyout.style.display = 'block';
 
         flyout.querySelectorAll('[data-admin-only]').forEach(function (el) {
             el.removeAttribute('data-perm-hidden');
@@ -115,6 +114,24 @@ document.addEventListener('DOMContentLoaded', function () {
         function openFlyout() {
             if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
             flyout.classList.add('flyout-open');
+
+            flyout.querySelectorAll('.side-nav-sub-item').forEach(function (item) {
+                item.style.display = 'flex';
+                item.style.visibility = 'visible';
+                item.style.opacity = '1';
+                item.style.height = 'auto';
+                item.style.overflow = 'visible';
+                item.removeAttribute('data-perm-hidden');
+            });
+
+            var labelEl = flyout.querySelector('.side-nav-sub-label');
+            if (labelEl) {
+                labelEl.style.display = 'block';
+                labelEl.style.visibility = 'visible';
+            }
+
+            flyout.style.height = 'auto';
+            flyout.style.overflow = 'visible';
 
             requestAnimationFrame(function () {
                 var rect = group.getBoundingClientRect();
