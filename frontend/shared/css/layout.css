@@ -669,7 +669,8 @@ body[data-side="open"] .side-panel {
 
 /* Container dos itens de nav */
 .side-panel-nav {
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     padding: 8px 10px 16px;
 }
@@ -758,50 +759,6 @@ body[data-side="open"] .side-panel {
 @media (max-width: 640px) {
     .btn-side-menu-label { display: none; }
     .side-panel { width: 280px; }
-}
-
-/* ── Classroom sidebar — flyout à direita no hover ──────────── */
-.side-nav-group {
-    position: relative;
-    margin-bottom: 4px;
-}
-
-/* ── Indicador de submenu (badge ›) ─────────────────────────── */
-.side-nav-chevron-hint {
-    margin-left: auto;
-    flex-shrink: 0;
-    align-self: stretch;          /* ocupa toda a altura do .side-nav-item */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    border-radius: 8px;
-    background: var(--bg-tertiary);
-    border: 2px solid #007bff;
-    font-size: 1.1rem;
-    font-weight: 900;
-    color: #007bff;
-    line-height: 1;
-    opacity: 1;
-    transition: background .15s, border-color .15s, color .15s,
-                transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .15s;
-}
-.side-nav-group:hover .side-nav-chevron-hint {
-    background: #007bff;
-    border-color: #007bff;
-    color: #fff;
-    transform: translateX(5px);
-    box-shadow: 0 3px 12px rgba(0,123,255,.45);
-}
-[data-theme="dark"] .side-nav-chevron-hint {
-    border-color: #60a5fa;
-    color: #60a5fa;
-}
-[data-theme="dark"] .side-nav-group:hover .side-nav-chevron-hint {
-    background: #60a5fa;
-    border-color: #60a5fa;
-    color: #0f1117;
-    box-shadow: 0 3px 12px rgba(96,165,250,.4);
 }
 
 /* ── Classroom group + chevron ─── */
