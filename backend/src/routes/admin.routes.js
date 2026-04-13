@@ -816,5 +816,50 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* GET /api/admin/portal-aluno/audit-log — log de sessões do Portal do Aluno */
+    router.get('/admin/portal-aluno/audit-log', async (req, res) => {
+        const limite = Math.min(parseInt(req.query.limite) || 100, 500);
+        const offset = parseInt(req.query.offset) || 0;
+        const busca  = req.query.busca?.trim() || '';
+        const acao   = req.query.acao?.trim()  || '';
+
+        const params = ['portal_aluno'];
+        let filtros  = `WHERE modulo = $1`;
+
+        if (busca) {
+            params.push(`%${busca}%`);
+            filtros += ` AND (usuario_nome ILIKE $${params.length}
+                          OR (detalhes->>'email') ILIKE $${params.length})`;
+        }
+        if (acao) {
+            params.push(acao);
+            filtros += ` AND acao = $${params.length}`;
+        }
+
+        params.push(limite, offset);
+
+        try {
+            const [{ rows }, { rows: total }] = await Promise.all([
+                pool.query(
+                    `SELECT id, usuario_nome, acao, detalhes, ip, criado_em
+                     FROM edusync_audit_log
+                     ${filtros}
+                     ORDER BY criado_em DESC
+                     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+                    params,
+                ),
+                pool.query(
+                    `SELECT COUNT(*) AS total FROM edusync_audit_log ${filtros}`,
+                    params.slice(0, params.length - 2),
+                ),
+            ]);
+
+            res.json({ logs: rows, total: parseInt(total[0]?.total || 0) });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao buscar portal audit log:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar logs.' });
+        }
+    });
+
     return router;
 }

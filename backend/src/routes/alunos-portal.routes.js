@@ -16,6 +16,7 @@ import path              from 'path';
 import { fileURLToPath } from 'url';
 import pkg               from 'pg';
 import crypto            from 'crypto';
+import { auditLogger }   from '../services/AuditLogger.js';
 
 const { Pool }   = pkg;
 const pool       = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -197,6 +198,18 @@ async function criarNotif(email, tipo, referencia, titulo, mensagem, dados = {})
     } catch (_) { /* silencia erros de notificação */ }
 }
 
+/* ── Audit helper ─────────────────────────────────────────────────── */
+function logAluno(email, nome, acao, detalhes = {}, ip = null) {
+    auditLogger.registrar({
+        usuarioId:   null,
+        usuarioNome: nome || email,
+        acao,
+        modulo:      'portal_aluno',
+        detalhes:    { email, ...detalhes },
+        ip,
+    }).catch(() => {});
+}
+
 /* ── Router ───────────────────────────────────────────────────────── */
 export function createAlunosPortalRouter() {
     const router = Router();
@@ -283,6 +296,7 @@ export function createAlunosPortalRouter() {
                 path:     '/',
             });
             console.log('[ALUNOS-PORTAL] Login:', email);
+            logAluno(email, nome, 'LOGIN', {}, req.ip);
             res.redirect('/alunos/');
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro no callback:', e.message);
@@ -292,9 +306,11 @@ export function createAlunosPortalRouter() {
 
     /* POST /api/alunos-portal/logout */
     router.post('/alunos-portal/logout', async (req, res) => {
-        const sid = req.cookies?.aluno_sid;
+        const sid   = req.cookies?.aluno_sid;
+        const aluno = sid ? await getAlunoSession(req) : null;
         if (sid) await pool.query('DELETE FROM aluno_portal_sessions WHERE id = $1', [sid]).catch(() => {});
         res.clearCookie('aluno_sid', { path: '/' });
+        if (aluno) logAluno(aluno.email, aluno.nome, 'LOGOUT', {}, req.ip);
         res.json({ ok: true });
     });
 
@@ -615,6 +631,9 @@ export function createAlunosPortalRouter() {
                  RETURNING id, status`,
                 [aluno.email, aluno.nome, cursoId, cursoNome, courseworkId, courseworkTitulo, submissionLink || null, justificativa || null]
             );
+            logAluno(aluno.email, aluno.nome, 'SOLICITAR_REABERTURA', {
+                courseworkId, courseworkTitulo, cursoId, cursoNome,
+            }, req.ip);
             res.json({ ok: true, id: rows[0].id });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao solicitar reabertura:', e.message);
@@ -650,6 +669,7 @@ export function createAlunosPortalRouter() {
                 `UPDATE notificacoes_aluno SET lida=true WHERE id=$1 AND aluno_email=$2`,
                 [req.params.id, aluno.email]
             );
+            logAluno(aluno.email, aluno.nome, 'NOTIF_LIDA', { notifId: req.params.id }, req.ip);
             res.json({ ok: true });
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao marcar notificação:', e.message);

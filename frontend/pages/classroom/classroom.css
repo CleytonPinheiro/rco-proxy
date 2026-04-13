@@ -2630,3 +2630,94 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 
 /* Empty state genérico já existe como .cl-empty-state */
+
+/* ══ Log Portal do Aluno (tab admin) ════════════════════════════════ */
+
+.cl-tab--portal-log { color: var(--primary); font-weight: 700; }
+
+.cl-portal-log-panel {
+    display:        flex;
+    flex-direction: column;
+    gap:            10px;
+    height:         100%;
+    overflow:       hidden;
+}
+
+.cl-portal-log-filtros {
+    display:     flex;
+    gap:         8px;
+    flex-wrap:   wrap;
+    padding:     10px 0 6px;
+    border-bottom: 1px solid var(--border);
+}
+.cl-portal-log-filtros input,
+.cl-portal-log-filtros select { font-size: .82rem; }
+.cl-portal-log-filtros input  { flex: 1; min-width: 150px; }
+
+.cl-portal-log-info {
+    font-size:  .75rem;
+    color:      var(--text-muted);
+    padding:    2px 0;
+}
+
+.cl-portal-log-lista {
+    flex:       1;
+    overflow-y: auto;
+    display:    flex;
+    flex-direction: column;
+    gap:        6px;
+}
+
+.pl-item {
+    border:        1px solid var(--border);
+    border-radius: 8px;
+    padding:       9px 12px;
+    background:    var(--bg-card);
+    font-size:     .82rem;
+    transition:    border-color .15s;
+}
+.pl-item--login              { border-left: 3px solid #16a34a; }
+.pl-item--logout             { border-left: 3px solid #6b7280; }
+.pl-item--solicitar_reabertura { border-left: 3px solid #d97706; }
+.pl-item--notif_lida         { border-left: 3px solid #6366f1; }
+
+.pl-item-top {
+    display:     flex;
+    align-items: center;
+    gap:         8px;
+    flex-wrap:   wrap;
+    margin-bottom: 3px;
+}
+.pl-acao  { font-weight: 700; white-space: nowrap; }
+.pl-nome  { flex: 1; color: var(--text-primary); min-width: 100px; }
+.pl-ip    { font-size: .72rem; color: var(--text-muted); background: var(--bg-secondary);
+            padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.pl-data  { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+
+.pl-item-email { color: var(--text-muted); font-size: .75rem; margin-bottom: 3px; }
+
+.pl-det {
+    display:     flex;
+    flex-wrap:   wrap;
+    gap:         6px;
+    margin-top:  4px;
+}
+.pl-det-kv {
+    font-size:     .72rem;
+    background:    var(--bg-secondary);
+    padding:       2px 7px;
+    border-radius: 4px;
+    color:         var(--text-muted);
+}
+.pl-det-kv b { color: var(--text-primary); }
+
+.cl-portal-log-paginacao {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    gap:             12px;
+    padding:         8px 0 4px;
+    border-top:      1px solid var(--border);
+    font-size:       .8rem;
+    color:           var(--text-muted);
+}

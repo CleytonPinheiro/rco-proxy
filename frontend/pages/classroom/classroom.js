@@ -133,6 +133,14 @@ const elSolicitaPanel  = document.getElementById('clSolicitaPanel');
 const elSolicitaLista  = document.getElementById('clSolicitaLista');
 const elSolitaBadge    = document.getElementById('clSolitaBadge');
 const elSideNavSolitaBadge = document.getElementById('sideNavSolitaBadge');
+/* Portal Log (admin only) */
+const elTabPortalLog    = document.getElementById('clTabPortalLog');
+const elPortalLogPanel  = document.getElementById('clPortalLogPanel');
+const elPortalLogLista  = document.getElementById('clPortalLogLista');
+const elPortalLogInfo   = document.getElementById('clPortalLogInfo');
+const elPortalLogPag    = document.getElementById('clPortalLogPag');
+const elPortalLogPagInfo = document.getElementById('clPortalLogPagInfo');
+const elSideNavPortalLog = document.getElementById('sideNavPortalLog');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
@@ -251,6 +259,15 @@ async function init() {
     if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
     carregarCursos();
     carregarSolicitacoesBadge();
+
+    /* Verifica se é admin e revela tab + link do Log Portal */
+    try {
+        const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.json());
+        if (me?.perfil === 'admin') {
+            if (elTabPortalLog)    elTabPortalLog.style.display    = '';
+            if (elSideNavPortalLog) elSideNavPortalLog.style.display = '';
+        }
+    } catch (_) { /* silencia — não é admin ou sem sessão */ }
 }
 
 /* ── Conectar ── */
@@ -568,16 +585,19 @@ function setTab(tab) {
     elTabGrupos.classList.toggle('cl-tab--ativo', tab === 'grupos');
     elTabAudit.classList.toggle('cl-tab--ativo', tab === 'auditoria');
     elTabSolicita.classList.toggle('cl-tab--ativo', tab === 'solicitacoes');
+    if (elTabPortalLog) elTabPortalLog.classList.toggle('cl-tab--ativo', tab === 'portal_log');
 
     elAtivLista.style.display        = tab === 'atividades' ? '' : 'none';
     elGrupoLista.style.display       = tab === 'grupos' ? '' : 'none';
     elAuditPanel.style.display       = tab === 'auditoria' ? '' : 'none';
     elSolicitaPanel.style.display    = tab === 'solicitacoes' ? '' : 'none';
+    if (elPortalLogPanel) elPortalLogPanel.style.display = tab === 'portal_log' ? '' : 'none';
     elAtivLink.style.display         = tab === 'atividades' && cursoAtivo?.link ? 'flex' : 'none';
     elBtnNovoGrupo.style.display     = tab === 'grupos' && cursoAtivo ? 'flex' : 'none';
     elBtnCriarRec.style.display      = tab === 'grupos' && grupoAtivo?.tipo === 'normal' && !grupoAtivo?.recuperacaoId ? 'flex' : 'none';
     elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : tab === 'auditoria' ? 'Auditoria'
-                                      : tab === 'solicitacoes' ? 'Solicitações' : 'Atividades';
+                                      : tab === 'solicitacoes' ? 'Solicitações'
+                                      : tab === 'portal_log' ? 'Log Portal Aluno' : 'Atividades';
 
     if (tab === 'atividades') {
         elAtivCount.textContent = atividadesCache.length
@@ -618,6 +638,10 @@ elTabAtiv.addEventListener('click', () => setTab('atividades'));
 elTabGrupos.addEventListener('click', () => setTab('grupos'));
 elTabAudit.addEventListener('click', () => setTab('auditoria'));
 elTabSolicita.addEventListener('click', () => setTab('solicitacoes'));
+if (elTabPortalLog) elTabPortalLog.addEventListener('click', () => {
+    setTab('portal_log');
+    if (!portalLogCarregado) carregarPortalLog();
+});
 
 /* ══════════════════════════════════════════════════════════════
    SOLICITAÇÕES DE REABERTURA
@@ -732,6 +756,13 @@ function irParaSolicitacoes() {
     setTab('solicitacoes');
 }
 
+window.irParaPortalLog = function () {
+    fecharSidePanel?.();
+    elTabs.style.display = '';
+    setTab('portal_log');
+    if (!portalLogCarregado) carregarPortalLog();
+};
+
 /* Evento: filtros do painel de solicitações */
 document.getElementById('clSolicitaFiltroStatus')?.addEventListener('change', carregarSolicitacoes);
 document.getElementById('clSolicitaBusca')?.addEventListener('input', () => {
@@ -739,6 +770,105 @@ document.getElementById('clSolicitaBusca')?.addEventListener('input', () => {
     renderSolicitacoesPanel(solicitacoesCache, q);
 });
 document.getElementById('clSolicitaAtualizar')?.addEventListener('click', carregarSolicitacoes);
+
+/* ══════════════════════════════════════════════════════════════
+   LOG PORTAL DO ALUNO (somente admin)
+══════════════════════════════════════════════════════════════ */
+const PL_POR_PAG = 50;
+let portalLogCarregado = false;
+let portalLogPagina    = 0;
+let portalLogTotal     = 0;
+
+const ACOES_LABEL = {
+    LOGIN:                '🔐 Login',
+    LOGOUT:               '🚪 Logout',
+    SOLICITAR_REABERTURA: '↩ Reabertura',
+    NOTIF_LIDA:           '🔔 Notif. lida',
+};
+
+async function carregarPortalLog(resetar = true) {
+    if (resetar) portalLogPagina = 0;
+
+    const busca = document.getElementById('clPortalLogBusca')?.value.trim() || '';
+    const acao  = document.getElementById('clPortalLogAcao')?.value       || '';
+
+    const params = new URLSearchParams({
+        limite: PL_POR_PAG,
+        offset: portalLogPagina * PL_POR_PAG,
+    });
+    if (busca) params.set('busca', busca);
+    if (acao)  params.set('acao', acao);
+
+    elPortalLogLista.innerHTML = '<div class="cl-empty-state"><p>Carregando…</p></div>';
+    elPortalLogInfo.style.display = 'none';
+
+    try {
+        const data = await api(`/admin/portal-aluno/audit-log?${params}`);
+        portalLogTotal     = data.total;
+        portalLogCarregado = true;
+        renderPortalLog(data.logs);
+        renderPortalLogPaginacao();
+    } catch (e) {
+        elPortalLogLista.innerHTML = `<div class="cl-empty-state"><p style="color:var(--danger)">Erro: ${e.message}</p></div>`;
+    }
+}
+
+function renderPortalLog(logs) {
+    if (!logs.length) {
+        elPortalLogLista.innerHTML = '<div class="cl-empty-state"><p>Nenhum registro encontrado.</p></div>';
+        return;
+    }
+
+    const inicio = portalLogPagina * PL_POR_PAG + 1;
+    const fim    = Math.min(inicio + logs.length - 1, portalLogTotal);
+    elPortalLogInfo.textContent  = `Exibindo ${inicio}–${fim} de ${portalLogTotal} registros`;
+    elPortalLogInfo.style.display = '';
+
+    elPortalLogLista.innerHTML = logs.map(log => {
+        const det      = log.detalhes || {};
+        const label    = ACOES_LABEL[log.acao] || log.acao;
+        const email    = det.email || '—';
+        const data     = new Date(log.criado_em).toLocaleString('pt-BR');
+        const ip       = log.ip ? `<span class="pl-ip">${log.ip}</span>` : '';
+        const extras   = Object.entries(det)
+            .filter(([k]) => k !== 'email')
+            .map(([k, v]) => `<span class="pl-det-kv"><b>${k}:</b> ${v ?? '—'}</span>`)
+            .join('');
+
+        return `<div class="pl-item pl-item--${log.acao.toLowerCase()}">
+            <div class="pl-item-top">
+                <span class="pl-acao">${label}</span>
+                <span class="pl-nome">${log.usuario_nome}</span>
+                ${ip}
+                <span class="pl-data">${data}</span>
+            </div>
+            <div class="pl-item-email">${email}</div>
+            ${extras ? `<div class="pl-det">${extras}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function renderPortalLogPaginacao() {
+    const totalPags = Math.ceil(portalLogTotal / PL_POR_PAG);
+    if (totalPags <= 1) { elPortalLogPag.style.display = 'none'; return; }
+
+    elPortalLogPag.style.display = '';
+    elPortalLogPagInfo.textContent = `Página ${portalLogPagina + 1} de ${totalPags}`;
+
+    document.getElementById('clPortalLogPrev').disabled = portalLogPagina === 0;
+    document.getElementById('clPortalLogNext').disabled = portalLogPagina >= totalPags - 1;
+}
+
+document.getElementById('clPortalLogAtualizar')?.addEventListener('click', () => carregarPortalLog(true));
+document.getElementById('clPortalLogBusca')?.addEventListener('input',  () => carregarPortalLog(true));
+document.getElementById('clPortalLogAcao')?.addEventListener('change',  () => carregarPortalLog(true));
+document.getElementById('clPortalLogPrev')?.addEventListener('click', () => {
+    if (portalLogPagina > 0) { portalLogPagina--; carregarPortalLog(false); }
+});
+document.getElementById('clPortalLogNext')?.addEventListener('click', () => {
+    const totalPags = Math.ceil(portalLogTotal / PL_POR_PAG);
+    if (portalLogPagina < totalPags - 1) { portalLogPagina++; carregarPortalLog(false); }
+});
 
 /* ══════════════════════════════════════════════════════════════
    ATIVIDADES (lista individual)
