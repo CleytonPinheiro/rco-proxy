@@ -783,9 +783,11 @@ body[data-side="open"] .side-panel {
     padding: 6px 8px;
     z-index: 99999;
     display: none;
+    pointer-events: none;
 }
 .classroom-flyout.flyout-visible {
     display: block !important;
+    pointer-events: auto !important;
 }
 .classroom-flyout-label {
     font-size: 10px;
