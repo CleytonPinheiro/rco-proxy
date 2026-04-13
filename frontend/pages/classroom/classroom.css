@@ -2696,6 +2696,22 @@ body.cl-popout .logo-icon { font-size: 15px; }
 
 .pl-item-email { color: var(--text-muted); font-size: .75rem; margin-bottom: 3px; }
 
+.pl-ua {
+    display:     flex;
+    flex-wrap:   wrap;
+    gap:         6px;
+    margin-top:  4px;
+    margin-bottom: 2px;
+}
+.pl-ua span {
+    font-size:     .72rem;
+    background:    color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+    color:         var(--text-primary);
+    padding:       2px 8px;
+    border-radius: 20px;
+    white-space:   nowrap;
+}
+
 .pl-det {
     display:     flex;
     flex-wrap:   wrap;

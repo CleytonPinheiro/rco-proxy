@@ -830,8 +830,24 @@ function renderPortalLog(logs) {
         const email    = det.email || '—';
         const data     = new Date(log.criado_em).toLocaleString('pt-BR');
         const ip       = log.ip ? `<span class="pl-ip">${log.ip}</span>` : '';
-        const extras   = Object.entries(det)
-            .filter(([k]) => k !== 'email')
+
+        const UA_KEYS  = new Set(['navegador', 'so', 'dispositivo']);
+        const dispIcon = { mobile: '📱', tablet: '📲', desktop: '🖥️' };
+        const dispLabel = det.dispositivo || null;
+        const dispIco   = dispLabel ? (dispIcon[dispLabel] || '💻') : null;
+
+        const uaParts = [
+            dispIco   ? `${dispIco} ${dispLabel}` : null,
+            det.so        ? `${det.so}`         : null,
+            det.navegador ? `🌐 ${det.navegador}` : null,
+        ].filter(Boolean);
+
+        const uaHtml  = uaParts.length
+            ? `<div class="pl-ua">${uaParts.map(p => `<span>${p}</span>`).join('')}</div>`
+            : '';
+
+        const extras  = Object.entries(det)
+            .filter(([k]) => k !== 'email' && !UA_KEYS.has(k))
             .map(([k, v]) => `<span class="pl-det-kv"><b>${k}:</b> ${v ?? '—'}</span>`)
             .join('');
 
@@ -843,6 +859,7 @@ function renderPortalLog(logs) {
                 <span class="pl-data">${data}</span>
             </div>
             <div class="pl-item-email">${email}</div>
+            ${uaHtml}
             ${extras ? `<div class="pl-det">${extras}</div>` : ''}
         </div>`;
     }).join('');

@@ -107,6 +107,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.appendChild(flyout);
         flyout.style.display = 'block';
 
+        /* Exibe links admin-only dentro do flyout (ex: Log Portal Aluno) */
+        flyout.querySelectorAll('[data-admin-only]').forEach(function (el) {
+            el.style.display = '';
+        });
+
         /* Injeta indicador › no item pai */
         var parentItem = group.querySelector('.side-nav-item');
         if (parentItem && !parentItem.querySelector('.side-nav-chevron-hint')) {
