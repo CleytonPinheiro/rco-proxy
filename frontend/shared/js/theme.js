@@ -126,19 +126,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function openFlyout() {
             if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-            var rect    = group.getBoundingClientRect();
-            var fw      = 230;
-            var gap     = 10;
-            var left    = rect.right + gap;
-            if (left + fw > window.innerWidth) left = rect.left - fw - gap;
-
             flyout.classList.add('flyout-open');
-            var fh      = flyout.offsetHeight || 160;
-            var topPos  = Math.max(8, rect.top);
-            if (topPos + fh > window.innerHeight - 8) {
-                topPos = Math.max(8, window.innerHeight - fh - 8);
-            }
-            flyout.style.top  = topPos + 'px';
+
+            var rect = group.getBoundingClientRect();
+            var fw   = flyout.offsetWidth  || 240;
+            var fh   = flyout.offsetHeight || 200;
+            var vw   = window.innerWidth;
+            var vh   = window.innerHeight;
+            var gap  = 6;
+
+            var left = rect.right + gap;
+            if (left + fw > vw - 8) left = rect.left - fw - gap;
+            if (left < 8) left = Math.min(8, vw - fw - 8);
+
+            var top = rect.top;
+            if (top + fh > vh - 8) top = vh - fh - 8;
+            if (top < 8) top = 8;
+
+            flyout.style.top  = top + 'px';
             flyout.style.left = left + 'px';
         }
 

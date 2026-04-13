@@ -808,11 +808,11 @@ body[data-side="open"] .side-panel {
 .side-nav-sub-static {
     position: fixed;
     width: 240px;
-    /* Mesma cor de fundo que o painel lateral */
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     background: var(--bg-card);
     border: 1.5px solid var(--border);
     border-radius: 14px;
-    /* Sombra igual ao .side-panel */
     box-shadow: 4px 0 32px rgba(0,0,0,.22);
     padding: 8px 10px 10px;
     z-index: 9999;
