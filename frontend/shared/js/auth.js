@@ -104,6 +104,7 @@
 
             const p = cached.impersonando ? cached.impersonandoPerfil : cached.perfil;
             document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+                if (link.classList.contains('side-nav-child-item')) return;
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
                 if (!podeAcessar(p, modulo)) {
@@ -202,19 +203,16 @@
         const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
 
         document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+            if (link.classList.contains('side-nav-child-item')) return;
             const href   = link.getAttribute('href');
             const modulo = MODULO_URLS[href];
 
             if (!modulo) return; // link sem mapeamento: deixa visível
 
             if (!podeAcessar(perfilEfetivo, modulo)) {
-                /* Marca com atributo para que o CSS !important mantenha oculto
-                   mesmo que o nav adaptativo limpe o inline-style */
                 link.setAttribute('data-perm-hidden', 'true');
                 link.style.display = 'none';
             } else {
-                /* Garante que um reload de permissões (ex: sair de impersonação)
-                   desoculte itens que voltaram a ser permitidos */
                 link.removeAttribute('data-perm-hidden');
                 link.style.display = '';
             }
