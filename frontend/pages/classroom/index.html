@@ -1,701 +1,1408 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
-<head>
-        <meta charset="UTF-8">
-        <script src="../../shared/js/theme.js"></script>
-        <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
-        <link rel="stylesheet" href="../../shared/css/theme.css">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>EduSync — Classroom</title>
-        <link rel="stylesheet" href="../../shared/css/layout.css">
-        <link rel="stylesheet" href="./classroom.css">
-</head>
-<body>
-        <header class="header">
-                <div class="header-content">
-                <div class="header-left">
-                        <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
-                        <a href="/pages/dashboard/" class="logo-link" title="Início">
-                                <span class="logo-icon">⚡</span>
-                                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
-                        </a>
-                </div>
-                <div class="header-divider"></div>
-                <nav class="nav-menu">
-                        <a href="/pages/dashboard/">Turmas</a>
-                        <a href="/pages/frequencias/">Frequências</a>
-                        <a href="/pages/comunicados/">Comunicados</a>
-                        <a href="/pages/crachas/">Crachás</a>
-                        <a href="/pages/emprestimos/">Livros</a>
-                        <a href="/pages/circulacao/">Circulação</a>
-                        <a href="/pages/comportamento/">Comportamento</a>
-                        <a href="/pages/presenca/">Presença</a>
-                </nav>
-                <div class="header-actions">
-                        <button class="btn-theme" onclick="toggleTheme()">🌙</button>
-                        <button id="btnLogout" class="btn-logout">Sair</button>
-                </div>
-                </div>
-        </header>
+        <head>
+                <meta charset="UTF-8" />
+                <script src="../../shared/js/theme.js"></script>
+                <link
+                        rel="icon"
+                        type="image/svg+xml"
+                        href="../../shared/assets/favicon.svg"
+                />
+                <link rel="stylesheet" href="../../shared/css/theme.css" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>EduSync — Classroom</title>
+                <link rel="stylesheet" href="../../shared/css/layout.css" />
+                <link rel="stylesheet" href="./classroom.css" />
+        </head>
+        <body>
+                <header class="header">
+                        <div class="header-content">
+                                <div class="header-left">
+                                        <button
+                                                class="btn-side-menu"
+                                                onclick="abrirSidePanel()"
+                                                title="Ferramentas"
+                                        >
+                                                ☰
+                                        </button>
+                                        <a href="/pages/dashboard/" class="logo-link" title="Início">
+                                                <span class="logo-icon">⚡</span>
+                                                <span class="logo-edu">Edu</span
+                                                ><span class="logo-sync">Sync</span>
+                                        </a>
+                                </div>
+                                <div class="header-divider"></div>
+                                <nav class="nav-menu">
+                                        <a href="/pages/dashboard/">Turmas</a>
+                                        <a href="/pages/frequencias/">Frequências</a>
+                                        <a href="/pages/comunicados/">Comunicados</a>
+                                        <a href="/pages/crachas/">Crachás</a>
+                                        <a href="/pages/emprestimos/">Livros</a>
+                                        <a href="/pages/circulacao/">Circulação</a>
+                                        <a href="/pages/comportamento/">Comportamento</a>
+                                        <a href="/pages/presenca/">Presença</a>
+                                </nav>
+                                <div class="header-actions">
+                                        <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                                        <button id="btnLogout" class="btn-logout">Sair</button>
+                                </div>
+                        </div>
+                </header>
 
-        <!-- Sidebar -->
-        <nav id="sidePanel" class="side-panel">
-                <div class="side-panel-header">
-                        <span class="side-panel-title">Menu</span>
-                        <button class="side-panel-close" onclick="fecharSidePanel()">✕</button>
-                </div>
-                <div class="side-panel-nav">
-                        <a href="/pages/dashboard/" class="side-nav-item">
-                                <span class="side-nav-icon">🏠</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Turmas</span>
-                                        <span class="side-nav-desc">Visão geral das turmas</span>
-                                </div>
-                        </a>
-                        <a href="/pages/frequencias/" class="side-nav-item">
-                                <span class="side-nav-icon">📅</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Frequências</span>
-                                        <span class="side-nav-desc">Lance e consulte faltas</span>
-                                </div>
-                        </a>
-                        <a href="/pages/comunicados/" class="side-nav-item">
-                                <span class="side-nav-icon">📢</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Comunicados de Falta</span>
-                                        <span class="side-nav-desc">Imprima comunicados de falta</span>
-                                </div>
-                        </a>
-                        <a href="/pages/crachas/" class="side-nav-item">
-                                <span class="side-nav-icon">🪪</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Crachás</span>
-                                        <span class="side-nav-desc">Gere e imprima crachás</span>
-                                </div>
-                        </a>
-                        <a href="/pages/circulacao/" class="side-nav-item">
-                                <span class="side-nav-icon">🚶</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Circulação</span>
-                                        <span class="side-nav-desc">Registro de saídas e entradas</span>
-                                </div>
-                        </a>
-                        <a href="/pages/comportamento/" class="side-nav-item">
-                                <span class="side-nav-icon">⭐</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Comportamento</span>
-                                        <span class="side-nav-desc">Pontuação e ocorrências</span>
-                                </div>
-                        </a>
-                        <a href="/pages/presenca/" class="side-nav-item">
-                                <span class="side-nav-icon">✋</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Presença Diária</span>
-                                        <span class="side-nav-desc">Chamada rápida do dia</span>
-                                </div>
-                        </a>
-                        <a href="/pages/mapa-sala/" class="side-nav-item">
-                                <span class="side-nav-icon side-nav-icon-svg">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                                                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                                        </svg>
-                                </span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Mapa de Sala</span>
-                                        <span class="side-nav-desc">Arranjo de carteiras por turma</span>
-                                </div>
-                        </a>
-                        <a href="/pages/atividades/" class="side-nav-item">
-                                <span class="side-nav-icon side-nav-icon-svg">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M9 11l3 3L22 4"/>
-                                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                                        </svg>
-                                </span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Atividades de Sala</span>
-                                        <span class="side-nav-desc">Checklist diário de atividades</span>
-                                </div>
-                        </a>
-                        <a href="/pages/grupos/" class="side-nav-item">
-                                <span class="side-nav-icon">👥</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Grupos</span>
-                                        <span class="side-nav-desc">Organize alunos em equipes</span>
-                                </div>
-                        </a>
-                        <a href="/pages/pedagogico/" class="side-nav-item">
-                                <span class="side-nav-icon">🎓</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Painel Pedagógico</span>
-                                        <span class="side-nav-desc">Avisos e ocorrências para a equipe</span>
-                                </div>
-                        </a>
-                        <a href="/pages/emprestimos/" class="side-nav-item">
-                                <span class="side-nav-icon">📋</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Empréstimos</span>
-                                        <span class="side-nav-desc">Controle de empréstimos</span>
-                                </div>
-                        </a>
-                        <div class="side-nav-group" id="classroomNavGroup">
-                                <a href="/pages/classroom/" class="side-nav-item side-nav-item--parent" id="classroomParentLink">
+                <!-- Sidebar -->
+                <nav id="sidePanel" class="side-panel">
+                        <div class="side-panel-header">
+                                <span class="side-panel-title">Menu</span>
+                                <button class="side-panel-close" onclick="fecharSidePanel()">
+                                        ✕
+                                </button>
+                        </div>
+                        <div class="side-nav">
+                                <a href="/pages/dashboard/" class="side-nav-item">
+                                        <span class="side-nav-icon">🏠</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Turmas</span>
+                                                <span class="side-nav-desc">Visão geral das turmas</span>
+                                        </div>
+                                </a>
+                                <a href="/pages/frequencias/" class="side-nav-item">
+                                        <span class="side-nav-icon">📅</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Frequências</span>
+                                                <span class="side-nav-desc">Lance e consulte faltas</span>
+                                        </div>
+                                </a>
+                                <a href="/pages/comunicados/" class="side-nav-item">
+                                        <span class="side-nav-icon">📢</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Comunicados de Falta</span>
+                                                <span class="side-nav-desc"
+                                                        >Imprima comunicados de falta</span
+                                                >
+                                        </div>
+                                </a>
+                                <a href="/pages/crachas/" class="side-nav-item">
+                                        <span class="side-nav-icon">🪪</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Crachás</span>
+                                                <span class="side-nav-desc">Gere e imprima crachás</span>
+                                        </div>
+                                </a>
+                                <a href="/pages/circulacao/" class="side-nav-item">
+                                        <span class="side-nav-icon">🚶</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Circulação</span>
+                                                <span class="side-nav-desc"
+                                                        >Registro de saídas e entradas</span
+                                                >
+                                        </div>
+                                </a>
+                                <a href="/pages/comportamento/" class="side-nav-item">
+                                        <span class="side-nav-icon">⭐</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Comportamento</span>
+                                                <span class="side-nav-desc">Pontuação e ocorrências</span>
+                                        </div>
+                                </a>
+                                <a href="/pages/presenca/" class="side-nav-item">
+                                        <span class="side-nav-icon">✋</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Presença Diária</span>
+                                                <span class="side-nav-desc">Chamada rápida do dia</span>
+                                        </div>
+                                </a>
+                                <a href="/pages/mapa-sala/" class="side-nav-item">
                                         <span class="side-nav-icon side-nav-icon-svg">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                                                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                                <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                >
+                                                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                                                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                                                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                                                        <rect x="14" y="14" width="7" height="7" rx="1" />
                                                 </svg>
                                         </span>
                                         <div class="side-nav-info">
-                                                <span class="side-nav-nome">Classroom</span>
-                                                <span class="side-nav-desc">Atividades e notas do Google</span>
+                                                <span class="side-nav-nome">Mapa de Sala</span>
+                                                <span class="side-nav-desc"
+                                                        >Arranjo de carteiras por turma</span
+                                                >
                                         </div>
-                                        <span class="side-nav-chevron">›</span>
+                                </a>
+                                <a href="/pages/atividades/" class="side-nav-item">
+                                        <span class="side-nav-icon side-nav-icon-svg">
+                                                <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                >
+                                                        <path d="M9 11l3 3L22 4" />
+                                                        <path
+                                                                d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                                                        />
+                                                </svg>
+                                        </span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Atividades de Sala</span>
+                                                <span class="side-nav-desc"
+                                                        >Checklist diário de atividades</span
+                                                >
+                                        </div>
+                                </a>
+                                <a href="/pages/grupos/" class="side-nav-item">
+                                        <span class="side-nav-icon">👥</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Grupos</span>
+                                                <span class="side-nav-desc">Organize alunos em equipes</span>
+                                        </div>
+                                </a>
+                                <a href="/pages/pedagogico/" class="side-nav-item">
+                                        <span class="side-nav-icon">🎓</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Painel Pedagógico</span>
+                                                <span class="side-nav-desc"
+                                                        >Avisos e ocorrências para a equipe</span
+                                                >
+                                        </div>
+                                </a>
+                                <a href="/pages/emprestimos/" class="side-nav-item">
+                                        <span class="side-nav-icon">📋</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Empréstimos</span>
+                                                <span class="side-nav-desc">Controle de empréstimos</span>
+                                        </div>
+                                </a>
+
+                                <div class="side-nav-group" id="classroomNavGroup">
+                                        <a href="/pages/classroom/" class="side-nav-item side-nav-item--parent" id="classroomParentLink">
+                                                <span class="side-nav-icon side-nav-icon-svg">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                                        </svg>
+                                                </span>
+                                                <div class="side-nav-info">
+                                                        <span class="side-nav-nome">Classroom</span>
+                                                        <span class="side-nav-desc">Atividades e notas do Google</span>
+                                                </div>
+                                                <span class="side-nav-chevron">›</span>
+                                        </a>
+                                </div>
+
+                                <a href="/pages/materiais/" class="side-nav-item">
+                                        <span class="side-nav-icon">📦</span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">Materiais</span>
+                                                <span class="side-nav-desc">Gerencie o acervo da escola</span>
+                                        </div>
+                                </a>
+                                <a href="/qrcode/" class="side-nav-item">
+                                        <span class="side-nav-icon side-nav-icon-svg">
+                                                <svg
+                                                        viewBox="0 0 20 20"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.6"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                        <rect x="2" y="2" width="6" height="6" rx="1" />
+                                                        <rect x="12" y="2" width="6" height="6" rx="1" />
+                                                        <rect x="2" y="12" width="6" height="6" rx="1" />
+                                                        <rect
+                                                                x="12"
+                                                                y="12"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                        <rect
+                                                                x="15"
+                                                                y="12"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                        <rect
+                                                                x="12"
+                                                                y="15"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                        <rect
+                                                                x="15"
+                                                                y="15"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                        <rect
+                                                                x="18"
+                                                                y="12"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                        <rect
+                                                                x="18"
+                                                                y="15"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                        <rect
+                                                                x="12"
+                                                                y="18"
+                                                                width="2"
+                                                                height="2"
+                                                                stroke="none"
+                                                                fill="currentColor"
+                                                        />
+                                                </svg>
+                                        </span>
+                                        <div class="side-nav-info">
+                                                <span class="side-nav-nome">QR Code</span>
+                                                <span class="side-nav-desc">Gere QR Codes para links</span>
+                                        </div>
                                 </a>
                         </div>
-                        <a href="/pages/materiais/" class="side-nav-item">
-                                <span class="side-nav-icon">📦</span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">Materiais</span>
-                                        <span class="side-nav-desc">Gerencie o acervo da escola</span>
-                                </div>
-                        </a>
-                        <a href="/qrcode/" class="side-nav-item">
-                                <span class="side-nav-icon side-nav-icon-svg">
-                                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" xmlns="http://www.w3.org/2000/svg">
-                                                <rect x="2" y="2" width="6" height="6" rx="1"/>
-                                                <rect x="12" y="2" width="6" height="6" rx="1"/>
-                                                <rect x="2" y="12" width="6" height="6" rx="1"/>
-                                                <rect x="12" y="12" width="2" height="2" stroke="none" fill="currentColor"/>
-                                                <rect x="15" y="12" width="2" height="2" stroke="none" fill="currentColor"/>
-                                                <rect x="12" y="15" width="2" height="2" stroke="none" fill="currentColor"/>
-                                                <rect x="15" y="15" width="2" height="2" stroke="none" fill="currentColor"/>
-                                                <rect x="18" y="12" width="2" height="2" stroke="none" fill="currentColor"/>
-                                                <rect x="18" y="15" width="2" height="2" stroke="none" fill="currentColor"/>
-                                                <rect x="12" y="18" width="2" height="2" stroke="none" fill="currentColor"/>
-                                        </svg>
-                                </span>
-                                <div class="side-nav-info">
-                                        <span class="side-nav-nome">QR Code</span>
-                                        <span class="side-nav-desc">Gere QR Codes para links</span>
-                                </div>
-                        </a>
-                </div>
-                <div class="side-panel-footer">EduSync © 2026</div>
-        </nav>
+                        <div class="side-panel-footer">EduSync © 2026</div>
+                </nav>
 
-        <main class="cl-main">
-
-                <!-- ─── Tela de Conexão ─── -->
-                <div class="cl-connect-screen" id="clConnectScreen">
-                        <div class="cl-connect-card">
-                                <div class="cl-connect-icon">
-                                        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <rect width="48" height="48" rx="12" fill="#4285F4"/>
-                                                <path d="M8 34V14l16 12 16-12v20H8z" fill="white" opacity=".9"/>
-                                                <path d="M8 14l16 12 16-12H8z" fill="white"/>
-                                        </svg>
-                                </div>
-                                <h1 class="cl-connect-titulo">Google Classroom</h1>
-                                <p class="cl-connect-desc" id="clConnectDesc">
-                                        Conecte sua conta Google para gerenciar disciplinas, atividades e notas diretamente pelo EduSync.
-                                </p>
-                                <div id="clConnectActions">
-                                        <button class="cl-btn cl-btn--google" id="clBtnConectar">
-                                                <svg viewBox="0 0 18 18" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                                                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-                                                        <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
-                                                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                <main class="cl-main">
+                        <!-- ─── Tela de Conexão ─── -->
+                        <div class="cl-connect-screen" id="clConnectScreen">
+                                <div class="cl-connect-card">
+                                        <div class="cl-connect-icon">
+                                                <svg
+                                                        viewBox="0 0 48 48"
+                                                        fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                        <rect width="48" height="48" rx="12" fill="#4285F4" />
+                                                        <path
+                                                                d="M8 34V14l16 12 16-12v20H8z"
+                                                                fill="white"
+                                                                opacity=".9"
+                                                        />
+                                                        <path d="M8 14l16 12 16-12H8z" fill="white" />
                                                 </svg>
-                                                Conectar com Google Classroom
-                                        </button>
-                                </div>
-                                <p class="cl-connect-hint" id="clSemCredenciais" style="display:none">
-                                        ⚠️ Configure as variáveis <strong>GOOGLE_CLIENT_ID</strong> e <strong>GOOGLE_CLIENT_SECRET</strong> nas configurações do servidor para ativar a integração.
-                                </p>
-                        </div>
-                </div>
-
-                <!-- Tab flutuante para reabrir gaveta -->
-                <button class="cl-gaveta-tab" id="clGavetaTab" onclick="toggleGaveta()" title="Abrir painéis">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
-                        Painéis
-                </button>
-
-                <!-- ─── Interface principal (3 colunas) ─── -->
-                <div class="cl-workspace" id="clWorkspace" style="display:none">
-
-                        <!-- Coluna 1: Disciplinas -->
-                        <aside class="cl-col cl-col--cursos" id="clCol1">
-                                <div class="cl-col-head">
-                                        <div>
-                                                <h2 class="cl-col-titulo">Disciplinas</h2>
-                                                <p class="cl-col-sub" id="clCursosCount">—</p>
                                         </div>
-                                        <div class="cl-col-head-actions">
-                                                <button class="cl-icon-btn" id="clBtnRefresh" title="Recarregar">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                                                </button>
-                                                <button class="cl-icon-btn cl-icon-btn--desconectar" id="clBtnDesconectar" title="Desconectar conta Google">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                                                </button>
-                                        </div>
-                                </div>
-                                <div class="cl-conta-badge" id="clContaBadge"></div>
-                                <div class="cl-lista" id="clCursoLista">
-                                        <div class="cl-loading">Carregando disciplinas...</div>
-                                </div>
-                        </aside>
-
-                        <!-- Handle 1 -->
-                        <div class="cl-resize-handle" id="clHandle1"></div>
-
-                        <!-- Coluna 2: Atividades + Grupos -->
-                        <section class="cl-col cl-col--atividades" id="clCol2">
-                                <div class="cl-col-head">
-                                        <div>
-                                                <h2 class="cl-col-titulo" id="clColAtivTitulo">Atividades</h2>
-                                                <p class="cl-col-sub" id="clAtivCount">Selecione uma disciplina</p>
-                                        </div>
-                                        <div class="cl-col-head-actions">
-                                                <a class="cl-icon-btn" id="clAtivLink" href="#" target="_blank" title="Abrir no Classroom" style="display:none">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                                </a>
-                                                <button class="cl-icon-btn cl-icon-btn--novo-grupo" id="clBtnNovoGrupo" title="Novo grupo" style="display:none">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                                </button>
-                                                <button class="cl-icon-btn cl-icon-btn--criar-rec" id="clBtnCriarRec" style="display:none" title="Criar grupo de recuperação para o grupo selecionado (data de hoje como corte)">
-                                                        🔄
-                                                </button>
-                                                <button class="cl-icon-btn cl-icon-btn--gaveta" id="clBtnGaveta" onclick="toggleGaveta()" title="Recolher painéis laterais">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                                        <h1 class="cl-connect-titulo">Google Classroom</h1>
+                                        <p class="cl-connect-desc" id="clConnectDesc">
+                                                Conecte sua conta Google para gerenciar disciplinas,
+                                                atividades e notas diretamente pelo EduSync.
+                                        </p>
+                                        <div id="clConnectActions">
+                                                <button class="cl-btn cl-btn--google" id="clBtnConectar">
+                                                        <svg
+                                                                viewBox="0 0 18 18"
+                                                                width="18"
+                                                                height="18"
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                        >
+                                                                <path
+                                                                        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+                                                                        fill="#4285F4"
+                                                                />
+                                                                <path
+                                                                        d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+                                                                        fill="#34A853"
+                                                                />
+                                                                <path
+                                                                        d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"
+                                                                        fill="#FBBC05"
+                                                                />
+                                                                <path
+                                                                        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"
+                                                                        fill="#EA4335"
+                                                                />
+                                                        </svg>
+                                                        Conectar com Google Classroom
                                                 </button>
                                         </div>
-                                </div>
-
-                                <!-- Abas Atividades / Grupos / Auditoria / Solicitações -->
-                                <div class="cl-tabs" id="clTabs" style="display:none">
-                                        <button class="cl-tab cl-tab--ativo" id="clTabAtiv">Atividades</button>
-                                        <button class="cl-tab" id="clTabGrupos">Grupos</button>
-                                        <button class="cl-tab" id="clTabAudit">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="margin-right:4px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Auditoria
-                                        </button>
-                                        <button class="cl-tab cl-tab--solicita" id="clTabSolicita" style="display:none">
-                                                ↩ Solicitações<span class="cl-solicita-badge" id="clSolitaBadge" style="display:none">0</span>
-                                        </button>
-                                        <button class="cl-tab cl-tab--portal-log" id="clTabPortalLog" style="display:none">
-                                                🎓 Log Portal
-                                        </button>
-                                </div>
-
-                                <!-- Lista de atividades -->
-                                <div class="cl-lista" id="clAtivLista">
-                                        <div class="cl-empty-state"><p>← Selecione uma disciplina para ver as atividades</p></div>
-                                </div>
-
-                                <!-- Lista de grupos -->
-                                <div class="cl-lista" id="clGrupoLista" style="display:none">
-                                        <div class="cl-empty-state"><p>Nenhum grupo criado.<br>Clique em <strong>+</strong> para criar.</p></div>
-                                </div>
-
-                                <!-- Painel de Auditoria -->
-                                <div class="cl-audit-panel" id="clAuditPanel" style="display:none">
-                                        <div class="cl-audit-config" id="clAuditConfig" style="overflow-y:auto">
-                                                <!-- Chip: vínculo RCO já conhecido (inferido dos grupos ou salvo) -->
-                                                <div class="cl-audit-chip-wrap" id="clAuditChipWrap" style="display:none">
-                                                        <span class="cl-audit-chip-label">TURMA/DISCIPLINA RCO</span>
-                                                        <div class="cl-audit-chip">
-                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="flex-shrink:0;opacity:.6"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                                                                <span class="cl-audit-chip-nome" id="clAuditChipNome"></span>
-                                                                <button class="cl-audit-chip-alter" id="clAuditChipAlter" type="button" title="Alterar vínculo">✎ alterar</button>
-                                                        </div>
-                                                </div>
-                                                <!-- Seletor: vínculo desconhecido ou usuário clicou em "alterar" -->
-                                                <div id="clAuditSelWrap">
-                                                        <label class="cl-audit-label">Turma</label>
-                                                        <select id="clAuditTurmaSel" style="display:none">
-                                                                <option value="">— selecione a turma —</option>
-                                                        </select>
-                                                        <div class="cl-csel">
-                                                                <button class="cl-csel-btn" type="button" id="clAuditTurmaBtn">
-                                                                        <span class="cl-csel-val" id="clAuditTurmaVal">— selecione a turma —</span>
-                                                                        <svg class="cl-csel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
-                                                                </button>
-                                                                <div class="cl-csel-drop" id="clAuditTurmaDrop" style="display:none">
-                                                                        <div class="cl-csel-list" id="clAuditTurmaList"></div>
-                                                                </div>
-                                                        </div>
-                                                        <label class="cl-audit-label" style="margin-top:6px">Disciplina</label>
-                                                        <select id="clAuditClasseSel" style="display:none">
-                                                                <option value="">— selecione —</option>
-                                                        </select>
-                                                        <div class="cl-csel">
-                                                                <button class="cl-csel-btn" type="button" id="clAuditSelBtn">
-                                                                        <span class="cl-csel-val" id="clAuditSelVal">— selecione a disciplina —</span>
-                                                                        <svg class="cl-csel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
-                                                                </button>
-                                                                <div class="cl-csel-drop" id="clAuditSelDrop" style="display:none">
-                                                                        <div class="cl-csel-list" id="clAuditSelList"></div>
-                                                                </div>
-                                                        </div>
-                                                        <button class="cl-btn cl-btn--primary cl-btn--sm" id="clBtnRodarAudit" style="margin-top:8px;width:100%">
-                                                                Analisar frequência
-                                                        </button>
-                                                        <p class="cl-audit-hint" id="clAuditHint"></p>
-                                                </div>
-                                        </div>
-                                        <!-- Handle vertical auditoria -->
-                                        <div class="cl-hresize-handle" id="clAuditConfigHandle"></div>
-
-                                        <div class="cl-audit-results" id="clAuditResults" style="display:none">
-                                                <div class="cl-audit-results-header" id="clAuditResultsHeader"></div>
-                                                <div class="cl-lista" id="clAuditAtivLista"></div>
-                                        </div>
-                                </div>
-
-                                <!-- Painel de Solicitações de Reabertura -->
-                                <div class="cl-solicita-panel" id="clSolicitaPanel" style="display:none">
-                                        <div class="cl-solicita-filtros">
-                                                <select class="cl-select cl-select--sm" id="clSolicitaFiltroStatus">
-                                                        <option value="todas">Todas</option>
-                                                        <option value="pendente" selected>Pendentes</option>
-                                                        <option value="aprovada">Aprovadas</option>
-                                                        <option value="negada">Negadas</option>
-                                                </select>
-                                                <input class="cl-busca cl-busca--sm" type="search" id="clSolicitaBusca" placeholder="Buscar aluno ou atividade…"/>
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clSolicitaAtualizar">↺ Atualizar</button>
-                                        </div>
-                                        <div id="clSolicitaLista" class="cl-solicita-lista">
-                                                <div class="cl-empty-state"><p>Carregando…</p></div>
-                                        </div>
-                                </div>
-
-                                <!-- Painel Log Portal do Aluno — somente admin -->
-                                <div class="cl-portal-log-panel" id="clPortalLogPanel" style="display:none">
-                                        <div class="cl-portal-log-filtros">
-                                                <input class="cl-busca cl-busca--sm" type="search" id="clPortalLogBusca"
-                                                           placeholder="Buscar por aluno ou e-mail…" />
-                                                <select class="cl-select cl-select--sm" id="clPortalLogAcao">
-                                                        <option value="">Todas as ações</option>
-                                                        <option value="LOGIN">Login</option>
-                                                        <option value="LOGOUT">Logout</option>
-                                                        <option value="SOLICITAR_REABERTURA">Solicitação de reabertura</option>
-                                                        <option value="NOTIF_LIDA">Notificação lida</option>
-                                                </select>
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clPortalLogAtualizar">↺ Atualizar</button>
-                                        </div>
-                                        <div id="clPortalLogInfo" class="cl-portal-log-info" style="display:none"></div>
-                                        <div id="clPortalLogLista" class="cl-portal-log-lista">
-                                                <div class="cl-empty-state"><p>Selecione a aba para carregar os logs.</p></div>
-                                        </div>
-                                        <div class="cl-portal-log-paginacao" id="clPortalLogPag" style="display:none">
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clPortalLogPrev">← Anterior</button>
-                                                <span id="clPortalLogPagInfo"></span>
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clPortalLogNext">Próxima →</button>
-                                        </div>
-                                </div>
-
-                        </section>
-
-                        <!-- Handle 2 -->
-                        <div class="cl-resize-handle" id="clHandle2"></div>
-
-                        <!-- Coluna 3: Notas/Entregas -->
-                        <section class="cl-col cl-col--notas" id="clCol3">
-                                <div class="cl-col-head">
-                                        <div>
-                                                <h2 class="cl-col-titulo" id="clNotasTitulo">Notas & Entregas</h2>
-                                                <p class="cl-col-sub" id="clNotasCount">Selecione uma atividade</p>
-                                        </div>
-                                        <button class="cl-icon-btn cl-icon-btn--popout" id="clBtnPopout" onclick="popoutNotas()" title="Abrir em janela separada (multi-monitor)">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                        </button>
-                                        <div class="cl-col-head-actions" id="clNotasActions" style="display:none">
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnAtualizar" title="Buscar dados atualizados do Google Classroom">
-                                                        <svg id="clBtnAtualizarIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                                                        Atualizar
-                                                </button>
-                                                <button class="cl-btn cl-btn--sm cl-btn--livro" id="clBtnLivro" style="display:none" title="Marcar/desmarcar que as notas deste grupo já foram lançadas no livro de chamada">
-                                                        📒 Lançar no livro
-                                                </button>
-                                                <button class="cl-btn cl-btn--sm cl-btn--rco" id="clBtnRco" style="display:none" title="Lançar notas calculadas diretamente no RCO Digital">
-                                                        🚀 Lançar no RCO
-                                                </button>
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnImprimir" style="display:none">🖨️ Imprimir</button>
-                                                <button class="cl-btn cl-btn--sm cl-btn--outline" id="clBtnExportar">Exportar CSV</button>
-                                        </div>
-                                </div>
-                                <!-- Stats -->
-                                <div class="cl-notas-stats" id="clNotasStats" style="display:none">
-                                        <div class="cl-stat">
-                                                <span class="cl-stat-num" id="clStTotal">—</span>
-                                                <span class="cl-stat-label">Alunos</span>
-                                        </div>
-                                        <div class="cl-stat">
-                                                <span class="cl-stat-num cl-stat-num--ok" id="clStEntregues">—</span>
-                                                <span class="cl-stat-label" id="clStEntreguesLabel">Entregues</span>
-                                        </div>
-                                        <div class="cl-stat">
-                                                <span class="cl-stat-num cl-stat-num--warn" id="clStPendentes">—</span>
-                                                <span class="cl-stat-label" id="clStPendentesLabel">Pendentes</span>
-                                        </div>
-                                        <div class="cl-stat">
-                                                <span class="cl-stat-num cl-stat-num--info" id="clStMedia">—</span>
-                                                <span class="cl-stat-label">Média</span>
-                                        </div>
-                                </div>
-                                <!-- Filtro (só no modo atividade individual) -->
-                                <div class="cl-notas-filtro" id="clNotasFiltro" style="display:none">
-                                        <input class="cl-busca" type="search" id="clBuscaAluno" placeholder="Buscar aluno..."/>
-                                        <select class="cl-select" id="clFiltroStatus">
-                                                <option value="">Todos</option>
-                                                <option value="entregue">Entregues</option>
-                                                <option value="pendente">Pendentes</option>
-                                                <option value="atrasado">Atrasados</option>
-                                        </select>
-                                </div>
-                                <!-- Lista -->
-                                <div class="cl-notas-lista" id="clNotasLista">
-                                        <div class="cl-empty-state"><p>← Selecione uma atividade para ver as entregas</p></div>
-                                </div>
-                        </section>
-
-                </div><!-- /cl-workspace -->
-
-        </main>
-
-        <!-- ─── Modal de Grupo ─── -->
-        <div class="cl-modal-overlay" id="clGrupoModal">
-                <div class="cl-modal">
-                        <div class="cl-modal-head">
-                                <h3 id="clGrupoModalTitulo">Novo Grupo</h3>
-                                <button class="cl-modal-close" id="clGrupoModalFechar">✕</button>
-                        </div>
-                        <div class="cl-modal-body">
-                                <input type="hidden" id="clGrupoId"/>
-
-                                <!-- Tipo do grupo -->
-                                <label class="cl-label">Tipo do grupo</label>
-                                <div class="cl-tipo-grupo" id="clTipoGrupo">
-                                        <button type="button" class="cl-tipo-btn cl-tipo-btn--ativo" data-tipo="normal">
-                                                📊 Normal
-                                        </button>
-                                        <button type="button" class="cl-tipo-btn" data-tipo="recuperacao">
-                                                🔄 Recuperação
-                                        </button>
-                                </div>
-
-                                <!-- Grupo de origem (só aparece se tipo=recuperacao) -->
-                                <div id="clRecOrigemWrap" style="display:none">
-                                        <label class="cl-label" style="margin-top:10px">Recuperação do grupo</label>
-                                        <select class="cl-select" id="clRecOrigemSel">
-                                                <option value="">— selecione o grupo de origem —</option>
-                                        </select>
-
-                                        <label class="cl-label" style="margin-top:12px">Data e horário de início da recuperação</label>
-                                        <input type="datetime-local" class="cl-input" id="clRecDataInicio" style="max-width:240px"/>
-                                        <p class="cl-label-hint" style="margin-top:4px">
-                                                Apenas submissões entregues <strong>após esta data e horário</strong> serão consideradas como recuperação.
-                                                Alunos que entregaram antes deste momento não aparecerão no grupo de recuperação.
+                                        <p
+                                                class="cl-connect-hint"
+                                                id="clSemCredenciais"
+                                                style="display: none"
+                                        >
+                                                ⚠️ Configure as variáveis <strong>GOOGLE_CLIENT_ID</strong> e
+                                                <strong>GOOGLE_CLIENT_SECRET</strong> nas configurações do
+                                                servidor para ativar a integração.
                                         </p>
                                 </div>
-
-                                <label class="cl-label" style="margin-top:12px">Nome do grupo</label>
-                                <input type="text" class="cl-input" id="clGrupoNome" placeholder="Ex: Atividades Práticas — 1º Trimestre"/>
-
-                                <label class="cl-label" style="margin-top:12px">Meta de pontos do grupo</label>
-                                <input type="number" class="cl-input" id="clGrupoPontos" value="4" min="0.1" max="10" step="0.1" placeholder="Ex: 4.0"/>
-
-                                <label class="cl-label" style="margin-top:12px">
-                                        Código da classe no RCO
-                                        <span class="cl-label-hint">Permite lançamento automático de notas no RCO Digital</span>
-                                </label>
-                                <div class="cl-rco-classe-row">
-                                        <input type="text" class="cl-input" id="clGrupoCodClasseRco" placeholder="Ex: 9148976"/>
-                                        <button type="button" class="cl-btn cl-btn--sm cl-btn--outline cl-btn--buscar-classe" id="clBtnBuscarClasse" title="Buscar classe no RCO">
-                                                🔍 Buscar no RCO
-                                        </button>
-                                </div>
-                                <div id="clClasseRcoInfo" class="cl-classe-rco-info" style="display:none"></div>
-
-                                <label class="cl-label" style="margin-top:12px">Cor do grupo</label>
-                                <div class="cl-cor-picker" id="clCorPicker"></div>
-
-                                <label class="cl-label" style="margin-top:16px">
-                                        Atividades do grupo
-                                        <span class="cl-label-hint">Selecione quais atividades somam neste grupo</span>
-                                </label>
-                                <div class="cl-modal-atividades" id="clModalAtividades">
-                                        <div class="cl-loading">Carregando atividades...</div>
-                                </div>
                         </div>
-                        <div class="cl-modal-foot">
-                                <button class="cl-btn cl-btn--outline" id="clGrupoModalCancelar">Cancelar</button>
-                                <button class="cl-btn cl-btn--primary" id="clGrupoModalSalvar">Salvar grupo</button>
-                        </div>
-                </div>
-        </div>
 
-        <!-- ─── Modal de Confirmação (substitui confirm() nativo) ─── -->
-        <div class="cl-modal-overlay" id="clConfirmModal" role="dialog" aria-modal="true" aria-labelledby="clConfirmTitulo">
-                <div class="cl-modal cl-confirm-modal">
-                        <div class="cl-confirm-icon" id="clConfirmIcone">⚠️</div>
-                        <div class="cl-confirm-content">
-                                <h3 class="cl-confirm-titulo" id="clConfirmTitulo">Confirmar ação</h3>
-                                <p class="cl-confirm-msg" id="clConfirmMsg"></p>
-                        </div>
-                        <div class="cl-modal-foot cl-confirm-foot">
-                                <button class="cl-btn cl-btn--outline" id="clConfirmCancelar">Cancelar</button>
-                                <button class="cl-btn cl-btn--primary" id="clConfirmOk">Confirmar</button>
-                        </div>
-                </div>
-        </div>
+                        <!-- Tab flutuante para reabrir gaveta -->
+                        <button
+                                class="cl-gaveta-tab"
+                                id="clGavetaTab"
+                                onclick="toggleGaveta()"
+                                title="Abrir painéis"
+                        >
+                                <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.5"
+                                        width="12"
+                                        height="12"
+                                >
+                                        <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                                Painéis
+                        </button>
 
-        <!-- ─── Modal Seletor de Classe RCO ─── -->
-        <div class="cl-modal-overlay" id="clClassePickerModal" role="dialog" aria-modal="true">
-                <div class="cl-modal cl-classe-picker-modal">
-                        <div class="cl-modal-head">
-                                <h3>🔍 Selecionar Classe no RCO</h3>
-                                <button class="cl-modal-close" id="clClassePickerFechar">✕</button>
-                        </div>
-                        <div class="cl-modal-body">
-                                <input type="text" class="cl-input" id="clClassePickerBusca" placeholder="Filtrar por turma, disciplina ou código…" autocomplete="off"/>
-                                <div id="clClassePickerFiltro" class="cl-picker-filtro-chip" style="display:none">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                                        <span id="clClassePickerFiltroLabel"></span>
-                                        <button class="cl-picker-filtro-limpar" id="clClassePickerFiltroLimpar" title="Ver todas as turmas">✕ ver todas</button>
-                                </div>
-                                <div id="clClassePickerLista" class="cl-classe-picker-lista">
-                                        <div class="cl-loading">Carregando classes…</div>
-                                </div>
-                        </div>
-                        <div class="cl-modal-foot">
-                                <button class="cl-btn cl-btn--outline" id="clClassePickerCancelar">Cancelar</button>
-                        </div>
-                </div>
-        </div>
-
-        <!-- ─── Modal de Lançamento RCO ─── -->
-        <div class="cl-modal-overlay" id="clRcoModal" role="dialog" aria-modal="true">
-                <div class="cl-modal cl-rco-modal">
-                        <div class="cl-modal-head">
-                                <h3 id="clRcoModalTitulo">🚀 Lançar no RCO</h3>
-                                <button class="cl-modal-close" id="clRcoModalFechar">✕</button>
-                        </div>
-                        <div class="cl-modal-body" id="clRcoModalBody">
-                                <!-- Passo 1: Selecionar avaliação -->
-                                <div id="clRcoPasso1">
-                                        <p class="cl-rco-desc">Selecione qual avaliação parcial receberá as notas calculadas pelo Classroom.</p>
-                                        <div id="clRcoAvaliacoesLista" class="cl-rco-avaliacoes-lista">
-                                                <div class="cl-loading">Buscando avaliações no RCO…</div>
+                        <!-- ─── Interface principal (3 colunas) ─── -->
+                        <div class="cl-workspace" id="clWorkspace" style="display: none">
+                                <!-- Coluna 1: Disciplinas -->
+                                <aside class="cl-col cl-col--cursos" id="clCol1">
+                                        <div class="cl-col-head">
+                                                <div>
+                                                        <h2 class="cl-col-titulo">Disciplinas</h2>
+                                                        <p class="cl-col-sub" id="clCursosCount">—</p>
+                                                </div>
+                                                <div class="cl-col-head-actions">
+                                                        <button
+                                                                class="cl-icon-btn"
+                                                                id="clBtnRefresh"
+                                                                title="Recarregar"
+                                                        >
+                                                                <svg
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                        width="16"
+                                                                        height="16"
+                                                                >
+                                                                        <path d="M23 4v6h-6" />
+                                                                        <path d="M1 20v-6h6" />
+                                                                        <path
+                                                                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                                                                        />
+                                                                </svg>
+                                                        </button>
+                                                        <button
+                                                                class="cl-icon-btn cl-icon-btn--desconectar"
+                                                                id="clBtnDesconectar"
+                                                                title="Desconectar conta Google"
+                                                        >
+                                                                <svg
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                        width="16"
+                                                                        height="16"
+                                                                >
+                                                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                                                        <polyline points="16 17 21 12 16 7" />
+                                                                        <line x1="21" y1="12" x2="9" y2="12" />
+                                                                </svg>
+                                                        </button>
+                                                </div>
                                         </div>
-                                </div>
-                                <!-- Passo 2: Preview de mapeamento -->
-                                <div id="clRcoPasso2" style="display:none">
-                                        <div class="cl-rco-avaliacao-info" id="clRcoAvaliacaoInfo"></div>
-                                        <p class="cl-rco-desc">Confira o mapeamento antes de confirmar. Alunos não encontrados ficam com a nota original do RCO.</p>
-                                        <div class="cl-rco-table-wrap">
-                                                <table class="cl-rco-table" id="clRcoTable">
-                                                        <thead>
-                                                                <tr>
-                                                                        <th>#</th>
-                                                                        <th>Aluno (RCO)</th>
-                                                                        <th>Nota atual</th>
-                                                                        <th>Nota Classroom</th>
-                                                                        <th>Status</th>
-                                                                </tr>
-                                                        </thead>
-                                                        <tbody id="clRcoTableBody"></tbody>
-                                                </table>
+                                        <div class="cl-conta-badge" id="clContaBadge"></div>
+                                        <div class="cl-lista" id="clCursoLista">
+                                                <div class="cl-loading">Carregando disciplinas...</div>
                                         </div>
-                                </div>
-                        </div>
-                        <div class="cl-modal-foot cl-modal-foot--split" id="clRcoModalFoot">
-                                <div class="cl-rco-foot-left">
-                                        <button class="cl-btn cl-btn--sm cl-btn--danger-outline" id="clRcoModalZerar" style="display:none" title="Envia nota vazia para todos os alunos desta avaliação no RCO">
-                                                🗑️ Zerar avaliação no RCO
-                                        </button>
-                                </div>
-                                <div class="cl-rco-foot-right">
-                                        <button class="cl-btn cl-btn--outline" id="clRcoModalCancelar">Cancelar</button>
-                                        <button class="cl-btn cl-btn--warning" id="clRcoModalSalvarDb" style="display:none" title="Salva no banco local sem reenviar ao RCO">
-                                                💾 Salvar no banco
-                                        </button>
-                                        <button class="cl-btn cl-btn--rco-confirm" id="clRcoModalConfirmar" style="display:none">
-                                                🚀 Confirmar lançamento
-                                        </button>
-                                </div>
-                        </div>
-                </div>
-        </div>
+                                </aside>
 
-        <!-- ─── Modal de Seleção de Conteúdos (fallback quando RCO rejeita sem conteúdos) ─── -->
-        <div class="cl-modal-overlay" id="clConteudosModal" role="dialog" aria-modal="true">
-                <div class="cl-modal cl-conteudos-modal">
-                        <div class="cl-modal-head">
-                                <h3>📚 Vincular conteúdos à avaliação</h3>
-                                <button class="cl-modal-close" id="clConteudosModalFechar">✕</button>
-                        </div>
-                        <div class="cl-modal-body">
-                                <p class="cl-rco-desc">
-                                        O RCO exige pelo menos 1 conteúdo vinculado à avaliação para aceitar o lançamento de notas.
-                                        Selecione os conteúdos abaixo ou adicione um novo.
-                                </p>
+                                <!-- Handle 1 -->
+                                <div class="cl-resize-handle" id="clHandle1"></div>
 
-                                <!-- Sugestões de outras avaliações da mesma classe -->
-                                <div id="clConteudosSugestoes">
-                                        <div class="cl-conteudos-secao-titulo">Conteúdos de outras avaliações da turma</div>
-                                        <div id="clConteudosSugestoesLista" class="cl-conteudos-lista">
-                                                <div class="cl-loading">Buscando…</div>
+                                <!-- Coluna 2: Atividades + Grupos -->
+                                <section class="cl-col cl-col--atividades" id="clCol2">
+                                        <div class="cl-col-head">
+                                                <div>
+                                                        <h2 class="cl-col-titulo" id="clColAtivTitulo">
+                                                                Atividades
+                                                        </h2>
+                                                        <p class="cl-col-sub" id="clAtivCount">
+                                                                Selecione uma disciplina
+                                                        </p>
+                                                </div>
+                                                <div class="cl-col-head-actions">
+                                                        <a
+                                                                class="cl-icon-btn"
+                                                                id="clAtivLink"
+                                                                href="#"
+                                                                target="_blank"
+                                                                title="Abrir no Classroom"
+                                                                style="display: none"
+                                                        >
+                                                                <svg
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                        width="16"
+                                                                        height="16"
+                                                                >
+                                                                        <path
+                                                                                d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                                                                        />
+                                                                        <polyline points="15 3 21 3 21 9" />
+                                                                        <line x1="10" y1="14" x2="21" y2="3" />
+                                                                </svg>
+                                                        </a>
+                                                        <button
+                                                                class="cl-icon-btn cl-icon-btn--novo-grupo"
+                                                                id="clBtnNovoGrupo"
+                                                                title="Novo grupo"
+                                                                style="display: none"
+                                                        >
+                                                                <svg
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                        width="16"
+                                                                        height="16"
+                                                                >
+                                                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                                                </svg>
+                                                        </button>
+                                                        <button
+                                                                class="cl-icon-btn cl-icon-btn--criar-rec"
+                                                                id="clBtnCriarRec"
+                                                                style="display: none"
+                                                                title="Criar grupo de recuperação para o grupo selecionado (data de hoje como corte)"
+                                                        >
+                                                                🔄
+                                                        </button>
+                                                        <button
+                                                                class="cl-icon-btn cl-icon-btn--gaveta"
+                                                                id="clBtnGaveta"
+                                                                onclick="toggleGaveta()"
+                                                                title="Recolher painéis laterais"
+                                                        >
+                                                                <svg
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                        width="15"
+                                                                        height="15"
+                                                                >
+                                                                        <polyline points="11 17 6 12 11 7" />
+                                                                        <polyline points="18 17 13 12 18 7" />
+                                                                </svg>
+                                                        </button>
+                                                </div>
                                         </div>
-                                </div>
 
-                                <!-- Adicionar conteúdo personalizado -->
-                                <div class="cl-conteudos-secao-titulo" style="margin-top:16px">Adicionar conteúdo personalizado</div>
-                                <div class="cl-conteudos-add-wrap">
+                                        <!-- Abas Atividades / Grupos / Auditoria / Solicitações -->
+                                        <div class="cl-tabs" id="clTabs" style="display: none">
+                                                <button class="cl-tab cl-tab--ativo" id="clTabAtiv">
+                                                        Atividades
+                                                </button>
+                                                <button class="cl-tab" id="clTabGrupos">Grupos</button>
+                                                <button class="cl-tab" id="clTabAudit">
+                                                        <svg
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                stroke-width="2"
+                                                                width="12"
+                                                                height="12"
+                                                                style="margin-right: 4px"
+                                                        >
+                                                                <path d="M9 11l3 3L22 4" />
+                                                                <path
+                                                                        d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                                                                /></svg
+                                                        >Auditoria
+                                                </button>
+                                                <button
+                                                        class="cl-tab cl-tab--solicita"
+                                                        id="clTabSolicita"
+                                                        style="display: none"
+                                                >
+                                                        ↩ Solicitações<span
+                                                                class="cl-solicita-badge"
+                                                                id="clSolitaBadge"
+                                                                style="display: none"
+                                                                >0</span
+                                                        >
+                                                </button>
+                                                <button
+                                                        class="cl-tab cl-tab--portal-log"
+                                                        id="clTabPortalLog"
+                                                        style="display: none"
+                                                >
+                                                        🎓 Log Portal
+                                                </button>
+                                        </div>
+
+                                        <!-- Lista de atividades -->
+                                        <div class="cl-lista" id="clAtivLista">
+                                                <div class="cl-empty-state">
+                                                        <p>← Selecione uma disciplina para ver as atividades</p>
+                                                </div>
+                                        </div>
+
+                                        <!-- Lista de grupos -->
+                                        <div class="cl-lista" id="clGrupoLista" style="display: none">
+                                                <div class="cl-empty-state">
+                                                        <p>
+                                                                Nenhum grupo criado.<br />Clique em
+                                                                <strong>+</strong> para criar.
+                                                        </p>
+                                                </div>
+                                        </div>
+
+                                        <!-- Painel de Auditoria -->
+                                        <div
+                                                class="cl-audit-panel"
+                                                id="clAuditPanel"
+                                                style="display: none"
+                                        >
+                                                <div
+                                                        class="cl-audit-config"
+                                                        id="clAuditConfig"
+                                                        style="overflow-y: auto"
+                                                >
+                                                        <!-- Chip: vínculo RCO já conhecido (inferido dos grupos ou salvo) -->
+                                                        <div
+                                                                class="cl-audit-chip-wrap"
+                                                                id="clAuditChipWrap"
+                                                                style="display: none"
+                                                        >
+                                                                <span class="cl-audit-chip-label"
+                                                                        >TURMA/DISCIPLINA RCO</span
+                                                                >
+                                                                <div class="cl-audit-chip">
+                                                                        <svg
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                stroke-width="2"
+                                                                                width="13"
+                                                                                height="13"
+                                                                                style="flex-shrink: 0; opacity: 0.6"
+                                                                        >
+                                                                                <path d="M9 11l3 3L22 4" />
+                                                                                <path
+                                                                                        d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                                                                                />
+                                                                        </svg>
+                                                                        <span
+                                                                                class="cl-audit-chip-nome"
+                                                                                id="clAuditChipNome"
+                                                                        ></span>
+                                                                        <button
+                                                                                class="cl-audit-chip-alter"
+                                                                                id="clAuditChipAlter"
+                                                                                type="button"
+                                                                                title="Alterar vínculo"
+                                                                        >
+                                                                                ✎ alterar
+                                                                        </button>
+                                                                </div>
+                                                        </div>
+                                                        <!-- Seletor: vínculo desconhecido ou usuário clicou em "alterar" -->
+                                                        <div id="clAuditSelWrap">
+                                                                <label class="cl-audit-label">Turma</label>
+                                                                <select id="clAuditTurmaSel" style="display: none">
+                                                                        <option value="">— selecione a turma —</option>
+                                                                </select>
+                                                                <div class="cl-csel">
+                                                                        <button
+                                                                                class="cl-csel-btn"
+                                                                                type="button"
+                                                                                id="clAuditTurmaBtn"
+                                                                        >
+                                                                                <span class="cl-csel-val" id="clAuditTurmaVal"
+                                                                                        >— selecione a turma —</span
+                                                                                >
+                                                                                <svg
+                                                                                        class="cl-csel-arrow"
+                                                                                        viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        stroke="currentColor"
+                                                                                        stroke-width="2"
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                >
+                                                                                        <polyline points="6 9 12 15 18 9" />
+                                                                                </svg>
+                                                                        </button>
+                                                                        <div
+                                                                                class="cl-csel-drop"
+                                                                                id="clAuditTurmaDrop"
+                                                                                style="display: none"
+                                                                        >
+                                                                                <div
+                                                                                        class="cl-csel-list"
+                                                                                        id="clAuditTurmaList"
+                                                                                ></div>
+                                                                        </div>
+                                                                </div>
+                                                                <label class="cl-audit-label" style="margin-top: 6px"
+                                                                        >Disciplina</label
+                                                                >
+                                                                <select id="clAuditClasseSel" style="display: none">
+                                                                        <option value="">— selecione —</option>
+                                                                </select>
+                                                                <div class="cl-csel">
+                                                                        <button
+                                                                                class="cl-csel-btn"
+                                                                                type="button"
+                                                                                id="clAuditSelBtn"
+                                                                        >
+                                                                                <span class="cl-csel-val" id="clAuditSelVal"
+                                                                                        >— selecione a disciplina —</span
+                                                                                >
+                                                                                <svg
+                                                                                        class="cl-csel-arrow"
+                                                                                        viewBox="0 0 24 24"
+                                                                                        fill="none"
+                                                                                        stroke="currentColor"
+                                                                                        stroke-width="2"
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                >
+                                                                                        <polyline points="6 9 12 15 18 9" />
+                                                                                </svg>
+                                                                        </button>
+                                                                        <div
+                                                                                class="cl-csel-drop"
+                                                                                id="clAuditSelDrop"
+                                                                                style="display: none"
+                                                                        >
+                                                                                <div
+                                                                                        class="cl-csel-list"
+                                                                                        id="clAuditSelList"
+                                                                                ></div>
+                                                                        </div>
+                                                                </div>
+                                                                <button
+                                                                        class="cl-btn cl-btn--primary cl-btn--sm"
+                                                                        id="clBtnRodarAudit"
+                                                                        style="margin-top: 8px; width: 100%"
+                                                                >
+                                                                        Analisar frequência
+                                                                </button>
+                                                                <p class="cl-audit-hint" id="clAuditHint"></p>
+                                                        </div>
+                                                </div>
+                                                <!-- Handle vertical auditoria -->
+                                                <div class="cl-hresize-handle" id="clAuditConfigHandle"></div>
+
+                                                <div
+                                                        class="cl-audit-results"
+                                                        id="clAuditResults"
+                                                        style="display: none"
+                                                >
+                                                        <div
+                                                                class="cl-audit-results-header"
+                                                                id="clAuditResultsHeader"
+                                                        ></div>
+                                                        <div class="cl-lista" id="clAuditAtivLista"></div>
+                                                </div>
+                                        </div>
+
+                                        <!-- Painel de Solicitações de Reabertura -->
+                                        <div
+                                                class="cl-solicita-panel"
+                                                id="clSolicitaPanel"
+                                                style="display: none"
+                                        >
+                                                <div class="cl-solicita-filtros">
+                                                        <select
+                                                                class="cl-select cl-select--sm"
+                                                                id="clSolicitaFiltroStatus"
+                                                        >
+                                                                <option value="todas">Todas</option>
+                                                                <option value="pendente" selected>Pendentes</option>
+                                                                <option value="aprovada">Aprovadas</option>
+                                                                <option value="negada">Negadas</option>
+                                                        </select>
+                                                        <input
+                                                                class="cl-busca cl-busca--sm"
+                                                                type="search"
+                                                                id="clSolicitaBusca"
+                                                                placeholder="Buscar aluno ou atividade…"
+                                                        />
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clSolicitaAtualizar"
+                                                        >
+                                                                ↺ Atualizar
+                                                        </button>
+                                                </div>
+                                                <div id="clSolicitaLista" class="cl-solicita-lista">
+                                                        <div class="cl-empty-state"><p>Carregando…</p></div>
+                                                </div>
+                                        </div>
+
+                                        <!-- Painel Log Portal do Aluno — somente admin -->
+                                        <div
+                                                class="cl-portal-log-panel"
+                                                id="clPortalLogPanel"
+                                                style="display: none"
+                                        >
+                                                <div class="cl-portal-log-filtros">
+                                                        <input
+                                                                class="cl-busca cl-busca--sm"
+                                                                type="search"
+                                                                id="clPortalLogBusca"
+                                                                placeholder="Buscar por aluno ou e-mail…"
+                                                        />
+                                                        <select
+                                                                class="cl-select cl-select--sm"
+                                                                id="clPortalLogAcao"
+                                                        >
+                                                                <option value="">Todas as ações</option>
+                                                                <option value="LOGIN">Login</option>
+                                                                <option value="LOGOUT">Logout</option>
+                                                                <option value="SOLICITAR_REABERTURA">
+                                                                        Solicitação de reabertura
+                                                                </option>
+                                                                <option value="NOTIF_LIDA">Notificação lida</option>
+                                                        </select>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clPortalLogAtualizar"
+                                                        >
+                                                                ↺ Atualizar
+                                                        </button>
+                                                </div>
+                                                <div
+                                                        id="clPortalLogInfo"
+                                                        class="cl-portal-log-info"
+                                                        style="display: none"
+                                                ></div>
+                                                <div id="clPortalLogLista" class="cl-portal-log-lista">
+                                                        <div class="cl-empty-state">
+                                                                <p>Selecione a aba para carregar os logs.</p>
+                                                        </div>
+                                                </div>
+                                                <div
+                                                        class="cl-portal-log-paginacao"
+                                                        id="clPortalLogPag"
+                                                        style="display: none"
+                                                >
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clPortalLogPrev"
+                                                        >
+                                                                ← Anterior
+                                                        </button>
+                                                        <span id="clPortalLogPagInfo"></span>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clPortalLogNext"
+                                                        >
+                                                                Próxima →
+                                                        </button>
+                                                </div>
+                                        </div>
+                                </section>
+
+                                <!-- Handle 2 -->
+                                <div class="cl-resize-handle" id="clHandle2"></div>
+
+                                <!-- Coluna 3: Notas/Entregas -->
+                                <section class="cl-col cl-col--notas" id="clCol3">
+                                        <div class="cl-col-head">
+                                                <div>
+                                                        <h2 class="cl-col-titulo" id="clNotasTitulo">
+                                                                Notas & Entregas
+                                                        </h2>
+                                                        <p class="cl-col-sub" id="clNotasCount">
+                                                                Selecione uma atividade
+                                                        </p>
+                                                </div>
+                                                <button
+                                                        class="cl-icon-btn cl-icon-btn--popout"
+                                                        id="clBtnPopout"
+                                                        onclick="popoutNotas()"
+                                                        title="Abrir em janela separada (multi-monitor)"
+                                                >
+                                                        <svg
+                                                                viewBox="0 0 24 24"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                stroke-width="2"
+                                                                width="15"
+                                                                height="15"
+                                                        >
+                                                                <path
+                                                                        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                                                                />
+                                                                <polyline points="15 3 21 3 21 9" />
+                                                                <line x1="10" y1="14" x2="21" y2="3" />
+                                                        </svg>
+                                                </button>
+                                                <div
+                                                        class="cl-col-head-actions"
+                                                        id="clNotasActions"
+                                                        style="display: none"
+                                                >
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clBtnAtualizar"
+                                                                title="Buscar dados atualizados do Google Classroom"
+                                                        >
+                                                                <svg
+                                                                        id="clBtnAtualizarIcon"
+                                                                        viewBox="0 0 24 24"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        stroke-width="2"
+                                                                        width="14"
+                                                                        height="14"
+                                                                >
+                                                                        <polyline points="23 4 23 10 17 10" />
+                                                                        <polyline points="1 20 1 14 7 14" />
+                                                                        <path
+                                                                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                                                                        />
+                                                                </svg>
+                                                                Atualizar
+                                                        </button>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--livro"
+                                                                id="clBtnLivro"
+                                                                style="display: none"
+                                                                title="Marcar/desmarcar que as notas deste grupo já foram lançadas no livro de chamada"
+                                                        >
+                                                                📒 Lançar no livro
+                                                        </button>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--rco"
+                                                                id="clBtnRco"
+                                                                style="display: none"
+                                                                title="Lançar notas calculadas diretamente no RCO Digital"
+                                                        >
+                                                                🚀 Lançar no RCO
+                                                        </button>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clBtnImprimir"
+                                                                style="display: none"
+                                                        >
+                                                                🖨️ Imprimir
+                                                        </button>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--outline"
+                                                                id="clBtnExportar"
+                                                        >
+                                                                Exportar CSV
+                                                        </button>
+                                                </div>
+                                        </div>
+                                        <!-- Stats -->
+                                        <div
+                                                class="cl-notas-stats"
+                                                id="clNotasStats"
+                                                style="display: none"
+                                        >
+                                                <div class="cl-stat">
+                                                        <span class="cl-stat-num" id="clStTotal">—</span>
+                                                        <span class="cl-stat-label">Alunos</span>
+                                                </div>
+                                                <div class="cl-stat">
+                                                        <span
+                                                                class="cl-stat-num cl-stat-num--ok"
+                                                                id="clStEntregues"
+                                                                >—</span
+                                                        >
+                                                        <span class="cl-stat-label" id="clStEntreguesLabel"
+                                                                >Entregues</span
+                                                        >
+                                                </div>
+                                                <div class="cl-stat">
+                                                        <span
+                                                                class="cl-stat-num cl-stat-num--warn"
+                                                                id="clStPendentes"
+                                                                >—</span
+                                                        >
+                                                        <span class="cl-stat-label" id="clStPendentesLabel"
+                                                                >Pendentes</span
+                                                        >
+                                                </div>
+                                                <div class="cl-stat">
+                                                        <span class="cl-stat-num cl-stat-num--info" id="clStMedia"
+                                                                >—</span
+                                                        >
+                                                        <span class="cl-stat-label">Média</span>
+                                                </div>
+                                        </div>
+                                        <!-- Filtro (só no modo atividade individual) -->
+                                        <div
+                                                class="cl-notas-filtro"
+                                                id="clNotasFiltro"
+                                                style="display: none"
+                                        >
+                                                <input
+                                                        class="cl-busca"
+                                                        type="search"
+                                                        id="clBuscaAluno"
+                                                        placeholder="Buscar aluno..."
+                                                />
+                                                <select class="cl-select" id="clFiltroStatus">
+                                                        <option value="">Todos</option>
+                                                        <option value="entregue">Entregues</option>
+                                                        <option value="pendente">Pendentes</option>
+                                                        <option value="atrasado">Atrasados</option>
+                                                </select>
+                                        </div>
+                                        <!-- Lista -->
+                                        <div class="cl-notas-lista" id="clNotasLista">
+                                                <div class="cl-empty-state">
+                                                        <p>← Selecione uma atividade para ver as entregas</p>
+                                                </div>
+                                        </div>
+                                </section>
+                        </div>
+                        <!-- /cl-workspace -->
+                </main>
+
+                <!-- ─── Modal de Grupo ─── -->
+                <div class="cl-modal-overlay" id="clGrupoModal">
+                        <div class="cl-modal">
+                                <div class="cl-modal-head">
+                                        <h3 id="clGrupoModalTitulo">Novo Grupo</h3>
+                                        <button class="cl-modal-close" id="clGrupoModalFechar">✕</button>
+                                </div>
+                                <div class="cl-modal-body">
+                                        <input type="hidden" id="clGrupoId" />
+
+                                        <!-- Tipo do grupo -->
+                                        <label class="cl-label">Tipo do grupo</label>
+                                        <div class="cl-tipo-grupo" id="clTipoGrupo">
+                                                <button
+                                                        type="button"
+                                                        class="cl-tipo-btn cl-tipo-btn--ativo"
+                                                        data-tipo="normal"
+                                                >
+                                                        📊 Normal
+                                                </button>
+                                                <button
+                                                        type="button"
+                                                        class="cl-tipo-btn"
+                                                        data-tipo="recuperacao"
+                                                >
+                                                        🔄 Recuperação
+                                                </button>
+                                        </div>
+
+                                        <!-- Grupo de origem (só aparece se tipo=recuperacao) -->
+                                        <div id="clRecOrigemWrap" style="display: none">
+                                                <label class="cl-label" style="margin-top: 10px"
+                                                        >Recuperação do grupo</label
+                                                >
+                                                <select class="cl-select" id="clRecOrigemSel">
+                                                        <option value="">— selecione o grupo de origem —</option>
+                                                </select>
+
+                                                <label class="cl-label" style="margin-top: 12px"
+                                                        >Data e horário de início da recuperação</label
+                                                >
+                                                <input
+                                                        type="datetime-local"
+                                                        class="cl-input"
+                                                        id="clRecDataInicio"
+                                                        style="max-width: 240px"
+                                                />
+                                                <p class="cl-label-hint" style="margin-top: 4px">
+                                                        Apenas submissões entregues
+                                                        <strong>após esta data e horário</strong> serão
+                                                        consideradas como recuperação. Alunos que entregaram antes
+                                                        deste momento não aparecerão no grupo de recuperação.
+                                                </p>
+                                        </div>
+
+                                        <label class="cl-label" style="margin-top: 12px"
+                                                >Nome do grupo</label
+                                        >
                                         <input
                                                 type="text"
-                                                id="clConteudoNovoInput"
-                                                class="cl-conteudos-input"
-                                                placeholder="Ex: Funções do 2º grau — interpretação gráfica"
-                                                maxlength="300"
+                                                class="cl-input"
+                                                id="clGrupoNome"
+                                                placeholder="Ex: Atividades Práticas — 1º Trimestre"
                                         />
-                                        <button class="cl-btn cl-btn--sm cl-btn--outline" id="clConteudoNovoBtn">+ Adicionar</button>
-                                </div>
 
-                                <!-- Lista de conteúdos selecionados para enviar -->
-                                <div id="clConteudosSelecionadosWrap" style="display:none">
-                                        <div class="cl-conteudos-secao-titulo" style="margin-top:16px">
-                                                Conteúdos a enviar
-                                                <span id="clConteudosSelecionadosCount" class="cl-conteudos-count">0</span>
+                                        <label class="cl-label" style="margin-top: 12px"
+                                                >Meta de pontos do grupo</label
+                                        >
+                                        <input
+                                                type="number"
+                                                class="cl-input"
+                                                id="clGrupoPontos"
+                                                value="4"
+                                                min="0.1"
+                                                max="10"
+                                                step="0.1"
+                                                placeholder="Ex: 4.0"
+                                        />
+
+                                        <label class="cl-label" style="margin-top: 12px">
+                                                Código da classe no RCO
+                                                <span class="cl-label-hint"
+                                                        >Permite lançamento automático de notas no RCO
+                                                        Digital</span
+                                                >
+                                        </label>
+                                        <div class="cl-rco-classe-row">
+                                                <input
+                                                        type="text"
+                                                        class="cl-input"
+                                                        id="clGrupoCodClasseRco"
+                                                        placeholder="Ex: 9148976"
+                                                />
+                                                <button
+                                                        type="button"
+                                                        class="cl-btn cl-btn--sm cl-btn--outline cl-btn--buscar-classe"
+                                                        id="clBtnBuscarClasse"
+                                                        title="Buscar classe no RCO"
+                                                >
+                                                        🔍 Buscar no RCO
+                                                </button>
                                         </div>
-                                        <div id="clConteudosSelecionadosLista" class="cl-conteudos-lista cl-conteudos-lista--selecionados"></div>
+                                        <div
+                                                id="clClasseRcoInfo"
+                                                class="cl-classe-rco-info"
+                                                style="display: none"
+                                        ></div>
+
+                                        <label class="cl-label" style="margin-top: 12px"
+                                                >Cor do grupo</label
+                                        >
+                                        <div class="cl-cor-picker" id="clCorPicker"></div>
+
+                                        <label class="cl-label" style="margin-top: 16px">
+                                                Atividades do grupo
+                                                <span class="cl-label-hint"
+                                                        >Selecione quais atividades somam neste grupo</span
+                                                >
+                                        </label>
+                                        <div class="cl-modal-atividades" id="clModalAtividades">
+                                                <div class="cl-loading">Carregando atividades...</div>
+                                        </div>
                                 </div>
-                        </div>
-                        <div class="cl-modal-foot cl-modal-foot--split">
-                                <div></div>
-                                <div class="cl-rco-foot-right">
-                                        <button class="cl-btn cl-btn--outline" id="clConteudosModalCancelar">Cancelar</button>
-                                        <button class="cl-btn cl-btn--rco-confirm" id="clConteudosModalConfirmar" disabled>
-                                                🚀 Lançar com conteúdos selecionados
+                                <div class="cl-modal-foot">
+                                        <button class="cl-btn cl-btn--outline" id="clGrupoModalCancelar">
+                                                Cancelar
+                                        </button>
+                                        <button class="cl-btn cl-btn--primary" id="clGrupoModalSalvar">
+                                                Salvar grupo
                                         </button>
                                 </div>
                         </div>
                 </div>
-        </div>
 
-        <!-- Toast -->
-        <div class="cl-toast" id="clToast"></div>
+                <!-- ─── Modal de Confirmação (substitui confirm() nativo) ─── -->
+                <div
+                        class="cl-modal-overlay"
+                        id="clConfirmModal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="clConfirmTitulo"
+                >
+                        <div class="cl-modal cl-confirm-modal">
+                                <div class="cl-confirm-icon" id="clConfirmIcone">⚠️</div>
+                                <div class="cl-confirm-content">
+                                        <h3 class="cl-confirm-titulo" id="clConfirmTitulo">
+                                                Confirmar ação
+                                        </h3>
+                                        <p class="cl-confirm-msg" id="clConfirmMsg"></p>
+                                </div>
+                                <div class="cl-modal-foot cl-confirm-foot">
+                                        <button class="cl-btn cl-btn--outline" id="clConfirmCancelar">
+                                                Cancelar
+                                        </button>
+                                        <button class="cl-btn cl-btn--primary" id="clConfirmOk">
+                                                Confirmar
+                                        </button>
+                                </div>
+                        </div>
+                </div>
 
-        <script src="./classroom.js"></script>
-        <script>
-                function abrirSidePanel()  { document.getElementById('sidePanel').classList.add('side-panel--open'); }
-                function fecharSidePanel() { document.getElementById('sidePanel').classList.remove('side-panel--open'); }
-                document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
-        </script>
-</body>
+                <!-- ─── Modal Seletor de Classe RCO ─── -->
+                <div
+                        class="cl-modal-overlay"
+                        id="clClassePickerModal"
+                        role="dialog"
+                        aria-modal="true"
+                >
+                        <div class="cl-modal cl-classe-picker-modal">
+                                <div class="cl-modal-head">
+                                        <h3>🔍 Selecionar Classe no RCO</h3>
+                                        <button class="cl-modal-close" id="clClassePickerFechar">
+                                                ✕
+                                        </button>
+                                </div>
+                                <div class="cl-modal-body">
+                                        <input
+                                                type="text"
+                                                class="cl-input"
+                                                id="clClassePickerBusca"
+                                                placeholder="Filtrar por turma, disciplina ou código…"
+                                                autocomplete="off"
+                                        />
+                                        <div
+                                                id="clClassePickerFiltro"
+                                                class="cl-picker-filtro-chip"
+                                                style="display: none"
+                                        >
+                                                <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        width="13"
+                                                        height="13"
+                                                >
+                                                        <polygon
+                                                                points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"
+                                                        />
+                                                </svg>
+                                                <span id="clClassePickerFiltroLabel"></span>
+                                                <button
+                                                        class="cl-picker-filtro-limpar"
+                                                        id="clClassePickerFiltroLimpar"
+                                                        title="Ver todas as turmas"
+                                                >
+                                                        ✕ ver todas
+                                                </button>
+                                        </div>
+                                        <div id="clClassePickerLista" class="cl-classe-picker-lista">
+                                                <div class="cl-loading">Carregando classes…</div>
+                                        </div>
+                                </div>
+                                <div class="cl-modal-foot">
+                                        <button
+                                                class="cl-btn cl-btn--outline"
+                                                id="clClassePickerCancelar"
+                                        >
+                                                Cancelar
+                                        </button>
+                                </div>
+                        </div>
+                </div>
+
+                <!-- ─── Modal de Lançamento RCO ─── -->
+                <div
+                        class="cl-modal-overlay"
+                        id="clRcoModal"
+                        role="dialog"
+                        aria-modal="true"
+                >
+                        <div class="cl-modal cl-rco-modal">
+                                <div class="cl-modal-head">
+                                        <h3 id="clRcoModalTitulo">🚀 Lançar no RCO</h3>
+                                        <button class="cl-modal-close" id="clRcoModalFechar">✕</button>
+                                </div>
+                                <div class="cl-modal-body" id="clRcoModalBody">
+                                        <!-- Passo 1: Selecionar avaliação -->
+                                        <div id="clRcoPasso1">
+                                                <p class="cl-rco-desc">
+                                                        Selecione qual avaliação parcial receberá as notas
+                                                        calculadas pelo Classroom.
+                                                </p>
+                                                <div
+                                                        id="clRcoAvaliacoesLista"
+                                                        class="cl-rco-avaliacoes-lista"
+                                                >
+                                                        <div class="cl-loading">Buscando avaliações no RCO…</div>
+                                                </div>
+                                        </div>
+                                        <!-- Passo 2: Preview de mapeamento -->
+                                        <div id="clRcoPasso2" style="display: none">
+                                                <div
+                                                        class="cl-rco-avaliacao-info"
+                                                        id="clRcoAvaliacaoInfo"
+                                                ></div>
+                                                <p class="cl-rco-desc">
+                                                        Confira o mapeamento antes de confirmar. Alunos não
+                                                        encontrados ficam com a nota original do RCO.
+                                                </p>
+                                                <div class="cl-rco-table-wrap">
+                                                        <table class="cl-rco-table" id="clRcoTable">
+                                                                <thead>
+                                                                        <tr>
+                                                                                <th>#</th>
+                                                                                <th>Aluno (RCO)</th>
+                                                                                <th>Nota atual</th>
+                                                                                <th>Nota Classroom</th>
+                                                                                <th>Status</th>
+                                                                        </tr>
+                                                                </thead>
+                                                                <tbody id="clRcoTableBody"></tbody>
+                                                        </table>
+                                                </div>
+                                        </div>
+                                </div>
+                                <div class="cl-modal-foot cl-modal-foot--split" id="clRcoModalFoot">
+                                        <div class="cl-rco-foot-left">
+                                                <button
+                                                        class="cl-btn cl-btn--sm cl-btn--danger-outline"
+                                                        id="clRcoModalZerar"
+                                                        style="display: none"
+                                                        title="Envia nota vazia para todos os alunos desta avaliação no RCO"
+                                                >
+                                                        🗑️ Zerar avaliação no RCO
+                                                </button>
+                                        </div>
+                                        <div class="cl-rco-foot-right">
+                                                <button
+                                                        class="cl-btn cl-btn--outline"
+                                                        id="clRcoModalCancelar"
+                                                >
+                                                        Cancelar
+                                                </button>
+                                                <button
+                                                        class="cl-btn cl-btn--warning"
+                                                        id="clRcoModalSalvarDb"
+                                                        style="display: none"
+                                                        title="Salva no banco local sem reenviar ao RCO"
+                                                >
+                                                        💾 Salvar no banco
+                                                </button>
+                                                <button
+                                                        class="cl-btn cl-btn--rco-confirm"
+                                                        id="clRcoModalConfirmar"
+                                                        style="display: none"
+                                                >
+                                                        🚀 Confirmar lançamento
+                                                </button>
+                                        </div>
+                                </div>
+                        </div>
+                </div>
+
+                <!-- ─── Modal de Seleção de Conteúdos (fallback quando RCO rejeita sem conteúdos) ─── -->
+                <div
+                        class="cl-modal-overlay"
+                        id="clConteudosModal"
+                        role="dialog"
+                        aria-modal="true"
+                >
+                        <div class="cl-modal cl-conteudos-modal">
+                                <div class="cl-modal-head">
+                                        <h3>📚 Vincular conteúdos à avaliação</h3>
+                                        <button class="cl-modal-close" id="clConteudosModalFechar">
+                                                ✕
+                                        </button>
+                                </div>
+                                <div class="cl-modal-body">
+                                        <p class="cl-rco-desc">
+                                                O RCO exige pelo menos 1 conteúdo vinculado à avaliação para
+                                                aceitar o lançamento de notas. Selecione os conteúdos abaixo
+                                                ou adicione um novo.
+                                        </p>
+
+                                        <!-- Sugestões de outras avaliações da mesma classe -->
+                                        <div id="clConteudosSugestoes">
+                                                <div class="cl-conteudos-secao-titulo">
+                                                        Conteúdos de outras avaliações da turma
+                                                </div>
+                                                <div
+                                                        id="clConteudosSugestoesLista"
+                                                        class="cl-conteudos-lista"
+                                                >
+                                                        <div class="cl-loading">Buscando…</div>
+                                                </div>
+                                        </div>
+
+                                        <!-- Adicionar conteúdo personalizado -->
+                                        <div class="cl-conteudos-secao-titulo" style="margin-top: 16px">
+                                                Adicionar conteúdo personalizado
+                                        </div>
+                                        <div class="cl-conteudos-add-wrap">
+                                                <input
+                                                        type="text"
+                                                        id="clConteudoNovoInput"
+                                                        class="cl-conteudos-input"
+                                                        placeholder="Ex: Funções do 2º grau — interpretação gráfica"
+                                                        maxlength="300"
+                                                />
+                                                <button
+                                                        class="cl-btn cl-btn--sm cl-btn--outline"
+                                                        id="clConteudoNovoBtn"
+                                                >
+                                                        + Adicionar
+                                                </button>
+                                        </div>
+
+                                        <!-- Lista de conteúdos selecionados para enviar -->
+                                        <div id="clConteudosSelecionadosWrap" style="display: none">
+                                                <div
+                                                        class="cl-conteudos-secao-titulo"
+                                                        style="margin-top: 16px"
+                                                >
+                                                        Conteúdos a enviar
+                                                        <span
+                                                                id="clConteudosSelecionadosCount"
+                                                                class="cl-conteudos-count"
+                                                                >0</span
+                                                        >
+                                                </div>
+                                                <div
+                                                        id="clConteudosSelecionadosLista"
+                                                        class="cl-conteudos-lista cl-conteudos-lista--selecionados"
+                                                ></div>
+                                        </div>
+                                </div>
+                                <div class="cl-modal-foot cl-modal-foot--split">
+                                        <div></div>
+                                        <div class="cl-rco-foot-right">
+                                                <button
+                                                        class="cl-btn cl-btn--outline"
+                                                        id="clConteudosModalCancelar"
+                                                >
+                                                        Cancelar
+                                                </button>
+                                                <button
+                                                        class="cl-btn cl-btn--rco-confirm"
+                                                        id="clConteudosModalConfirmar"
+                                                        disabled
+                                                >
+                                                        🚀 Lançar com conteúdos selecionados
+                                                </button>
+                                        </div>
+                                </div>
+                        </div>
+                </div>
+
+                <!-- Toast -->
+                <div class="cl-toast" id="clToast"></div>
+
+                <script src="./classroom.js"></script>
+                <script>
+                        function abrirSidePanel() {
+                                document
+                                        .getElementById("sidePanel")
+                                        .classList.add("side-panel--open");
+                        }
+                        function fecharSidePanel() {
+                                document
+                                        .getElementById("sidePanel")
+                                        .classList.remove("side-panel--open");
+                        }
+                        document.addEventListener("keydown", function (e) {
+                                if (e.key === "Escape") fecharSidePanel();
+                        });
+                </script>
+        </body>
 </html>
