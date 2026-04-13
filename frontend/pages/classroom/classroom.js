@@ -140,6 +140,7 @@ const elPortalLogLista  = document.getElementById('clPortalLogLista');
 const elPortalLogInfo   = document.getElementById('clPortalLogInfo');
 const elPortalLogPag    = document.getElementById('clPortalLogPag');
 const elPortalLogPagInfo = document.getElementById('clPortalLogPagInfo');
+const elSideNavSolicita  = document.getElementById('sideNavSolicita');
 const elSideNavPortalLog = document.getElementById('sideNavPortalLog');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
@@ -264,7 +265,8 @@ async function init() {
     try {
         const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.json());
         if (me?.perfil === 'admin') {
-            if (elTabPortalLog)    elTabPortalLog.style.display    = '';
+            if (elTabPortalLog)     elTabPortalLog.style.display     = '';
+            if (elSideNavSolicita)  elSideNavSolicita.style.display  = '';
             if (elSideNavPortalLog) elSideNavPortalLog.style.display = '';
         }
     } catch (_) { /* silencia — não é admin ou sem sessão */ }
