@@ -32,6 +32,13 @@
                 <button id="paTourBtn" class="pa-tour-help-btn" onclick="abrirTour()"
                         title="Abrir guia de ajuda" style="display:none">?</button>
 
+                <!-- Botão Conquistas -->
+                <button id="paConquistasBtn" class="pa-conquistas-btn" onclick="abrirConquistas()"
+                        title="Minhas Conquistas" style="display:none">
+                    🏆
+                    <span class="pa-cq-badge" id="paCqBadge" style="display:none"></span>
+                </button>
+
                 <!-- Link QR Code -->
                 <a href="/qrcode/" class="pa-qr-btn" title="Gerador de QR Code">
                     <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
@@ -305,6 +312,75 @@
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <!-- ══ PAINEL DE CONQUISTAS ════════════════════════════════════ -->
+    <div id="paConquistasPanel" class="pa-cq-panel" style="display:none" aria-modal="true" role="dialog">
+
+        <div class="pa-cq-panel-inner">
+
+            <!-- Cabeçalho -->
+            <div class="pa-cq-panel-header">
+                <div class="pa-cq-panel-title">
+                    <span class="pa-cq-panel-ico">🏆</span>
+                    <div>
+                        <h2>Minhas Conquistas</h2>
+                        <p>Grupos onde você atingiu a nota máxima</p>
+                    </div>
+                </div>
+                <button class="pa-cq-panel-close" onclick="fecharConquistas()" title="Fechar">✕</button>
+            </div>
+
+            <!-- Corpo -->
+            <div class="pa-cq-panel-body" id="paCqBody">
+
+                <!-- Loading -->
+                <div id="paCqLoading" class="pa-cq-loading">
+                    <div class="pa-cq-spinner"></div>
+                    <span>Calculando conquistas…</span>
+                </div>
+
+                <!-- Sem conquistas ainda -->
+                <div id="paCqVazio" class="pa-cq-vazio" style="display:none">
+                    <div class="pa-cq-vazio-ico">🎯</div>
+                    <p class="pa-cq-vazio-titulo">Ainda sem conquistas</p>
+                    <p class="pa-cq-vazio-sub">Quando você atingir a nota máxima de um grupo de atividades, seu cartão aparecerá aqui.</p>
+                </div>
+
+                <!-- Cards de conquistas -->
+                <div id="paCqCards" class="pa-cq-cards" style="display:none"></div>
+
+                <!-- Mural de destaque -->
+                <div id="paCqMural" class="pa-cq-mural" style="display:none">
+                    <div class="pa-cq-mural-header">
+                        <span>⭐</span>
+                        <div>
+                            <h3>Mural de Destaque</h3>
+                            <p>Alunos que atingiram nota máxima na turma</p>
+                        </div>
+                    </div>
+                    <div id="paCqMuralLista" class="pa-cq-mural-lista"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Backdrop -->
+        <div class="pa-cq-backdrop" onclick="fecharConquistas()"></div>
+    </div>
+
+    <!-- ══ MODAL CELEBRAÇÃO (confetti) ══════════════════════════════ -->
+    <div id="paCelebracao" class="pa-celebracao-overlay" style="display:none">
+        <canvas id="paCelebCanvas" class="pa-confetti-canvas"></canvas>
+        <div class="pa-celebracao-card">
+            <div class="pa-celebracao-emoji">🏆</div>
+            <h2 class="pa-celebracao-titulo">Nota Máxima!</h2>
+            <div class="pa-celebracao-grupos" id="paCelebGrupos"></div>
+            <p class="pa-celebracao-sub">Você atingiu a pontuação máxima do grupo de atividades!</p>
+            <button class="pa-celebracao-btn" onclick="fecharCelebracao()">
+                🎉 Ver minhas conquistas
+            </button>
         </div>
     </div>
 

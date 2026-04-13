@@ -714,5 +714,195 @@ export function createAlunosPortalRouter() {
         }
     });
 
+    /* ══════════════════════════════════════════════════════════════════
+       CONQUISTAS — calcula se o aluno atingiu nota teto do grupo
+    ══════════════════════════════════════════════════════════════════ */
+
+    /* GET /api/alunos-portal/conquistas */
+    router.get('/alunos-portal/conquistas', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const auth = await getTeacherAuth(req);
+        if (!auth) return res.json({ conquistas: [] });
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            /* 1. Cursos onde o aluno está matriculado */
+            const cursosRes = await classroom.courses.list({
+                studentId:    aluno.email,
+                courseStates: ['ACTIVE'],
+                pageSize:     50,
+            });
+            const cursos = cursosRes.data.courses || [];
+            if (!cursos.length) return res.json({ conquistas: [] });
+
+            const cursosIds    = cursos.map(c => c.id);
+            const cursoNomeMap = Object.fromEntries(cursos.map(c => [c.id, c.name || '']));
+
+            /* 2. Grupos e atividades dos cursos (do BD) */
+            const { rows: grupos } = await pool.query(`
+                SELECT g.id, g.nome, g.curso_id, g.pontos_meta, g.cor,
+                       array_agg(ga.atividade_id) FILTER (WHERE ga.atividade_id IS NOT NULL) AS atividade_ids
+                FROM   classroom_grupos g
+                LEFT JOIN classroom_grupo_atividades ga ON ga.grupo_id = g.id
+                WHERE  g.curso_id = ANY($1::text[])
+                  AND  g.tipo     = 'normal'
+                GROUP  BY g.id, g.nome, g.curso_id, g.pontos_meta, g.cor
+                HAVING COUNT(ga.atividade_id) > 0
+                   AND g.pontos_meta > 0
+            `, [cursosIds]);
+
+            if (!grupos.length) return res.json({ conquistas: [] });
+
+            /* 3. Submissions RETURNED do aluno em todos os cursos (em paralelo) */
+            const submissionsMap = {}; /* courseWorkId → assignedGrade */
+            await Promise.all(cursos.map(async (curso) => {
+                try {
+                    let pToken;
+                    do {
+                        const r = await classroom.courses.courseWork.studentSubmissions.list({
+                            courseId:     curso.id,
+                            courseWorkId: '-',
+                            userId:       aluno.email,
+                            states:       ['RETURNED'],
+                            pageSize:     250,
+                            pageToken:    pToken,
+                        });
+                        (r.data.studentSubmissions || []).forEach(sub => {
+                            if (sub.assignedGrade != null) {
+                                submissionsMap[sub.courseWorkId] = sub.assignedGrade;
+                            }
+                        });
+                        pToken = r.data.nextPageToken;
+                    } while (pToken);
+                } catch { /* ignora curso com erro */ }
+            }));
+
+            /* 4. Calcula conquistas */
+            const conquistas = [];
+            for (const grupo of grupos) {
+                const ids       = grupo.atividade_ids || [];
+                const notaTeto  = Number(grupo.pontos_meta);
+                let   somaNotas = 0;
+
+                ids.forEach(atId => {
+                    if (submissionsMap[atId] != null) somaNotas += submissionsMap[atId];
+                });
+
+                if (somaNotas < notaTeto) continue;
+
+                /* UPSERT — preserva conquistado_em original */
+                const { rows: [row] } = await pool.query(`
+                    INSERT INTO conquistas_aluno
+                        (aluno_email, aluno_nome, grupo_id, grupo_nome, curso_id, curso_nome, nota_teto)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7)
+                    ON CONFLICT (aluno_email, grupo_id) DO UPDATE
+                        SET grupo_nome = EXCLUDED.grupo_nome,
+                            curso_nome = EXCLUDED.curso_nome,
+                            nota_teto  = EXCLUDED.nota_teto
+                    RETURNING *, (notificado = false) AS nova
+                `, [aluno.email, aluno.nome, grupo.id, grupo.nome,
+                    grupo.curso_id, cursoNomeMap[grupo.curso_id] || '', notaTeto]);
+
+                conquistas.push({
+                    id:            row.id,
+                    grupoId:       row.grupo_id,
+                    grupoNome:     row.grupo_nome,
+                    cursoId:       row.curso_id,
+                    cursoNome:     row.curso_nome,
+                    notaTeto:      Number(row.nota_teto),
+                    cor:           grupo.cor  || '#4285F4',
+                    conquistadoEm: row.conquistado_em,
+                    nova:          row.nova,
+                });
+            }
+
+            res.json({ conquistas });
+        } catch (e) {
+            console.error('[ALUNOS-PORTAL] Erro ao calcular conquistas:', e.message);
+            res.status(500).json({ erro: 'Erro ao calcular conquistas.', conquistas: [] });
+        }
+    });
+
+    /* PATCH /api/alunos-portal/conquistas/notificado — marca todas como vistas */
+    router.patch('/alunos-portal/conquistas/notificado', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            await pool.query(
+                `UPDATE conquistas_aluno SET notificado = true WHERE aluno_email = $1`,
+                [aluno.email]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('[ALUNOS-PORTAL] Erro ao marcar conquistas:', e.message);
+            res.status(500).json({ erro: 'Erro interno.' });
+        }
+    });
+
+    /* GET /api/alunos-portal/mural — nomes dos achievers por grupo (sem notas) */
+    router.get('/alunos-portal/mural', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const auth = await getTeacherAuth(req);
+        if (!auth) return res.json({ grupos: [] });
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            const cursosRes = await classroom.courses.list({
+                studentId:    aluno.email,
+                courseStates: ['ACTIVE'],
+                pageSize:     50,
+            });
+            const cursos    = cursosRes.data.courses || [];
+            if (!cursos.length) return res.json({ grupos: [] });
+
+            const cursosIds = cursos.map(c => c.id);
+
+            /* Grupos dos cursos */
+            const { rows: grupos } = await pool.query(`
+                SELECT id, nome, cor
+                FROM   classroom_grupos
+                WHERE  curso_id = ANY($1::text[])
+                  AND  tipo = 'normal'
+            `, [cursosIds]);
+
+            if (!grupos.length) return res.json({ grupos: [] });
+
+            const grupoIds = grupos.map(g => g.id);
+
+            /* Achievers já registrados na tabela */
+            const { rows: achievers } = await pool.query(`
+                SELECT grupo_id, aluno_nome, conquistado_em
+                FROM   conquistas_aluno
+                WHERE  grupo_id = ANY($1::int[])
+                ORDER  BY grupo_id, conquistado_em ASC
+            `, [grupoIds]);
+
+            const grupoMap = Object.fromEntries(grupos.map(g => [g.id, { ...g, achievers: [] }]));
+            achievers.forEach(a => {
+                if (grupoMap[a.grupo_id]) grupoMap[a.grupo_id].achievers.push(a.aluno_nome);
+            });
+
+            const resultado = Object.values(grupoMap)
+                .filter(g => g.achievers.length > 0)
+                .map(g => ({
+                    grupoId:   g.id,
+                    grupoNome: g.nome,
+                    cor:       g.cor || '#4285F4',
+                    achievers: g.achievers,
+                }));
+
+            res.json({ grupos: resultado });
+        } catch (e) {
+            console.error('[ALUNOS-PORTAL] Erro ao buscar mural:', e.message);
+            res.json({ grupos: [] });
+        }
+    });
+
     return router;
 }

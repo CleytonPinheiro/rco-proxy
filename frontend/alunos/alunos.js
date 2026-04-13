@@ -96,6 +96,8 @@ async function verificarStatus() {
             mostrarTelaLogado(data.aluno);
             carregarAtividades();
             iniciarPollingNotificacoes();
+            /* Conquistas: verifica silenciosamente após atividades carregarem */
+            setTimeout(verificarConquistas, 3000);
             /* Lança o tour após as atividades terem tempo de renderizar */
             setTimeout(iniciarTourSeNecessario, 900);
         } else {
@@ -123,7 +125,8 @@ function mostrarTelaLogado(aluno) {
     $('paTelaAtividades').style.display = '';
     $('paUserArea').style.display       = 'flex';
     $('paThemeBtnPre').style.display    = 'none';
-    $('paTourBtn').style.display        = 'flex';
+    $('paTourBtn').style.display         = 'flex';
+    $('paConquistasBtn').style.display   = 'flex';
 
     const inicial = (aluno.nome || aluno.email || '?')[0].toUpperCase();
 
@@ -941,4 +944,225 @@ function esc(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CONQUISTAS — Nota Máxima do Grupo
+══════════════════════════════════════════════════════════════ */
+
+let _conquistasCache = null;
+
+/* Verifica conquistas silenciosamente após o login */
+async function verificarConquistas() {
+    try {
+        const r = await fetch('/api/alunos-portal/conquistas', { credentials: 'include' });
+        if (!r.ok) return;
+        const { conquistas } = await r.json();
+        _conquistasCache = conquistas || [];
+
+        const novas = _conquistasCache.filter(c => c.nova);
+
+        /* Badge no botão troféu */
+        const badge = $('paCqBadge');
+        if (novas.length > 0) {
+            badge.textContent    = novas.length;
+            badge.style.display  = '';
+        } else {
+            badge.style.display  = 'none';
+        }
+
+        /* Dispara celebração apenas se há novas conquistas */
+        if (novas.length > 0) {
+            mostrarCelebracao(novas);
+        }
+    } catch { /* silencioso */ }
+}
+
+/* Abre o painel de conquistas */
+async function abrirConquistas() {
+    const panel = $('paConquistasPanel');
+    panel.style.display = '';
+    panel.classList.add('pa-cq-panel--open');
+    document.body.style.overflow = 'hidden';
+
+    $('paCqLoading').style.display = '';
+    $('paCqVazio').style.display   = 'none';
+    $('paCqCards').style.display   = 'none';
+    $('paCqMural').style.display   = 'none';
+
+    try {
+        /* Usa cache se já calculado, senão busca novamente */
+        if (!_conquistasCache) {
+            const r = await fetch('/api/alunos-portal/conquistas', { credentials: 'include' });
+            const d = await r.json();
+            _conquistasCache = d.conquistas || [];
+        }
+
+        $('paCqLoading').style.display = 'none';
+
+        if (_conquistasCache.length === 0) {
+            $('paCqVazio').style.display = '';
+        } else {
+            renderConquistaCards(_conquistasCache);
+            $('paCqCards').style.display = '';
+        }
+
+        carregarMural();
+    } catch {
+        $('paCqLoading').style.display = 'none';
+        $('paCqVazio').style.display   = '';
+    }
+}
+
+/* Fecha o painel */
+function fecharConquistas() {
+    const panel = $('paConquistasPanel');
+    panel.classList.remove('pa-cq-panel--open');
+    setTimeout(() => { panel.style.display = 'none'; }, 250);
+    document.body.style.overflow = '';
+}
+
+/* Renderiza os cartões colecionáveis */
+function renderConquistaCards(conquistas) {
+    const container = $('paCqCards');
+    container.innerHTML = conquistas.map(c => {
+        const data = new Date(c.conquistadoEm).toLocaleDateString('pt-BR', {
+            day: '2-digit', month: 'long', year: 'numeric',
+        });
+        return `<div class="pa-cq-card" style="--cq-cor:${esc(c.cor || '#4285F4')}">
+            <div class="pa-cq-card-shimmer"></div>
+            <div class="pa-cq-card-badge-topo">Nota Máxima ⭐</div>
+            <div class="pa-cq-card-body">
+                <div class="pa-cq-card-icon">🏆</div>
+                <div class="pa-cq-card-info">
+                    <div class="pa-cq-card-grupo">${esc(c.grupoNome)}</div>
+                    <div class="pa-cq-card-curso">${esc(c.cursoNome)}</div>
+                </div>
+            </div>
+            <div class="pa-cq-card-footer">
+                <span class="pa-cq-card-pts">⭐ ${c.notaTeto} pontos</span>
+                <span class="pa-cq-card-data">${data}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* Carrega e renderiza o mural de destaque */
+async function carregarMural() {
+    try {
+        const r = await fetch('/api/alunos-portal/mural', { credentials: 'include' });
+        if (!r.ok) return;
+        const { grupos } = await r.json();
+        if (!grupos || !grupos.length) return;
+        renderMural(grupos);
+    } catch { /* silencioso */ }
+}
+
+function renderMural(grupos) {
+    const lista = $('paCqMuralLista');
+    lista.innerHTML = grupos.map(g => `
+        <div class="pa-cq-mural-grupo" style="--cq-cor:${esc(g.cor || '#4285F4')}">
+            <div class="pa-cq-mural-grupo-header">
+                <span class="pa-cq-mural-dot"></span>
+                <span class="pa-cq-mural-grupo-nome">${esc(g.grupoNome)}</span>
+            </div>
+            <div class="pa-cq-mural-nomes">
+                ${g.achievers.map(n => `<span class="pa-cq-mural-nome">${esc(n)}</span>`).join('')}
+            </div>
+        </div>
+    `).join('');
+    $('paCqMural').style.display = '';
+}
+
+/* Exibe o modal de celebração com confetti */
+function mostrarCelebracao(novas) {
+    const el     = $('paCelebracao');
+    const grupos = $('paCelebGrupos');
+
+    grupos.innerHTML = novas.map(c =>
+        `<div class="pa-celebracao-grupo-tag" style="--cq-cor:${esc(c.cor || '#4285F4')}">
+            <strong>${esc(c.grupoNome)}</strong>
+            <span>${esc(c.cursoNome)}</span>
+        </div>`
+    ).join('');
+
+    el.style.display = '';
+
+    /* Inicia confetti */
+    const canvas  = $('paCelebCanvas');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    lancarConfetti(canvas);
+}
+
+/* Fecha o modal e abre o painel */
+function fecharCelebracao() {
+    $('paCelebracao').style.display = 'none';
+    /* Marca conquistas como vistas */
+    fetch('/api/alunos-portal/conquistas/notificado', {
+        method: 'PATCH', credentials: 'include',
+    }).catch(() => {});
+    /* Remove badge */
+    $('paCqBadge').style.display = 'none';
+    /* Invalida cache para próxima abertura do painel não mostrar "nova" */
+    _conquistasCache = _conquistasCache?.map(c => ({ ...c, nova: false }));
+    /* Abre painel de conquistas */
+    abrirConquistas();
+}
+
+/* Motor de confetti (puro JS + Canvas, sem biblioteca) */
+function lancarConfetti(canvas) {
+    const ctx  = canvas.getContext('2d');
+    const W    = canvas.width;
+    const H    = canvas.height;
+    const CORS = ['#FFD700','#FF6B6B','#4285F4','#34A853','#FBBC05','#EA4335','#9C27B0','#FF9800','#00BCD4','#E91E63'];
+
+    const pts = Array.from({ length: 200 }, () => ({
+        x:    Math.random() * W,
+        y:    Math.random() * H * -0.6 - 10,
+        sz:   Math.random() * 9 + 4,
+        cor:  CORS[Math.floor(Math.random() * CORS.length)],
+        vx:   (Math.random() - 0.5) * 4,
+        vy:   Math.random() * 5 + 1.5,
+        rot:  Math.random() * 360,
+        rs:   (Math.random() - 0.5) * 14,
+        tipo: Math.random() > 0.4 ? 'rect' : 'circle',
+    }));
+
+    const t0  = performance.now();
+    const DUR = 5000;
+
+    (function frame(now) {
+        const elapsed = now - t0;
+        ctx.clearRect(0, 0, W, H);
+
+        let viva = false;
+        pts.forEach(p => {
+            p.x   += p.vx;
+            p.y   += p.vy;
+            p.rot += p.rs;
+            p.vy  += 0.06;
+
+            if (p.y > H + 20) return;
+            viva = true;
+
+            const alpha = elapsed > 3500 ? Math.max(0, 1 - (elapsed - 3500) / 1500) : 1;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle   = p.cor;
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot * Math.PI / 180);
+            if (p.tipo === 'rect') {
+                ctx.fillRect(-p.sz / 2, -p.sz / 4, p.sz, p.sz / 2);
+            } else {
+                ctx.beginPath();
+                ctx.arc(0, 0, p.sz / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        });
+
+        if (viva && elapsed < DUR) requestAnimationFrame(frame);
+        else ctx.clearRect(0, 0, W, H);
+    })(performance.now());
 }

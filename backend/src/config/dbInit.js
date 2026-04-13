@@ -111,6 +111,25 @@ export async function initializeDatabase() {
             USING data_inicio::TIMESTAMP WITH TIME ZONE
         `);
 
+        /* ── Conquistas do portal do aluno ─────────────────────────────── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS conquistas_aluno (
+                id             SERIAL PRIMARY KEY,
+                aluno_email    VARCHAR(255) NOT NULL,
+                aluno_nome     VARCHAR(255) NOT NULL,
+                grupo_id       INTEGER      NOT NULL,
+                grupo_nome     VARCHAR(255) NOT NULL,
+                curso_id       VARCHAR(100) NOT NULL,
+                curso_nome     VARCHAR(255) NOT NULL,
+                nota_teto      NUMERIC      NOT NULL,
+                conquistado_em TIMESTAMP    NOT NULL DEFAULT NOW(),
+                notificado     BOOLEAN      NOT NULL DEFAULT FALSE,
+                UNIQUE (aluno_email, grupo_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_conquistas_email ON conquistas_aluno(aluno_email);
+            CREATE INDEX IF NOT EXISTS idx_conquistas_grupo ON conquistas_aluno(grupo_id);
+        `);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();
