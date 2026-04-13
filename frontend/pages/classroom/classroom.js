@@ -1,5 +1,19 @@
 'use strict';
 
+/* ── Revela itens de nav admin-only imediatamente via cache ──────────────────
+   Lê o mesmo localStorage que o theme.js usa para não depender de fetch async.
+   Roda antes de qualquer await, então os itens aparecem sem delay visível.   */
+(function revelarNavAdmin() {
+    try {
+        const cache = JSON.parse(localStorage.getItem('edusync_nav_cache') || 'null');
+        if (cache?.perfil !== 'admin') return;
+        ['sideNavSolicita', 'sideNavPortalLog'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
+    } catch (_) {}
+})();
+
 /* ══════════════════════════════════════════════════════════════════
    Modal de confirmação — substitui confirm() nativo
    Uso: await confirmar('Mensagem', { titulo, confirmLabel, tipo, icone })
