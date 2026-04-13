@@ -142,7 +142,7 @@
                 </div>
             </a>
             <div class="side-nav-group" id="classroomNavGroup">
-                <a href="/pages/classroom/" class="side-nav-item side-nav-item--parent">
+                <a href="/pages/classroom/" class="side-nav-item side-nav-item--parent" id="classroomParentLink">
                     <span class="side-nav-icon side-nav-icon-svg">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -153,21 +153,8 @@
                         <span class="side-nav-nome">Classroom</span>
                         <span class="side-nav-desc">Atividades e notas do Google</span>
                     </div>
-                    <span class="side-nav-chevron">▸</span>
+                    <span class="side-nav-chevron">›</span>
                 </a>
-                <div class="side-nav-children" id="classroomChildren">
-                    <a href="/pages/portal-aluno/" class="side-nav-child-item">
-                        <span>👤</span> Portal do Aluno
-                    </a>
-                    <a href="/pages/classroom/" class="side-nav-child-item" id="sideNavSolicita"
-                       onclick="event.preventDefault();irParaSolicitacoes()">
-                        <span>↩</span> Solicitações<span class="side-nav-solicita-badge" id="sideNavSolitaBadge" style="display:none">0</span>
-                    </a>
-                    <a href="/pages/classroom/" class="side-nav-child-item" id="sideNavPortalLog"
-                       onclick="event.preventDefault();irParaPortalLog()">
-                        <span>🎓</span> Log Portal Aluno
-                    </a>
-                </div>
             </div>
             <a href="/pages/materiais/" class="side-nav-item">
                 <span class="side-nav-icon">📦</span>

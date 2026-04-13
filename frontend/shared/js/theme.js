@@ -71,39 +71,88 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Submenu Classroom — accordion inline no hover ─────────────────────── */
+/* ── Submenu Classroom — flyout lateral criado via JS ──────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.side-nav-group').forEach(function (group) {
-        var parentLink = group.querySelector('.side-nav-item--parent');
-        if (!parentLink) return;
+    var group = document.getElementById('classroomNavGroup');
+    if (!group) return;
 
-        var hideTimer = null;
+    var parentLink = document.getElementById('classroomParentLink');
+    if (!parentLink) return;
 
-        function openGroup() {
-            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-            group.classList.add('open');
-        }
+    var flyout = document.createElement('div');
+    flyout.className = 'classroom-flyout';
+    flyout.innerHTML =
+        '<div class="classroom-flyout-label">Classroom</div>' +
+        '<a href="/pages/portal-aluno/" class="classroom-flyout-item">' +
+            '<span>👤</span> Portal do Aluno</a>' +
+        '<a href="/pages/classroom/" class="classroom-flyout-item" id="sideNavSolicita" ' +
+            'onclick="event.preventDefault();irParaSolicitacoes()">' +
+            '<span>↩</span> Solicitações' +
+            '<span class="side-nav-solicita-badge" id="sideNavSolitaBadge" style="display:none">0</span></a>' +
+        '<a href="/pages/classroom/" class="classroom-flyout-item" id="sideNavPortalLog" ' +
+            'onclick="event.preventDefault();irParaPortalLog()">' +
+            '<span>🎓</span> Log Portal Aluno</a>';
+    document.body.appendChild(flyout);
 
-        function closeGroup() {
-            group.classList.remove('open');
-            hideTimer = null;
-        }
+    var isOpen = false;
+    var hideTimer = null;
 
-        function scheduleClose() {
-            hideTimer = setTimeout(closeGroup, 250);
-        }
+    function positionFlyout() {
+        var rect = group.getBoundingClientRect();
+        var fh   = flyout.offsetHeight || 180;
+        var fw   = flyout.offsetWidth  || 220;
+        var vw   = window.innerWidth;
+        var vh   = window.innerHeight;
 
-        group.addEventListener('mouseenter', openGroup);
-        group.addEventListener('mouseleave', scheduleClose);
+        var left = rect.right + 6;
+        if (left + fw > vw - 8) left = rect.left - fw - 6;
+        if (left < 4) left = 4;
 
-        parentLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            if (group.classList.contains('open')) {
-                closeGroup();
-            } else {
-                openGroup();
-            }
-        });
+        var top = rect.top;
+        if (top + fh > vh - 8) top = vh - fh - 8;
+        if (top < 8) top = 8;
+
+        flyout.style.top  = top + 'px';
+        flyout.style.left = left + 'px';
+    }
+
+    function openFlyout() {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        if (isOpen) return;
+        isOpen = true;
+        flyout.classList.add('flyout-visible');
+        positionFlyout();
+    }
+
+    function closeFlyout() {
+        isOpen = false;
+        flyout.classList.remove('flyout-visible');
+        hideTimer = null;
+    }
+
+    function scheduleClose() {
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(closeFlyout, 200);
+    }
+
+    function cancelClose() {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    }
+
+    parentLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (isOpen) { closeFlyout(); } else { openFlyout(); }
+    });
+
+    group.addEventListener('mouseenter', openFlyout);
+    group.addEventListener('mouseleave', scheduleClose);
+    flyout.addEventListener('mouseenter', cancelClose);
+    flyout.addEventListener('mouseleave', scheduleClose);
+
+    document.addEventListener('click', function (e) {
+        if (!isOpen) return;
+        if (e.target.closest && (e.target.closest('.classroom-flyout') || e.target.closest('#classroomNavGroup'))) return;
+        closeFlyout();
     });
 });
 

@@ -804,63 +804,60 @@ body[data-side="open"] .side-panel {
     box-shadow: 0 3px 12px rgba(96,165,250,.4);
 }
 
-/* ── Submenu inline (accordion dentro do sidebar) ─── */
-.side-nav-group {
-    position: relative;
-}
-.side-nav-item--parent {
-    position: relative;
-}
+/* ── Classroom group + chevron ─── */
+.side-nav-group { position: relative; }
+.side-nav-item--parent { position: relative; }
 .side-nav-chevron {
     margin-left: auto;
-    font-size: 13px;
+    font-size: 16px;
     color: var(--text-muted);
-    transition: transform .2s ease;
     flex-shrink: 0;
+    line-height: 1;
 }
-.side-nav-group.open > .side-nav-item--parent .side-nav-chevron {
-    transform: rotate(90deg);
+
+/* ── Flyout — criado via JS no <body>, posição fixa ─── */
+.classroom-flyout {
+    position: fixed;
+    width: 220px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 4px 0 24px rgba(0,0,0,.22);
+    padding: 6px 8px;
+    z-index: 99999;
+    display: none;
 }
-.side-nav-children {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height .25s ease;
-    padding-left: 20px;
+.classroom-flyout.flyout-visible {
+    display: block !important;
 }
-.side-nav-group.open > .side-nav-children {
-    max-height: 300px;
+.classroom-flyout-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 4px 8px 6px;
 }
-.side-nav-child-item {
-    display: flex;
+.classroom-flyout-item {
+    display: flex !important;
+    visibility: visible !important;
     align-items: center;
     gap: 10px;
-    padding: 9px 12px;
+    padding: 10px 12px;
     border-radius: 10px;
     text-decoration: none;
     color: var(--text-primary);
     font-size: .85rem;
     font-weight: 500;
     border: 1.5px solid transparent;
-    transition: background .15s, transform .1s, border-color .15s, color .15s;
+    transition: background .15s, border-color .15s;
     margin: 2px 0;
 }
-.side-nav-child-item:hover {
+.classroom-flyout-item:hover {
     background: var(--bg-secondary);
-    transform: translateX(3px);
 }
-.side-nav-child-item--active {
-    background: var(--bg-tertiary);
-    border-color: #007bff;
-    color: #007bff;
-    font-weight: 600;
-}
-[data-theme="dark"] .side-nav-child-item:hover {
+[data-theme="dark"] .classroom-flyout-item:hover {
     background: var(--bg-secondary);
     color: var(--text-primary);
-}
-[data-theme="dark"] .side-nav-child-item--active {
-    background: var(--bg-tertiary);
-    border-color: #60a5fa;
-    color: #60a5fa;
 }
 
