@@ -1,18 +1,6 @@
 'use strict';
 
-/* ── Revela itens de nav admin-only imediatamente via cache ──────────────────
-   Lê o mesmo localStorage que o theme.js usa para não depender de fetch async.
-   Roda antes de qualquer await, então os itens aparecem sem delay visível.   */
-(function revelarNavAdmin() {
-    try {
-        const cache = JSON.parse(localStorage.getItem('edusync_nav_cache') || 'null');
-        if (cache?.perfil !== 'admin') return;
-        ['sideNavSolicita', 'sideNavPortalLog'].forEach(function (id) {
-            const el = document.getElementById(id);
-            if (el) { el.removeAttribute('data-perm-hidden'); el.style.display = ''; }
-        });
-    } catch (_) {}
-})();
+/* ── (Submenu Classroom agora é inline — theme.js controla visibilidade) ── */
 
 /* ══════════════════════════════════════════════════════════════════
    Modal de confirmação — substitui confirm() nativo

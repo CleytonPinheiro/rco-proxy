@@ -71,12 +71,7 @@
 window.abrirSidePanel  = function () { document.body.setAttribute('data-side', 'open'); };
 window.fecharSidePanel = function () { document.body.removeAttribute('data-side'); };
 
-/* ── Submenu Classroom — flyout à direita no hover (admin only) ─────────── */
-/*
- * NOTA: position:fixed dentro de um elemento com transform (side-panel usa
- * translateX para o slide) fica preso ao pai transformado, não ao viewport.
- * Solução: mover o flyout para document.body em tempo de execução.
- */
+/* ── Submenu Classroom — expande inline no side-panel (admin only) ──────── */
 document.addEventListener('DOMContentLoaded', function () {
     var perfil = '';
     try {
@@ -87,87 +82,33 @@ document.addEventListener('DOMContentLoaded', function () {
     var isAdmin = (perfil === 'admin');
 
     document.querySelectorAll('.side-nav-group').forEach(function (group) {
-        var flyout = group.querySelector('.side-nav-sub-static');
-        if (!flyout) return;
+        var submenu = group.querySelector('.side-nav-sub-static');
+        if (!submenu) return;
 
-        /* Injeta rótulo no topo do flyout (só uma vez) */
-        if (!flyout.querySelector('.side-nav-sub-label')) {
-            var lbl = document.createElement('div');
-            lbl.className   = 'side-nav-sub-label';
-            lbl.textContent = 'Classroom';
-            flyout.insertBefore(lbl, flyout.firstChild);
+        if (!isAdmin) {
+            submenu.remove();
+            return;
         }
 
-        if (!isAdmin) return;
+        submenu.classList.remove('side-nav-sub-static');
+        submenu.classList.add('side-nav-sub-inline');
+        submenu.style.display = 'none';
 
-        /*
-         * Move o flyout para <body> — escapa do transform do .side-panel.
-         * position:fixed passa a ser relativo ao viewport, como esperado.
-         */
-        document.body.appendChild(flyout);
-        flyout.style.display = 'block';
-
-        /* Exibe links admin-only dentro do flyout (ex: Log Portal Aluno) */
-        flyout.querySelectorAll('[data-admin-only]').forEach(function (el) {
-            el.removeAttribute('data-perm-hidden');
-            el.style.display = '';
-        });
-
-        /* Injeta indicador › no item pai */
         var parentItem = group.querySelector('.side-nav-item');
-        if (parentItem && !parentItem.querySelector('.side-nav-chevron-hint')) {
-            var hint = document.createElement('span');
-            hint.className   = 'side-nav-chevron-hint';
-            hint.textContent = '›';
-            parentItem.appendChild(hint);
-        }
+        if (!parentItem) return;
 
-        var hideTimer = null;
+        var chevron = document.createElement('span');
+        chevron.className = 'side-nav-chevron-hint';
+        chevron.textContent = '▸';
+        chevron.style.marginLeft = 'auto';
+        chevron.style.transition = 'transform .2s';
+        parentItem.appendChild(chevron);
 
-        function openFlyout() {
-            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-            flyout.classList.add('flyout-open');
-
-            var rect = group.getBoundingClientRect();
-            var fw   = flyout.offsetWidth  || 240;
-            var fh   = flyout.offsetHeight || 200;
-            var vw   = window.innerWidth;
-            var vh   = window.innerHeight;
-            var gap  = 6;
-
-            var left = rect.right + gap;
-            if (left + fw > vw - 8) left = rect.left - fw - gap;
-            if (left < 8) left = Math.min(8, vw - fw - 8);
-
-            var top = rect.top;
-            if (top + fh > vh - 8) top = vh - fh - 8;
-            if (top < 8) top = 8;
-
-            flyout.style.top  = top + 'px';
-            flyout.style.left = left + 'px';
-        }
-
-        function closeFlyout() {
-            flyout.classList.remove('flyout-open');
-            hideTimer = null;
-        }
-
-        function scheduleClose() {
-            hideTimer = setTimeout(closeFlyout, 140);
-        }
-
-        function cancelClose() {
-            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-        }
-
-        group.addEventListener('mouseenter', openFlyout);
-        group.addEventListener('mouseleave', scheduleClose);
-        flyout.addEventListener('mouseenter', cancelClose);
-        flyout.addEventListener('mouseleave', scheduleClose);
-
-        /* Fecha ao fechar o painel lateral */
-        document.addEventListener('click', function (e) {
-            if (e.target.closest && e.target.closest('.side-close-btn')) closeFlyout();
+        parentItem.addEventListener('click', function (e) {
+            e.preventDefault();
+            var open = submenu.style.display !== 'none';
+            submenu.style.display = open ? 'none' : 'block';
+            chevron.style.transform = open ? '' : 'rotate(90deg)';
         });
     });
 });
