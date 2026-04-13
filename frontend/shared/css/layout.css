@@ -804,18 +804,27 @@ body[data-side="open"] .side-panel {
     box-shadow: 0 3px 12px rgba(96,165,250,.4);
 }
 
-/* ── Flyout fixo (legado) — oculto por padrão ─── */
+/* ── Flyout — posicionado via JS (position:fixed no <body>) ─── */
 .side-nav-sub-static {
-    display: none;
+    position: fixed;
+    width: 240px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 4px 0 32px rgba(0,0,0,.22);
+    padding: 8px 10px 10px;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-8px);
+    transition: opacity .18s ease, transform .18s cubic-bezier(.4,0,.2,1);
 }
-
-/* ── Submenu inline — expande dentro do side-panel ─── */
-.side-nav-sub-inline {
-    padding: 2px 0 4px 18px;
-    border-left: 2px solid var(--border);
-    margin-left: 22px;
-    margin-top: 2px;
-    margin-bottom: 4px;
+.side-nav-sub-static.flyout-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
 }
 
 /* ── Rótulo de seção do flyout — igual a .side-panel-section-label */
