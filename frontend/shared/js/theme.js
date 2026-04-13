@@ -98,14 +98,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var hideTimer = null;
 
     function positionFlyout() {
+        var sidePanel = document.getElementById('sidePanel');
+        var spRect = sidePanel ? sidePanel.getBoundingClientRect() : { right: 300, left: 0 };
         var rect = group.getBoundingClientRect();
         var fh   = flyout.offsetHeight || 180;
         var fw   = flyout.offsetWidth  || 220;
         var vw   = window.innerWidth;
         var vh   = window.innerHeight;
 
-        var left = rect.right + 6;
-        if (left + fw > vw - 8) left = rect.left - fw - 6;
+        var left = spRect.right + 6;
+        if (left + fw > vw - 8) left = spRect.left - fw - 6;
         if (left < 4) left = 4;
 
         var top = rect.top;
