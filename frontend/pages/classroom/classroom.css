@@ -2,14 +2,6 @@
    Classroom – EduSync
    ═══════════════════════════════════════════════════ */
 
-/* ── Força visibilidade dos itens do flyout admin ── */
-#sideNavSolicita,
-#sideNavPortalLog {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
 /* ── Layout principal ── */
 body {
     display: flex;

@@ -709,47 +709,5 @@
         function fecharSidePanel() { document.getElementById('sidePanel').classList.remove('side-panel--open'); }
         document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
     </script>
-    <script>
-    setTimeout(function(){
-        var s = document.getElementById('sideNavSolicita');
-        var l = document.getElementById('sideNavPortalLog');
-        var info = 'DEBUG FLYOUT:\n';
-        info += 'sideNavSolicita existe: ' + !!s + '\n';
-        info += 'sideNavPortalLog existe: ' + !!l + '\n';
-        if(s){
-            var cs = getComputedStyle(s);
-            info += 'Solicita display: ' + cs.display + '\n';
-            info += 'Solicita visibility: ' + cs.visibility + '\n';
-            info += 'Solicita opacity: ' + cs.opacity + '\n';
-            info += 'Solicita offsetParent: ' + (s.offsetParent ? s.offsetParent.tagName+'.'+s.offsetParent.className : 'null') + '\n';
-            info += 'Solicita parentNode: ' + (s.parentNode ? s.parentNode.tagName+'.'+s.parentNode.className : 'null') + '\n';
-            info += 'Solicita data-perm-hidden: ' + s.getAttribute('data-perm-hidden') + '\n';
-            info += 'Solicita inline style: "' + s.getAttribute('style') + '"\n';
-        }
-        if(l){
-            var cl = getComputedStyle(l);
-            info += 'PortalLog display: ' + cl.display + '\n';
-            info += 'PortalLog visibility: ' + cl.visibility + '\n';
-            info += 'PortalLog data-perm-hidden: ' + l.getAttribute('data-perm-hidden') + '\n';
-        }
-        var container = document.querySelector('.side-nav-sub-admin');
-        if(container){
-            var cc = getComputedStyle(container);
-            info += 'Container display: ' + cc.display + '\n';
-            info += 'Container opacity: ' + cc.opacity + '\n';
-            info += 'Container visibility: ' + cc.visibility + '\n';
-            info += 'Container children: ' + container.children.length + '\n';
-            info += 'Container parent: ' + (container.parentNode ? container.parentNode.tagName : 'null') + '\n';
-        } else {
-            info += 'Container .side-nav-sub-admin NAO ENCONTRADO\n';
-        }
-        console.log(info);
-        var d = document.createElement('div');
-        d.style.cssText = 'position:fixed;top:10px;right:10px;background:#111;color:#0f0;padding:15px;border-radius:8px;z-index:99999;font:12px monospace;white-space:pre;max-height:80vh;overflow:auto;pointer-events:auto';
-        d.textContent = info;
-        d.onclick = function(){ d.remove(); };
-        document.body.appendChild(d);
-    }, 3000);
-    </script>
 </body>
 </html>

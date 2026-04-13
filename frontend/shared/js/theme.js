@@ -126,16 +126,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function openFlyout() {
             if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-            /* getBoundingClientRect() retorna coordenadas de viewport —
-               funciona corretamente mesmo com o transform do painel */
             var rect    = group.getBoundingClientRect();
             var fw      = 230;
             var gap     = 10;
             var left    = rect.right + gap;
             if (left + fw > window.innerWidth) left = rect.left - fw - gap;
-            flyout.style.top  = Math.max(8, rect.top) + 'px';
-            flyout.style.left = left + 'px';
+
             flyout.classList.add('flyout-open');
+            var fh      = flyout.offsetHeight || 160;
+            var topPos  = Math.max(8, rect.top);
+            if (topPos + fh > window.innerHeight - 8) {
+                topPos = Math.max(8, window.innerHeight - fh - 8);
+            }
+            flyout.style.top  = topPos + 'px';
+            flyout.style.left = left + 'px';
         }
 
         function closeFlyout() {
