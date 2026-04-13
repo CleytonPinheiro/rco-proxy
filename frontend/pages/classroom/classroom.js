@@ -9,7 +9,7 @@
         if (cache?.perfil !== 'admin') return;
         ['sideNavSolicita', 'sideNavPortalLog'].forEach(function (id) {
             const el = document.getElementById(id);
-            if (el) el.style.display = '';
+            if (el) { el.removeAttribute('data-perm-hidden'); el.style.display = ''; }
         });
     } catch (_) {}
 })();
@@ -280,8 +280,8 @@ async function init() {
         const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.json());
         if (me?.perfil === 'admin') {
             if (elTabPortalLog)     elTabPortalLog.style.display     = '';
-            if (elSideNavSolicita)  elSideNavSolicita.style.display  = '';
-            if (elSideNavPortalLog) elSideNavPortalLog.style.display = '';
+            if (elSideNavSolicita)  { elSideNavSolicita.removeAttribute('data-perm-hidden'); elSideNavSolicita.style.display  = ''; }
+            if (elSideNavPortalLog) { elSideNavPortalLog.removeAttribute('data-perm-hidden'); elSideNavPortalLog.style.display = ''; }
         }
     } catch (_) { /* silencia — não é admin ou sem sessão */ }
 }

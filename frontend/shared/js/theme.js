@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         /* Exibe links admin-only dentro do flyout (ex: Log Portal Aluno) */
         flyout.querySelectorAll('[data-admin-only]').forEach(function (el) {
+            el.removeAttribute('data-perm-hidden');
             el.style.display = '';
         });
 
