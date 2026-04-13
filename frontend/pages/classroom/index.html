@@ -709,5 +709,36 @@
         function fecharSidePanel() { document.getElementById('sidePanel').classList.remove('side-panel--open'); }
         document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
     </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+        var c = document.querySelector('.side-nav-sub-admin');
+        if(!c) return;
+        var _shown = false;
+        new MutationObserver(function(){
+            if(c.classList.contains('flyout-open') && !_shown){
+                _shown = true;
+                setTimeout(function(){
+                    var r = c.getBoundingClientRect();
+                    var info = 'FLYOUT OPEN DEBUG:\n';
+                    info += 'Container rect: top='+r.top+' left='+r.left+' w='+r.width+' h='+r.height+'\n';
+                    info += 'Container overflow: '+getComputedStyle(c).overflow+'\n';
+                    info += 'Container maxHeight: '+getComputedStyle(c).maxHeight+'\n';
+                    info += 'Viewport: '+window.innerWidth+'x'+window.innerHeight+'\n';
+                    Array.from(c.children).forEach(function(ch,i){
+                        var cr = ch.getBoundingClientRect();
+                        var cs = getComputedStyle(ch);
+                        info += 'Child['+i+']: tag='+ch.tagName+' text="'+ch.textContent.trim().substring(0,25)+'" rect=('+Math.round(cr.top)+','+Math.round(cr.left)+','+Math.round(cr.width)+','+Math.round(cr.height)+') display='+cs.display+' visibility='+cs.visibility+'\n';
+                    });
+                    console.log(info);
+                    var d = document.createElement('div');
+                    d.style.cssText='position:fixed;top:10px;right:10px;background:#111;color:#0f0;padding:15px;border-radius:8px;z-index:99999;font:11px monospace;white-space:pre;max-height:80vh;overflow:auto;pointer-events:auto';
+                    d.textContent=info;
+                    d.onclick=function(){d.remove();_shown=false;};
+                    document.body.appendChild(d);
+                },300);
+            }
+        }).observe(c,{attributes:true,attributeFilter:['class']});
+    });
+    </script>
 </body>
 </html>
