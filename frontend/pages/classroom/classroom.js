@@ -263,11 +263,10 @@ async function init() {
     carregarCursos();
     carregarSolicitacoesBadge();
 
-    /* Verifica se é admin e revela tab + link do Log Portal */
+    /* Verifica se é admin (sidebar controla visibilidade dos sub-itens) */
     try {
         const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.json());
         if (me?.perfil === 'admin') {
-            if (elTabPortalLog)     elTabPortalLog.style.display     = '';
             if (elSideNavSolicita)  { elSideNavSolicita.removeAttribute('data-perm-hidden'); elSideNavSolicita.style.display  = ''; }
             if (elSideNavPortalLog) { elSideNavPortalLog.removeAttribute('data-perm-hidden'); elSideNavPortalLog.style.display = ''; }
         }
