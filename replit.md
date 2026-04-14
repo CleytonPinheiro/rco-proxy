@@ -12,6 +12,19 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - Audit log completo em `edusync_audit_log` (PostgreSQL local)
 - Cada usuário tem sua própria sessão RCO (token isolado por `UserSession`)
 
+### Sistema de Planos e Trial
+- **Config**: `backend/src/config/planos.js` — definição de planos (trial/basico/completo para usuários; inicial/profissional/rede para escolas)
+- **Middleware**: `requireFuncionalidade('funcionalidade')` em `auth.middleware.js` — bloqueia endpoints por funcionalidade do plano
+- **Resolução**: plano do usuário tem prioridade; fallback para plano da escola
+- **Planos de usuário**: `trial` (30 dias, só leitura), `basico` (classroom completo), `completo` (tudo), `classroom-individual` (legado)
+- **Planos de escola**: `inicial` (leitura), `profissional` (escrita + frequências), `rede` (tudo)
+- **Funcionalidades gateadas**: `classroom-leitura`, `classroom-escrita`, `atividades-leitura`, `atividades-escrita`, `dashboard`, `grupos`, `frequencias`
+- **Admin**: gerencia planos via modal no painel admin (clique no badge de plano na tabela de usuários/escolas)
+- **Trial auto-expiração**: baseado em `plano_inicio` + 30 dias; após expiração, funcionalidades bloqueadas
+- **Frontend**: banner de status do plano no topo da página classroom (trial countdown, expiração, sem plano)
+- **DB**: colunas `plano`, `plano_inicio`, `plano_renovacao`, `plano_obs` em `edusync_usuarios` e `edusync_escolas`
+- **Admin bypass**: perfil `admin` ignora todas as restrições de plano
+
 ### Classroom (Google Classroom API)
 - **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD
 - **Frontend**: `frontend/pages/classroom/` — página de 3 colunas (disciplinas → atividades/grupos/auditoria → notas)
@@ -73,7 +86,8 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 │   │   ├── config/
 │   │   │   ├── supabase.js               # Clientes Supabase (anon + admin)
 │   │   │   ├── dbInit.js                 # Cria tabelas locais (edusync_*)
-│   │   │   └── permissions.js            # RBAC: perfis e permissões
+│   │   │   ├── permissions.js            # RBAC: perfis e permissões
+│   │   │   └── planos.js                # Planos/trial: definições e resolução
 │   │   ├── middleware/
 │   │   │   └── auth.middleware.js        # requireAuth, requirePerfil
 │   │   ├── services/

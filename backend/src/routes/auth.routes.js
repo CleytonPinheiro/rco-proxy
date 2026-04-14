@@ -14,6 +14,7 @@ import { rateLimit }        from 'express-rate-limit';
 import { userSessionStore } from '../services/UserSessionStore.js';
 import { auditLogger }      from '../services/AuditLogger.js';
 import { requireAuth, COOKIE_NAME } from '../middleware/auth.middleware.js';
+import { resolverPlano }    from '../config/planos.js';
 
 const { Pool } = pg;
 const RCO_BASE = 'https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1';
@@ -210,6 +211,32 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             decodeFn: decodeJwtExpiration,
         });
         session.seedToken(rcoToken, decodeJwtExpiration(rcoToken));
+
+        // 4b. Carregar plano do usuário e/ou da escola vinculada
+        try {
+            const { rows: [userPlano] } = await pool.query(
+                `SELECT plano, plano_inicio, plano_renovacao, plano_obs FROM edusync_usuarios WHERE id = $1`,
+                [userId],
+            );
+            let escolaPlano = null;
+            const codigosDocente = await buscarEstabelecimentosDocente(rcoToken);
+            if (codigosDocente.length > 0) {
+                const { rows: escolasDoDocente } = await pool.query(
+                    `SELECT plano, plano_inicio FROM edusync_escolas
+                     WHERE ativo = true AND plano IS NOT NULL
+                       AND codigo_estabelecimento = ANY($1)
+                     ORDER BY CASE plano WHEN 'rede' THEN 1 WHEN 'profissional' THEN 2 WHEN 'inicial' THEN 3 ELSE 4 END
+                     LIMIT 1`,
+                    [codigosDocente],
+                );
+                if (escolasDoDocente.length > 0) escolaPlano = escolasDoDocente[0];
+            }
+
+            const planoInfo = resolverPlano(userPlano, escolaPlano);
+            session.setPlanoInfo(planoInfo);
+        } catch (planoErr) {
+            console.warn('[Auth] Falha ao carregar plano:', planoErr.message);
+        }
 
         // 5. Cookie de sessão — session cookie (sem maxAge/expires).
         //    O browser apaga automaticamente ao fechar; não persiste em disco.

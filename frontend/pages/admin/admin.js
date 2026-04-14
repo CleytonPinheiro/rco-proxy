@@ -41,17 +41,21 @@ async function carregarUsuarios() {
 }
 
 const PLANO_BADGE_INFO = {
+    'trial':                { icone: '⏳', label: 'Trial',         bg: '#fef3c7', cor: '#92400e' },
+    'basico':               { icone: '📘', label: 'Básico',        bg: '#dbeafe', cor: '#1d4ed8' },
+    'completo':             { icone: '🚀', label: 'Completo',      bg: '#dcfce7', cor: '#15803d' },
     'classroom-individual': { icone: '👨‍🏫', label: 'Individual',  bg: '#ede9fe', cor: '#6d28d9' },
     'inicial':              { icone: '🌱', label: 'Inicial',       bg: '#dcfce7', cor: '#15803d' },
     'profissional':         { icone: '🚀', label: 'Profissional',  bg: '#dbeafe', cor: '#1d4ed8' },
     'rede':                 { icone: '🏫', label: 'Rede Escolar',  bg: '#fef9c3', cor: '#854d0e' },
 };
 
-function badgePlanoUsuario(plano) {
-    if (!plano) return '';
+function badgePlanoUsuario(plano, userId) {
+    const btnStyle = `font-size:.72rem;padding:2px 6px;border-radius:4px;cursor:pointer;border:none;`;
+    if (!plano) return `<button style="${btnStyle}background:var(--bg-hover);color:var(--text-muted)" onclick="abrirModalPlano(${userId})">+ plano</button>`;
     const info = PLANO_BADGE_INFO[plano];
-    if (!info) return `<span style="font-size:.72rem;padding:2px 6px;border-radius:4px;background:var(--bg-hover);color:var(--text-muted)">${plano}</span>`;
-    return `<span style="font-size:.72rem;padding:2px 6px;border-radius:4px;background:${info.bg};color:${info.cor};font-weight:600">${info.icone} ${info.label}</span>`;
+    if (!info) return `<button style="${btnStyle}background:var(--bg-hover);color:var(--text-muted)" onclick="abrirModalPlano(${userId})">${plano}</button>`;
+    return `<button style="${btnStyle}background:${info.bg};color:${info.cor};font-weight:600" onclick="abrirModalPlano(${userId})">${info.icone} ${info.label}</button>`;
 }
 
 function renderTabelaUsuarios(lista) {
@@ -79,7 +83,7 @@ function renderTabelaUsuarios(lista) {
                 <td>${esc(u.nome)}</td>
                 <td style="font-family:monospace;font-size:.8rem">${formatCpf(u.cpf)}</td>
                 <td><span class="perfil-badge perfil-${u.perfil}">${labelPerfil(u.perfil)}</span></td>
-                <td>${badgePlanoUsuario(u.plano)}</td>
+                <td>${badgePlanoUsuario(u.plano, u.id)}</td>
                 <td><span class="${u.ativo ? 'status-ativo' : 'status-inativo'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
                 <td style="color:var(--text-muted);font-size:.8rem">${formatData(u.criado_em)}</td>
                 <td>
@@ -305,10 +309,11 @@ const ADMIN_PLANO_INFO = {
     rede:         { icone: '🏫', label: 'Rede',         bg: '#fef9c3', color: '#854d0e' },
 };
 
-function badgePlanoAdmin(plano) {
-    if (!plano) return `<span style="font-size:.75rem;color:var(--text-muted)">—</span>`;
+function badgePlanoAdmin(plano, escolaId) {
+    const btnBase = `display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px;cursor:pointer;border:none;`;
+    if (!plano) return `<button style="${btnBase}background:var(--bg-hover);color:var(--text-muted)" onclick="abrirModalPlanoEscola(${escolaId})">+ plano</button>`;
     const info = ADMIN_PLANO_INFO[plano] || { icone: '?', label: plano, bg: '#f3f4f6', color: '#6b7280' };
-    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${info.bg};color:${info.color};font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px">${info.icone} ${info.label}</span>`;
+    return `<button style="${btnBase}background:${info.bg};color:${info.color}" onclick="abrirModalPlanoEscola(${escolaId})">${info.icone} ${info.label}</button>`;
 }
 
 function renderTabelaEscolas(lista) {
@@ -336,7 +341,7 @@ function renderTabelaEscolas(lista) {
             <tr data-id="${e.id}">
                 <td>${esc(e.nome)}</td>
                 <td style="font-family:monospace;font-size:.85rem">${e.codigo_estabelecimento}</td>
-                <td>${badgePlanoAdmin(e.plano)}</td>
+                <td>${badgePlanoAdmin(e.plano, e.id)}</td>
                 <td>
                     <span class="badge-auto ${e.permite_auto_cadastro ? 'badge-auto--sim' : 'badge-auto--nao'}">
                         ${e.permite_auto_cadastro ? 'Sim' : 'Não'}
@@ -518,6 +523,151 @@ function mostrarFormMsg(txt, tipo) {
 function esconderFormMsg() {
     document.getElementById('formMsg').style.display = 'none';
 }
+
+/* ════════════════════════════════════════════════════════════
+   PLANO DO USUÁRIO
+════════════════════════════════════════════════════════════ */
+window.abrirModalPlano = function (id) {
+    const u = usuarios.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('modalPlanoUserId').value = id;
+    document.getElementById('modalPlanoUserNome').textContent = `${u.nome} (${labelPerfil(u.perfil)})`;
+    document.getElementById('modalPlanoTipo').value = u.plano || '';
+    document.getElementById('modalPlanoInicio').value = u.plano_inicio ? u.plano_inicio.slice(0, 10) : '';
+    document.getElementById('modalPlanoRenovacao').value = u.plano_renovacao ? u.plano_renovacao.slice(0, 10) : '';
+    document.getElementById('modalPlanoObs').value = u.plano_obs || '';
+    document.getElementById('formPlanoMsg').style.display = 'none';
+    document.getElementById('modalPlano').classList.add('modal-overlay--ativo');
+};
+
+document.getElementById('modalPlanoTipo').addEventListener('change', function () {
+    if (this.value === 'trial' && !document.getElementById('modalPlanoInicio').value) {
+        document.getElementById('modalPlanoInicio').value = new Date().toISOString().slice(0, 10);
+    }
+});
+
+document.getElementById('btnCancelarPlano').addEventListener('click', () => {
+    document.getElementById('modalPlano').classList.remove('modal-overlay--ativo');
+});
+document.getElementById('modalPlano').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalPlano'))
+        document.getElementById('modalPlano').classList.remove('modal-overlay--ativo');
+});
+
+document.getElementById('formPlano').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id   = document.getElementById('modalPlanoUserId').value;
+    const plano = document.getElementById('modalPlanoTipo').value || null;
+    const plano_inicio = document.getElementById('modalPlanoInicio').value || null;
+    const plano_renovacao = document.getElementById('modalPlanoRenovacao').value || null;
+    const plano_obs = document.getElementById('modalPlanoObs').value.trim() || null;
+    const btn = document.getElementById('btnSalvarPlano');
+
+    if (plano === 'trial' && !plano_inicio) {
+        const msg = document.getElementById('formPlanoMsg');
+        msg.textContent = 'Para o plano Trial, informe a data de início.';
+        msg.style.display = 'block';
+        msg.style.background = '#fef2f2';
+        msg.style.color = '#dc2626';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+        const res = await api(`/admin/usuarios/${id}/plano`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plano, plano_inicio, plano_renovacao, plano_obs }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            const msg = document.getElementById('formPlanoMsg');
+            msg.textContent = data.erro || 'Erro ao salvar plano.';
+            msg.style.display = 'block';
+            msg.style.background = '#fef2f2';
+            msg.style.color = '#dc2626';
+        } else {
+            document.getElementById('modalPlano').classList.remove('modal-overlay--ativo');
+            await carregarUsuarios();
+        }
+    } catch (err) {
+        const msg = document.getElementById('formPlanoMsg');
+        msg.textContent = 'Erro de conexão: ' + err.message;
+        msg.style.display = 'block';
+        msg.style.background = '#fef2f2';
+        msg.style.color = '#dc2626';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Salvar plano';
+    }
+});
+
+/* ════════════════════════════════════════════════════════════
+   PLANO DA ESCOLA
+════════════════════════════════════════════════════════════ */
+window.abrirModalPlanoEscola = function (id) {
+    const e = escolas.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('modalPlanoEscolaId').value = id;
+    document.getElementById('modalPlanoEscolaNome').textContent = e.nome;
+    document.getElementById('modalPlanoEscolaTipo').value = e.plano || '';
+    document.getElementById('modalPlanoEscolaInicio').value = e.plano_inicio ? e.plano_inicio.slice(0, 10) : '';
+    document.getElementById('modalPlanoEscolaRenovacao').value = e.plano_renovacao ? e.plano_renovacao.slice(0, 10) : '';
+    document.getElementById('modalPlanoEscolaObs').value = e.plano_obs || '';
+    document.getElementById('formPlanoEscolaMsg').style.display = 'none';
+    document.getElementById('modalPlanoEscola').classList.add('modal-overlay--ativo');
+};
+
+document.getElementById('btnCancelarPlanoEscola').addEventListener('click', () => {
+    document.getElementById('modalPlanoEscola').classList.remove('modal-overlay--ativo');
+});
+document.getElementById('modalPlanoEscola').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modalPlanoEscola'))
+        document.getElementById('modalPlanoEscola').classList.remove('modal-overlay--ativo');
+});
+
+document.getElementById('formPlanoEscola').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id   = document.getElementById('modalPlanoEscolaId').value;
+    const plano = document.getElementById('modalPlanoEscolaTipo').value || null;
+    const plano_inicio = document.getElementById('modalPlanoEscolaInicio').value || null;
+    const plano_renovacao = document.getElementById('modalPlanoEscolaRenovacao').value || null;
+    const plano_obs = document.getElementById('modalPlanoEscolaObs').value.trim() || null;
+    const btn = document.getElementById('btnSalvarPlanoEscola');
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+        const res = await api(`/admin/escolas/${id}/plano`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plano, plano_inicio, plano_renovacao, plano_obs }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            const msg = document.getElementById('formPlanoEscolaMsg');
+            msg.textContent = data.erro || 'Erro ao salvar plano.';
+            msg.style.display = 'block';
+            msg.style.background = '#fef2f2';
+            msg.style.color = '#dc2626';
+        } else {
+            document.getElementById('modalPlanoEscola').classList.remove('modal-overlay--ativo');
+            await carregarEscolas();
+        }
+    } catch (err) {
+        const msg = document.getElementById('formPlanoEscolaMsg');
+        msg.textContent = 'Erro de conexão: ' + err.message;
+        msg.style.display = 'block';
+        msg.style.background = '#fef2f2';
+        msg.style.color = '#dc2626';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Salvar plano';
+    }
+});
 
 /* ════════════════════════════════════════════════════════════
    IMPERSONAÇÃO

@@ -22,6 +22,8 @@ export class UserSession {
     #impersonandoPerfil = null;
     #impersonandoNome   = null;
 
+    #planoInfo = null;
+
     constructor({ id, userId, cpf, senha, nome, perfil, loginFn, decodeFn }) {
         this.#id           = id;
         this.#userId       = userId;
@@ -48,6 +50,9 @@ export class UserSession {
     get isImpersonando()     { return this.#impersonandoPerfil !== null; }
     get impersonandoPerfil() { return this.#impersonandoPerfil; }
     get impersonandoNome()   { return this.#impersonandoNome; }
+
+    get planoInfo()          { return this.#planoInfo; }
+    setPlanoInfo(info)       { this.#planoInfo = info; }
 
     /**
      * Ativa o modo impersonação. Apenas admins devem chamar este método.
@@ -125,8 +130,9 @@ export class UserSession {
             userId:     this.#userId,
             nome:       this.#nome,
             cpf:        cpfMask,
-            perfil:     this.#perfil,           // perfil real sempre presente
+            perfil:     this.#perfil,
             perfilReal: this.#perfil,
+            planoInfo:  this.#planoInfo || null,
         };
 
         if (this.#impersonandoPerfil) {

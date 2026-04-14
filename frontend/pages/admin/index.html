@@ -190,6 +190,85 @@
         </div>
     </div>
 
+    <!-- Modal: Gerenciar plano do usuário -->
+    <div class="modal-overlay" id="modalPlano">
+        <div class="modal-box" style="max-width:480px">
+            <h3 id="modalPlanoTitulo">Gerenciar plano</h3>
+            <form id="formPlano" novalidate>
+                <input type="hidden" id="modalPlanoUserId">
+                <div style="margin-bottom:12px;padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
+                    <strong id="modalPlanoUserNome"></strong>
+                </div>
+                <div class="form-group">
+                    <label>Plano</label>
+                    <select id="modalPlanoTipo">
+                        <option value="">Sem plano</option>
+                        <option value="trial">⏳ Trial (30 dias)</option>
+                        <option value="basico">📘 Básico</option>
+                        <option value="completo">🚀 Completo</option>
+                        <option value="classroom-individual">👨‍🏫 Individual (legado)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Data de início</label>
+                    <input type="date" id="modalPlanoInicio">
+                </div>
+                <div class="form-group">
+                    <label>Renovação (opcional)</label>
+                    <input type="date" id="modalPlanoRenovacao">
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="modalPlanoObs" rows="2" style="width:100%;resize:vertical;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;background:var(--bg-input);color:var(--text-primary)"></textarea>
+                </div>
+                <div id="formPlanoMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancelar" id="btnCancelarPlano">Cancelar</button>
+                    <button type="submit" class="btn-modal-salvar" id="btnSalvarPlano">Salvar plano</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Gerenciar plano da escola -->
+    <div class="modal-overlay" id="modalPlanoEscola">
+        <div class="modal-box" style="max-width:480px">
+            <h3 id="modalPlanoEscolaTitulo">Gerenciar plano da escola</h3>
+            <form id="formPlanoEscola" novalidate>
+                <input type="hidden" id="modalPlanoEscolaId">
+                <div style="margin-bottom:12px;padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
+                    <strong id="modalPlanoEscolaNome"></strong>
+                </div>
+                <div class="form-group">
+                    <label>Plano</label>
+                    <select id="modalPlanoEscolaTipo">
+                        <option value="">Sem plano</option>
+                        <option value="inicial">🌱 Inicial</option>
+                        <option value="profissional">🚀 Profissional</option>
+                        <option value="rede">🏫 Rede Escolar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Data de início</label>
+                    <input type="date" id="modalPlanoEscolaInicio">
+                </div>
+                <div class="form-group">
+                    <label>Renovação (opcional)</label>
+                    <input type="date" id="modalPlanoEscolaRenovacao">
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="modalPlanoEscolaObs" rows="2" style="width:100%;resize:vertical;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;background:var(--bg-input);color:var(--text-primary)"></textarea>
+                </div>
+                <div id="formPlanoEscolaMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancelar" id="btnCancelarPlanoEscola">Cancelar</button>
+                    <button type="submit" class="btn-modal-salvar" id="btnSalvarPlanoEscola">Salvar plano</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="./admin.js"></script>
 </body>
 </html>

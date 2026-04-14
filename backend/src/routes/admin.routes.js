@@ -73,9 +73,9 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         const id = parseInt(req.params.id, 10);
         const { plano, plano_inicio, plano_renovacao, plano_obs } = req.body;
 
-        const planosValidos = ['classroom-individual', null];
+        const planosValidos = ['trial', 'basico', 'completo', 'classroom-individual', null];
         if (!planosValidos.includes(plano)) {
-            return res.status(400).json({ erro: `Plano inválido. Valor aceito: classroom-individual ou null.` });
+            return res.status(400).json({ erro: `Plano inválido. Valores aceitos: ${planosValidos.filter(Boolean).join(', ')} ou null.` });
         }
 
         try {

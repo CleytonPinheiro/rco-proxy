@@ -4491,6 +4491,40 @@ function popoutNotas() {
 })();
 
 /* ══════════════════════════════════════════════════════════════
+   BANNER DE PLANO
+══════════════════════════════════════════════════════════════ */
+(function injetarBannerPlano() {
+    const user = window.__edusync?.user;
+    if (!user || user.perfil === 'admin' || user.perfilReal === 'admin') return;
+    const pi = user.planoInfo;
+    if (!pi) return;
+
+    const container = document.querySelector('.container') || document.querySelector('.cl-main');
+    if (!container) return;
+
+    const banner = document.createElement('div');
+    banner.className = 'cl-plano-banner';
+
+    if (pi.expirado) {
+        banner.classList.add('cl-plano-banner--expirado');
+        banner.innerHTML = `<span class="cl-plano-banner-icon">⏰</span>
+            <span>Seu plano <strong>${pi.config?.nome || pi.plano}</strong> expirou. Contate o administrador para renovar.</span>`;
+    } else if (!pi.plano) {
+        banner.classList.add('cl-plano-banner--sem');
+        banner.innerHTML = `<span class="cl-plano-banner-icon">🔒</span>
+            <span>Você não possui um plano ativo. Algumas funcionalidades estão bloqueadas. Contate o administrador.</span>`;
+    } else if (pi.plano === 'trial' && pi.diasRestantes !== null) {
+        banner.classList.add('cl-plano-banner--trial');
+        banner.innerHTML = `<span class="cl-plano-banner-icon">⏳</span>
+            <span>Plano <strong>Trial</strong> — ${pi.diasRestantes} dia(s) restante(s). Funcionalidades de escrita estão desabilitadas.</span>`;
+    } else {
+        return;
+    }
+
+    container.insertBefore(banner, container.firstChild);
+})();
+
+/* ══════════════════════════════════════════════════════════════
    INICIA
 ══════════════════════════════════════════════════════════════ */
 init();

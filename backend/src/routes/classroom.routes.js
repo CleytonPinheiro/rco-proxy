@@ -4,6 +4,7 @@ import fs                  from 'fs';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import pkg                 from 'pg';
+import { requireFuncionalidade } from '../middleware/auth.middleware.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -361,7 +362,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Atualizar nota de uma entrega ── */
-    router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', async (req, res) => {
+    router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
         const { nota } = req.body;
@@ -380,7 +381,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Devolver entrega ── */
-    router.post('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return', async (req, res) => {
+    router.post('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
@@ -560,7 +561,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Registrar ausências (após aplicar zeros) ── */
-    router.post('/classroom/ausencias', async (req, res) => {
+    router.post('/classroom/ausencias', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { courseId, atividadeId, userId, nomeAluno, dataAtividade, codClasse } = req.body;
         if (!courseId || !atividadeId || !userId) {
             return res.status(400).json({ erro: 'courseId, atividadeId e userId são obrigatórios' });
@@ -579,7 +580,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Remover registro de ausência (desfazer) ── */
-    router.delete('/classroom/ausencias', async (req, res) => {
+    router.delete('/classroom/ausencias', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { courseId, atividadeId, userId } = req.query;
         if (!courseId || !atividadeId || !userId) {
             return res.status(400).json({ erro: 'courseId, atividadeId e userId são obrigatórios' });
@@ -663,7 +664,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Criar grupo ── */
-    router.post('/classroom/groups', async (req, res) => {
+    router.post('/classroom/groups', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
@@ -683,7 +684,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Atualizar grupo ── */
-    router.put('/classroom/groups/:id', async (req, res) => {
+    router.put('/classroom/groups/:id', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
@@ -702,7 +703,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Excluir grupo ── */
-    router.delete('/classroom/groups/:id', async (req, res) => {
+    router.delete('/classroom/groups/:id', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         try {
             await pool.query(`DELETE FROM classroom_grupos WHERE id=$1`, [req.params.id]);
             res.json({ ok: true });
@@ -713,7 +714,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Marcar/desmarcar "lançado no livro" ── */
-    router.patch('/classroom/groups/:id/livro', async (req, res) => {
+    router.patch('/classroom/groups/:id/livro', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { lancado } = req.body;          // boolean
         if (typeof lancado !== 'boolean') return res.status(400).json({ erro: 'lancado (boolean) obrigatório.' });
         try {
@@ -738,7 +739,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Atualizar pontos_max de uma atividade em todos os grupos do curso ── */
-    router.patch('/classroom/courses/:courseId/activities/:activityId/pontos_max', async (req, res) => {
+    router.patch('/classroom/courses/:courseId/activities/:activityId/pontos_max', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { courseId, activityId } = req.params;
         const { pontos_max } = req.body;
         if (pontos_max === undefined) return res.status(400).json({ erro: 'pontos_max obrigatório' });
@@ -758,7 +759,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Salvar atividades de um grupo (substitui todas) ── */
-    router.put('/classroom/groups/:id/activities', async (req, res) => {
+    router.put('/classroom/groups/:id/activities', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { atividades } = req.body;
         try {
             await pool.query(`DELETE FROM classroom_grupo_atividades WHERE grupo_id=$1`, [req.params.id]);
@@ -1043,7 +1044,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Fechar/Abrir grupo (definir data_fechamento + sync dueDate no Classroom) ── */
-    router.post('/classroom/groups/:id/fechar', async (req, res) => {
+    router.post('/classroom/groups/:id/fechar', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { dataFechamento, syncClassroom } = req.body;
         try {
             const { rows: [grupo] } = await pool.query(
@@ -1111,7 +1112,7 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
-    router.post('/classroom/groups/:id/abrir', async (req, res) => {
+    router.post('/classroom/groups/:id/abrir', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { restaurarDueDate } = req.body || {};
         try {
             const { rows: [grupo] } = await pool.query(
@@ -1183,7 +1184,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Detectar entregas tardias (após data_fechamento do grupo) ── */
-    router.post('/classroom/groups/:id/detectar-tardias', async (req, res) => {
+    router.post('/classroom/groups/:id/detectar-tardias', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { courseId } = req.body;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
         const auth = await getAuthenticatedClient(req);
@@ -1379,7 +1380,7 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* POST /api/classroom/solicitacoes/:id/responder */
-    router.post('/classroom/solicitacoes/:id/responder', async (req, res) => {
+    router.post('/classroom/solicitacoes/:id/responder', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { id } = req.params;
         const { acao, resposta } = req.body;  /* acao: 'aprovar' | 'negar' */
         if (!['aprovar', 'negar'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });

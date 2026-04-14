@@ -4,6 +4,7 @@
 import { requestContext }  from '../services/RequestContext.js';
 import { userSessionStore } from '../services/UserSessionStore.js';
 import { podeAcessar }     from '../config/permissions.js';
+import { podeFuncionalidade } from '../config/planos.js';
 
 const COOKIE_NAME = 'edusync_sid';
 
@@ -58,6 +59,44 @@ export function requireModulo(modulo) {
 
         if (!podeAcessar(perfil, modulo)) {
             return res.status(403).json({ erro: `Acesso ao módulo "${modulo}" não permitido.` });
+        }
+        next();
+    };
+}
+
+/**
+ * Exige que o plano do usuário inclua a funcionalidade solicitada.
+ * Admin tem acesso irrestrito (bypass).
+ * @param {string} funcionalidade
+ */
+export function requireFuncionalidade(funcionalidade) {
+    return (req, res, next) => {
+        const perfil = req.userSession?.perfil;
+        if (!perfil) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        if (perfil === 'admin') return next();
+
+        const planoInfo = req.userSession?.planoInfo;
+        if (planoInfo?.expirado) {
+            return res.status(403).json({
+                erro: 'Seu plano expirou. Contate o administrador para renovar.',
+                planoExpirado: true,
+                planoAtual: planoInfo.plano,
+            });
+        }
+        if (!planoInfo || !planoInfo.plano) {
+            return res.status(403).json({
+                erro: 'Você não possui um plano ativo. Contate o administrador.',
+                semPlano: true,
+            });
+        }
+        if (!podeFuncionalidade(planoInfo.funcionalidades, funcionalidade)) {
+            return res.status(403).json({
+                erro: `Seu plano (${planoInfo.config?.nome || planoInfo.plano}) não inclui esta funcionalidade.`,
+                planoInsuficiente: true,
+                planoAtual: planoInfo.plano,
+                funcionalidadeNecessaria: funcionalidade,
+            });
         }
         next();
     };
