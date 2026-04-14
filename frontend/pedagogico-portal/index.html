@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Portal Pedagógico</title>
+    <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
+    <link rel="stylesheet" href="./pedagogico-portal.css">
+    <script>
+        (function(){
+            const t = localStorage.getItem('pedagogo_tema');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+<body>
+
+    <header class="pp-header">
+        <div class="pp-header-inner">
+            <div class="pp-logo">
+                <span class="pp-logo-icon">⚡</span>
+                <span class="pp-logo-edu">Edu</span><span class="pp-logo-sync">Sync</span>
+                <span class="pp-logo-sub">Portal Pedagógico</span>
+            </div>
+
+            <div id="ppUserArea" class="pp-user-area" style="display:none">
+                <button class="pp-theme-btn" id="ppThemeBtn" onclick="toggleTema()" title="Alternar tema">
+                    <span id="ppThemeIcon" class="pp-theme-icon"></span>
+                </button>
+                <div class="pp-perfil-wrap" id="ppPerfilWrap">
+                    <button class="pp-perfil-trigger" onclick="toggleDropdown(event)">
+                        <img id="ppUserFoto" class="pp-avatar" src="" alt="foto" style="display:none">
+                        <span class="pp-avatar-placeholder" id="ppAvatarPlaceholder"></span>
+                        <span id="ppUserNome" class="pp-user-nome"></span>
+                        <svg class="pp-caret" viewBox="0 0 10 6" fill="none">
+                            <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="pp-dropdown" id="ppDropdown" style="display:none">
+                        <div class="pp-drop-header">
+                            <img id="ppDropFoto" class="pp-drop-avatar" src="" alt="" style="display:none">
+                            <span class="pp-drop-avatar-placeholder" id="ppDropPlaceholder"></span>
+                            <div class="pp-drop-info">
+                                <div class="pp-drop-nome" id="ppDropNome"></div>
+                                <div class="pp-drop-email" id="ppDropEmail"></div>
+                            </div>
+                        </div>
+                        <div class="pp-drop-divider"></div>
+                        <button class="pp-drop-sair" onclick="fazerLogout()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="pp-main">
+
+        <section id="ppPreLogin" class="pp-prelogin">
+            <div class="pp-prelogin-card">
+                <div class="pp-prelogin-icon">📋</div>
+                <h1>Portal Pedagógico</h1>
+                <p>Acompanhe notas, atividades e grupos de avaliação do Google Classroom. Acesso exclusivo para a equipe pedagógica.</p>
+                <button class="pp-btn pp-btn--google" onclick="entrarComGoogle()">
+                    <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#34A853" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#FBBC05" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    Entrar com Google
+                </button>
+                <p class="pp-prelogin-note">Use seu e-mail institucional @escola</p>
+            </div>
+        </section>
+
+        <section id="ppDashboard" class="pp-dashboard" style="display:none">
+            <div class="pp-dashboard-header">
+                <h2 id="ppTituloPagina">Selecione uma disciplina</h2>
+                <button id="ppBtnVoltar" class="pp-btn pp-btn--outline pp-btn--sm" onclick="voltarParaCursos()" style="display:none">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+                    Voltar
+                </button>
+            </div>
+
+            <div id="ppCursosList" class="pp-cursos-grid"></div>
+            <div id="ppGruposList" class="pp-grupos-grid" style="display:none"></div>
+
+            <div id="ppResumoArea" class="pp-resumo-area" style="display:none">
+                <div class="pp-resumo-header">
+                    <h3 id="ppResumoTitulo"></h3>
+                    <div class="pp-resumo-badges" id="ppResumoBadges"></div>
+                    <div class="pp-resumo-actions" id="ppResumoActions"></div>
+                </div>
+                <div class="pp-resumo-stats" id="ppResumoStats"></div>
+                <div class="pp-resumo-table-wrap">
+                    <table class="pp-table" id="ppResumoTable">
+                        <thead id="ppResumoCabecalho"></thead>
+                        <tbody id="ppResumoCorpo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <div id="ppLoading" class="pp-loading" style="display:none">
+            <div class="pp-spinner"></div>
+            <span>Carregando...</span>
+        </div>
+
+        <div id="ppToast" class="pp-toast"></div>
+    </main>
+
+    <script src="./pedagogico-portal.js"></script>
+</body>
+</html>

@@ -19,9 +19,10 @@ import { createPedagogicoRouter }    from './pedagogico.routes.js';
 import { createClassroomRouter, createClassroomPublicRouter } from './classroom.routes.js';
 import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
-import { createAlunosPortalRouter }  from './alunos-portal.routes.js';
-import { createRcoLancamentoRouter } from './rco-lancamento.routes.js';
-import { createQRCodeRouter }        from './qrcode.routes.js';
+import { createAlunosPortalRouter }       from './alunos-portal.routes.js';
+import { createPedagogicoPortalRouter }  from './pedagogico-portal.routes.js';
+import { createRcoLancamentoRouter }     from './rco-lancamento.routes.js';
+import { createQRCodeRouter }            from './qrcode.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -31,6 +32,9 @@ export function createApiRouter(deps) {
 
     /* ── Portal do Aluno (público — sem sessão EduSync) ── */
     router.use('/', createAlunosPortalRouter());
+
+    /* ── Portal Pedagógico (público — sem sessão EduSync) ── */
+    router.use('/', createPedagogicoPortalRouter());
 
     /* ── Gerador de QR Code (público) ── */
     router.use('/', createQRCodeRouter());

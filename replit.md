@@ -30,6 +30,17 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Redirect URI adicional** (registrar no Google Cloud Console): `https://{domínio}/api/alunos-portal/callback`
 - **Dados exibidos**: atividades pendentes (estado CREATED/RECLAIMED) agrupadas por disciplina, com prazo e link direto ao GC
 
+### Portal Pedagógico (Google OAuth — público, somente leitura + reabrir)
+- **URL pública**: `/pedagogico-portal/` — sem login EduSync/RCO, acessível pela equipe pedagógica
+- **Backend**: `backend/src/routes/pedagogico-portal.routes.js` — montado ANTES do `requireAuth`
+- **Frontend**: `frontend/pedagogico-portal/` — HTML/CSS/JS standalone com tema roxo
+- **Sessão**: cookie `pedagogo_sid` + tabela `pedagogo_portal_sessions` (PostgreSQL local, TTL 24h)
+- **Fluxo OAuth**: escopo mínimo (`openid email profile`) — só para obter o email @escola
+- **Consulta**: usa o **token do professor** (já armazenado) para buscar cursos/alunos/submissions via Classroom API
+- **Redirect URI adicional** (registrar no Google Cloud Console): `https://{domínio}/api/pedagogico-portal/callback`
+- **Funcionalidades**: consulta de cursos, grupos de atividades, resumo de notas por grupo (tabela com nota por atividade por aluno), estatísticas (média, pendências), e **reabrir grupo fechado**
+- **Audit log**: todas as ações registradas no módulo `portal_pedagogico`
+
 ## Estado Atual
 - **Data**: 14/04/2026
 - **Status**: Funcional com autenticação multi-usuário RBAC + painel admin + criação de avaliação via Puppeteer
@@ -42,7 +53,7 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 
 ### Bancos de Dados
 - **Supabase** (remoto): `estabelecimentos`, `turmas`, `disciplinas`, `classes`, `alunos`, `rco_sync_log`, `aluno_ocorrencias`, `rco_observacoes`
-- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `classroom_entregas_tardias`, `edusync_usuarios`, `edusync_audit_log`, `aluno_portal_sessions`
+- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `classroom_entregas_tardias`, `edusync_usuarios`, `edusync_audit_log`, `aluno_portal_sessions`, `pedagogo_portal_sessions`
 
 ### Estrutura de Pastas
 
@@ -84,6 +95,7 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 │   │       ├── mapa.routes.js            # /api/mapa-sala
 │   │       ├── atividades.routes.js      # /api/atividades-sala
 │   │       ├── pedagogico.routes.js      # /api/pedagogico + /api/pedagogico/retorno
+│   │       ├── pedagogico-portal.routes.js # /api/pedagogico-portal/* (público)
 │   │       ├── circulacao.routes.js      # /api/circulacao
 │   │       └── debug.routes.js           # /api/debug/*
 ├── frontend/

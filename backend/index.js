@@ -36,7 +36,18 @@ const alunosPortalLimiter = rateLimit({
 });
 app.use('/api/alunos-portal', alunosPortalLimiter);
 
-// Rate limiting — Login do portal (anti força-bruta): 10 req/min por IP
+// Rate limiting — Portal Pedagógico: 60 req/min por IP
+const pedagogoPortalLimiter = rateLimit({
+    windowMs:        60 * 1000,
+    max:             60,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    message:         { erro: 'Muitas requisições. Aguarde um momento e tente novamente.' },
+    skip:            (req) => req.path === '/api/pedagogico-portal/status',
+});
+app.use('/api/pedagogico-portal', pedagogoPortalLimiter);
+
+// Rate limiting — Login dos portais (anti força-bruta): 10 req/min por IP
 const loginLimiter = rateLimit({
     windowMs:        60 * 1000,
     max:             10,
@@ -46,6 +57,8 @@ const loginLimiter = rateLimit({
 });
 app.use('/api/alunos-portal/auth-url', loginLimiter);
 app.use('/api/alunos-portal/callback', loginLimiter);
+app.use('/api/pedagogico-portal/auth-url', loginLimiter);
+app.use('/api/pedagogico-portal/callback', loginLimiter);
 
 // Health checks registrados antes de qualquer middleware pesado
 app.get('/health', (_req, res) => res.status(200).send('OK'));
