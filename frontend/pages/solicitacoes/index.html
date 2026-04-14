@@ -44,6 +44,21 @@
             <p class="sol-subtitulo">Atividades que os alunos solicitaram reabertura no Portal do Aluno</p>
         </div>
 
+        <div class="sol-stats" id="solStats">
+            <div class="sol-stat">
+                <div class="sol-stat-num sol-stat-num--pendente" id="solCountPendente">—</div>
+                <div class="sol-stat-label">Pendentes</div>
+            </div>
+            <div class="sol-stat">
+                <div class="sol-stat-num sol-stat-num--aprovada" id="solCountAprovada">—</div>
+                <div class="sol-stat-label">Aprovadas</div>
+            </div>
+            <div class="sol-stat">
+                <div class="sol-stat-num sol-stat-num--negada" id="solCountNegada">—</div>
+                <div class="sol-stat-label">Negadas</div>
+            </div>
+        </div>
+
         <div class="sol-filtros">
             <input class="sol-busca" type="search" id="solBusca" placeholder="Buscar por aluno, e-mail ou atividade…">
             <select class="sol-select" id="solStatus">
@@ -57,7 +72,7 @@
 
         <div id="solInfo" class="sol-info" style="display:none"></div>
 
-        <div id="solLista" class="sol-lista">
+        <div id="solLista" class="sol-timeline">
             <div class="sol-empty">Carregando solicitações…</div>
         </div>
     </main>
