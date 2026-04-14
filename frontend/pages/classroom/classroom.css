@@ -2279,6 +2279,76 @@ body.cl-popout .logo-icon { font-size: 15px; }
     margin-top: 4px;
     font-style: italic;
 }
+.cl-rco-criar-wrap {
+    padding: 8px 0;
+}
+.cl-rco-criar-form {
+    background: color-mix(in srgb, #6366f1 8%, transparent);
+    border: 1px solid color-mix(in srgb, #6366f1 25%, transparent);
+    border-radius: 10px;
+    padding: 16px;
+}
+.cl-rco-criar-titulo {
+    font-weight: 600;
+    font-size: .95rem;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+.cl-rco-criar-campo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.cl-rco-criar-campo label {
+    font-size: .85rem;
+    color: var(--text-secondary);
+    min-width: 45px;
+}
+.cl-rco-criar-select,
+.cl-rco-criar-input {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #333);
+    background: var(--bg-input, #1a1a2e);
+    color: var(--text-primary);
+    font-size: .85rem;
+}
+.cl-rco-criar-status {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: .8rem;
+}
+.cl-rco-criar-status--info {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+    color: #93c5fd;
+    border: 1px solid color-mix(in srgb, #3b82f6 30%, transparent);
+}
+.cl-rco-criar-status--ok {
+    background: color-mix(in srgb, #22c55e 15%, transparent);
+    color: #86efac;
+    border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+}
+.cl-rco-criar-status--erro {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #fca5a5;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+}
+.cl-rco-criar-details {
+    margin-top: 12px;
+    border-top: 1px solid var(--border-color, #333);
+    padding-top: 10px;
+}
+.cl-rco-criar-details summary {
+    cursor: pointer;
+    font-size: .85rem;
+    color: var(--text-secondary);
+}
+.cl-rco-criar-inline {
+    margin-top: 4px;
+}
 
 .cl-rco-avaliacao-info {
     background: color-mix(in srgb, #6366f1 8%, transparent);

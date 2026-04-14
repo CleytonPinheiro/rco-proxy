@@ -3253,21 +3253,47 @@ async function abrirModalRco() {
         const data = await apiRaw(`/rco-lancamento/avaliacoes?codClasse=${grupoAtivo.codClasseRco}`);
         const lista = Array.isArray(data) ? data : (data.data ?? data.items ?? data.resultado ?? []);
 
-        if (!lista.length) {
-            elRcoAvaliacoesLista.innerHTML = '<div class="cl-empty-state">Nenhuma avaliação parcial encontrada para esta classe.</div>';
+        const avalComId = lista.filter(av => av.codAvaliacaoParcialClasse);
+        const tiposDisponiveis = lista.filter(av => !av.codAvaliacaoParcialClasse)
+            .map(av => Number(av.codTipoAvaliacaoParcial) === 2 ? 'Recuperação' : `AV${av.numAvaliacaoParcial || 1}`);
+
+        elRcoAvaliacoesLista.innerHTML = '';
+
+        if (!avalComId.length) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'cl-rco-criar-wrap';
+            emptyDiv.innerHTML = `
+                <div class="cl-empty-state" style="margin-bottom:12px">Nenhuma avaliação criada no RCO para esta classe.</div>
+                <div class="cl-rco-criar-form">
+                    <div class="cl-rco-criar-titulo">Criar Avaliação no RCO</div>
+                    <div class="cl-rco-criar-campo">
+                        <label>Tipo:</label>
+                        <select id="clRcoCriarTipo" class="cl-rco-criar-select">
+                            ${tiposDisponiveis.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            ${!tiposDisponiveis.length ? '<option value="AV1">AV1</option><option value="Recuperação">Recuperação</option>' : ''}
+                        </select>
+                    </div>
+                    <div class="cl-rco-criar-campo">
+                        <label>Data:</label>
+                        <input type="date" id="clRcoCriarData" class="cl-rco-criar-input" value="${new Date().toISOString().slice(0,10)}">
+                    </div>
+                    <button id="clRcoCriarBtn" class="cl-btn cl-btn--primary" style="margin-top:8px">
+                        Criar no RCO
+                    </button>
+                    <div id="clRcoCriarStatus" class="cl-rco-criar-status" style="display:none"></div>
+                </div>
+            `;
+            elRcoAvaliacoesLista.appendChild(emptyDiv);
+
+            document.getElementById('clRcoCriarBtn')?.addEventListener('click', () => criarAvaliacaoRco());
             return;
         }
 
-        elRcoAvaliacoesLista.innerHTML = '';
-        lista.forEach(av => {
-            /* Oculta itens que ainda não existem no RCO (sem ID de classe) */
-            if (!av.codAvaliacaoParcialClasse) return;
-
+        avalComId.forEach(av => {
             const isRec  = Number(av.codTipoAvaliacaoParcial) === 2;
             const label  = String(av.descrAvaliacaoParcial ?? (av.numAvaliacaoParcial != null ? `AV${av.numAvaliacaoParcial}` : '—'))
                                .replace(/\n\s*/g, ' ').trim();
 
-            /* Sub-linha: só exibe campos que existem no retorno do RCO */
             const subPartes = [];
             if (av.pesoDecimal != null)        subPartes.push(`Peso: ${av.pesoDecimal}`);
             if (av.dataAvaliacaoParcial)        subPartes.push(`Data: ${av.dataAvaliacaoParcial.slice(0,10)}`);
@@ -3294,8 +3320,76 @@ async function abrirModalRco() {
             }
             elRcoAvaliacoesLista.appendChild(item);
         });
+
+        if (tiposDisponiveis.length) {
+            const criarDiv = document.createElement('div');
+            criarDiv.className = 'cl-rco-criar-inline';
+            criarDiv.innerHTML = `
+                <details class="cl-rco-criar-details">
+                    <summary>Criar outra avaliação</summary>
+                    <div class="cl-rco-criar-form" style="margin-top:8px">
+                        <div class="cl-rco-criar-campo">
+                            <label>Tipo:</label>
+                            <select id="clRcoCriarTipo" class="cl-rco-criar-select">
+                                ${tiposDisponiveis.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="cl-rco-criar-campo">
+                            <label>Data:</label>
+                            <input type="date" id="clRcoCriarData" class="cl-rco-criar-input" value="${new Date().toISOString().slice(0,10)}">
+                        </div>
+                        <button id="clRcoCriarBtn" class="cl-btn cl-btn--primary cl-btn--sm" style="margin-top:8px">
+                            Criar no RCO
+                        </button>
+                        <div id="clRcoCriarStatus" class="cl-rco-criar-status" style="display:none"></div>
+                    </div>
+                </details>
+            `;
+            elRcoAvaliacoesLista.appendChild(criarDiv);
+            document.getElementById('clRcoCriarBtn')?.addEventListener('click', () => criarAvaliacaoRco());
+        }
     } catch (e) {
         elRcoAvaliacoesLista.innerHTML = `<div class="cl-rco-erro">Erro ao buscar avaliações: ${e.message}</div>`;
+    }
+}
+
+async function criarAvaliacaoRco() {
+    const tipo = document.getElementById('clRcoCriarTipo')?.value;
+    const data = document.getElementById('clRcoCriarData')?.value;
+    const btn  = document.getElementById('clRcoCriarBtn');
+    const statusEl = document.getElementById('clRcoCriarStatus');
+
+    if (!tipo || !data) {
+        toast('Selecione o tipo e a data da avaliação.', 'erro');
+        return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Criando…';
+    statusEl.style.display = '';
+    statusEl.textContent   = 'Automatizando criação no RCO Digital (pode levar até 30s)…';
+    statusEl.className     = 'cl-rco-criar-status cl-rco-criar-status--info';
+
+    try {
+        const codClasse = grupoAtivo?.codClasseRco;
+        const result = await apiRaw('/rco-lancamento/avaliacoes/criar', {
+            method: 'POST',
+            body: { codClasse, tipo, dataAvaliacao: data },
+        });
+
+        statusEl.textContent = 'Avaliação criada com sucesso! Recarregando lista…';
+        statusEl.className   = 'cl-rco-criar-status cl-rco-criar-status--ok';
+        toast('Avaliação criada no RCO! Recarregando…', 'ok');
+
+        await new Promise(r => setTimeout(r, 1500));
+        await abrirModalRco();
+    } catch (e) {
+        statusEl.textContent = `Erro: ${e.message}`;
+        statusEl.className   = 'cl-rco-criar-status cl-rco-criar-status--erro';
+        toast(`Erro ao criar avaliação: ${e.message}`, 'erro', 8000);
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Criar no RCO';
     }
 }
 

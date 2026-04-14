@@ -31,8 +31,8 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Dados exibidos**: atividades pendentes (estado CREATED/RECLAIMED) agrupadas por disciplina, com prazo e link direto ao GC
 
 ## Estado Atual
-- **Data**: 09/04/2026
-- **Status**: Funcional com autenticação multi-usuário RBAC + painel admin + fix lançamento recuperação
+- **Data**: 14/04/2026
+- **Status**: Funcional com autenticação multi-usuário RBAC + painel admin + criação de avaliação via Puppeteer
 - **Linguagem**: JavaScript (Node.js com ES Modules)
 - **Framework**: Express.js
 - **Banco de Dados**: Supabase (PostgreSQL remoto) + PostgreSQL local (tabelas locais)

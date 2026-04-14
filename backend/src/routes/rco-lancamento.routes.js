@@ -8,9 +8,10 @@
  * POST /api/rco-lancamento/avaliacoes/:id/salvar-db     — persiste no banco sem reenviar ao RCO
  */
 
-import { Router }         from 'express';
-import { rcoApiService }  from '../services/RcoApiService.js';
-import pkg                from 'pg';
+import { Router }              from 'express';
+import { rcoApiService }       from '../services/RcoApiService.js';
+import { RcoWebAutomation }    from '../services/RcoWebAutomation.js';
+import pkg                     from 'pg';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -1643,6 +1644,49 @@ export function createRcoLancamentoRouter(deps = {}) {
             res.json({ resultados });
         } catch (e) {
             log(`FALHA: ${e.message}`);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── POST /api/rco-lancamento/avaliacoes/criar
+       Cria avaliação no RCO via automação do navegador (Puppeteer).
+       O RCO API não suporta POST para criar avaliações — então automatizamos
+       o formulário web do RCO Digital.
+       Body: { codClasse, tipo: "AV1"|"Recuperação", dataAvaliacao: "YYYY-MM-DD" }
+    ─────────────────────────────────────────────────────── */
+    router.post('/rco-lancamento/avaliacoes/criar', async (req, res) => {
+        const { codClasse, tipo, dataAvaliacao, nomeDisciplina } = req.body;
+        if (!codClasse || !tipo || !dataAvaliacao || !nomeDisciplina) {
+            return res.status(400).json({ erro: 'codClasse, tipo, dataAvaliacao e nomeDisciplina são obrigatórios.' });
+        }
+        if (!['AV1', 'Recuperação'].includes(tipo)) {
+            return res.status(400).json({ erro: 'tipo deve ser "AV1" ou "Recuperação".' });
+        }
+
+        const cpf   = process.env.RCO_CPF;
+        const senha = process.env.RCO_SENHA;
+        if (!cpf || !senha) {
+            return res.status(500).json({ erro: 'Credenciais RCO não configuradas no servidor.' });
+        }
+
+        try {
+            const resultado = await RcoWebAutomation.criarAvaliacao({
+                cpf, senha, codClasse, tipo, dataAvaliacao, nomeDisciplina,
+            });
+
+            const listR = await rcoApiService.get(
+                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
+                `&codPeriodoAvaliacao=9&codRegraCalculo=1&qtdeAvaliacao=2&page=1&perPage=50`
+            );
+            const avaliacoes = Array.isArray(listR.data) ? listR.data : (listR.data?.content ?? []);
+            const comId = avaliacoes.filter(a => a.codAvaliacaoParcialClasse);
+
+            res.json({
+                ...resultado,
+                avaliacoes: comId,
+            });
+        } catch (e) {
+            console.error('[RCO-WEB] Erro na criação:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });
