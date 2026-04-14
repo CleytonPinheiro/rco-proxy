@@ -504,7 +504,7 @@ export function createAlunosPortalRouter() {
                             let grupoMap = {};
                             if (todosIds.length > 0) {
                                 const { rows: grupoRows } = await pool.query(
-                                    `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome
+                                    `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome, g.data_fechamento
                                      FROM classroom_grupo_atividades ga
                                      JOIN classroom_grupos g ON g.id = ga.grupo_id
                                      WHERE ga.atividade_id = ANY($1::bigint[])
@@ -512,25 +512,33 @@ export function createAlunosPortalRouter() {
                                        AND g.tipo = 'normal'`,
                                     [todosIds, String(curso.id)]
                                 );
-                                grupoRows.forEach(r => { grupoMap[r.atividade_id] = { id: r.grupo_id, nome: r.grupo_nome }; });
+                                grupoRows.forEach(r => {
+                                    grupoMap[r.atividade_id] = {
+                                        id: r.grupo_id,
+                                        nome: r.grupo_nome,
+                                        fechado: !!r.data_fechamento,
+                                        dataFechamento: r.data_fechamento ? r.data_fechamento.toISOString() : null,
+                                    };
+                                });
                             }
 
-                            atividades.forEach(a => {
+                            const anotarGrupo = (a) => {
                                 const g = grupoMap[String(a.id)];
-                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                            });
+                                if (g) {
+                                    a.grupoId = g.id;
+                                    a.grupoNome = g.nome;
+                                    a.grupoFechado = g.fechado;
+                                    a.grupoDataFechamento = g.dataFechamento;
+                                }
+                            };
+
+                            atividades.forEach(anotarGrupo);
                             atividades.splice(0, atividades.length, ...atividades.filter(a => a.grupoId));
 
-                            zeradas.forEach(a => {
-                                const g = grupoMap[String(a.id)];
-                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                            });
+                            zeradas.forEach(anotarGrupo);
                             zeradas.splice(0, zeradas.length, ...zeradas.filter(a => a.grupoId));
 
-                            aguardando.forEach(a => {
-                                const g = grupoMap[String(a.id)];
-                                if (g) { a.grupoId = g.id; a.grupoNome = g.nome; }
-                            });
+                            aguardando.forEach(anotarGrupo);
                             aguardando.splice(0, aguardando.length, ...aguardando.filter(a => a.grupoId));
                         }
                     } catch (e) {

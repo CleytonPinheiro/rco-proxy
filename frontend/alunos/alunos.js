@@ -407,14 +407,27 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
     });
 
     /* Renderiza cada grupo */
-    gruposMap.forEach(({ nome, atividades: gAtivs }) => {
+    gruposMap.forEach(({ nome, atividades: gAtivs }, grupoId) => {
         const secao = document.createElement('div');
         secao.className = 'pa-grupo-secao';
+
+        const primeiraAtiv = gAtivs[0];
+        const grupoFechado = primeiraAtiv?.grupoFechado;
+        const grupoDataFech = primeiraAtiv?.grupoDataFechamento;
 
         const label = document.createElement('div');
         label.className = 'pa-grupo-label';
         label.innerHTML = `<span class="pa-grupo-icon">📋</span><span class="pa-grupo-nome">${esc(nome)}</span>`;
         secao.appendChild(label);
+
+        if (grupoFechado) {
+            secao.classList.add('pa-grupo-secao--fechado');
+            const aviso = document.createElement('div');
+            aviso.className = 'pa-grupo-fechado-aviso';
+            const dtFech = grupoDataFech ? new Date(grupoDataFech).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            aviso.innerHTML = `<span class="pa-fechado-icon">🔒</span> <strong>Notas fechadas${dtFech ? ` em ${dtFech}` : ''}</strong> — Entregas após o fechamento não serão contabilizadas na nota.`;
+            secao.appendChild(aviso);
+        }
 
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';

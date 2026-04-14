@@ -42,7 +42,7 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 
 ### Bancos de Dados
 - **Supabase** (remoto): `estabelecimentos`, `turmas`, `disciplinas`, `classes`, `alunos`, `rco_sync_log`, `aluno_ocorrencias`, `rco_observacoes`
-- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `edusync_usuarios`, `edusync_audit_log`, `aluno_portal_sessions`
+- **PostgreSQL local** (`DATABASE_URL`): `mapa_sala`, `atividades_sala`, `pedagogo_notas`, `ocorrencia_meta`, `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `classroom_entregas_tardias`, `edusync_usuarios`, `edusync_audit_log`, `aluno_portal_sessions`
 
 ### Estrutura de Pastas
 

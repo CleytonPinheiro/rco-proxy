@@ -59,7 +59,26 @@ async function migrarTabelas() {
         `);
         /* Migração incremental: cod_classe_rco para vincular ao RCO */
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS cod_classe_rco TEXT`);
-        console.log('[CLASSROOM] Tabelas OK (grupos + ausências)');
+        await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS data_fechamento TIMESTAMPTZ`);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS classroom_entregas_tardias (
+                id              SERIAL PRIMARY KEY,
+                grupo_id        INTEGER NOT NULL REFERENCES classroom_grupos(id) ON DELETE CASCADE,
+                curso_id        TEXT    NOT NULL,
+                atividade_id    TEXT    NOT NULL,
+                atividade_titulo TEXT,
+                user_id         TEXT    NOT NULL,
+                nome_aluno      TEXT,
+                email_aluno     TEXT,
+                data_entrega    TIMESTAMPTZ,
+                data_fechamento TIMESTAMPTZ NOT NULL,
+                nota            NUMERIC,
+                estado          TEXT,
+                criado_em       TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(grupo_id, atividade_id, user_id)
+            )
+        `);
+        console.log('[CLASSROOM] Tabelas OK (grupos + ausências + entregas tardias)');
     } catch (e) {
         console.warn('[CLASSROOM] Erro na migração:', e.message);
     }
@@ -631,6 +650,7 @@ export function createClassroomRouter(deps = {}) {
                 tipo:           g.tipo || 'normal',
                 grupoOrigemId:  g.grupo_origem_id ?? null,
                 dataInicio:     g.data_inicio ? g.data_inicio.toISOString() : null,
+                dataFechamento: g.data_fechamento ? g.data_fechamento.toISOString() : null,
                 recuperacaoId:  g.rec_id      ?? null,
                 recuperacaoNome:g.rec_nome    ?? null,
                 codClasseRco:   g.cod_classe_rco_efetivo || null,
@@ -643,16 +663,16 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Criar grupo ── */
     router.post('/classroom/groups', async (req, res) => {
-        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco } = req.body;
+        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
         try {
             const { rows } = await pool.query(
-                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, data_fechamento)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
                 [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4',
-                 tipoVal, grupoOrigemId || null, dataInicioVal, codClasseRco || null]
+                 tipoVal, grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null]
             );
             res.json({ id: rows[0].id });
         } catch (e) {
@@ -663,15 +683,15 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Atualizar grupo ── */
     router.put('/classroom/groups/:id', async (req, res) => {
-        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco } = req.body;
+        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
         try {
             await pool.query(
-                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6, cod_classe_rco=$7 WHERE id=$8`,
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6, cod_classe_rco=$7, data_fechamento=$8 WHERE id=$9`,
                 [nome.trim(), pontosMeta || 40, cor || '#4285F4', tipoVal,
-                 grupoOrigemId || null, dataInicioVal, codClasseRco || null, req.params.id]
+                 grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null, req.params.id]
             );
             res.json({ ok: true });
         } catch (e) {
@@ -764,7 +784,7 @@ export function createClassroomRouter(deps = {}) {
         try {
             /* Carrega metadados do grupo para saber se é recuperação */
             const { rows: [grupoInfo] } = await pool.query(
-                `SELECT tipo, grupo_origem_id, data_inicio FROM classroom_grupos WHERE id = $1`,
+                `SELECT tipo, grupo_origem_id, data_inicio, data_fechamento FROM classroom_grupos WHERE id = $1`,
                 [req.params.id]
             );
             const isRecuperacao = grupoInfo?.tipo === 'recuperacao';
@@ -880,14 +900,26 @@ export function createClassroomRouter(deps = {}) {
                     /* updateTime → detectar submissões pós data de recuperação */
                     const updateTime = s.updateTime ? new Date(s.updateTime) : null;
 
+                    /* submissionCreate → usa submissionHistory[0].stateHistory.stateTimestamp se disponível,
+                       senão cai para creationTime do submission como proxy de "quando entregou" */
+                    const submissionTime = s.creationTime ? new Date(s.creationTime) : updateTime;
+
                     /* Submission pertence à recuperação se ultrapassou o corte do grupo original */
                     const eDeRecuperacao = dataCorteOriginal && updateTime
                         ? updateTime >= dataCorteOriginal
                         : false;
 
+                    /* Submission entregue APÓS o fechamento da nota do grupo? */
+                    const dataFechGrupo = grupoInfo?.data_fechamento
+                        ? new Date(grupoInfo.data_fechamento)
+                        : null;
+                    const eTardia = dataFechGrupo && entregue && updateTime
+                        ? updateTime > dataFechGrupo
+                        : false;
+
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
                         nota, estado: s.state, entregue, atrasado, updateTime,
-                        eDeRecuperacao,
+                        eDeRecuperacao, eTardia,
                     };
 
                     if (pontosMax === null) {
@@ -898,6 +930,9 @@ export function createClassroomRouter(deps = {}) {
                            a nota atual reflete a recuperação, não a avaliação original.
                            Exclui do totalGanho do grupo original (mantém avaliação original intacta).
                            Esta submission será contabilizada somente no grupo de recuperação. */
+                    } else if (eTardia) {
+                        /* Submission entregue após o fechamento da nota:
+                           não entra no cálculo — registrada como entrega tardia separadamente. */
                     } else if (nota !== null) {
                         // Soma os pontos brutos obtidos (capped no máximo da atividade)
                         alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
@@ -959,6 +994,10 @@ export function createClassroomRouter(deps = {}) {
                 ),
             }));
 
+            const dataFechamento = grupoInfo?.data_fechamento
+                ? new Date(grupoInfo.data_fechamento)
+                : null;
+
             res.json({
                 atividades: results.map(({ atividade: a }) => ({
                     id: a.atividade_id, titulo: a.atividade_titulo,
@@ -969,10 +1008,170 @@ export function createClassroomRouter(deps = {}) {
                 isRecuperacao,
                 dataInicio:         dataInicio         ? dataInicio.toISOString()         : null,
                 dataCorteOriginal:  dataCorteOriginal  ? dataCorteOriginal.toISOString()  : null,
+                dataFechamento:     dataFechamento     ? dataFechamento.toISOString()     : null,
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
             });
         } catch (e) {
             console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Fechar/Abrir grupo (definir data_fechamento) ── */
+    router.post('/classroom/groups/:id/fechar', async (req, res) => {
+        const { dataFechamento, courseId } = req.body;
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id, curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+
+            const dt = dataFechamento ? new Date(dataFechamento) : new Date();
+            await pool.query(
+                `UPDATE classroom_grupos SET data_fechamento = $1 WHERE id = $2`,
+                [dt.toISOString(), req.params.id]
+            );
+            res.json({ ok: true, dataFechamento: dt.toISOString() });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao fechar grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/classroom/groups/:id/abrir', async (req, res) => {
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+
+            await pool.query(
+                `UPDATE classroom_grupos SET data_fechamento = NULL WHERE id = $1`,
+                [req.params.id]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao abrir grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Detectar entregas tardias (após data_fechamento do grupo) ── */
+    router.post('/classroom/groups/:id/detectar-tardias', async (req, res) => {
+        const { courseId } = req.body;
+        if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
+        const auth = await getAuthenticatedClient(req);
+        if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id, data_fechamento FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo?.data_fechamento) {
+                return res.status(400).json({ erro: 'Grupo não possui data de fechamento definida.' });
+            }
+            const dataFech = new Date(grupo.data_fechamento);
+
+            const { rows: ativs } = await pool.query(
+                `SELECT atividade_id, atividade_titulo FROM classroom_grupo_atividades WHERE grupo_id=$1`, [req.params.id]
+            );
+            if (!ativs.length) return res.json({ tardias: [], total: 0 });
+
+            const classroom = google.classroom({ version: 'v1', auth });
+            const tardias = [];
+
+            for (const atv of ativs) {
+                let pageToken;
+                do {
+                    const resp = await classroom.courses.courseWork.studentSubmissions.list({
+                        courseId, courseWorkId: atv.atividade_id, pageSize: 100, pageToken,
+                    });
+                    const subs = resp.data.studentSubmissions || [];
+                    for (const s of subs) {
+                        const updateTime = s.updateTime ? new Date(s.updateTime) : null;
+                        const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
+                        if (entregue && updateTime && updateTime > dataFech) {
+                            tardias.push({
+                                atividadeId: atv.atividade_id,
+                                atividadeTitulo: atv.atividade_titulo,
+                                userId: s.userId,
+                                dataEntrega: updateTime.toISOString(),
+                                nota: s.assignedGrade ?? null,
+                                estado: s.state,
+                            });
+                        }
+                    }
+                    pageToken = resp.data.nextPageToken;
+                } while (pageToken);
+            }
+
+            let profileMap = {};
+            if (tardias.length > 0) {
+                try {
+                    const userIds = [...new Set(tardias.map(t => t.userId))];
+                    const studentsResp = await classroom.courses.students.list({ courseId, pageSize: 100 });
+                    const students = studentsResp.data.students || [];
+                    for (const st of students) {
+                        profileMap[st.userId] = {
+                            nome: st.profile?.name?.fullName || st.userId,
+                            email: st.profile?.emailAddress || '',
+                        };
+                    }
+                } catch (_) {}
+            }
+
+            const tardiasComNomes = tardias.map(t => ({
+                ...t,
+                nomeAluno: profileMap[t.userId]?.nome || t.userId,
+                emailAluno: profileMap[t.userId]?.email || '',
+            }));
+
+            for (const t of tardiasComNomes) {
+                await pool.query(`
+                    INSERT INTO classroom_entregas_tardias
+                        (grupo_id, curso_id, atividade_id, atividade_titulo, user_id, nome_aluno, email_aluno, data_entrega, data_fechamento, nota, estado)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    ON CONFLICT (grupo_id, atividade_id, user_id) DO UPDATE SET
+                        data_entrega = EXCLUDED.data_entrega,
+                        nota = EXCLUDED.nota,
+                        estado = EXCLUDED.estado,
+                        nome_aluno = EXCLUDED.nome_aluno,
+                        email_aluno = EXCLUDED.email_aluno
+                `, [
+                    req.params.id, courseId, t.atividadeId, t.atividadeTitulo,
+                    t.userId, t.nomeAluno, t.emailAluno,
+                    t.dataEntrega, dataFech.toISOString(), t.nota, t.estado,
+                ]);
+            }
+
+            res.json({ tardias: tardiasComNomes, total: tardiasComNomes.length });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao detectar tardias:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Listar entregas tardias salvas ── */
+    router.get('/classroom/groups/:id/tardias', async (req, res) => {
+        try {
+            const { rows } = await pool.query(
+                `SELECT * FROM classroom_entregas_tardias WHERE grupo_id = $1 ORDER BY data_entrega DESC`,
+                [req.params.id]
+            );
+            res.json(rows.map(r => ({
+                id: r.id,
+                atividadeId: r.atividade_id,
+                atividadeTitulo: r.atividade_titulo,
+                userId: r.user_id,
+                nomeAluno: r.nome_aluno,
+                emailAluno: r.email_aluno,
+                dataEntrega: r.data_entrega,
+                dataFechamento: r.data_fechamento,
+                nota: r.nota,
+                estado: r.estado,
+            })));
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao listar tardias:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

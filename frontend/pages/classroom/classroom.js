@@ -130,6 +130,14 @@ const elBtnAtualizarIcon = document.getElementById('clBtnAtualizarIcon');
 const elBtnLivro       = document.getElementById('clBtnLivro');
 const elBtnRco         = document.getElementById('clBtnRco');
 const elBtnCriarRec    = document.getElementById('clBtnCriarRec');
+const elBtnFecharNota  = document.getElementById('clBtnFecharNota');
+const elBtnTardias     = document.getElementById('clBtnTardias');
+const elTardiasModal   = document.getElementById('clTardiasModal');
+const elTardiasInfo    = document.getElementById('clTardiasInfo');
+const elTardiasBody    = document.getElementById('clTardiasBody');
+const elTardiasDetectar = document.getElementById('clTardiasDetectar');
+const elTardiasFechar  = document.getElementById('clTardiasFechar');
+const elTardiasFecharBtn = document.getElementById('clTardiasFecharBtn');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
 const elToast          = document.getElementById('clToast');
@@ -732,6 +740,8 @@ async function selecionarAtividade(ativ, itemEl) {
         elBtnAtualizar.style.display = 'none';
         elBtnLivro.style.display     = 'none';
         elBtnRco.style.display       = 'none';
+        elBtnFecharNota.style.display = 'none';
+        elBtnTardias.style.display    = 'none';
 
         document.getElementById('clStEntreguesLabel').textContent = 'Entregues';
         document.getElementById('clStPendentesLabel').textContent = 'Pendentes';
@@ -956,11 +966,15 @@ function renderGrupos() {
         const temRecHtml = g.recuperacaoId
             ? `<span class="cl-grupo-tem-rec" title="Tem grupo de recuperação: ${esc(g.recuperacaoNome || '')}">📎 Rec.</span>`
             : '';
+        const fechadoHtml = g.dataFechamento
+            ? `<span class="cl-grupo-fechado-badge" title="Notas fechadas em ${fmtDatetime(g.dataFechamento)}">🔒 Fechado</span>`
+            : '';
+        if (g.dataFechamento) item.classList.add('cl-grupo-item--fechado');
 
         item.innerHTML  = `
             <div class="cl-grupo-cor" style="background:${g.cor}"></div>
             <div class="cl-grupo-info">
-                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}</div>
+                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}${fechadoHtml}</div>
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
@@ -1004,6 +1018,7 @@ async function selecionarGrupo(grupo, itemEl) {
     elBtnRco.style.display       = grupo.codClasseRco ? 'inline-flex' : 'none';
     /* Atalho "Criar Recuperação": só aparece para grupos normais sem recuperação vinculada */
     elBtnCriarRec.style.display = (grupo.tipo === 'normal' && !grupo.recuperacaoId) ? 'flex' : 'none';
+    atualizarBtnFecharNota(grupo);
     elNotasLista.innerHTML       = '<div class="cl-loading">Calculando somas...</div>';
 
     if (!grupo.atividades.length) {
@@ -1149,6 +1164,143 @@ elBtnCriarRec.addEventListener('click', () => {
     if (grupoAtivo) criarRecuperacaoRapida(grupoAtivo);
 });
 
+function atualizarBtnFecharNota(grupo) {
+    if (!grupo) {
+        elBtnFecharNota.style.display = 'none';
+        elBtnTardias.style.display    = 'none';
+        return;
+    }
+    elBtnFecharNota.style.display = 'inline-flex';
+    if (grupo.dataFechamento) {
+        elBtnFecharNota.innerHTML = '🔓 Reabrir nota';
+        elBtnFecharNota.classList.add('cl-btn--fechar--ativo');
+        elBtnFecharNota.title = `Notas fechadas em ${fmtDatetime(grupo.dataFechamento)} — clique para reabrir`;
+        elBtnTardias.style.display = 'inline-flex';
+    } else {
+        elBtnFecharNota.innerHTML = '🔒 Fechar nota';
+        elBtnFecharNota.classList.remove('cl-btn--fechar--ativo');
+        elBtnFecharNota.title = 'Fechar notas deste grupo — entregas após o fechamento serão registradas como tardias';
+        elBtnTardias.style.display = 'none';
+    }
+}
+
+elBtnFecharNota.addEventListener('click', async () => {
+    if (!grupoAtivo || !cursoAtivo) return;
+    const jaFechado = !!grupoAtivo.dataFechamento;
+
+    if (jaFechado) {
+        const ok = await confirmar(
+            `Deseja reabrir as notas do grupo "${grupoAtivo.nome}"? Entregas tardias registradas serão mantidas.`,
+            { titulo: 'Reabrir notas', confirmLabel: 'Sim, reabrir', tipo: 'info', icone: '🔓' }
+        );
+        if (!ok) return;
+        try {
+            await api(`/groups/${grupoAtivo.id}/abrir`, { method: 'POST' });
+            grupoAtivo.dataFechamento = null;
+            atualizarBtnFecharNota(grupoAtivo);
+            await carregarGrupos();
+            toast('Notas reabertas!', 'ok');
+        } catch (e) { toast('Erro ao reabrir: ' + e.message, 'erro'); }
+    } else {
+        const ok = await confirmar(
+            `Fechar as notas do grupo "${grupoAtivo.nome}"?\n\nToda entrega recebida após este momento será registrada como TARDIA e não entrará no cálculo de nota.`,
+            { titulo: 'Fechar notas', confirmLabel: 'Sim, fechar agora', tipo: 'danger', icone: '🔒' }
+        );
+        if (!ok) return;
+        try {
+            const r = await api(`/groups/${grupoAtivo.id}/fechar`, { method: 'POST', body: {} });
+            grupoAtivo.dataFechamento = r.dataFechamento;
+            atualizarBtnFecharNota(grupoAtivo);
+            await carregarGrupos();
+            toast('Notas fechadas! Entregas futuras serão registradas como tardias.', 'ok');
+        } catch (e) { toast('Erro ao fechar: ' + e.message, 'erro'); }
+    }
+});
+
+elBtnTardias.addEventListener('click', () => abrirModalTardias());
+elTardiasFechar.addEventListener('click', () => fecharModalTardias());
+elTardiasFecharBtn.addEventListener('click', () => fecharModalTardias());
+elTardiasModal.addEventListener('click', e => { if (e.target === elTardiasModal) fecharModalTardias(); });
+
+function fecharModalTardias() {
+    elTardiasModal.classList.remove('cl-modal-overlay--visivel');
+}
+
+async function abrirModalTardias() {
+    if (!grupoAtivo || !cursoAtivo) return;
+    elTardiasModal.classList.add('cl-modal-overlay--visivel');
+    elTardiasInfo.innerHTML = `<p>Grupo: <strong>${esc(grupoAtivo.nome)}</strong> — Fechado em: <strong>${fmtDatetime(grupoAtivo.dataFechamento)}</strong></p>`;
+    elTardiasBody.innerHTML = '<div class="cl-loading">Carregando entregas tardias...</div>';
+
+    try {
+        const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
+        renderTardias(tardias);
+    } catch (e) {
+        elTardiasBody.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
+    }
+}
+
+elTardiasDetectar.addEventListener('click', async () => {
+    if (!grupoAtivo || !cursoAtivo) return;
+    elTardiasDetectar.disabled = true;
+    elTardiasDetectar.textContent = 'Verificando...';
+    try {
+        const r = await api(`/groups/${grupoAtivo.id}/detectar-tardias`, {
+            method: 'POST',
+            body: { courseId: cursoAtivo.id },
+        });
+        toast(`${r.total} entrega(s) tardia(s) detectada(s).`, r.total > 0 ? 'alerta' : 'ok');
+        const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
+        renderTardias(tardias);
+    } catch (e) {
+        toast('Erro ao detectar tardias: ' + e.message, 'erro');
+    } finally {
+        elTardiasDetectar.disabled = false;
+        elTardiasDetectar.textContent = 'Verificar novas entregas tardias';
+    }
+});
+
+function renderTardias(tardias) {
+    if (!tardias.length) {
+        elTardiasBody.innerHTML = '<div class="cl-empty-state"><p>Nenhuma entrega tardia detectada.</p><p style="font-size:0.85em;color:#888">Clique em "Verificar novas entregas tardias" para buscar no Classroom.</p></div>';
+        return;
+    }
+
+    const porAtividade = {};
+    tardias.forEach(t => {
+        if (!porAtividade[t.atividadeId]) porAtividade[t.atividadeId] = { titulo: t.atividadeTitulo, alunos: [] };
+        porAtividade[t.atividadeId].alunos.push(t);
+    });
+
+    let html = `<div class="cl-tardias-resumo">${tardias.length} entrega(s) tardia(s) em ${Object.keys(porAtividade).length} atividade(s)</div>`;
+
+    for (const [atvId, data] of Object.entries(porAtividade)) {
+        html += `<div class="cl-tardias-grupo">
+            <div class="cl-tardias-grupo-titulo">${esc(data.titulo)}</div>
+            <table class="cl-tardias-table">
+                <thead><tr><th>Aluno</th><th>Email</th><th>Entregou em</th><th>Nota</th><th>Status</th></tr></thead>
+                <tbody>`;
+        data.alunos.sort((a, b) => (a.nomeAluno || '').localeCompare(b.nomeAluno || ''));
+        for (const a of data.alunos) {
+            const dtEntrega = fmtDatetime(a.dataEntrega);
+            const nota = a.nota !== null ? rco(Number(a.nota)) : '—';
+            const estadoBadge = a.estado === 'RETURNED' ? '<span class="cl-badge cl-badge--returned">Devolvida</span>'
+                : a.estado === 'TURNED_IN' ? '<span class="cl-badge cl-badge--turned-in">Entregue</span>'
+                : `<span class="cl-badge">${a.estado}</span>`;
+            html += `<tr>
+                <td>${esc(a.nomeAluno)}</td>
+                <td class="cl-tardias-email">${esc(a.emailAluno)}</td>
+                <td>${dtEntrega}</td>
+                <td>${nota}</td>
+                <td>${estadoBadge}</td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+    }
+
+    elTardiasBody.innerHTML = html;
+}
+
 async function carregarResumoGrupo(grupo) {
     if (!grupo || !grupo.atividades.length) return;
 
@@ -1220,7 +1372,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
         renderAvisoCorrecao();
@@ -1399,7 +1551,7 @@ function toggleFiltro(chave) {
 
 function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal } = grupoResumoData;
+    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal, dataFechamento } = grupoResumoData;
 
     // Contagens por faixa
     const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
@@ -1437,6 +1589,18 @@ function renderListaFiltrada() {
             }
         });
     }
+
+    /* Banner de fechamento de nota */
+    const dataFechStr        = fmtDatetime(dataFechamento);
+    const fechBannerHtml = dataFechamento
+        ? `<div class="cl-rec-banner cl-rec-banner--fechamento">
+               <span class="cl-rec-banner-icon">🔒</span>
+               <div>
+                   <div><strong>Notas fechadas</strong> em ${dataFechStr}</div>
+                   <div class="cl-rec-banner-data">Entregas após o fechamento são registradas como tardias e não entram no cálculo.</div>
+               </div>
+           </div>`
+        : '';
 
     /* Banner de grupo de recuperação / aviso de corte no grupo original */
     const dataInicioStr      = fmtDatetime(dataInicio);
@@ -1484,6 +1648,7 @@ function renderListaFiltrada() {
     ).join('');
 
     elNotasLista.innerHTML = `
+        ${fechBannerHtml}
         ${recBannerHtml}
         <div id="clQuizizzPainel" style="display:none"></div>
         <div class="cl-passos-legenda">
@@ -2639,9 +2804,11 @@ async function selecionarAuditAtiv(ativ, itemEl) {
     elNotasStats.style.display   = 'none';
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'flex';
-    elBtnImprimir.style.display  = 'none';
-    elBtnLivro.style.display     = 'none';
-    elBtnRco.style.display       = 'none';
+    elBtnImprimir.style.display   = 'none';
+    elBtnLivro.style.display      = 'none';
+    elBtnRco.style.display        = 'none';
+    elBtnFecharNota.style.display = 'none';
+    elBtnTardias.style.display    = 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Carregando dados da atividade...</div>';
 
     try {

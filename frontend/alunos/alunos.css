@@ -493,6 +493,36 @@ html, body {
 }
 .pa-grupo-label--outras .pa-grupo-nome { color: var(--pa-sub); }
 
+/* ── Grupo fechado ─────────────────────────────────── */
+.pa-grupo-secao--fechado {
+    border-left: 3px solid #ef4444;
+    background: rgba(239, 68, 68, 0.03);
+}
+[data-theme="dark"] .pa-grupo-secao--fechado {
+    background: rgba(239, 68, 68, 0.08);
+}
+.pa-grupo-fechado-aviso {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    margin: 0;
+    background: #fef2f2;
+    border-bottom: 1px solid #fecaca;
+    font-size: .82rem;
+    color: #991b1b;
+    line-height: 1.4;
+}
+[data-theme="dark"] .pa-grupo-fechado-aviso {
+    background: rgba(239, 68, 68, 0.12);
+    border-bottom-color: rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+}
+.pa-fechado-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
 /* ── Vazio ───────────────────────────────────────────── */
 .pa-vazio       { text-align: center; padding: 80px 20px; }
 .pa-vazio-icon  { font-size: 3.5rem; margin-bottom: 16px; }

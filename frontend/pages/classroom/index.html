@@ -781,6 +781,22 @@
                                                                 🚀 Lançar no RCO
                                                         </button>
                                                         <button
+                                                                class="cl-btn cl-btn--sm cl-btn--fechar"
+                                                                id="clBtnFecharNota"
+                                                                style="display: none"
+                                                                title="Fechar notas deste grupo — entregas após o fechamento serão registradas como tardias"
+                                                        >
+                                                                🔒 Fechar nota
+                                                        </button>
+                                                        <button
+                                                                class="cl-btn cl-btn--sm cl-btn--tardias"
+                                                                id="clBtnTardias"
+                                                                style="display: none"
+                                                                title="Ver entregas recebidas após o fechamento da nota"
+                                                        >
+                                                                ⏰ Entregas tardias
+                                                        </button>
+                                                        <button
                                                                 class="cl-btn cl-btn--sm cl-btn--outline"
                                                                 id="clBtnImprimir"
                                                                 style="display: none"
@@ -1268,6 +1284,26 @@
                                                         🚀 Lançar com conteúdos selecionados
                                                 </button>
                                         </div>
+                                </div>
+                        </div>
+                </div>
+
+                <!-- Modal Entregas Tardias -->
+                <div class="cl-modal-overlay" id="clTardiasModal">
+                        <div class="cl-modal cl-modal--tardias">
+                                <div class="cl-modal-head">
+                                        <h3>Entregas Tardias</h3>
+                                        <button class="cl-modal-fechar" id="clTardiasFechar">&times;</button>
+                                </div>
+                                <div class="cl-tardias-info" id="clTardiasInfo"></div>
+                                <div class="cl-modal-body cl-tardias-body" id="clTardiasBody">
+                                        <div class="cl-loading">Carregando...</div>
+                                </div>
+                                <div class="cl-modal-foot">
+                                        <button class="cl-btn cl-btn--sm cl-btn--outline" id="clTardiasDetectar">
+                                                Verificar novas entregas tardias
+                                        </button>
+                                        <button class="cl-btn cl-btn--outline" id="clTardiasFecharBtn">Fechar</button>
                                 </div>
                         </div>
                 </div>
