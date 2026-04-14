@@ -1,0 +1,38 @@
+curl 'https://feedback-pa.clients6.google.com/v1/survey/trigger?key=AIzaSyBqt2sx2fvfwP502G4u_Mu_kRmei_3A2OU' \
+  -H 'accept: */*' \
+  -H 'accept-language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
+  -H 'authorization: SAPISIDHASH 1776201531_e3feefc97cd300817c8681377094185d148cc2cb SAPISID1PHASH 1776201531_e3feefc97cd300817c8681377094185d148cc2cb SAPISID3PHASH 1776201531_e3feefc97cd300817c8681377094185d148cc2cb' \
+  -H 'content-type: application/json+protobuf' \
+  -b '__Secure-BUCKET=CKgG; SEARCH_SAMESITE=CgQItqAB; HSID=A4W-81rq9hqkZlWNj; SSID=AkI0MeF7_WTMzvDZp; APISID=81T4kPlgszlAbiYH/AjH6cKczMJFPWHvsg; SAPISID=ewviJ1ax2V6kbvKM/A7fyONyrgb4cszMcr; __Secure-1PAPISID=ewviJ1ax2V6kbvKM/A7fyONyrgb4cszMcr; __Secure-3PAPISID=ewviJ1ax2V6kbvKM/A7fyONyrgb4cszMcr; SID=g.a0008gg_yMytzSDkz39nEhIvIKfzOiGqpt9EX2kgAodZDeoSLL9uvJYMdN8qjchey9eEDEtPgwACgYKAU0SARQSFQHGX2Mi2CN99JjXafPCh7Cgwj9TAhoVAUF8yKo_TtsHIwtqMf0dDcRfUrUw0076; __Secure-1PSID=g.a0008gg_yMytzSDkz39nEhIvIKfzOiGqpt9EX2kgAodZDeoSLL9uhTD3OWMVIIgYJ21KgYRWkgACgYKAfYSARQSFQHGX2MiIFxSpvz2YH4-FghPnLVvzRoVAUF8yKoYVSKyob1s0csCX3--nzwN0076; __Secure-3PSID=g.a0008gg_yMytzSDkz39nEhIvIKfzOiGqpt9EX2kgAodZDeoSLL9uZJWLs0ufSphsyONoLqRuMAACgYKAXYSARQSFQHGX2Mits9Et-JpHPBrnElgl6fYIxoVAUF8yKqUICkakik8D1_OTKLlcwMC0076; AEC=AaJma5tBa2_bkd2NWHWDU0FinqQJmFLh-4shbbG4q8Z2n2cR1mvGIJxY1w; NID=530=ZRv9DKsa4ER1rz3G1pYPcU1-ODgrSKQ3iJ1K20fQZZf5wODTdTjYsPphNhOPPByg8fepOs-mavtGnu6P1aifxb2qJAUesPfzA3WaAQpRDD87GoJYQmVf5RW7Hg0iE91Wu1qbr5xZHNTrLaCt-OHs29JfvPFbHG6nY2SsXLalrsvNbTkWzQFj-GY9LJfKUXfFsjx8KW4RKEOURYLyjifU4uDQ_KrECX0lgfxJu1B-lPIM8uKGdHQ9jyFg7LMmzV6EBqlyU7ASMyVcjV3T7iRDNAMVHkifkaIpaPbxRr2L9zPeeB70AeEQCXgwLRDZp4qrlugmQBCiMYrJO3TBBAcVCoGMPk3L0IqjYPWmVbqIrYOspAte5YVQpZRRQzH91wn9jjT5fiEfrxL-B6mMSfXFXw606dacgmRve6Ki3LsOClqrwSYN4dRYK7L8tFRqqyC8E66G8W0D3CN_V1YYDwAzrkc0J9wdoG7lhoqW8MGC2-FqPiR9M6fa-DcUcWsZAte19aP64k6x5M4Ri2qI02BojJ5uBirDxG99-gT88eIwyCsbcEjEyCwRSPakyOmDK95COV4ySsQseoDvTPU7OeSSR0YoYjSRVXtvhZ9vUXr9sYBMaw6LaHqbOpt7D4ktRxyB0Fj9IRmfegbX52-6WjMafEKpjbuJFpVoo6njEmi-iJJ4V5p8NNscnZ9mVIpRaJ_DBzmN5De4Ha7_7j1bmM0Hf3pFC6Q2mqpw0rSzxBPckIwq8gvCs1beoo1Vk2NB9ZnoiP9PDgirB_YmdZ3v6JFhHw6XCG2kdg0AQXo9GkDhr2nvo62Q-AUYfpKH6hF7maDKnly65Svvi5foMa81GL7DYdCKOMNLlRkYqOq3Yct-zGgghuKB9f3-FbBRie501L_i; __Secure-1PSIDTS=sidts-CjEBWhotCSUiOe_86N-2R_DTKp0q8mD38d69mFYVYNOhlZmsJc0VOhqeeO8XVVdQcME3EAA; __Secure-3PSIDTS=sidts-CjEBWhotCSUiOe_86N-2R_DTKp0q8mD38d69mFYVYNOhlZmsJc0VOhqeeO8XVVdQcME3EAA; SIDCC=AKEyXzUStE3NBIvzbmI-kvDd180tS4AjDJX6sf2qv9CVY1LxgkWOv5w7xKnR7LiE_o-cKJWU6RM; __Secure-1PSIDCC=AKEyXzUmhQb85pBBPutyHAr7hnnwzkBQvy4H5zy5EKXiPGHA8jrCVZvTrbIyVMIy1OuRge1Qo-Yx; __Secure-3PSIDCC=AKEyXzWr6RtjP3_htEihsru8jQNzL1Ib5XPFcNHMRse52gDqc5CRPh8gI6MIL1UsYEUMI8qA2j8' \
+  -H 'origin: https://feedback-pa.clients6.google.com' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://feedback-pa.clients6.google.com/static/proxy.html?usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.gapi.en.5G9F9JPGjf8.O%2Fd%3D1%2Frs%3DAHpOoo-OYuAVGK84U6cg5lkjGc85qYpeMw%2Fm%3D__features__' \
+  -H 'sec-ch-ua: "Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"' \
+  -H 'sec-ch-ua-arch: "x86"' \
+  -H 'sec-ch-ua-bitness: "64"' \
+  -H 'sec-ch-ua-form-factors: "Desktop"' \
+  -H 'sec-ch-ua-full-version: "147.0.7727.56"' \
+  -H 'sec-ch-ua-full-version-list: "Google Chrome";v="147.0.7727.56", "Not.A/Brand";v="8.0.0.0", "Chromium";v="147.0.7727.56"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-model: ""' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-ch-ua-platform-version: "19.0.0"' \
+  -H 'sec-ch-ua-wow64: ?0' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' \
+  -H 'x-browser-channel: stable' \
+  -H 'x-browser-copyright: Copyright 2026 Google LLC. All Rights reserved.' \
+  -H 'x-browser-validation: EsmT91Yc2imP58B+tvFt/g1KK/I=' \
+  -H 'x-browser-year: 2026' \
+  -H 'x-client-data: CKmdygEIkqHLAQiFoM0BCLa9zwEIsb7PAQiqv88BGLGKzwEY8qvPARj2tM8B' \
+  -H 'x-clientdetails: appVersion=5.0%20(Windows%20NT%2010.0%3B%20Win64%3B%20x64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F147.0.0.0%20Safari%2F537.36&platform=Win32&userAgent=Mozilla%2F5.0%20(Windows%20NT%2010.0%3B%20Win64%3B%20x64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F147.0.0.0%20Safari%2F537.36' \
+  -H 'x-goog-api-key: AIzaSyBqt2sx2fvfwP502G4u_Mu_kRmei_3A2OU' \
+  -H 'x-goog-authuser: 0' \
+  -H 'x-goog-encode-response-if-executable: base64' \
+  -H 'x-javascript-user-agent: google-api-javascript-client/1.1.0' \
+  -H 'x-origin: https://classroom.google.com' \
+  -H 'x-referer: https://classroom.google.com' \
+  -H 'x-requested-with: XMLHttpRequest' \
+  --data-raw '[["U7U9QUB4q0pUNowYieb0WwJ2TBjw",["pt-BR"]],[[null,null,[-10800]],[1,null,[1,2],438217234]]]'

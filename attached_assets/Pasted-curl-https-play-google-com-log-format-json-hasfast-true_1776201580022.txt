@@ -1,0 +1,31 @@
+curl 'https://play.google.com/log?format=json&hasfast=true&authuser=0' \
+  -H 'accept: */*' \
+  -H 'accept-language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
+  -H 'authorization: SAPISIDHASH 96228652b639c973954b1ab82976b2dddff6d1f7 SAPISID1PHASH 96228652b639c973954b1ab82976b2dddff6d1f7 SAPISID3PHASH 96228652b639c973954b1ab82976b2dddff6d1f7' \
+  -H 'content-type: text/plain;charset=UTF-8' \
+  -b '__Secure-BUCKET=CKgG; _gcl_au=1.1.2060407996.1772985436; _ga=GA1.1.85200250.1758237986; _ga_6VGGZHMLM2=GS2.1.s1773441161$o3$g0$t1773441166$j55$l0$h0; SEARCH_SAMESITE=CgQItqAB; HSID=A4W-81rq9hqkZlWNj; SSID=AkI0MeF7_WTMzvDZp; APISID=81T4kPlgszlAbiYH/AjH6cKczMJFPWHvsg; SAPISID=ewviJ1ax2V6kbvKM/A7fyONyrgb4cszMcr; __Secure-1PAPISID=ewviJ1ax2V6kbvKM/A7fyONyrgb4cszMcr; __Secure-3PAPISID=ewviJ1ax2V6kbvKM/A7fyONyrgb4cszMcr; SID=g.a0008gg_yMytzSDkz39nEhIvIKfzOiGqpt9EX2kgAodZDeoSLL9uvJYMdN8qjchey9eEDEtPgwACgYKAU0SARQSFQHGX2Mi2CN99JjXafPCh7Cgwj9TAhoVAUF8yKo_TtsHIwtqMf0dDcRfUrUw0076; __Secure-1PSID=g.a0008gg_yMytzSDkz39nEhIvIKfzOiGqpt9EX2kgAodZDeoSLL9uhTD3OWMVIIgYJ21KgYRWkgACgYKAfYSARQSFQHGX2MiIFxSpvz2YH4-FghPnLVvzRoVAUF8yKoYVSKyob1s0csCX3--nzwN0076; __Secure-3PSID=g.a0008gg_yMytzSDkz39nEhIvIKfzOiGqpt9EX2kgAodZDeoSLL9uZJWLs0ufSphsyONoLqRuMAACgYKAXYSARQSFQHGX2Mits9Et-JpHPBrnElgl6fYIxoVAUF8yKqUICkakik8D1_OTKLlcwMC0076; OSID=g.a0008wg_yOUszthYAKCO4ctsp451Xl6ih-vxgCEi54CIM8BvM4QJfOSU4duA-8qCY-63uGtnqwACgYKAZsSARQSFQHGX2MiJrgcN5JMtZvMcwELdpklNRoVAUF8yKoV8lwEpkqKYEkb5U06Pfi30076; __Secure-OSID=g.a0008wg_yOUszthYAKCO4ctsp451Xl6ih-vxgCEi54CIM8BvM4QJ89IJnq9nGW9eIy_b_ikySAACgYKAccSARQSFQHGX2Mi2yuhhMLec2Cm7zJMCtmuIBoVAUF8yKqs9Pk5_qtlZU7BauPD4lBm0076; AEC=AaJma5tBa2_bkd2NWHWDU0FinqQJmFLh-4shbbG4q8Z2n2cR1mvGIJxY1w; NID=530=ZRv9DKsa4ER1rz3G1pYPcU1-ODgrSKQ3iJ1K20fQZZf5wODTdTjYsPphNhOPPByg8fepOs-mavtGnu6P1aifxb2qJAUesPfzA3WaAQpRDD87GoJYQmVf5RW7Hg0iE91Wu1qbr5xZHNTrLaCt-OHs29JfvPFbHG6nY2SsXLalrsvNbTkWzQFj-GY9LJfKUXfFsjx8KW4RKEOURYLyjifU4uDQ_KrECX0lgfxJu1B-lPIM8uKGdHQ9jyFg7LMmzV6EBqlyU7ASMyVcjV3T7iRDNAMVHkifkaIpaPbxRr2L9zPeeB70AeEQCXgwLRDZp4qrlugmQBCiMYrJO3TBBAcVCoGMPk3L0IqjYPWmVbqIrYOspAte5YVQpZRRQzH91wn9jjT5fiEfrxL-B6mMSfXFXw606dacgmRve6Ki3LsOClqrwSYN4dRYK7L8tFRqqyC8E66G8W0D3CN_V1YYDwAzrkc0J9wdoG7lhoqW8MGC2-FqPiR9M6fa-DcUcWsZAte19aP64k6x5M4Ri2qI02BojJ5uBirDxG99-gT88eIwyCsbcEjEyCwRSPakyOmDK95COV4ySsQseoDvTPU7OeSSR0YoYjSRVXtvhZ9vUXr9sYBMaw6LaHqbOpt7D4ktRxyB0Fj9IRmfegbX52-6WjMafEKpjbuJFpVoo6njEmi-iJJ4V5p8NNscnZ9mVIpRaJ_DBzmN5De4Ha7_7j1bmM0Hf3pFC6Q2mqpw0rSzxBPckIwq8gvCs1beoo1Vk2NB9ZnoiP9PDgirB_YmdZ3v6JFhHw6XCG2kdg0AQXo9GkDhr2nvo62Q-AUYfpKH6hF7maDKnly65Svvi5foMa81GL7DYdCKOMNLlRkYqOq3Yct-zGgghuKB9f3-FbBRie501L_i; __Secure-1PSIDTS=sidts-CjEBWhotCSUiOe_86N-2R_DTKp0q8mD38d69mFYVYNOhlZmsJc0VOhqeeO8XVVdQcME3EAA; __Secure-3PSIDTS=sidts-CjEBWhotCSUiOe_86N-2R_DTKp0q8mD38d69mFYVYNOhlZmsJc0VOhqeeO8XVVdQcME3EAA; SIDCC=AKEyXzU1J6WkxYEJI7-aUFWnZ3IhrPP-rY8Tmh76NrAxxzHlXZoxPXYz3SCwzFxv-BbYO9N-dpQ; __Secure-1PSIDCC=AKEyXzVbn52dLQeQYObLazw15Cv030vMxV9GHMNmRdDaoKwj6YjEMIyFtgbpjqmbB9QP-HynQM2-; __Secure-3PSIDCC=AKEyXzV3OBwyCAK9CwUMwWK3TIHFwIAAvtHh9k3Rzggf2l95LvUrjU8vd1ZGDYixkXoITjeNATA' \
+  -H 'origin: https://classroom.google.com' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://classroom.google.com/' \
+  -H 'sec-ch-ua: "Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"' \
+  -H 'sec-ch-ua-arch: "x86"' \
+  -H 'sec-ch-ua-bitness: "64"' \
+  -H 'sec-ch-ua-form-factors: "Desktop"' \
+  -H 'sec-ch-ua-full-version: "147.0.7727.56"' \
+  -H 'sec-ch-ua-full-version-list: "Google Chrome";v="147.0.7727.56", "Not.A/Brand";v="8.0.0.0", "Chromium";v="147.0.7727.56"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-model: ""' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-ch-ua-platform-version: "19.0.0"' \
+  -H 'sec-ch-ua-wow64: ?0' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-site' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' \
+  -H 'x-browser-channel: stable' \
+  -H 'x-browser-copyright: Copyright 2026 Google LLC. All Rights reserved.' \
+  -H 'x-browser-validation: EsmT91Yc2imP58B+tvFt/g1KK/I=' \
+  -H 'x-browser-year: 2026' \
+  -H 'x-client-data: CKmdygEIkqHLAQiFoM0BCLa9zwEIsb7PAQiqv88BGLGKzwEY8qvPARj2tM8B' \
+  -H 'x-goog-authuser: 0' \
+  --data-raw '[[1,null,null,null,null,null,null,null,null,null,[null,null,null,null,"pt-BR",null,null,null,[[["Google Chrome","147"],["Not.A/Brand","8"],["Chromium","147"]],0,"Windows","19.0.0","x86","","147.0.7727.56"],[4,0]]],1352,[[1776201561213,null,null,null,null,null,null,"[[[\"/client_streamz/apps/homeroom/tango/punctual_signal_received\",null,[\"signal_type\",\"boq_node_name\"],[[[[\"CHANGE_WITH_PAYLOAD\"],[\"ClassroomUi\"]],[1]]]],[\"/client_streamz/apps/homeroom/tango/data_reload_count\",null,[\"source\",\"boq_node_name\"],[[[[\"INVALIDATION_PAYLOAD\"],[\"ClassroomUi\"]],[null,8]]]]]]",null,null,null,null,null,null,10800,null,null,null,null,null,3]],1776201561213]'
