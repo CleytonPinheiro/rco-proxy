@@ -1176,12 +1176,28 @@ function atualizarBtnFecharNota(grupo) {
         elBtnFecharNota.classList.add('cl-btn--fechar--ativo');
         elBtnFecharNota.title = `Notas fechadas em ${fmtDatetime(grupo.dataFechamento)} — clique para reabrir`;
         elBtnTardias.style.display = 'inline-flex';
+        elBtnTardias.innerHTML = '⏰ Entregas tardias';
+        verificarTardiasExistentes(grupo.id);
     } else {
         elBtnFecharNota.innerHTML = '🔒 Fechar nota';
         elBtnFecharNota.classList.remove('cl-btn--fechar--ativo');
         elBtnFecharNota.title = 'Fechar notas deste grupo — entregas após o fechamento serão registradas como tardias';
         elBtnTardias.style.display = 'none';
     }
+}
+
+async function verificarTardiasExistentes(grupoId) {
+    try {
+        const tardias = await api(`/groups/${grupoId}/tardias`);
+        const badge = elBtnTardias.querySelector('.cl-tardias-badge');
+        if (badge) badge.remove();
+        if (tardias.length > 0) {
+            const span = document.createElement('span');
+            span.className = 'cl-tardias-badge';
+            span.textContent = tardias.length;
+            elBtnTardias.appendChild(span);
+        }
+    } catch (_) {}
 }
 
 elBtnFecharNota.addEventListener('click', async () => {
@@ -1303,6 +1319,7 @@ elTardiasDetectar.addEventListener('click', async () => {
         toast(`${r.total} entrega(s) tardia(s) detectada(s).`, r.total > 0 ? 'alerta' : 'ok');
         const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
         renderTardias(tardias);
+        verificarTardiasExistentes(grupoAtivo.id);
     } catch (e) {
         toast('Erro ao detectar tardias: ' + e.message, 'erro');
     } finally {
