@@ -772,6 +772,23 @@ body[data-side="open"] .side-panel {
     line-height: 1;
 }
 
+/* ── Seta indicadora de submenu ─── */
+.side-nav-arrow {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    opacity: .45;
+    flex-shrink: 0;
+    transition: opacity .2s, transform .2s;
+}
+.side-nav-item:hover .side-nav-arrow {
+    opacity: .85;
+}
+.flyout-visible ~ .side-nav-arrow,
+.side-nav-group:hover .side-nav-arrow {
+    opacity: 1;
+}
+
 /* ── Flyout — criado via JS no <body>, posição fixa ─── */
 .classroom-flyout {
     position: fixed;
