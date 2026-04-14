@@ -1,0 +1,169 @@
+.sol-main {
+    max-width: 960px;
+    margin: 80px auto 40px;
+    padding: 0 24px;
+}
+.sol-header { margin-bottom: 24px; }
+.sol-titulo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+.sol-subtitulo {
+    font-size: .875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.sol-filtros {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.sol-busca {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: .875rem;
+}
+.sol-busca:focus {
+    outline: none;
+    border-color: var(--accent, #6C5CE7);
+    box-shadow: 0 0 0 3px rgba(108,92,231,.15);
+}
+.sol-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: .875rem;
+    min-width: 150px;
+}
+.sol-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent, #6C5CE7);
+    color: #fff;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+.sol-btn:hover { opacity: .9; }
+.sol-btn--sm {
+    padding: 6px 12px;
+    font-size: .8rem;
+    border-radius: 6px;
+}
+.sol-btn--primary { background: #22c55e; }
+.sol-btn--danger  { background: #ef4444; }
+.sol-btn--outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+}
+.sol-btn--outline:hover { background: var(--bg-secondary); }
+.sol-info {
+    font-size: .8rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+.sol-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 200px;
+}
+.sol-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+    font-size: .9rem;
+}
+.sol-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color .15s;
+}
+.sol-card:hover { border-color: var(--accent, #6C5CE7); }
+.sol-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.sol-aluno { display: flex; flex-direction: column; gap: 2px; }
+.sol-nome { font-weight: 700; font-size: .9rem; color: var(--text-primary); }
+.sol-email { font-size: .78rem; color: var(--text-secondary); }
+.sol-status {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 700;
+}
+.sol-status--pendente { background: #fef3c7; color: #92400e; }
+.sol-status--aprovada { background: #d1fae5; color: #065f46; }
+.sol-status--negada   { background: #fee2e2; color: #991b1b; }
+[data-theme="dark"] .sol-status--pendente { background: #78350f; color: #fcd34d; }
+[data-theme="dark"] .sol-status--aprovada { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .sol-status--negada   { background: #7f1d1d; color: #fca5a5; }
+.sol-ativ {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .85rem;
+    color: var(--text-primary);
+}
+.sol-disciplina { font-weight: 600; }
+.sol-sep { color: var(--text-secondary); }
+.sol-link {
+    color: var(--accent, #6C5CE7);
+    text-decoration: none;
+    font-weight: 600;
+}
+.sol-link:hover { text-decoration: underline; }
+.sol-justi {
+    font-size: .82rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+}
+.sol-resposta {
+    font-size: .82rem;
+    color: var(--text-secondary);
+    padding: 4px 0;
+}
+.sol-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.sol-data {
+    font-size: .75rem;
+    color: var(--text-secondary);
+}
+.sol-acoes {
+    display: flex;
+    gap: 8px;
+}
+@media (max-width: 600px) {
+    .sol-main { padding: 0 12px; margin-top: 70px; }
+    .sol-filtros { flex-direction: column; }
+}

@@ -838,14 +838,18 @@ body[data-side="open"] .side-panel {
     font-size: .85rem;
     font-weight: 500;
     border: 1.5px solid transparent;
-    transition: background .15s, border-color .15s;
+    transition: background .15s, border-color .15s, color .15s, transform .15s;
     margin: 2px 0;
 }
 .classroom-flyout-item:hover {
     background: var(--bg-secondary);
+    border-color: var(--accent, #6C5CE7);
+    color: var(--accent, #6C5CE7);
+    transform: translateX(3px);
 }
 [data-theme="dark"] .classroom-flyout-item:hover {
     background: var(--bg-secondary);
-    color: var(--text-primary);
+    border-color: var(--accent, #6C5CE7);
+    color: var(--accent, #6C5CE7);
 }
 

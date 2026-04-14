@@ -90,25 +90,11 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="classroom-flyout-label">Classroom</div>' +
         '<a href="/pages/portal-aluno/" class="classroom-flyout-item">' +
             '<span>👤</span> Portal do Aluno</a>' +
-        '<a href="/pages/classroom/?tab=solicitacoes" class="classroom-flyout-item" id="sideNavSolicita" data-tab="solicitacoes">' +
+        '<a href="/pages/solicitacoes/" class="classroom-flyout-item" id="sideNavSolicita">' +
             '<span>↩</span> Solicitações' +
             '<span class="side-nav-solicita-badge" id="sideNavSolitaBadge" style="display:none">0</span></a>' +
         '<a href="/pages/portal-log/" class="classroom-flyout-item" id="sideNavPortalLog">' +
             '<span>🎓</span> Log Portal Aluno</a>';
-
-    var isClassroomPage = window.location.pathname.replace(/\/+$/, '') === '/pages/classroom';
-    if (isClassroomPage) {
-        var solicitaLink = flyout.querySelector('[data-tab="solicitacoes"]');
-        if (solicitaLink) {
-            solicitaLink.addEventListener('click', function (e) {
-                e.preventDefault();
-                if (typeof irParaSolicitacoes === 'function') {
-                    window.irParaSolicitacoes();
-                }
-                closeFlyout();
-            });
-        }
-    }
     document.body.appendChild(flyout);
 
     var isOpen = false;
