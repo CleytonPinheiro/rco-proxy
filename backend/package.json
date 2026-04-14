@@ -4,8 +4,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js",
+    "start": "node scripts/build-portal.js && node index.js",
+    "dev": "node scripts/build-portal.js && node index.js",
     "build:portal": "node scripts/build-portal.js"
   },
   "dependencies": {

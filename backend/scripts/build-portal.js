@@ -1,5 +1,8 @@
 /**
- * Minifica frontend/alunos/alunos.js → frontend/alunos/alunos.min.js
+ * Minifica os portais públicos:
+ *   frontend/alunos/alunos.js         → frontend/alunos/alunos.min.js
+ *   frontend/pedagogico-portal/pedagogico-portal.js → frontend/pedagogico-portal/pedagogico-portal.min.js
+ *
  * Uso: node backend/scripts/build-portal.js
  */
 import { minify }  from 'terser';
@@ -10,23 +13,31 @@ import path from 'path';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT      = path.resolve(__dirname, '../../');
 
-const src  = path.join(ROOT, 'frontend/alunos/alunos.js');
-const dest = path.join(ROOT, 'frontend/alunos/alunos.min.js');
+const portais = [
+    { nome: 'alunos.min.js',              src: 'frontend/alunos/alunos.js',                                    dest: 'frontend/alunos/alunos.min.js' },
+    { nome: 'pedagogico-portal.min.js',   src: 'frontend/pedagogico-portal/pedagogico-portal.js',              dest: 'frontend/pedagogico-portal/pedagogico-portal.min.js' },
+];
 
-const code = await readFile(src, 'utf8');
+for (const p of portais) {
+    try {
+        const code = await readFile(path.join(ROOT, p.src), 'utf8');
 
-const result = await minify(code, {
-    compress: {
-        drop_console: false,
-        passes:       2,
-    },
-    mangle:  true,
-    format:  { comments: false },
-    sourceMap: false,
-});
+        const result = await minify(code, {
+            compress: {
+                drop_console: false,
+                passes:       2,
+            },
+            mangle:  true,
+            format:  { comments: false },
+            sourceMap: false,
+        });
 
-await writeFile(dest, result.code, 'utf8');
+        await writeFile(path.join(ROOT, p.dest), result.code, 'utf8');
 
-const srcKB  = (code.length          / 1024).toFixed(1);
-const destKB = (result.code.length   / 1024).toFixed(1);
-console.log(`✔ alunos.min.js gerado: ${srcKB} KB → ${destKB} KB`);
+        const srcKB  = (code.length        / 1024).toFixed(1);
+        const destKB = (result.code.length / 1024).toFixed(1);
+        console.log(`✔ ${p.nome}: ${srcKB} KB → ${destKB} KB`);
+    } catch (e) {
+        console.error(`✖ ${p.nome}: ${e.message}`);
+    }
+}
