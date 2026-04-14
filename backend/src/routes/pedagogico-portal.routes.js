@@ -307,10 +307,11 @@ export function createPedagogicoPortalRouter() {
         if (q.length < 2) return res.json([]);
         try {
             const { rows } = await pool.query(`
-                SELECT cpf, nome FROM edusync_usuarios
-                WHERE ativo = true AND perfil = 'professor'
-                  AND LOWER(nome) LIKE '%' || LOWER($1) || '%'
-                ORDER BY nome LIMIT 20
+                SELECT u.cpf, u.nome FROM edusync_usuarios u
+                LEFT JOIN classroom_tokens ct ON ct.cpf = u.cpf
+                WHERE u.ativo = true AND u.perfil = 'professor'
+                  AND (LOWER(u.nome) LIKE '%' || LOWER($1) || '%' OR LOWER(COALESCE(ct.email,'')) LIKE '%' || LOWER($1) || '%')
+                ORDER BY u.nome LIMIT 20
             `, [q]);
             const pedEmail = sess.email.toLowerCase();
             const { rows: jaTemAcesso } = await pool.query(
