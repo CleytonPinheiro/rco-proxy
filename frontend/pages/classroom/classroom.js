@@ -1304,6 +1304,34 @@ elBtnFecharNota.addEventListener('click', async () => {
                 </div>`;
         }
 
+        const alunosPendentes = (dados?.alunosResumo || [])
+            .filter(a => a.pendentes > 0)
+            .map(a => {
+                const naoEntregues = [];
+                Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
+                    if (!atv.eDeRecuperacao && !atv.eTardia && atv.nota === null && atv.estado !== 'TURNED_IN' && atv.estado !== 'RETURNED') {
+                        const info = dados.atividades?.find(x => String(x.id) === String(atvId));
+                        naoEntregues.push(info?.titulo || atvId);
+                    }
+                });
+                return { nome: a.aluno?.nome || a.userId, pendentes: a.pendentes, naoEntregues };
+            })
+            .sort((a, b) => b.pendentes - a.pendentes);
+
+        let pendentesDetailHtml = '';
+        if (alunosPendentes.length > 0) {
+            pendentesDetailHtml = `
+                <div class="cl-fechar-pendentes-detail" id="clFecharPendentesDetail" style="display:none">
+                    <div class="cl-fechar-pendentes-detail-list">
+                        ${alunosPendentes.map(a => `<div class="cl-fechar-pendentes-aluno">
+                            <span class="cl-fechar-pendentes-aluno-nome">${esc(a.nome)}</span>
+                            <span class="cl-fechar-pendentes-aluno-qty">${a.pendentes} faltando</span>
+                            ${a.naoEntregues.length > 0 ? `<div class="cl-fechar-pendentes-aluno-atvs">${a.naoEntregues.map(t => esc(t)).join(' · ')}</div>` : ''}
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+        }
+
         const resumoHtml = `
             <div class="cl-fechar-resumo">
                 <div class="cl-fechar-grupo-nome">${esc(grupoAtivo.nome)}</div>
@@ -1320,11 +1348,12 @@ elBtnFecharNota.addEventListener('click', async () => {
                         <span class="cl-fechar-stat-valor">${media}</span>
                         <span class="cl-fechar-stat-label">Média (pts)</span>
                     </div>
-                    <div class="cl-fechar-stat ${pendentes > 0 ? 'cl-fechar-stat--alerta' : ''}">
-                        <span class="cl-fechar-stat-valor">${pendentes}</span>
+                    <div class="cl-fechar-stat ${pendentes > 0 ? 'cl-fechar-stat--alerta cl-fechar-stat--clicavel' : ''}" ${pendentes > 0 ? 'id="clFecharPendentesToggle" title="Clique para ver os alunos com pendências"' : ''}>
+                        <span class="cl-fechar-stat-valor">${pendentes} ${pendentes > 0 ? '<span class="cl-fechar-stat-expand">▼</span>' : ''}</span>
                         <span class="cl-fechar-stat-label">Com pendências</span>
                     </div>
                 </div>
+                ${pendentesDetailHtml}
                 ${pendenciasHtml}
                 <div class="cl-fechar-sync-opt">
                     <label class="cl-fechar-sync-label">
@@ -1348,6 +1377,16 @@ elBtnFecharNota.addEventListener('click', async () => {
         });
 
         setTimeout(() => {
+            const pendToggle = document.getElementById('clFecharPendentesToggle');
+            const pendDetail = document.getElementById('clFecharPendentesDetail');
+            if (pendToggle && pendDetail) {
+                pendToggle.addEventListener('click', () => {
+                    const aberto = pendDetail.style.display !== 'none';
+                    pendDetail.style.display = aberto ? 'none' : 'block';
+                    const arrow = pendToggle.querySelector('.cl-fechar-stat-expand');
+                    if (arrow) arrow.textContent = aberto ? '▼' : '▲';
+                });
+            }
             document.querySelectorAll('.cl-fechar-pendencias-item').forEach(item => {
                 item.style.cursor = 'pointer';
                 item.addEventListener('click', () => {

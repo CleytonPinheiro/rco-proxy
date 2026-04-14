@@ -1880,6 +1880,68 @@ body.cl-popout .logo-icon { font-size: 15px; }
     border-color: #f59e0b;
     background: rgba(245,158,11,.08);
 }
+.cl-fechar-stat--clicavel {
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.cl-fechar-stat--clicavel:hover {
+    background: rgba(245,158,11,.15);
+    border-color: #fbbf24;
+}
+.cl-fechar-stat-expand {
+    font-size: .65rem;
+    margin-left: 2px;
+    opacity: .6;
+    vertical-align: middle;
+}
+.cl-fechar-pendentes-detail {
+    margin-top: 0;
+    border: 1px solid rgba(245,158,11,.2);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    background: rgba(245,158,11,.04);
+    overflow: hidden;
+}
+.cl-fechar-pendentes-detail-list {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+.cl-fechar-pendentes-aluno {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-bottom: 1px solid rgba(245,158,11,.08);
+    font-size: .82rem;
+}
+.cl-fechar-pendentes-aluno:last-child { border-bottom: none; }
+.cl-fechar-pendentes-aluno-nome {
+    flex: 1;
+    min-width: 120px;
+    color: var(--text);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cl-fechar-pendentes-aluno-qty {
+    flex-shrink: 0;
+    font-size: .72rem;
+    font-weight: 600;
+    color: #f59e0b;
+    background: rgba(245,158,11,.12);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+.cl-fechar-pendentes-aluno-atvs {
+    width: 100%;
+    font-size: .72rem;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1.35;
+    padding-left: 2px;
+}
 .cl-fechar-stat-valor {
     font-size: 1.4rem;
     font-weight: 700;
