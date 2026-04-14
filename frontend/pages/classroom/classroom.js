@@ -1238,6 +1238,49 @@ elBtnFecharNota.addEventListener('click', async () => {
         const pendentes = dados?.alunosResumo?.filter(a => a.pendentes > 0).length || 0;
         const nAtivs = dados?.atividades?.length || 0;
 
+        const semCorrecao = {};
+        (dados?.alunosResumo || []).forEach(a => {
+            Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
+                if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.fezRec && !atv.eDeRecuperacao) {
+                    if (!semCorrecao[atvId]) semCorrecao[atvId] = { count: 0, alunos: [] };
+                    semCorrecao[atvId].count++;
+                    if (semCorrecao[atvId].alunos.length < 3) {
+                        semCorrecao[atvId].alunos.push(a.aluno?.nome || a.userId);
+                    }
+                }
+            });
+        });
+        const atvsSemCorrecao = Object.keys(semCorrecao);
+        const totalSemCorrecao = atvsSemCorrecao.reduce((s, id) => s + semCorrecao[id].count, 0);
+
+        let pendenciasHtml = '';
+        if (atvsSemCorrecao.length > 0) {
+            pendenciasHtml = `
+                <div class="cl-fechar-pendencias">
+                    <div class="cl-fechar-pendencias-header">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" style="flex-shrink:0">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <strong>${totalSemCorrecao} entrega(s) sem corrigir em ${atvsSemCorrecao.length} atividade(s)</strong>
+                    </div>
+                    <div class="cl-fechar-pendencias-list">
+                        ${atvsSemCorrecao.map(atvId => {
+                            const info = dados.atividades?.find(x => String(x.id) === String(atvId));
+                            const titulo = info?.titulo || atvId;
+                            const { count, alunos } = semCorrecao[atvId];
+                            const nomes = alunos.join(', ') + (count > 3 ? ` +${count - 3}` : '');
+                            return `<div class="cl-fechar-pendencias-item" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
+                                <span class="cl-fechar-pendencias-icon">⚠</span>
+                                <span class="cl-fechar-pendencias-nome">${esc(titulo)}</span>
+                                <span class="cl-fechar-pendencias-qty">${count} sem nota</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <div class="cl-fechar-pendencias-dica">Clique em uma atividade acima para ir até ela e corrigir antes de fechar.</div>
+                </div>`;
+        }
+
         const resumoHtml = `
             <div class="cl-fechar-resumo">
                 <div class="cl-fechar-grupo-nome">${esc(grupoAtivo.nome)}</div>
@@ -1259,19 +1302,44 @@ elBtnFecharNota.addEventListener('click', async () => {
                         <span class="cl-fechar-stat-label">Com pendências</span>
                     </div>
                 </div>
+                ${pendenciasHtml}
                 <div class="cl-fechar-aviso">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0;margin-top:2px"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.5h1.5v5h-1.5v-5zm.75 7.5a.75.75 0 110-1.5.75.75 0 010 1.5z"/></svg>
                     <span>Toda entrega recebida <strong>após este momento</strong> será registrada como <strong>tardia</strong> e não entrará no cálculo da nota.</span>
                 </div>
             </div>`;
 
-        const ok = await confirmar(resumoHtml, {
+        const confirmarPromise = confirmar(resumoHtml, {
             titulo: 'Fechar notas',
-            confirmLabel: 'Sim, fechar agora',
+            confirmLabel: atvsSemCorrecao.length > 0 ? 'Fechar mesmo assim' : 'Sim, fechar agora',
             tipo: 'danger',
             icone: '🔒',
             html: true,
         });
+
+        setTimeout(() => {
+            document.querySelectorAll('.cl-fechar-pendencias-item').forEach(item => {
+                item.style.cursor = 'pointer';
+                item.addEventListener('click', () => {
+                    const atvId = item.dataset.atvId;
+                    const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
+                    if (!ativ) { toast('Atividade não encontrada.', 'erro'); return; }
+                    document.getElementById('clConfirmCancelar').click();
+                    if (viewMode !== 'atividades') elTabAtiv.click();
+                    setTimeout(() => {
+                        const itemEl = document.querySelector(`.cl-ativ-item[data-ativ-id="${atvId}"]`);
+                        if (itemEl) {
+                            itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            selecionarAtividade(ativ, itemEl);
+                        } else {
+                            selecionarAtividade(ativ, document.createElement('div'));
+                        }
+                    }, 150);
+                });
+            });
+        }, 0);
+
+        const ok = await confirmarPromise;
         if (!ok) return;
         try {
             const r = await api(`/groups/${grupoAtivo.id}/fechar`, { method: 'POST', body: {} });

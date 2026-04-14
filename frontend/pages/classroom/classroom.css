@@ -1896,6 +1896,65 @@ body.cl-popout .logo-icon { font-size: 15px; }
     letter-spacing: .04em;
     margin-top: 3px;
 }
+.cl-fechar-pendencias {
+    margin-bottom: 12px;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.cl-fechar-pendencias-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(245,158,11,.12);
+    color: #f59e0b;
+    font-size: .82rem;
+}
+.cl-fechar-pendencias-list {
+    padding: 4px 0;
+}
+.cl-fechar-pendencias-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background .12s;
+    font-size: .82rem;
+}
+.cl-fechar-pendencias-item:hover {
+    background: rgba(245,158,11,.08);
+}
+.cl-fechar-pendencias-icon {
+    color: #f59e0b;
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+.cl-fechar-pendencias-nome {
+    flex: 1;
+    color: var(--text);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cl-fechar-pendencias-qty {
+    flex-shrink: 0;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #f59e0b;
+    background: rgba(245,158,11,.12);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+.cl-fechar-pendencias-dica {
+    padding: 6px 12px 8px;
+    font-size: .75rem;
+    color: var(--text-secondary, #9ca3af);
+    font-style: italic;
+}
+
 .cl-fechar-aviso {
     display: flex;
     align-items: flex-start;
