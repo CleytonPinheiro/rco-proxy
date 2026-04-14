@@ -1955,6 +1955,37 @@ body.cl-popout .logo-icon { font-size: 15px; }
     font-style: italic;
 }
 
+.cl-fechar-sync-opt {
+    margin: 12px 0;
+    padding: 10px 12px;
+    background: rgba(59,130,246,.08);
+    border: 1px solid rgba(59,130,246,.25);
+    border-radius: 8px;
+}
+.cl-fechar-sync-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+}
+.cl-fechar-sync-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #3b82f6;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.cl-fechar-sync-desc {
+    margin-top: 6px;
+    margin-left: 24px;
+    font-size: .75rem;
+    color: var(--text-secondary, #9ca3af);
+    line-height: 1.4;
+}
+
 .cl-fechar-aviso {
     display: flex;
     align-items: flex-start;

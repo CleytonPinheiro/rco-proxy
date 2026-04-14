@@ -60,6 +60,7 @@ async function migrarTabelas() {
         /* Migração incremental: cod_classe_rco para vincular ao RCO */
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS cod_classe_rco TEXT`);
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS data_fechamento TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE classroom_grupo_atividades ADD COLUMN IF NOT EXISTS due_date_original JSONB`);
         await pool.query(`
             CREATE TABLE IF NOT EXISTS classroom_entregas_tardias (
                 id              SERIAL PRIMARY KEY,
@@ -1041,9 +1042,9 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
-    /* ── Fechar/Abrir grupo (definir data_fechamento) ── */
+    /* ── Fechar/Abrir grupo (definir data_fechamento + sync dueDate no Classroom) ── */
     router.post('/classroom/groups/:id/fechar', async (req, res) => {
-        const { dataFechamento, courseId } = req.body;
+        const { dataFechamento, syncClassroom } = req.body;
         try {
             const { rows: [grupo] } = await pool.query(
                 `SELECT id, curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
@@ -1055,7 +1056,55 @@ export function createClassroomRouter(deps = {}) {
                 `UPDATE classroom_grupos SET data_fechamento = $1 WHERE id = $2`,
                 [dt.toISOString(), req.params.id]
             );
-            res.json({ ok: true, dataFechamento: dt.toISOString() });
+
+            let classroomSync = { tentou: false, sucessos: 0, erros: [] };
+            if (syncClassroom !== false) {
+                classroomSync.tentou = true;
+                const auth = await getAuthenticatedClient(req);
+                if (!auth) {
+                    classroomSync.erros.push('Não autenticado no Google Classroom.');
+                } else {
+                    const classroom = google.classroom({ version: 'v1', auth });
+                    const { rows: ativs } = await pool.query(
+                        `SELECT atividade_id FROM classroom_grupo_atividades WHERE grupo_id=$1`, [req.params.id]
+                    );
+                    const brOffset = -3 * 60;
+                    const brDate = new Date(dt.getTime() + brOffset * 60000);
+                    const dueDate = { year: brDate.getUTCFullYear(), month: brDate.getUTCMonth() + 1, day: brDate.getUTCDate() };
+                    const dueTime = { hours: brDate.getUTCHours(), minutes: brDate.getUTCMinutes() };
+
+                    for (const a of ativs) {
+                        try {
+                            const cwResp = await classroom.courses.courseWork.get({
+                                courseId: grupo.curso_id, id: a.atividade_id,
+                            });
+                            const original = {
+                                dueDate: cwResp.data.dueDate || null,
+                                dueTime: cwResp.data.dueTime || null,
+                            };
+                            await pool.query(
+                                `UPDATE classroom_grupo_atividades SET due_date_original = $1
+                                 WHERE grupo_id = $2 AND atividade_id = $3`,
+                                [JSON.stringify(original), req.params.id, a.atividade_id]
+                            );
+
+                            await classroom.courses.courseWork.patch({
+                                courseId: grupo.curso_id,
+                                id: a.atividade_id,
+                                updateMask: 'dueDate,dueTime',
+                                requestBody: { dueDate, dueTime },
+                            });
+                            classroomSync.sucessos++;
+                            console.log(`[CLASSROOM] dueDate definido para atividade ${a.atividade_id} → ${dt.toISOString()}`);
+                        } catch (e) {
+                            console.error(`[CLASSROOM] Erro ao definir dueDate da atividade ${a.atividade_id}:`, e.message);
+                            classroomSync.erros.push(`${a.atividade_id}: ${e.message}`);
+                        }
+                    }
+                }
+            }
+
+            res.json({ ok: true, dataFechamento: dt.toISOString(), classroomSync });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao fechar grupo:', e.message);
             res.status(500).json({ erro: e.message });
@@ -1063,9 +1112,10 @@ export function createClassroomRouter(deps = {}) {
     });
 
     router.post('/classroom/groups/:id/abrir', async (req, res) => {
+        const { restaurarDueDate } = req.body || {};
         try {
             const { rows: [grupo] } = await pool.query(
-                `SELECT id FROM classroom_grupos WHERE id = $1`, [req.params.id]
+                `SELECT id, curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
             );
             if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
 
@@ -1073,7 +1123,59 @@ export function createClassroomRouter(deps = {}) {
                 `UPDATE classroom_grupos SET data_fechamento = NULL WHERE id = $1`,
                 [req.params.id]
             );
-            res.json({ ok: true });
+
+            let classroomSync = { tentou: false, sucessos: 0, erros: [] };
+            if (restaurarDueDate) {
+                classroomSync.tentou = true;
+                const auth = await getAuthenticatedClient(req);
+                if (!auth) {
+                    classroomSync.erros.push('Não autenticado no Google Classroom.');
+                } else {
+                    const classroom = google.classroom({ version: 'v1', auth });
+                    const { rows: ativs } = await pool.query(
+                        `SELECT atividade_id, due_date_original FROM classroom_grupo_atividades WHERE grupo_id=$1`, [req.params.id]
+                    );
+                    const restaurados = [];
+                    for (const a of ativs) {
+                        try {
+                            const original = a.due_date_original || {};
+                            if (original.dueDate) {
+                                await classroom.courses.courseWork.patch({
+                                    courseId: grupo.curso_id,
+                                    id: a.atividade_id,
+                                    updateMask: 'dueDate,dueTime',
+                                    requestBody: {
+                                        dueDate: original.dueDate,
+                                        dueTime: original.dueTime || { hours: 23, minutes: 59 },
+                                    },
+                                });
+                            } else {
+                                await classroom.courses.courseWork.patch({
+                                    courseId: grupo.curso_id,
+                                    id: a.atividade_id,
+                                    updateMask: 'dueDate,dueTime',
+                                    requestBody: { dueDate: null, dueTime: null },
+                                });
+                            }
+                            restaurados.push(a.atividade_id);
+                            classroomSync.sucessos++;
+                            console.log(`[CLASSROOM] dueDate restaurado para atividade ${a.atividade_id}`);
+                        } catch (e) {
+                            console.error(`[CLASSROOM] Erro ao restaurar dueDate da atividade ${a.atividade_id}:`, e.message);
+                            classroomSync.erros.push(`${a.atividade_id}: ${e.message}`);
+                        }
+                    }
+                    if (restaurados.length > 0) {
+                        await pool.query(
+                            `UPDATE classroom_grupo_atividades SET due_date_original = NULL
+                             WHERE grupo_id = $1 AND atividade_id = ANY($2)`,
+                            [req.params.id, restaurados]
+                        );
+                    }
+                }
+            }
+
+            res.json({ ok: true, classroomSync });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao abrir grupo:', e.message);
             res.status(500).json({ erro: e.message });

@@ -41,7 +41,7 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Funcionalidades**:
   - Consulta de cursos, grupos de atividades, resumo de notas por grupo
   - **Gerenciar grupos**: editar (nome/pontos/cor) e excluir grupos via modal
-  - **Fechar/reabrir notas**: fechar grupo (registra data_fechamento) ou reabrir
+  - **Fechar/reabrir notas**: fechar grupo (registra data_fechamento) ou reabrir; sincroniza dueDate com Google Classroom (PATCH courseWork) e salva prazo original para restauração
   - **Entregas tardias**: detectar e listar entregas após data de fechamento
   - **Auditoria de ausências**: visualizar ausências registradas por disciplina
   - **Botão "Lançar no RCO" oculto**: não disponível no portal pedagógico

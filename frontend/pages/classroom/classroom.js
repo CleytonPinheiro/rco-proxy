@@ -1205,19 +1205,42 @@ elBtnFecharNota.addEventListener('click', async () => {
     const jaFechado = !!grupoAtivo.dataFechamento;
 
     if (jaFechado) {
-        const ok = await confirmar(
-            `Deseja reabrir as notas do grupo "${grupoAtivo.nome}"? Entregas tardias registradas serão mantidas.`,
-            { titulo: 'Reabrir notas', confirmLabel: 'Sim, reabrir', tipo: 'info', icone: '🔓' }
-        );
+        const reabrirHtml = `
+            <div class="cl-fechar-resumo">
+                <p>Deseja reabrir as notas do grupo "<strong>${esc(grupoAtivo.nome)}</strong>"? Entregas tardias registradas serão mantidas.</p>
+                <div class="cl-fechar-sync-opt" style="margin-top:12px">
+                    <label class="cl-fechar-sync-label">
+                        <input type="checkbox" id="clAbrirRestaurarDueDate" checked>
+                        <span>Restaurar prazos originais no Google Classroom</span>
+                    </label>
+                    <div class="cl-fechar-sync-desc">Reverte o prazo das atividades para o valor que tinham antes do fechamento.</div>
+                </div>
+            </div>`;
+        const ok = await confirmar(reabrirHtml, {
+            titulo: 'Reabrir notas', confirmLabel: 'Sim, reabrir', tipo: 'info', icone: '🔓', html: true,
+        });
         if (!ok) return;
+        const restaurarDueDate = document.getElementById('clAbrirRestaurarDueDate')?.checked ?? false;
         try {
-            await api(`/groups/${grupoAtivo.id}/abrir`, { method: 'POST' });
+            elBtnFecharNota.disabled = true;
+            if (restaurarDueDate) toast('Reabrindo notas e restaurando prazos no Classroom...', 'info');
+            const r = await api(`/groups/${grupoAtivo.id}/abrir`, { method: 'POST', body: { restaurarDueDate } });
             grupoAtivo.dataFechamento = null;
             atualizarBtnFecharNota(grupoAtivo);
             await carregarGrupos();
             await carregarResumoGrupo(grupoAtivo);
-            toast('Notas reabertas!', 'ok');
-        } catch (e) { toast('Erro ao reabrir: ' + e.message, 'erro'); }
+            if (r.classroomSync?.tentou) {
+                const { sucessos, erros } = r.classroomSync;
+                if (erros.length === 0) {
+                    toast(`Notas reabertas! Prazo restaurado em ${sucessos} atividade(s).`, 'ok');
+                } else {
+                    toast(`Notas reabertas. ${sucessos} restaurada(s), ${erros.length} com erro.`, 'alerta');
+                }
+            } else {
+                toast('Notas reabertas!', 'ok');
+            }
+            elBtnFecharNota.disabled = false;
+        } catch (e) { elBtnFecharNota.disabled = false; toast('Erro ao reabrir: ' + e.message, 'erro'); }
     } else {
         toast('Recalculando dados do Classroom antes de fechar...', 'info');
         elBtnFecharNota.disabled = true;
@@ -1303,6 +1326,13 @@ elBtnFecharNota.addEventListener('click', async () => {
                     </div>
                 </div>
                 ${pendenciasHtml}
+                <div class="cl-fechar-sync-opt">
+                    <label class="cl-fechar-sync-label">
+                        <input type="checkbox" id="clFecharSyncClassroom" checked>
+                        <span>Definir prazo no Google Classroom</span>
+                    </label>
+                    <div class="cl-fechar-sync-desc">Atualiza o prazo (dueDate) de todas as atividades deste grupo no Classroom para agora. O prazo original é salvo e pode ser restaurado ao reabrir.</div>
+                </div>
                 <div class="cl-fechar-aviso">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0;margin-top:2px"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.5h1.5v5h-1.5v-5zm.75 7.5a.75.75 0 110-1.5.75.75 0 010 1.5z"/></svg>
                     <span>Toda entrega recebida <strong>após este momento</strong> será registrada como <strong>tardia</strong> e não entrará no cálculo da nota.</span>
@@ -1341,14 +1371,27 @@ elBtnFecharNota.addEventListener('click', async () => {
 
         const ok = await confirmarPromise;
         if (!ok) return;
+        const syncClassroom = document.getElementById('clFecharSyncClassroom')?.checked ?? false;
         try {
-            const r = await api(`/groups/${grupoAtivo.id}/fechar`, { method: 'POST', body: {} });
+            elBtnFecharNota.disabled = true;
+            if (syncClassroom) toast('Fechando notas e sincronizando prazos com o Classroom...', 'info');
+            const r = await api(`/groups/${grupoAtivo.id}/fechar`, { method: 'POST', body: { syncClassroom } });
             grupoAtivo.dataFechamento = r.dataFechamento;
             atualizarBtnFecharNota(grupoAtivo);
             await carregarGrupos();
             await carregarResumoGrupo(grupoAtivo);
-            toast('Notas fechadas! Entregas futuras serão registradas como tardias.', 'ok');
-        } catch (e) { toast('Erro ao fechar: ' + e.message, 'erro'); }
+            if (r.classroomSync?.tentou) {
+                const { sucessos, erros } = r.classroomSync;
+                if (erros.length === 0) {
+                    toast(`Notas fechadas! Prazo atualizado em ${sucessos} atividade(s) no Classroom.`, 'ok');
+                } else {
+                    toast(`Notas fechadas. ${sucessos} atividade(s) sincronizadas, ${erros.length} com erro.`, 'alerta');
+                }
+            } else {
+                toast('Notas fechadas! Entregas futuras serão registradas como tardias.', 'ok');
+            }
+            elBtnFecharNota.disabled = false;
+        } catch (e) { elBtnFecharNota.disabled = false; toast('Erro ao fechar: ' + e.message, 'erro'); }
     }
 });
 
