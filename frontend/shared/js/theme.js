@@ -90,12 +90,10 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="classroom-flyout-label">Classroom</div>' +
         '<a href="/pages/portal-aluno/" class="classroom-flyout-item">' +
             '<span>👤</span> Portal do Aluno</a>' +
-        '<a href="/pages/classroom/" class="classroom-flyout-item" id="sideNavSolicita" ' +
-            'onclick="event.preventDefault();irParaSolicitacoes()">' +
+        '<a href="/pages/classroom/?tab=solicitacoes" class="classroom-flyout-item" id="sideNavSolicita">' +
             '<span>↩</span> Solicitações' +
             '<span class="side-nav-solicita-badge" id="sideNavSolitaBadge" style="display:none">0</span></a>' +
-        '<a href="/pages/classroom/" class="classroom-flyout-item" id="sideNavPortalLog" ' +
-            'onclick="event.preventDefault();irParaPortalLog()">' +
+        '<a href="/pages/classroom/?tab=portal_log" class="classroom-flyout-item" id="sideNavPortalLog">' +
             '<span>🎓</span> Log Portal Aluno</a>';
     document.body.appendChild(flyout);
 

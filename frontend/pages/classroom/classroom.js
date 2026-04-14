@@ -526,7 +526,10 @@ async function selecionarCurso(curso, itemEl, cor) {
     elAtivLista.innerHTML     = '<div class="cl-loading">Carregando atividades...</div>';
     elGrupoLista.innerHTML    = '<div class="cl-loading">Carregando grupos...</div>';
 
-    if (viewMode === 'grupos') setTab('grupos');
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab === 'solicitacoes') { elTabs.style.display = ''; setTab('solicitacoes'); }
+    else if (urlTab === 'portal_log') { elTabs.style.display = ''; setTab('portal_log'); }
+    else if (viewMode === 'grupos') setTab('grupos');
     else if (viewMode === 'auditoria') setTab('auditoria');
 
     try {

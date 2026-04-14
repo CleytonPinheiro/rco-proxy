@@ -776,17 +776,29 @@ body[data-side="open"] .side-panel {
 .side-nav-arrow {
     display: flex;
     align-items: center;
+    justify-content: center;
     margin-left: auto;
-    opacity: .45;
     flex-shrink: 0;
-    transition: opacity .2s, transform .2s;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--accent, #6C5CE7);
+    color: #fff;
+    opacity: .8;
+    transition: opacity .2s, transform .2s, background .2s;
+}
+.side-nav-arrow svg {
+    width: 12px;
+    height: 12px;
 }
 .side-nav-item:hover .side-nav-arrow {
-    opacity: .85;
+    opacity: 1;
+    background: var(--accent, #6C5CE7);
+    transform: translateX(2px);
 }
-.flyout-visible ~ .side-nav-arrow,
 .side-nav-group:hover .side-nav-arrow {
     opacity: 1;
+    transform: translateX(2px);
 }
 
 /* ── Flyout — criado via JS no <body>, posição fixa ─── */
