@@ -141,6 +141,7 @@ const elSideNavSolitaBadge = document.getElementById('sideNavSolitaBadge');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
+const elCorrecaoAviso  = document.getElementById('clCorrecaoAviso');
 
 /* ── Toast ── */
 let toastTimer;
@@ -318,6 +319,7 @@ function resetColuna3() {
     elNotasStats.style.display    = 'none';
     elNotasFiltro.style.display   = 'none';
     elNotasActions.style.display  = 'none';
+    if (elCorrecaoAviso) elCorrecaoAviso.style.display = 'none';
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -696,6 +698,7 @@ async function selecionarAtividade(ativ, itemEl) {
     elNotasStats.style.display   = 'none';
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'none';
+    if (elCorrecaoAviso) elCorrecaoAviso.style.display = 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Carregando entregas...</div>';
     elBusca.value                = '';
     elFiltroStatus.value         = '';
@@ -1210,6 +1213,7 @@ async function carregarResumoGrupo(grupo) {
         grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
+        renderAvisoCorrecao();
 
         toast('Dados atualizados do Classroom', 'ok');
 
@@ -1223,6 +1227,85 @@ async function carregarResumoGrupo(grupo) {
         elBtnAtualizar.disabled = false;
         elBtnAtualizarIcon.style.animation = '';
     }
+}
+
+function renderAvisoCorrecao() {
+    if (!elCorrecaoAviso) return;
+    if (!grupoResumoData?.alunosResumo) {
+        elCorrecaoAviso.style.display = 'none';
+        return;
+    }
+
+    const porAtividade = {};
+    grupoResumoData.alunosResumo.forEach(a => {
+        Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
+            if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.fezRec && !atv.eDeRecuperacao) {
+                if (!porAtividade[atvId]) porAtividade[atvId] = { count: 0, alunos: [] };
+                porAtividade[atvId].count++;
+                if (porAtividade[atvId].alunos.length < 3) {
+                    porAtividade[atvId].alunos.push(a.aluno?.nome || a.userId);
+                }
+            }
+        });
+    });
+
+    const atvIds = Object.keys(porAtividade);
+    if (!atvIds.length) {
+        elCorrecaoAviso.style.display = 'none';
+        return;
+    }
+
+    const totalEntregas = atvIds.reduce((s, id) => s + porAtividade[id].count, 0);
+
+    let linksHtml = '';
+    atvIds.forEach(atvId => {
+        const info = grupoResumoData.atividades?.find(x => String(x.id) === String(atvId));
+        const titulo = info?.titulo || atvId;
+        const { count, alunos } = porAtividade[atvId];
+        const nomes = alunos.join(', ') + (count > 3 ? ` +${count - 3}` : '');
+        linksHtml += `
+            <div class="cl-correcao-link" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
+                <span class="cl-correcao-link__icon">!</span>
+                <span class="cl-correcao-link__ativ">${esc(titulo)}</span>
+                <span class="cl-correcao-link__qty">${count} entrega${count > 1 ? 's' : ''}</span>
+                <span class="cl-correcao-link__arrow">→</span>
+            </div>`;
+    });
+
+    elCorrecaoAviso.innerHTML = `
+        <div class="cl-correcao-aviso__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Correções pendentes
+            <span class="cl-correcao-aviso__count">${totalEntregas}</span>
+        </div>
+        <div class="cl-correcao-aviso__list">${linksHtml}</div>`;
+    elCorrecaoAviso.style.display = '';
+
+    elCorrecaoAviso.querySelectorAll('.cl-correcao-link').forEach(link => {
+        link.addEventListener('click', () => {
+            const atvId = link.dataset.atvId;
+            const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
+            if (!ativ) {
+                toast('Atividade não encontrada. Navegue manualmente pela lista.', 'erro');
+                return;
+            }
+            if (viewMode !== 'atividades') {
+                elTabAtiv.click();
+            }
+            setTimeout(() => {
+                const itemEl = document.querySelector(`.cl-ativ-item[data-ativ-id="${atvId}"]`);
+                if (itemEl) {
+                    itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    selecionarAtividade(ativ, itemEl);
+                } else {
+                    selecionarAtividade(ativ, document.createElement('div'));
+                }
+            }, 100);
+        });
+    });
 }
 
 function faixaCor(soma, meta) {
