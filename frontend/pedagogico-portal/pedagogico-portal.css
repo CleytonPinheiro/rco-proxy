@@ -276,9 +276,90 @@ html, body {
 }
 .pp-empty-icon { font-size: 2.4rem; margin-bottom: 10px; display: block; }
 
+.pp-grupo-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+}
+.pp-grupo-actions .pp-btn { font-size: .72rem; padding: 4px 10px; }
+
+.pp-modal-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: var(--pp-overlay);
+    display: flex; align-items: center; justify-content: center;
+    animation: ppFadeIn .15s;
+}
+@keyframes ppFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.pp-modal {
+    background: var(--pp-card); border-radius: var(--pp-radius);
+    box-shadow: 0 8px 32px var(--pp-shadow-lg);
+    border: 1px solid var(--pp-border);
+    width: 90vw; max-width: 520px; max-height: 85vh;
+    display: flex; flex-direction: column;
+    animation: ppSlideUp .2s;
+}
+@keyframes ppSlideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.pp-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--pp-border);
+}
+.pp-modal-header h3 { font-size: 1rem; font-weight: 700; }
+.pp-modal-close {
+    background: none; border: none; font-size: 1.4rem;
+    color: var(--pp-muted); cursor: pointer; line-height: 1;
+}
+.pp-modal-close:hover { color: var(--pp-text); }
+
+.pp-modal-body {
+    padding: 20px; overflow-y: auto; flex: 1;
+}
+.pp-modal-footer {
+    padding: 12px 20px; border-top: 1px solid var(--pp-border);
+    display: flex; gap: 8px; justify-content: flex-end;
+}
+
+.pp-form-group {
+    margin-bottom: 14px;
+}
+.pp-form-group label {
+    display: block; font-size: .8rem; font-weight: 600; color: var(--pp-sub);
+    margin-bottom: 4px;
+}
+.pp-form-group input, .pp-form-group select {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--pp-border);
+    border-radius: 8px; font-size: .88rem;
+    background: var(--pp-bg); color: var(--pp-text);
+}
+.pp-form-group input:focus, .pp-form-group select:focus {
+    outline: none; border-color: var(--pp-primary);
+}
+.pp-form-row { display: flex; gap: 12px; }
+.pp-form-row .pp-form-group { flex: 1; }
+
+.pp-tardia-list { list-style: none; }
+.pp-tardia-item {
+    padding: 10px 0; border-bottom: 1px solid var(--pp-border);
+    font-size: .85rem;
+}
+.pp-tardia-item:last-child { border-bottom: none; }
+.pp-tardia-nome { font-weight: 600; color: var(--pp-text); }
+.pp-tardia-atividade { color: var(--pp-sub); font-size: .78rem; }
+.pp-tardia-data { color: var(--pp-danger); font-size: .78rem; }
+
+.pp-ausencia-list { list-style: none; }
+.pp-ausencia-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--pp-border);
+    font-size: .85rem;
+}
+.pp-ausencia-item:last-child { border-bottom: none; }
+
+.pp-modal--wide { max-width: 680px; }
+
 @media (max-width: 600px) {
     .pp-main { padding: 16px 12px 40px; }
     .pp-cursos-grid, .pp-grupos-grid { grid-template-columns: 1fr; }
     .pp-resumo-stats { grid-template-columns: 1fr 1fr; }
     .pp-user-nome { display: none; }
+    .pp-modal { width: 96vw; max-height: 90vh; }
 }

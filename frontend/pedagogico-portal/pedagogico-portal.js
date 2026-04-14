@@ -125,6 +125,19 @@ async function fazerLogout() {
     toast('Sessão encerrada.', 'ok');
 }
 
+function abrirModal(titulo, bodyHtml, footerHtml, wide) {
+    $('ppModalTitulo').textContent = titulo;
+    $('ppModalBody').innerHTML = bodyHtml;
+    $('ppModalFooter').innerHTML = footerHtml || '';
+    const modal = $('ppModalOverlay').querySelector('.pp-modal');
+    modal.classList.toggle('pp-modal--wide', !!wide);
+    $('ppModalOverlay').style.display = '';
+}
+
+function fecharModal() {
+    $('ppModalOverlay').style.display = 'none';
+}
+
 async function carregarCursos() {
     _cursoAtivo = null;
     _grupoAtivo = null;
@@ -191,11 +204,24 @@ async function selecionarCurso(id, nome) {
                     <span>${g.atividades.length} atividade(s)</span>
                     <span>Meta: ${g.pontosMeta} pts</span>
                 </div>
+                <div class="pp-grupo-actions">
+                    <button class="pp-btn pp-btn--outline pp-btn--sm pp-btn-ver" data-id="${g.id}" title="Ver resumo">📊 Resumo</button>
+                    <button class="pp-btn pp-btn--outline pp-btn--sm pp-btn-editar" data-id="${g.id}" title="Editar grupo">✏️ Editar</button>
+                    <button class="pp-btn pp-btn--outline pp-btn--sm pp-btn-excluir" data-id="${g.id}" title="Excluir grupo">🗑️ Excluir</button>
+                </div>
             </div>`;
         }).join('');
+
         window._gruposCache = grupos;
-        $('ppGruposList').querySelectorAll('.pp-grupo-card').forEach(el => {
-            el.addEventListener('click', () => selecionarGrupo(Number(el.dataset.grupoId)));
+
+        $('ppGruposList').querySelectorAll('.pp-btn-ver').forEach(el => {
+            el.addEventListener('click', (e) => { e.stopPropagation(); selecionarGrupo(Number(el.dataset.id)); });
+        });
+        $('ppGruposList').querySelectorAll('.pp-btn-editar').forEach(el => {
+            el.addEventListener('click', (e) => { e.stopPropagation(); abrirEditarGrupo(Number(el.dataset.id)); });
+        });
+        $('ppGruposList').querySelectorAll('.pp-btn-excluir').forEach(el => {
+            el.addEventListener('click', (e) => { e.stopPropagation(); confirmarExcluirGrupo(Number(el.dataset.id)); });
         });
     } catch (e) {
         loading(false);
@@ -209,6 +235,88 @@ async function carregarAlunosCurso(courseId) {
     } catch (e) {
         _alunosMap = {};
     }
+}
+
+function abrirEditarGrupo(grupoId) {
+    const g = (window._gruposCache || []).find(x => x.id === grupoId);
+    if (!g) return;
+
+    const body = `
+        <div class="pp-form-group">
+            <label>Nome do grupo</label>
+            <input type="text" id="ppEditNome" value="${esc(g.nome)}">
+        </div>
+        <div class="pp-form-row">
+            <div class="pp-form-group">
+                <label>Pontos meta</label>
+                <input type="number" id="ppEditMeta" value="${g.pontosMeta}" min="1" max="100">
+            </div>
+            <div class="pp-form-group">
+                <label>Cor</label>
+                <input type="color" id="ppEditCor" value="${g.cor || '#7c3aed'}">
+            </div>
+        </div>
+    `;
+
+    const footer = `
+        <button class="pp-btn pp-btn--outline pp-btn--sm" onclick="fecharModal()">Cancelar</button>
+        <button class="pp-btn pp-btn--accent pp-btn--sm" onclick="salvarEdicaoGrupo(${grupoId})">Salvar</button>
+    `;
+
+    abrirModal('Editar grupo', body, footer);
+}
+
+async function salvarEdicaoGrupo(grupoId) {
+    const nome = document.getElementById('ppEditNome').value.trim();
+    const pontosMeta = Number(document.getElementById('ppEditMeta').value) || 40;
+    const cor = document.getElementById('ppEditCor').value;
+
+    if (!nome) { toast('Nome é obrigatório.', 'erro'); return; }
+
+    loading(true);
+    fecharModal();
+    try {
+        await api(`/grupos/${grupoId}`, { method: 'PUT', body: { nome, pontosMeta, cor } });
+        toast('Grupo atualizado!', 'ok');
+        await selecionarCurso(_cursoAtivo.id, _cursoAtivo.nome);
+    } catch (e) {
+        toast('Erro ao salvar: ' + e.message, 'erro');
+    }
+    loading(false);
+}
+
+function confirmarExcluirGrupo(grupoId) {
+    const g = (window._gruposCache || []).find(x => x.id === grupoId);
+    if (!g) return;
+
+    const body = `
+        <p style="font-size:.9rem; margin-bottom:8px;">
+            Tem certeza que deseja excluir o grupo <strong>${esc(g.nome)}</strong>?
+        </p>
+        <p style="font-size:.82rem; color:var(--pp-danger);">
+            Esta ação é irreversível. Todas as atividades vinculadas serão removidas.
+        </p>
+    `;
+
+    const footer = `
+        <button class="pp-btn pp-btn--outline pp-btn--sm" onclick="fecharModal()">Cancelar</button>
+        <button class="pp-btn pp-btn--danger pp-btn--sm" onclick="executarExclusaoGrupo(${grupoId})">Excluir</button>
+    `;
+
+    abrirModal('Excluir grupo', body, footer);
+}
+
+async function executarExclusaoGrupo(grupoId) {
+    loading(true);
+    fecharModal();
+    try {
+        await api(`/grupos/${grupoId}`, { method: 'DELETE' });
+        toast('Grupo excluído!', 'ok');
+        await selecionarCurso(_cursoAtivo.id, _cursoAtivo.nome);
+    } catch (e) {
+        toast('Erro ao excluir: ' + e.message, 'erro');
+    }
+    loading(false);
 }
 
 async function selecionarGrupo(grupoId) {
@@ -256,14 +364,34 @@ function renderResumo(dados, grupoData) {
     `;
     $('ppResumoStats').innerHTML = statsHtml;
 
-    $('ppResumoActions').innerHTML = '';
+    const actionsDiv = $('ppResumoActions');
+    actionsDiv.innerHTML = '';
+
     if (fechado) {
         const btnReabrir = document.createElement('button');
         btnReabrir.className = 'pp-btn pp-btn--accent pp-btn--sm';
-        btnReabrir.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg> Reabrir grupo`;
+        btnReabrir.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg> Reabrir`;
         btnReabrir.addEventListener('click', () => reabrirGrupo(grupoData.id));
-        $('ppResumoActions').appendChild(btnReabrir);
+        actionsDiv.appendChild(btnReabrir);
+
+        const btnTardias = document.createElement('button');
+        btnTardias.className = 'pp-btn pp-btn--outline pp-btn--sm';
+        btnTardias.textContent = '⏰ Entregas tardias';
+        btnTardias.addEventListener('click', () => detectarTardias(grupoData.id));
+        actionsDiv.appendChild(btnTardias);
+    } else {
+        const btnFechar = document.createElement('button');
+        btnFechar.className = 'pp-btn pp-btn--danger pp-btn--sm';
+        btnFechar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg> Fechar notas`;
+        btnFechar.addEventListener('click', () => confirmarFecharGrupo(grupoData.id));
+        actionsDiv.appendChild(btnFechar);
     }
+
+    const btnAusencias = document.createElement('button');
+    btnAusencias.className = 'pp-btn pp-btn--outline pp-btn--sm';
+    btnAusencias.textContent = '📋 Ausências';
+    btnAusencias.addEventListener('click', () => verAusencias());
+    actionsDiv.appendChild(btnAusencias);
 
     let thead = '<tr><th>Aluno</th>';
     atividades.forEach(a => {
@@ -312,27 +440,161 @@ function renderResumo(dados, grupoData) {
     $('ppResumoCorpo').innerHTML = tbody || '<tr><td colspan="100" class="pp-empty">Nenhum aluno encontrado.</td></tr>';
 }
 
-async function reabrirGrupo(grupoId) {
-    if (!confirm('Tem certeza que deseja reabrir este grupo? As notas serão recalculadas incluindo entregas tardias.')) return;
+function confirmarFecharGrupo(grupoId) {
+    const g = (window._gruposCache || []).find(x => x.id === grupoId);
+    if (!g) return;
 
+    const body = `
+        <p style="font-size:.9rem; margin-bottom:12px;">
+            Deseja fechar as notas do grupo <strong>${esc(g.nome)}</strong>?
+        </p>
+        <p style="font-size:.82rem; color:var(--pp-sub); line-height:1.5;">
+            Ao fechar, a data de fechamento será registrada. Entregas feitas após essa data serão marcadas como tardias.
+            Você pode reabrir o grupo depois, se necessário.
+        </p>
+    `;
+
+    const footer = `
+        <button class="pp-btn pp-btn--outline pp-btn--sm" onclick="fecharModal()">Cancelar</button>
+        <button class="pp-btn pp-btn--danger pp-btn--sm" onclick="executarFecharGrupo(${grupoId})">Fechar notas</button>
+    `;
+
+    abrirModal('Fechar notas', body, footer);
+}
+
+async function executarFecharGrupo(grupoId) {
     loading(true);
+    fecharModal();
+    try {
+        const resp = await api(`/grupos/${grupoId}/fechar`, { method: 'POST', body: {} });
+        toast('Notas fechadas com sucesso!', 'ok');
+
+        const gIdx = (window._gruposCache || []).findIndex(g => g.id === grupoId);
+        if (gIdx >= 0) window._gruposCache[gIdx].dataFechamento = resp.dataFechamento;
+        if (_grupoAtivo && _grupoAtivo.id === grupoId) _grupoAtivo.dataFechamento = resp.dataFechamento;
+
+        await selecionarGrupo(grupoId);
+    } catch (e) {
+        toast('Erro ao fechar: ' + e.message, 'erro');
+    }
+    loading(false);
+}
+
+async function reabrirGrupo(grupoId) {
+    const body = `
+        <p style="font-size:.9rem; margin-bottom:8px;">
+            Tem certeza que deseja reabrir este grupo?
+        </p>
+        <p style="font-size:.82rem; color:var(--pp-sub);">
+            As notas serão recalculadas e entregas tardias poderão ser incluídas.
+        </p>
+    `;
+
+    const footer = `
+        <button class="pp-btn pp-btn--outline pp-btn--sm" onclick="fecharModal()">Cancelar</button>
+        <button class="pp-btn pp-btn--accent pp-btn--sm" onclick="executarReabrirGrupo(${grupoId})">Reabrir</button>
+    `;
+
+    abrirModal('Reabrir grupo', body, footer);
+}
+
+async function executarReabrirGrupo(grupoId) {
+    loading(true);
+    fecharModal();
     try {
         await api(`/grupos/${grupoId}/abrir`, { method: 'POST', body: {} });
         toast('Grupo reaberto com sucesso!', 'ok');
 
         const gIdx = (window._gruposCache || []).findIndex(g => g.id === grupoId);
-        if (gIdx >= 0) {
-            window._gruposCache[gIdx].dataFechamento = null;
-        }
-        if (_grupoAtivo && _grupoAtivo.id === grupoId) {
-            _grupoAtivo.dataFechamento = null;
-        }
+        if (gIdx >= 0) window._gruposCache[gIdx].dataFechamento = null;
+        if (_grupoAtivo && _grupoAtivo.id === grupoId) _grupoAtivo.dataFechamento = null;
 
         await selecionarGrupo(grupoId);
     } catch (e) {
         toast('Erro ao reabrir: ' + e.message, 'erro');
     }
     loading(false);
+}
+
+async function detectarTardias(grupoId) {
+    if (!_cursoAtivo) return;
+
+    loading(true);
+    try {
+        const resp = await api(`/grupos/${grupoId}/detectar-tardias`, {
+            method: 'POST',
+            body: { courseId: _cursoAtivo.id },
+        });
+        loading(false);
+
+        if (!resp.tardias || resp.tardias.length === 0) {
+            abrirModal('Entregas tardias', '<div class="pp-empty"><span class="pp-empty-icon">✅</span>Nenhuma entrega tardia detectada.</div>', '');
+            return;
+        }
+
+        let listHtml = '<ul class="pp-tardia-list">';
+        resp.tardias.forEach(t => {
+            const data = new Date(t.dataEntrega).toLocaleString('pt-BR');
+            listHtml += `
+                <li class="pp-tardia-item">
+                    <div class="pp-tardia-nome">${esc(t.nomeAluno)}</div>
+                    <div class="pp-tardia-atividade">${esc(t.atividadeTitulo)}</div>
+                    <div class="pp-tardia-data">Entregue em: ${data} ${t.nota != null ? `| Nota: ${t.nota}` : ''}</div>
+                </li>
+            `;
+        });
+        listHtml += '</ul>';
+
+        abrirModal(`Entregas tardias (${resp.total})`, listHtml, '', true);
+    } catch (e) {
+        loading(false);
+        toast('Erro ao detectar tardias: ' + e.message, 'erro');
+    }
+}
+
+async function verAusencias() {
+    if (!_cursoAtivo) return;
+
+    loading(true);
+    try {
+        const ausencias = await api(`/ausencias?courseId=${_cursoAtivo.id}`);
+        loading(false);
+
+        if (!ausencias.length) {
+            abrirModal('Auditoria de ausências', '<div class="pp-empty"><span class="pp-empty-icon">✅</span>Nenhuma ausência registrada para esta disciplina.</div>', '');
+            return;
+        }
+
+        const porAtividade = {};
+        ausencias.forEach(a => {
+            const key = a.atividade_id;
+            if (!porAtividade[key]) porAtividade[key] = { id: key, alunos: [] };
+            porAtividade[key].alunos.push(a);
+        });
+
+        let html = '';
+        Object.values(porAtividade).forEach(grupo => {
+            const primeiro = grupo.alunos[0];
+            const dataAtiv = primeiro.data_atividade ? new Date(primeiro.data_atividade).toLocaleDateString('pt-BR') : '-';
+            html += `<div style="margin-bottom:16px;">`;
+            html += `<div style="font-weight:600; font-size:.88rem; margin-bottom:6px;">Atividade: ${esc(primeiro.atividade_id)}</div>`;
+            html += `<div style="font-size:.78rem; color:var(--pp-sub); margin-bottom:8px;">Data: ${dataAtiv}</div>`;
+            html += '<ul class="pp-ausencia-list">';
+            grupo.alunos.forEach(a => {
+                const criado = new Date(a.criado_em).toLocaleString('pt-BR');
+                html += `<li class="pp-ausencia-item">
+                    <span>${esc(a.nome_aluno || a.user_id)}</span>
+                    <span style="font-size:.75rem; color:var(--pp-muted)">${criado}</span>
+                </li>`;
+            });
+            html += '</ul></div>';
+        });
+
+        abrirModal(`Auditoria de ausências (${ausencias.length})`, html, '', true);
+    } catch (e) {
+        loading(false);
+        toast('Erro ao carregar ausências: ' + e.message, 'erro');
+    }
 }
 
 function voltarParaCursos() {

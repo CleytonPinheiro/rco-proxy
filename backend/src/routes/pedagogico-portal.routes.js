@@ -540,6 +540,209 @@ export function createPedagogicoPortalRouter() {
                 `SELECT * FROM classroom_entregas_tardias WHERE grupo_id = $1 ORDER BY data_entrega DESC`,
                 [grupoId]
             );
+
+            logPedagogo(req, sess.email, sess.nome, 'consultar_tardias_pedagogo', {
+                grupoId, total: rows.length,
+            });
+
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/pedagogico-portal/grupos/:id/fechar', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id, curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+
+            const dt = new Date();
+            await pool.query(
+                `UPDATE classroom_grupos SET data_fechamento = $1 WHERE id = $2`,
+                [dt.toISOString(), req.params.id]
+            );
+
+            logPedagogo(req, sess.email, sess.nome, 'fechar_grupo_pedagogo', { grupoId: req.params.id });
+
+            res.json({ ok: true, dataFechamento: dt.toISOString() });
+        } catch (e) {
+            console.error('[PEDAGOGICO-PORTAL] Erro ao fechar grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.put('/pedagogico-portal/grupos/:id', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { nome, pontosMeta, cor } = req.body;
+        if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
+
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+
+            await pool.query(
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3 WHERE id=$4`,
+                [nome.trim(), pontosMeta || 40, cor || '#7c3aed', req.params.id]
+            );
+
+            logPedagogo(req, sess.email, sess.nome, 'editar_grupo_pedagogo', {
+                grupoId: req.params.id, nome,
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('[PEDAGOGICO-PORTAL] Erro ao editar grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.delete('/pedagogico-portal/grupos/:id', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id, nome FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+
+            await pool.query(`DELETE FROM classroom_grupos WHERE id=$1`, [req.params.id]);
+
+            logPedagogo(req, sess.email, sess.nome, 'excluir_grupo_pedagogo', {
+                grupoId: req.params.id, nomeGrupo: grupo.nome,
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('[PEDAGOGICO-PORTAL] Erro ao excluir grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/pedagogico-portal/grupos/:id/detectar-tardias', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { courseId } = req.body;
+        if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
+
+        const auth = await getTeacherAuth(req);
+        if (!auth) return res.status(503).json({ erro: 'Token do professor não disponível.' });
+
+        try {
+            const { rows: [grupo] } = await pool.query(
+                `SELECT id, curso_id, data_fechamento FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+            if (grupo.curso_id !== courseId) return res.status(400).json({ erro: 'courseId não corresponde ao grupo.' });
+            if (!grupo.data_fechamento) {
+                return res.status(400).json({ erro: 'Grupo não possui data de fechamento definida.' });
+            }
+            const dataFech = new Date(grupo.data_fechamento);
+
+            const { rows: ativs } = await pool.query(
+                `SELECT atividade_id, atividade_titulo FROM classroom_grupo_atividades WHERE grupo_id=$1`, [req.params.id]
+            );
+            if (!ativs.length) return res.json({ tardias: [], total: 0 });
+
+            const classroom = google.classroom({ version: 'v1', auth });
+            const tardias = [];
+
+            for (const atv of ativs) {
+                let pageToken;
+                do {
+                    const resp = await classroom.courses.courseWork.studentSubmissions.list({
+                        courseId, courseWorkId: atv.atividade_id, pageSize: 100, pageToken,
+                    });
+                    const subs = resp.data.studentSubmissions || [];
+                    for (const s of subs) {
+                        const updateTime = s.updateTime ? new Date(s.updateTime) : null;
+                        const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
+                        if (entregue && updateTime && updateTime > dataFech) {
+                            tardias.push({
+                                atividadeId: atv.atividade_id,
+                                atividadeTitulo: atv.atividade_titulo,
+                                userId: s.userId,
+                                dataEntrega: updateTime.toISOString(),
+                                nota: s.assignedGrade ?? null,
+                                estado: s.state,
+                            });
+                        }
+                    }
+                    pageToken = resp.data.nextPageToken;
+                } while (pageToken);
+            }
+
+            let profileMap = {};
+            if (tardias.length > 0) {
+                try {
+                    const studentsResp = await classroom.courses.students.list({ courseId, pageSize: 100 });
+                    const students = studentsResp.data.students || [];
+                    for (const st of students) {
+                        profileMap[st.userId] = {
+                            nome: st.profile?.name?.fullName || st.userId,
+                            email: st.profile?.emailAddress || '',
+                        };
+                    }
+                } catch (_) {}
+            }
+
+            const tardiasComNomes = tardias.map(t => ({
+                ...t,
+                nomeAluno: profileMap[t.userId]?.nome || t.userId,
+                emailAluno: profileMap[t.userId]?.email || '',
+            }));
+
+            for (const t of tardiasComNomes) {
+                await pool.query(`
+                    INSERT INTO classroom_entregas_tardias
+                        (grupo_id, curso_id, atividade_id, atividade_titulo, user_id, nome_aluno, email_aluno, data_entrega, data_fechamento, nota, estado)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    ON CONFLICT (grupo_id, atividade_id, user_id) DO UPDATE SET
+                        data_entrega = EXCLUDED.data_entrega,
+                        nota = EXCLUDED.nota,
+                        estado = EXCLUDED.estado
+                `, [req.params.id, courseId, t.atividadeId, t.atividadeTitulo, t.userId,
+                    t.nomeAluno, t.emailAluno, t.dataEntrega, grupo.data_fechamento, t.nota, t.estado]);
+            }
+
+            logPedagogo(req, sess.email, sess.nome, 'detectar_tardias_pedagogo', {
+                grupoId: req.params.id, total: tardiasComNomes.length,
+            });
+
+            res.json({ tardias: tardiasComNomes, total: tardiasComNomes.length });
+        } catch (e) {
+            console.error('[PEDAGOGICO-PORTAL] Erro ao detectar tardias:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.get('/pedagogico-portal/ausencias', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { courseId, atividadeId } = req.query;
+        if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
+
+        try {
+            let q = `SELECT * FROM classroom_ausencias WHERE curso_id=$1`;
+            const params = [courseId];
+            if (atividadeId) { q += ` AND atividade_id=$2`; params.push(atividadeId); }
+            const { rows } = await pool.query(q + ' ORDER BY criado_em DESC', params);
+
+            logPedagogo(req, sess.email, sess.nome, 'consultar_ausencias_pedagogo', {
+                courseId, atividadeId: atividadeId || null, total: rows.length,
+            });
+
             res.json(rows);
         } catch (e) {
             res.status(500).json({ erro: e.message });

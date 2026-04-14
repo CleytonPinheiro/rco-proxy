@@ -105,6 +105,17 @@
         </div>
 
         <div id="ppToast" class="pp-toast"></div>
+
+        <div id="ppModalOverlay" class="pp-modal-overlay" style="display:none" onclick="fecharModal()">
+            <div class="pp-modal" onclick="event.stopPropagation()">
+                <div class="pp-modal-header">
+                    <h3 id="ppModalTitulo"></h3>
+                    <button class="pp-modal-close" onclick="fecharModal()">&times;</button>
+                </div>
+                <div class="pp-modal-body" id="ppModalBody"></div>
+                <div class="pp-modal-footer" id="ppModalFooter"></div>
+            </div>
+        </div>
     </main>
 
     <script src="./pedagogico-portal.js"></script>

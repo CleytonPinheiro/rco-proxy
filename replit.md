@@ -30,7 +30,7 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Redirect URI adicional** (registrar no Google Cloud Console): `https://{domínio}/api/alunos-portal/callback`
 - **Dados exibidos**: atividades pendentes (estado CREATED/RECLAIMED) agrupadas por disciplina, com prazo e link direto ao GC
 
-### Portal Pedagógico (Google OAuth — público, somente leitura + reabrir)
+### Portal Pedagógico (Google OAuth — público, leitura + escrita)
 - **URL pública**: `/pedagogico-portal/` — sem login EduSync/RCO, acessível pela equipe pedagógica
 - **Backend**: `backend/src/routes/pedagogico-portal.routes.js` — montado ANTES do `requireAuth`
 - **Frontend**: `frontend/pedagogico-portal/` — HTML/CSS/JS standalone com tema roxo
@@ -38,8 +38,15 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Fluxo OAuth**: escopo mínimo (`openid email profile`) — só para obter o email @escola
 - **Consulta**: usa o **token do professor** (já armazenado) para buscar cursos/alunos/submissions via Classroom API
 - **Redirect URI adicional** (registrar no Google Cloud Console): `https://{domínio}/api/pedagogico-portal/callback`
-- **Funcionalidades**: consulta de cursos, grupos de atividades, resumo de notas por grupo (tabela com nota por atividade por aluno), estatísticas (média, pendências), e **reabrir grupo fechado**
-- **Audit log**: todas as ações registradas no módulo `portal_pedagogico`
+- **Funcionalidades**:
+  - Consulta de cursos, grupos de atividades, resumo de notas por grupo
+  - **Gerenciar grupos**: editar (nome/pontos/cor) e excluir grupos via modal
+  - **Fechar/reabrir notas**: fechar grupo (registra data_fechamento) ou reabrir
+  - **Entregas tardias**: detectar e listar entregas após data de fechamento
+  - **Auditoria de ausências**: visualizar ausências registradas por disciplina
+  - **Botão "Lançar no RCO" oculto**: não disponível no portal pedagógico
+- **Audit log**: todas as ações registradas no módulo `portal_pedagogico` (incluindo consultas de ausências e tardias)
+- **Segurança**: validação de courseId x grupo nas mutações, 404 para grupos inexistentes
 
 ## Estado Atual
 - **Data**: 14/04/2026
