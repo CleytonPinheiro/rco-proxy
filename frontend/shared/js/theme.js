@@ -90,11 +90,27 @@ document.addEventListener('DOMContentLoaded', function () {
         '<div class="classroom-flyout-label">Classroom</div>' +
         '<a href="/pages/portal-aluno/" class="classroom-flyout-item">' +
             '<span>👤</span> Portal do Aluno</a>' +
-        '<a href="/pages/classroom/?tab=solicitacoes" class="classroom-flyout-item" id="sideNavSolicita">' +
+        '<a href="/pages/classroom/?tab=solicitacoes" class="classroom-flyout-item" id="sideNavSolicita" data-tab="solicitacoes">' +
             '<span>↩</span> Solicitações' +
             '<span class="side-nav-solicita-badge" id="sideNavSolitaBadge" style="display:none">0</span></a>' +
-        '<a href="/pages/classroom/?tab=portal_log" class="classroom-flyout-item" id="sideNavPortalLog">' +
+        '<a href="/pages/classroom/?tab=portal_log" class="classroom-flyout-item" id="sideNavPortalLog" data-tab="portal_log">' +
             '<span>🎓</span> Log Portal Aluno</a>';
+
+    var isClassroomPage = window.location.pathname.replace(/\/+$/, '') === '/pages/classroom';
+    if (isClassroomPage) {
+        flyout.querySelectorAll('[data-tab]').forEach(function (link) {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                var tab = link.getAttribute('data-tab');
+                if (tab === 'solicitacoes' && typeof irParaSolicitacoes === 'function') {
+                    irParaSolicitacoes();
+                } else if (tab === 'portal_log' && typeof irParaPortalLog === 'function') {
+                    window.irParaPortalLog();
+                }
+                closeFlyout();
+            });
+        });
+    }
     document.body.appendChild(flyout);
 
     var isOpen = false;

@@ -766,11 +766,11 @@ async function responderSolicitacao(id, acao) {
     }
 }
 
-function irParaSolicitacoes() {
+window.irParaSolicitacoes = function irParaSolicitacoes() {
     fecharSidePanel?.();
     elTabs.style.display = '';
     setTab('solicitacoes');
-}
+};
 
 window.irParaPortalLog = function () {
     fecharSidePanel?.();
