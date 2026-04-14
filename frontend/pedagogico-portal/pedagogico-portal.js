@@ -125,11 +125,13 @@ async function carregarProfessores() {
         if (!profs.length) {
             $('ppProfList').innerHTML = `<div class="pp-empty">
                 <span class="pp-empty-icon">🔒</span>
-                <div style="max-width:360px;text-align:center">
+                <div style="max-width:420px;text-align:center">
                     <p style="margin-bottom:8px">Nenhum professor concedeu acesso para você ainda.</p>
-                    <p style="font-size:.82rem;color:var(--pp-sub)">Solicite ao professor que vá em <strong>Classroom > Acesso pedagógico</strong> e adicione seu email <strong>${esc(_pedagogo.email)}</strong>.</p>
+                    <p style="font-size:.82rem;color:var(--pp-sub);margin-bottom:12px">Você pode solicitar acesso a um professor diretamente:</p>
+                    <button class="pp-btn pp-btn--primary" onclick="abrirModalSolicitarAcesso()" style="margin-bottom:8px">Solicitar acesso a professor</button>
                 </div>
             </div>`;
+            carregarMinhasSolicitacoes();
             return;
         }
         $('ppProfList').innerHTML = profs.map(p => {
@@ -143,6 +145,11 @@ async function carregarProfessores() {
                 ${vinculado ? '<svg class="pp-prof-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>' : ''}
             </div>`;
         }).join('');
+        const solBtnHtml = `<div style="text-align:center;margin-top:12px">
+            <button class="pp-btn pp-btn--secondary" onclick="abrirModalSolicitarAcesso()" style="font-size:.82rem">Solicitar acesso a outro professor</button>
+        </div>`;
+        $('ppProfList').innerHTML += solBtnHtml;
+        carregarMinhasSolicitacoes();
         $('ppProfList').querySelectorAll('.pp-prof-card:not(.pp-prof-card--disabled)').forEach(el => {
             el.addEventListener('click', () => selecionarProfessor(el.dataset.cpf, el.dataset.nome));
         });
@@ -699,3 +706,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         mostrarPreLogin();
     }
 });
+
+let _buscaTimer = null;
+
+function abrirModalSolicitarAcesso() {
+    const body = `
+        <div style="margin-bottom:12px">
+            <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:4px">Buscar professor pelo nome:</label>
+            <input type="text" id="ppBuscaProfInput" placeholder="Digite o nome do professor..." style="width:100%;padding:8px 10px;border:1px solid var(--pp-border,#e5e7eb);border-radius:6px;font-size:.9rem" oninput="buscarProfessoresParaSolicitar(this.value)">
+        </div>
+        <div id="ppBuscaProfResultados" style="max-height:220px;overflow-y:auto"></div>
+        <div style="margin-top:10px">
+            <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:4px">Mensagem (opcional):</label>
+            <textarea id="ppSolicitacaoMsg" rows="2" placeholder="Ex: Gostaria de acompanhar as turmas do Classroom..." style="width:100%;padding:8px 10px;border:1px solid var(--pp-border,#e5e7eb);border-radius:6px;font-size:.85rem;resize:vertical"></textarea>
+        </div>
+    `;
+    abrirModal('Solicitar acesso a professor', body, '', true);
+}
+
+function buscarProfessoresParaSolicitar(valor) {
+    clearTimeout(_buscaTimer);
+    const q = valor.trim();
+    if (q.length < 2) {
+        $('ppBuscaProfResultados').innerHTML = '<div style="color:var(--pp-sub);font-size:.82rem;text-align:center;padding:8px">Digite pelo menos 2 caracteres.</div>';
+        return;
+    }
+    _buscaTimer = setTimeout(async () => {
+        try {
+            const resultados = await api('/buscar-professores?q=' + encodeURIComponent(q));
+            if (!resultados.length) {
+                $('ppBuscaProfResultados').innerHTML = '<div style="color:var(--pp-sub);font-size:.82rem;text-align:center;padding:8px">Nenhum professor encontrado.</div>';
+                return;
+            }
+            $('ppBuscaProfResultados').innerHTML = resultados.map(p => {
+                if (p.jaTemAcesso) {
+                    return `<div class="pp-busca-item pp-busca-item--disabled">
+                        <span>${esc(p.nome)}</span>
+                        <span class="pp-busca-status pp-busca-status--ok">Acesso liberado</span>
+                    </div>`;
+                }
+                if (p.solicitacaoPendente) {
+                    return `<div class="pp-busca-item pp-busca-item--disabled">
+                        <span>${esc(p.nome)}</span>
+                        <span class="pp-busca-status pp-busca-status--pending">Aguardando resposta</span>
+                    </div>`;
+                }
+                return `<div class="pp-busca-item pp-busca-item--action" onclick="enviarSolicitacao('${esc(p.cpf)}','${esc(p.nome)}')">
+                    <span>${esc(p.nome)}</span>
+                    <span class="pp-busca-status pp-busca-status--send">Solicitar</span>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            $('ppBuscaProfResultados').innerHTML = '<div style="color:#ef4444;font-size:.82rem;text-align:center;padding:8px">Erro na busca.</div>';
+        }
+    }, 350);
+}
+
+async function enviarSolicitacao(cpf, nome) {
+    const msg = ($('ppSolicitacaoMsg')?.value || '').trim();
+    try {
+        const resp = await api('/solicitar-acesso', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ professorCpf: cpf, mensagem: msg }),
+        });
+        if (resp.erro) { toast(resp.erro, 'erro'); return; }
+        toast(`Solicitação enviada para ${nome}!`, 'ok');
+        fecharModal();
+        carregarProfessores();
+    } catch (e) {
+        toast('Erro: ' + e.message, 'erro');
+    }
+}
+
+async function carregarMinhasSolicitacoes() {
+    try {
+        const sols = await api('/minhas-solicitacoes');
+        const pendentes = sols.filter(s => s.status === 'pendente');
+        const recusados = sols.filter(s => s.status === 'recusado');
+        if (!pendentes.length && !recusados.length) return;
+        let html = '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--pp-border,#e5e7eb)">';
+        if (pendentes.length) {
+            html += `<h4 style="font-size:.82rem;color:var(--pp-sub);margin-bottom:6px;font-weight:600">Solicitações pendentes</h4>`;
+            html += pendentes.map(s => `
+                <div class="pp-sol-item pp-sol-item--pending">
+                    <span>${esc(s.professor_nome)}</span>
+                    <span class="pp-sol-badge pp-sol-badge--pending">Aguardando</span>
+                </div>
+            `).join('');
+        }
+        if (recusados.length) {
+            html += `<h4 style="font-size:.82rem;color:var(--pp-sub);margin:8px 0 6px;font-weight:600">Recusadas</h4>`;
+            html += recusados.map(s => `
+                <div class="pp-sol-item pp-sol-item--rejected">
+                    <span>${esc(s.professor_nome)}</span>
+                    <span class="pp-sol-badge pp-sol-badge--rejected">Recusada</span>
+                </div>
+            `).join('');
+        }
+        html += '</div>';
+        $('ppProfList').innerHTML += html;
+    } catch (_) {}
+}

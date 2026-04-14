@@ -51,6 +51,10 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Endpoint portal**: `GET /api/pedagogico-portal/professores` — lista professores que concederam acesso (JOIN com `edusync_usuarios` e `classroom_tokens`)
 - **Roteamento de token**: `resolveTeacherAuth(req)` — se `professorCpf` presente e pedagoga autorizada, usa token do professor do DB; sem `professorCpf`, fallback para token global
 - **Segurança**: grant verificado no servidor em cada chamada; cookie httpOnly para binding CPF→token no OAuth
+- **Sistema de solicitações**: tabela `classroom_solicitacao_acesso` (pedagogo_email, pedagogo_nome, professor_cpf, status, mensagem)
+- **Fluxo convite**: pedagoga busca professor por nome no portal → envia solicitação com mensagem opcional → professor vê na seção "Acesso pedagógico" do Classroom → aprova (cria grant automático) ou recusa
+- **Endpoints portal**: `GET /buscar-professores?q=`, `POST /solicitar-acesso`, `GET /minhas-solicitacoes`
+- **Endpoints professor**: `GET /solicitacoes-acesso`, `POST /solicitacoes-acesso/:id/responder` (aceitar: true/false)
 
 ### Portal do Aluno (Google OAuth — público)
 - **URL pública**: `/alunos/` — sem login EduSync, acessível por alunos

@@ -4608,8 +4608,80 @@ async function revogarPedagogo(id) {
                 badge.style.display = '';
             }
         }
+        await carregarSolicitacoesAcesso();
     } catch (_) {}
 })();
+
+async function carregarSolicitacoesAcesso() {
+    try {
+        const resp = await fetch('/api/classroom/solicitacoes-acesso', { credentials: 'include' });
+        if (!resp.ok) return;
+        const lista = await resp.json();
+        const pendentes = lista.filter(s => s.status === 'pendente');
+        const solBadge = document.getElementById('clSolicitacoesBadge');
+        if (solBadge) {
+            if (pendentes.length > 0) {
+                solBadge.textContent = pendentes.length;
+                solBadge.style.display = '';
+            } else {
+                solBadge.style.display = 'none';
+            }
+        }
+        const solLista = document.getElementById('clSolicitacoesLista');
+        if (!solLista) return;
+        if (!lista.length) {
+            solLista.innerHTML = '<div style="color:var(--text-secondary,#9ca3af);text-align:center;padding:8px">Nenhuma solicitação.</div>';
+            return;
+        }
+        solLista.innerHTML = lista.map(s => {
+            const data = new Date(s.criado_em).toLocaleDateString('pt-BR');
+            if (s.status === 'pendente') {
+                return `<div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb)">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem;color:var(--text-primary,#111)">${s.pedagogo_nome || s.pedagogo_email}</div>
+                            <div style="font-size:.78rem;color:var(--text-secondary,#666)">${s.pedagogo_email} &middot; ${data}</div>
+                            ${s.mensagem ? `<div style="font-size:.8rem;color:var(--text-secondary,#888);margin-top:2px;font-style:italic">"${s.mensagem}"</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-top:6px">
+                        <button onclick="responderSolicitacao(${s.id},true)" style="flex:1;padding:5px 0;background:#22c55e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:.78rem;font-weight:600">Aprovar</button>
+                        <button onclick="responderSolicitacao(${s.id},false)" style="flex:1;padding:5px 0;background:#ef4444;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:.78rem;font-weight:600">Recusar</button>
+                    </div>
+                </div>`;
+            }
+            const statusLabel = s.status === 'aprovado' ? 'Aprovado' : 'Recusado';
+            const statusColor = s.status === 'aprovado' ? '#22c55e' : '#ef4444';
+            return `<div style="padding:6px 0;border-bottom:1px solid var(--border,#e5e7eb);opacity:.7">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:.84rem;color:var(--text-primary,#111)">${s.pedagogo_nome || s.pedagogo_email}</span>
+                    <span style="font-size:.72rem;font-weight:600;color:${statusColor}">${statusLabel}</span>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (_) {}
+}
+
+async function responderSolicitacao(id, aceitar) {
+    const acao = aceitar ? 'aprovar' : 'recusar';
+    if (!await confirmar(
+        aceitar ? 'Deseja aprovar esta solicitação e conceder acesso pedagógico?' : 'Deseja recusar esta solicitação?',
+        { titulo: aceitar ? 'Aprovar solicitação' : 'Recusar solicitação', confirmLabel: aceitar ? 'Aprovar' : 'Recusar', tipo: aceitar ? 'info' : 'danger', icone: aceitar ? '✅' : '❌' }
+    )) return;
+    try {
+        const resp = await fetch(`/api/classroom/solicitacoes-acesso/${id}/responder`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ aceitar }),
+        });
+        if (!resp.ok) { const d = await resp.json(); toast(d.erro || 'Erro', 'erro'); return; }
+        toast(aceitar ? 'Acesso concedido!' : 'Solicitação recusada.', 'ok');
+        carregarSolicitacoesAcesso();
+        if (aceitar) carregarPedagogos();
+    } catch (e) {
+        toast('Erro: ' + e.message, 'erro');
+    }
+}
 
 /* ══════════════════════════════════════════════════════════════
    INICIA

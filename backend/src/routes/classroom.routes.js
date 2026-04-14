@@ -1583,5 +1583,56 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
+    /* ════════════════════════════════════════════════════════════
+       SOLICITAÇÕES DE ACESSO — professor vê e responde convites
+    ════════════════════════════════════════════════════════════ */
+
+    router.get('/classroom/solicitacoes-acesso', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, pedagogo_email, pedagogo_nome, mensagem, status, criado_em, respondido_em
+                 FROM classroom_solicitacao_acesso
+                 WHERE professor_cpf = $1
+                 ORDER BY CASE status WHEN 'pendente' THEN 0 ELSE 1 END, criado_em DESC`,
+                [cpf]
+            );
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/classroom/solicitacoes-acesso/:id/responder', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { aceitar } = req.body;
+        if (typeof aceitar !== 'boolean') return res.status(400).json({ erro: 'Parâmetro "aceitar" inválido.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, pedagogo_email FROM classroom_solicitacao_acesso WHERE id = $1 AND professor_cpf = $2 AND status = 'pendente'`,
+                [req.params.id, cpf]
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Solicitação não encontrada ou já respondida.' });
+            const sol = rows[0];
+            const novoStatus = aceitar ? 'aprovado' : 'recusado';
+            await pool.query(
+                `UPDATE classroom_solicitacao_acesso SET status = $1, respondido_em = NOW() WHERE id = $2`,
+                [novoStatus, sol.id]
+            );
+            if (aceitar) {
+                await pool.query(
+                    `INSERT INTO classroom_acesso_pedagogo (professor_cpf, pedagogo_email)
+                     VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+                    [cpf, sol.pedagogo_email]
+                );
+            }
+            res.json({ ok: true, status: novoStatus });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     return router;
 }

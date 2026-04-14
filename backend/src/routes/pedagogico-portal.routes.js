@@ -300,6 +300,92 @@ export function createPedagogicoPortalRouter() {
         }
     });
 
+    router.get('/pedagogico-portal/buscar-professores', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+        const q = (req.query.q || '').trim();
+        if (q.length < 2) return res.json([]);
+        try {
+            const { rows } = await pool.query(`
+                SELECT cpf, nome FROM edusync_usuarios
+                WHERE ativo = true AND perfil = 'professor'
+                  AND LOWER(nome) LIKE '%' || LOWER($1) || '%'
+                ORDER BY nome LIMIT 20
+            `, [q]);
+            const pedEmail = sess.email.toLowerCase();
+            const { rows: jaTemAcesso } = await pool.query(
+                `SELECT professor_cpf FROM classroom_acesso_pedagogo WHERE pedagogo_email = $1`,
+                [pedEmail]
+            );
+            const { rows: jaSolicitou } = await pool.query(
+                `SELECT professor_cpf, status FROM classroom_solicitacao_acesso WHERE pedagogo_email = $1 AND status = 'pendente'`,
+                [pedEmail]
+            );
+            const acessoSet = new Set(jaTemAcesso.map(r => r.professor_cpf));
+            const pendMap = new Map(jaSolicitou.map(r => [r.professor_cpf, r.status]));
+            res.json(rows.map(r => ({
+                cpf: r.cpf,
+                nome: r.nome,
+                jaTemAcesso: acessoSet.has(r.cpf),
+                solicitacaoPendente: pendMap.get(r.cpf) === 'pendente',
+            })));
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/pedagogico-portal/solicitar-acesso', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { professorCpf, mensagem } = req.body;
+        if (!professorCpf || !/^\d{11}$/.test(professorCpf)) return res.status(400).json({ erro: 'CPF inválido.' });
+        try {
+            const { rows: profRows } = await pool.query(
+                `SELECT cpf FROM edusync_usuarios WHERE cpf = $1 AND ativo = true AND perfil = 'professor'`,
+                [professorCpf]
+            );
+            if (!profRows.length) return res.status(404).json({ erro: 'Professor não encontrado.' });
+
+            const { rows: jaAcesso } = await pool.query(
+                `SELECT 1 FROM classroom_acesso_pedagogo WHERE professor_cpf = $1 AND pedagogo_email = $2`,
+                [professorCpf, sess.email.toLowerCase()]
+            );
+            if (jaAcesso.length) return res.status(400).json({ erro: 'Você já tem acesso a este professor.' });
+
+            const { rows: jaPendente } = await pool.query(
+                `SELECT 1 FROM classroom_solicitacao_acesso WHERE professor_cpf = $1 AND pedagogo_email = $2 AND status = 'pendente'`,
+                [professorCpf, sess.email.toLowerCase()]
+            );
+            if (jaPendente.length) return res.status(400).json({ erro: 'Já existe uma solicitação pendente para este professor.' });
+
+            await pool.query(
+                `INSERT INTO classroom_solicitacao_acesso (pedagogo_email, pedagogo_nome, professor_cpf, mensagem)
+                 VALUES ($1, $2, $3, $4)`,
+                [sess.email.toLowerCase(), sess.nome || sess.email, professorCpf, (mensagem || '').slice(0, 500)]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.get('/pedagogico-portal/minhas-solicitacoes', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(`
+                SELECT s.id, s.professor_cpf, u.nome AS professor_nome, s.status, s.mensagem, s.criado_em, s.respondido_em
+                FROM classroom_solicitacao_acesso s
+                JOIN edusync_usuarios u ON u.cpf = s.professor_cpf
+                WHERE s.pedagogo_email = $1
+                ORDER BY s.criado_em DESC
+            `, [sess.email.toLowerCase()]);
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     router.get('/pedagogico-portal/cursos', async (req, res) => {
         const sess = await getPedagogoSession(req);
         if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
