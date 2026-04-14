@@ -90,16 +90,35 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
     /* Badge/botão de reabertura — em modo prévia mostra o estado real mas
        sem abrir modal (é apenas visualização). */
     let reaberturaPart = '';
-    if (zerada) {
+    if (!aguardando) {
         const sol = _solicitadasMap[String(ativ.id)];
+        const reaberturaAberta = !ativ.vencida;
         if (!sol) {
-            reaberturaPart = `<button class="pa-solicita-btn pa-solicita-btn--preview"
-                title="O aluno pode solicitar reabertura desta atividade"
-                onclick="event.preventDefault();alert('Prévia: O aluno vê aqui o botão para solicitar reabertura.')">
-                ↩ Solicitar reabertura
-            </button>`;
+            if (reaberturaAberta) {
+                reaberturaPart = `<button class="pa-solicita-btn pa-solicita-btn--aberta pa-solicita-btn--preview"
+                    disabled title="Disponível apenas após o encerramento do prazo"
+                    onclick="event.preventDefault()">
+                    <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="flex-shrink:0">
+                      <path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      <path d="M2 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Solicitar reabertura
+                </button>`;
+            } else {
+                reaberturaPart = `<button class="pa-solicita-btn pa-solicita-btn--destaque pa-solicita-btn--preview"
+                    title="O aluno pode solicitar reabertura desta atividade"
+                    onclick="event.preventDefault();alert('Prévia: O aluno vê aqui o botão para solicitar reabertura.')">
+                    <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="flex-shrink:0">
+                      <path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      <path d="M2 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Solicitar reabertura
+                </button>`;
+            }
         } else if (sol.status === 'pendente') {
-            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--pendente">⏳ Reabertura solicitada</span>`;
+            const primeiro = (sol.aluno_nome || '').split(/\s+/)[0] || '';
+            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--pendente">⏳ Reabertura solicitada</span>
+                ${primeiro ? `<span class="pa-solicita-quem">por ${esc(primeiro)}</span>` : ''}`;
         } else if (sol.status === 'aprovada') {
             reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--aprovada">✅ Reabertura aprovada</span>`;
         } else if (sol.status === 'negada') {

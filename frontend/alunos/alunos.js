@@ -289,7 +289,7 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
         const sol = _solicitadasMap[String(ativ.id)];
         if (!sol) {
             const dados = esc(JSON.stringify({ id: ativ.id, titulo: ativ.titulo, link: ativ.link, cursoId, cursoNome }));
-            const cls      = reaberturaAberta ? 'pa-solicita-btn pa-solicita-btn--aberta' : 'pa-solicita-btn';
+            const cls      = reaberturaAberta ? 'pa-solicita-btn pa-solicita-btn--aberta' : 'pa-solicita-btn pa-solicita-btn--destaque';
             const disAttr  = reaberturaAberta ? 'disabled title="Disponível apenas após o encerramento do prazo"' : '';
             const onclick  = reaberturaAberta ? '' : `onclick="abrirModalSolicitacao('${dados}')"`;
             reaberturaPart = `<button class="${cls}" ${disAttr} ${onclick}>
@@ -300,7 +300,9 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
                 Solicitar reabertura
             </button>`;
         } else if (sol.status === 'pendente') {
-            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--pendente">⏳ Reabertura solicitada</span>`;
+            const primeiro = (sol.aluno_nome || '').split(/\s+/)[0] || '';
+            reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--pendente">⏳ Reabertura solicitada</span>
+                ${primeiro ? `<span class="pa-solicita-quem">por ${esc(primeiro)}</span>` : ''}`;
         } else if (sol.status === 'aprovada') {
             reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--aprovada">✅ Reabertura aprovada</span>`;
         } else if (sol.status === 'negada') {

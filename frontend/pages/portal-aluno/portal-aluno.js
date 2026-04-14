@@ -45,7 +45,7 @@ async function buscarPortalAluno() {
         const res  = await api(`/admin/portal-aluno/preview?userId=${encodeURIComponent(userId)}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.erro || 'Erro desconhecido.');
-        mostrarIframePrevia({ nomeAluno: nome || data.email, data });
+        mostrarIframePrevia({ nomeAluno: nome || data.email, data, solicitacoes: data.solicitacoes || [] });
     } catch (e) {
         wrap.innerHTML = `<p class="pa-msg pa-msg--erro">Erro: ${esc(e.message)}</p>`;
     }

@@ -685,6 +685,20 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 }
             }
 
+            let solicitacoes = [];
+            try {
+                const { rows } = await pool.query(
+                    `SELECT coursework_id, status, aluno_nome, criado_em, respondido_em, resposta
+                     FROM reabertura_solicitacoes
+                     WHERE aluno_email = $1
+                     ORDER BY criado_em DESC`,
+                    [studentId]
+                );
+                solicitacoes = rows;
+            } catch (e) {
+                console.warn('[PREVIEW-SOLICITACOES]', e.message);
+            }
+
             res.json({
                 email:           studentId,
                 cursos,
@@ -692,6 +706,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 totalZeradas:    cursos.reduce((s, c) => s + c.zeradas.length,     0),
                 totalAguardando: cursos.reduce((s, c) => s + c.aguardando.length,  0),
                 notificacoes,
+                solicitacoes,
             });
         } catch (e) {
             res.status(500).json({ erro: e.message });

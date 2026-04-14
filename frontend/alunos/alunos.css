@@ -722,6 +722,29 @@ html, body {
 .pa-solicita-btn--aberta:hover,
 .pa-solicita-btn--aberta:active { transform: none; box-shadow: none; opacity: .45; }
 
+.pa-solicita-btn--destaque {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(249,115,22,.4);
+    animation: pa-pulseBtn 2s ease-in-out infinite;
+}
+@keyframes pa-pulseBtn {
+    0%, 100% { box-shadow: 0 3px 12px rgba(249,115,22,.4); }
+    50%      { box-shadow: 0 4px 20px rgba(249,115,22,.65); }
+}
+.pa-solicita-btn--destaque:hover {
+    opacity: .92;
+    box-shadow: 0 5px 22px rgba(249,115,22,.55);
+}
+.pa-solicita-quem {
+    display: inline-block;
+    margin-top: 2px;
+    margin-left: 4px;
+    font-size: .68rem;
+    font-weight: 500;
+    color: var(--pa-muted, #94a3b8);
+    font-style: italic;
+}
 .pa-solicita-btn--retry {
     background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
     box-shadow: 0 3px 10px rgba(239,68,68,.3);
