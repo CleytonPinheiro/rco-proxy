@@ -242,7 +242,11 @@ async function init() {
         toast(erros[params.get('erro')] || 'Erro desconhecido.', 'erro');
     }
     if (params.has('sucesso') || params.has('erro')) {
-        history.replaceState({}, '', window.location.pathname);
+        const keepTab = params.get('tab');
+        const cleanUrl = keepTab
+            ? window.location.pathname + '?tab=' + keepTab
+            : window.location.pathname;
+        history.replaceState({}, '', cleanUrl);
     }
 
     const status = await api('/status');
@@ -271,6 +275,15 @@ async function init() {
             if (elSideNavPortalLog) { elSideNavPortalLog.removeAttribute('data-perm-hidden'); elSideNavPortalLog.style.display = ''; }
         }
     } catch (_) { /* silencia — não é admin ou sem sessão */ }
+
+    /* Abre tab vinda do parâmetro ?tab= (flyout do sidebar) */
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam === 'solicitacoes' || tabParam === 'portal_log') {
+        elTabs.style.display = '';
+        setTab(tabParam);
+        if (tabParam === 'portal_log' && !portalLogCarregado) carregarPortalLog();
+        history.replaceState({}, '', window.location.pathname);
+    }
 }
 
 /* ── Conectar ── */
@@ -526,10 +539,7 @@ async function selecionarCurso(curso, itemEl, cor) {
     elAtivLista.innerHTML     = '<div class="cl-loading">Carregando atividades...</div>';
     elGrupoLista.innerHTML    = '<div class="cl-loading">Carregando grupos...</div>';
 
-    const urlTab = new URLSearchParams(window.location.search).get('tab');
-    if (urlTab === 'solicitacoes') { elTabs.style.display = ''; setTab('solicitacoes'); }
-    else if (urlTab === 'portal_log') { elTabs.style.display = ''; setTab('portal_log'); }
-    else if (viewMode === 'grupos') setTab('grupos');
+    if (viewMode === 'grupos') setTab('grupos');
     else if (viewMode === 'auditoria') setTab('auditoria');
 
     try {
