@@ -3309,15 +3309,9 @@ async function abrirModalRco() {
                 </div>
                 <div class="cl-rco-av-nome">${label}</div>
                 ${subPartes.length ? `<div class="cl-rco-av-sub">${subPartes.join(' &nbsp;|&nbsp; ')}</div>` : ''}
-                ${isRec ? '<div class="cl-rco-av-aviso-rec">⚠️ Lançamento via API indisponível — lance manualmente no RCO</div>' : ''}
+                ${isRec ? '<div class="cl-rco-av-aviso-rec">⚠️ Notas serão salvas localmente — lance no RCO manualmente</div>' : ''}
             `;
-            if (isRec) {
-                item.style.opacity = '0.6';
-                item.style.cursor  = 'not-allowed';
-                item.title = 'A API do RCO não permite lançar notas de recuperação. Use o site do RCO Digital.';
-            } else {
-                item.addEventListener('click', () => selecionarAvaliacao(av, item));
-            }
+            item.addEventListener('click', () => selecionarAvaliacao(av, item));
             elRcoAvaliacoesLista.appendChild(item);
         });
 
@@ -3372,9 +3366,10 @@ async function criarAvaliacaoRco() {
 
     try {
         const codClasse = grupoAtivo?.codClasseRco;
+        const nomeDisciplina = grupoAtivo?.nomeDisciplina || grupoAtivo?.nome || '';
         const result = await apiRaw('/rco-lancamento/avaliacoes/criar', {
             method: 'POST',
-            body: { codClasse, tipo, dataAvaliacao: data },
+            body: { codClasse, tipo, dataAvaliacao: data, nomeDisciplina },
         });
 
         statusEl.textContent = 'Avaliação criada com sucesso! Recarregando lista…';
@@ -3584,8 +3579,17 @@ async function selecionarAvaliacao(av, itemEl) {
             elRcoTableBody.appendChild(tr);
         });
 
+        const isRecAv = Number(detalhe.codTipoAvaliacaoParcial) === 2;
         elRcoModalConfirmar.style.display = '';
-        elRcoModalZerar.style.display     = '';
+        elRcoModalZerar.style.display     = isRecAv ? 'none' : '';
+
+        if (isRecAv) {
+            elRcoModalConfirmar.textContent = 'Salvar localmente';
+            elRcoModalConfirmar.title = 'Notas de recuperação não podem ser enviadas ao RCO via API. Serão salvas apenas no banco local do EduSync.';
+        } else {
+            elRcoModalConfirmar.textContent = 'Lançar notas no RCO';
+            elRcoModalConfirmar.title = '';
+        }
 
         /* Remove aviso residual de navegações anteriores */
         document.getElementById('clRcoAvisoRecVinculo')?.remove();
@@ -3603,20 +3607,24 @@ elRcoModalConfirmar.addEventListener('click', async () => {
     const mapeados   = rcoAlunosMapeados.filter(a => a._matched).length;
     const total      = rcoAlunosMapeados.length;
     const semMatch   = total - mapeados;
-    const msgRco     = semMatch > 0
-        ? `${mapeados} de ${total} alunos têm nota do Classroom e receberão a nota calculada. ${semMatch} aluno(s) não fazem parte do grupo de recuperação e receberão nota 0 no RCO.`
-        : `${mapeados} nota${mapeados !== 1 ? 's' : ''} serão enviadas ao RCO para todos os alunos mapeados.`;
+
+    const av     = rcoAvaliacaoSelecionada;
+    const isRec  = Number(av.codTipoAvaliacaoParcial) === 2;
+
+    const msgRco = isRec
+        ? `${mapeados} de ${total} notas de recuperação serão salvas localmente no EduSync. Para lançar no RCO, use o site oficial.`
+        : (semMatch > 0
+            ? `${mapeados} de ${total} alunos têm nota do Classroom e receberão a nota calculada. ${semMatch} aluno(s) não fazem parte do grupo de recuperação e receberão nota 0 no RCO.`
+            : `${mapeados} nota${mapeados !== 1 ? 's' : ''} serão enviadas ao RCO para todos os alunos mapeados.`);
+
     if (!await confirmar(msgRco, {
-        titulo:       'Confirmar lançamento no RCO',
-        confirmLabel: '🚀 Lançar notas',
-        icone:        '🚀',
+        titulo:       isRec ? 'Salvar recuperação localmente' : 'Confirmar lançamento no RCO',
+        confirmLabel: isRec ? 'Salvar localmente' : 'Lançar notas',
+        icone:        isRec ? '💾' : '🚀',
     })) return;
 
     elRcoModalConfirmar.disabled    = true;
-    elRcoModalConfirmar.textContent = 'Lançando…';
-
-    const av     = rcoAvaliacaoSelecionada;
-    const isRec  = av.codTipoAvaliacaoParcial === 2;
+    elRcoModalConfirmar.textContent = isRec ? 'Salvando…' : 'Lançando…';
 
     /* Para tipo=2: envia 'recuperadas' com os objetos completos exatamente como vieram do GET.
        O RCO rejeita tanto o objeto completo quanto só o código — enviamos completo para o log
@@ -3656,6 +3664,12 @@ elRcoModalConfirmar.addEventListener('click', async () => {
             method: 'POST',
             body: { meta, alunos: alunosPayload },
         });
+
+        if (resp.apenasLocal) {
+            toast(`💾 ${resp.msg}`, 'ok', 6000);
+            fecharModalRco();
+            return;
+        }
 
         /* Verifica se o banco local foi atualizado */
         if (resp.dbSalvo === false) {
@@ -3707,7 +3721,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         console.error('[CLASSROOM] Erro no lançamento:', msg);
     } finally {
         elRcoModalConfirmar.disabled    = false;
-        elRcoModalConfirmar.textContent = '🚀 Confirmar lançamento';
+        elRcoModalConfirmar.textContent = isRec ? 'Salvar localmente' : 'Lançar notas no RCO';
     }
 });
 

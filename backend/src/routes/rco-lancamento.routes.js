@@ -271,12 +271,66 @@ export function createRcoLancamentoRouter(deps = {}) {
             return res.status(400).json({ erro: 'meta.pesoDecimal ausente ou inválido.' });
         }
 
-        if (Number(meta.codTipoAvaliacaoParcial) === 2) {
-            console.warn(`[RCO-LANC] Avaliação ${id} é tipo=2 (recuperação) — a API do RCO não suporta escrita para recuperações.`);
-            return res.status(422).json({
-                erro: 'O RCO Digital não permite lançar notas de recuperação via API. Essa operação precisa ser feita manualmente no site do RCO.',
-                tipo: 'recuperacao_nao_suportada',
-                origem: 'RCO',
+        const isRecuperacao = Number(meta.codTipoAvaliacaoParcial) === 2;
+
+        if (isRecuperacao) {
+            console.warn(`[RCO-LANC] Avaliação ${id} é tipo=2 (recuperação) — salvando apenas localmente.`);
+
+            const codAvParam = Number(id);
+            try {
+                await pool.query(`
+                    CREATE TABLE IF NOT EXISTS rco_lancamentos (
+                        id SERIAL PRIMARY KEY,
+                        cod_avaliacao_parcial INTEGER NOT NULL,
+                        cod_matriz_aluno INTEGER NOT NULL,
+                        nota_decimal REAL,
+                        nota_enviada REAL,
+                        usou_recuperacao BOOLEAN DEFAULT false,
+                        matched BOOLEAN DEFAULT false,
+                        verificado BOOLEAN DEFAULT false,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW(),
+                        UNIQUE(cod_avaliacao_parcial, cod_matriz_aluno)
+                    )
+                `);
+
+                const cols   = '(cod_avaliacao_parcial, cod_matriz_aluno, nota_decimal, nota_enviada, usou_recuperacao, matched, verificado)';
+                const values = alunos.map((_, i) => {
+                    const base = i * 7;
+                    return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7})`;
+                }).join(', ');
+                const params = alunos.flatMap(a => [
+                    codAvParam,
+                    Number(a.codMatrizAluno),
+                    Number(a.notaDecimal ?? 0),
+                    Number(a.notaDecimal ?? 0),
+                    !!(a.usouRecuperacao ?? false),
+                    !!(a.matched ?? false),
+                    false,
+                ]);
+
+                await pool.query(
+                    `INSERT INTO rco_lancamentos ${cols} VALUES ${values}
+                     ON CONFLICT (cod_avaliacao_parcial, cod_matriz_aluno) DO UPDATE SET
+                         nota_decimal     = EXCLUDED.nota_decimal,
+                         nota_enviada     = EXCLUDED.nota_enviada,
+                         usou_recuperacao = EXCLUDED.usou_recuperacao,
+                         matched          = EXCLUDED.matched,
+                         updated_at       = NOW()`,
+                    params
+                );
+
+                console.log(`[RCO-LANC] Recuperação ${id}: ${alunos.length} notas salvas localmente.`);
+            } catch (dbErr) {
+                console.error('[RCO-LANC] Erro ao salvar recuperação localmente:', dbErr.message);
+                return res.status(500).json({ erro: `Falha ao salvar localmente: ${dbErr.message}` });
+            }
+
+            return res.json({
+                ok: true,
+                apenasLocal: true,
+                msg: `Notas de recuperação salvas localmente (${alunos.length} alunos). Para lançar no RCO, use o site oficial.`,
+                alunos: alunos.length,
             });
         }
 
