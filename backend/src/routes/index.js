@@ -16,7 +16,7 @@ import { createDebugRouter }         from './debug.routes.js';
 import { createMapaSalaRouter }      from './mapa-sala.routes.js';
 import { createAtividadesRouter }    from './atividades.routes.js';
 import { createPedagogicoRouter }    from './pedagogico.routes.js';
-import { createClassroomRouter }     from './classroom.routes.js';
+import { createClassroomRouter, createClassroomPublicRouter } from './classroom.routes.js';
 import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
 import { createAlunosPortalRouter }  from './alunos-portal.routes.js';
@@ -34,6 +34,9 @@ export function createApiRouter(deps) {
 
     /* ── Gerador de QR Code (público) ── */
     router.use('/', createQRCodeRouter());
+
+    /* ── Callback OAuth do Google Classroom (público) ── */
+    router.use('/', createClassroomPublicRouter());
 
     /* ══════════════════════════════════════════════════════════════════
      * BARREIRA DE AUTENTICAÇÃO GLOBAL

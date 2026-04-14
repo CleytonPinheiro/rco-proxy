@@ -145,26 +145,9 @@ function encontrarMatchAluno(nomeClNorm, mapaAlunosRco) {
     return melhorScore >= 2 ? melhor : null;
 }
 
-export function createClassroomRouter(deps = {}) {
-    const { rcoApiService, supabaseAdmin } = deps;
+export function createClassroomPublicRouter() {
     const router = Router();
 
-    /* ── Status da conexão ── */
-    router.get('/classroom/status', (req, res) => {
-        const hasCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-        const token = loadToken();
-        res.json({ hasCredentials, connected: !!token, email: token?.email || null });
-    });
-
-    /* ── URL de autorização OAuth ── */
-    router.get('/classroom/auth-url', (req, res) => {
-        const oauth2Client = getOAuth2Client(req);
-        if (!oauth2Client) return res.status(400).json({ erro: 'Credenciais do Google não configuradas.' });
-        const url = oauth2Client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, prompt: 'consent' });
-        res.json({ url });
-    });
-
-    /* ── Callback OAuth ── */
     router.get('/classroom/callback', async (req, res) => {
         const { code, error } = req.query;
         if (error) return res.redirect('/pages/classroom/?erro=acesso_negado');
@@ -185,6 +168,28 @@ export function createClassroomRouter(deps = {}) {
             console.error('[CLASSROOM] Erro no callback:', e.message);
             res.redirect('/pages/classroom/?erro=falha_auth');
         }
+    });
+
+    return router;
+}
+
+export function createClassroomRouter(deps = {}) {
+    const { rcoApiService, supabaseAdmin } = deps;
+    const router = Router();
+
+    /* ── Status da conexão ── */
+    router.get('/classroom/status', (req, res) => {
+        const hasCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+        const token = loadToken();
+        res.json({ hasCredentials, connected: !!token, email: token?.email || null });
+    });
+
+    /* ── URL de autorização OAuth ── */
+    router.get('/classroom/auth-url', (req, res) => {
+        const oauth2Client = getOAuth2Client(req);
+        if (!oauth2Client) return res.status(400).json({ erro: 'Credenciais do Google não configuradas.' });
+        const url = oauth2Client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, prompt: 'consent' });
+        res.json({ url });
     });
 
     /* ── Desconectar ── */
