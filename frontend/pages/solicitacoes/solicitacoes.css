@@ -94,6 +94,19 @@
 }
 .sol-btn--primary { background: #22c55e; }
 .sol-btn--danger  { background: #ef4444; }
+.sol-btn--outline {
+    background: transparent;
+    border: 1px solid var(--border, #e2e8f0);
+    color: var(--text-primary, #1e293b);
+}
+.sol-btn--outline:hover { background: var(--bg-hover, rgba(0,0,0,.04)); }
+.sol-btn--classroom {
+    border-color: #4285f4;
+    color: #4285f4;
+    font-weight: 600;
+    margin-top: 6px;
+}
+.sol-btn--classroom:hover { background: rgba(66,133,244,.08); }
 
 .sol-info {
     font-size: .8rem;

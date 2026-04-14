@@ -130,6 +130,8 @@ function renderizar() {
                             <button class="sol-btn sol-btn--sm sol-btn--primary" onclick="responder(${s.id},'aprovar')">✅ Aprovar</button>
                             <button class="sol-btn sol-btn--sm sol-btn--danger" onclick="responder(${s.id},'negar')">❌ Negar</button>
                         </div>` : ''}
+                        ${s.status === 'aprovada' && s.submission_link ? `
+                        <a href="${esc(s.submission_link)}" target="_blank" class="sol-btn sol-btn--sm sol-btn--outline sol-btn--classroom">📎 Abrir no Classroom</a>` : ''}
                     </div>
                 </div>
             </div>`;
@@ -146,6 +148,7 @@ window.responder = async function(id, acao) {
         resposta = prompt('Motivo da negativa (opcional):');
         if (resposta === null) return;
     }
+    const sol = allData.find(s => s.id === id);
     const card = elLista.querySelector(`[data-id="${id}"] .sol-card`);
     if (card) card.style.opacity = '.5';
     try {
@@ -157,6 +160,12 @@ window.responder = async function(id, acao) {
         });
         if (!res.ok) throw new Error(`Erro ${res.status}`);
         toast(acao === 'aprovar' ? '✅ Solicitação aprovada!' : '❌ Solicitação negada.', 'ok');
+
+        if (acao === 'aprovar' && sol?.submission_link) {
+            window.open(sol.submission_link, '_blank');
+            toast('Abrindo atividade no Classroom para reabertura…', 'ok', 4000);
+        }
+
         carregar();
     } catch (e) {
         if (card) card.style.opacity = '';
