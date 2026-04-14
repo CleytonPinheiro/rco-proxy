@@ -2273,6 +2273,12 @@ body.cl-popout .logo-icon { font-size: 15px; }
     color: #fbbf24;
     border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
 }
+.cl-rco-av-aviso-rec {
+    font-size: .75rem;
+    color: #f59e0b;
+    margin-top: 4px;
+    font-style: italic;
+}
 
 .cl-rco-avaliacao-info {
     background: color-mix(in srgb, #6366f1 8%, transparent);

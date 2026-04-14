@@ -169,7 +169,12 @@ async function api(path, opts = {}) {
     let data;
     try { data = await r.json(); }
     catch { throw new Error(`Erro ${r.status} — resposta inválida do servidor.`); }
-    if (!r.ok) throw new Error(data.erro || 'Erro na requisição');
+    if (!r.ok) {
+        const err = new Error(data.erro || 'Erro na requisição');
+        err.status = r.status;
+        err.body   = data;
+        throw err;
+    }
     return data;
 }
 
@@ -183,7 +188,12 @@ async function apiRaw(path, opts = {}) {
     let data;
     try { data = await r.json(); }
     catch { throw new Error(`Erro ${r.status} — resposta inválida do servidor.`); }
-    if (!r.ok) throw new Error(data.erro || 'Erro na requisição');
+    if (!r.ok) {
+        const err = new Error(data.erro || 'Erro na requisição');
+        err.status = r.status;
+        err.body   = data;
+        throw err;
+    }
     return data;
 }
 
@@ -3253,7 +3263,7 @@ async function abrirModalRco() {
             /* Oculta itens que ainda não existem no RCO (sem ID de classe) */
             if (!av.codAvaliacaoParcialClasse) return;
 
-            const isRec  = av.codTipoAvaliacaoParcial === 2;
+            const isRec  = Number(av.codTipoAvaliacaoParcial) === 2;
             const label  = String(av.descrAvaliacaoParcial ?? (av.numAvaliacaoParcial != null ? `AV${av.numAvaliacaoParcial}` : '—'))
                                .replace(/\n\s*/g, ' ').trim();
 
@@ -3273,8 +3283,15 @@ async function abrirModalRco() {
                 </div>
                 <div class="cl-rco-av-nome">${label}</div>
                 ${subPartes.length ? `<div class="cl-rco-av-sub">${subPartes.join(' &nbsp;|&nbsp; ')}</div>` : ''}
+                ${isRec ? '<div class="cl-rco-av-aviso-rec">⚠️ Lançamento via API indisponível — lance manualmente no RCO</div>' : ''}
             `;
-            item.addEventListener('click', () => selecionarAvaliacao(av, item));
+            if (isRec) {
+                item.style.opacity = '0.6';
+                item.style.cursor  = 'not-allowed';
+                item.title = 'A API do RCO não permite lançar notas de recuperação. Use o site do RCO Digital.';
+            } else {
+                item.addEventListener('click', () => selecionarAvaliacao(av, item));
+            }
             elRcoAvaliacoesLista.appendChild(item);
         });
     } catch (e) {
@@ -3572,6 +3589,15 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         fecharModalRco();
     } catch (e) {
         const msg = e.message || 'Erro desconhecido';
+
+        /* Detecta erro de recuperação não suportada pelo RCO */
+        if (/recupera[cç][aã]o.*n[aã]o.suportad/i.test(msg) || (e.body?.tipo === 'recuperacao_nao_suportada')) {
+            toast('⚠️ O RCO não permite lançar notas de recuperação via API. Lance manualmente no site do RCO Digital.', 'alerta', 10000);
+            console.warn('[CLASSROOM] Recuperação não suportada pela API do RCO.');
+            fecharModalRco();
+            return;
+        }
+
         /* Detecta erro do RCO sobre conteúdos — abre modal de seleção */
         const erroConteudos = /conteúdos?\s*(vinculad|obrigat)|sem\s*conteúdos?|registrar.*conteúd|conteúd.*vinculad/i.test(msg);
         if (erroConteudos) {

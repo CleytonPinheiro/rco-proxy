@@ -270,6 +270,15 @@ export function createRcoLancamentoRouter(deps = {}) {
             return res.status(400).json({ erro: 'meta.pesoDecimal ausente ou inválido.' });
         }
 
+        if (Number(meta.codTipoAvaliacaoParcial) === 2) {
+            console.warn(`[RCO-LANC] Avaliação ${id} é tipo=2 (recuperação) — a API do RCO não suporta escrita para recuperações.`);
+            return res.status(422).json({
+                erro: 'O RCO Digital não permite lançar notas de recuperação via API. Essa operação precisa ser feita manualmente no site do RCO.',
+                tipo: 'recuperacao_nao_suportada',
+                origem: 'RCO',
+            });
+        }
+
         /* Validação por aluno */
         const errosValidacao = [];
         const codsVistos     = new Set();
@@ -856,6 +865,786 @@ export function createRcoLancamentoRouter(deps = {}) {
         }
 
         res.json({ avaliacaoId: id, agora, resultados });
+    });
+
+    /* ── POST /api/rco-lancamento/avaliacoes/:id/debug-put
+       Rota de diagnóstico: testa PUT no RCO com variações mínimas
+       para isolar qual campo/formato causa o erro 500.
+       ⚠️ Apenas disponível em ambiente de desenvolvimento.
+    ─────────────────────────────────────────────────────── */
+    router.post('/rco-lancamento/avaliacoes/:id/debug-put', (req, res, next) => {
+        if (process.env.NODE_ENV === 'production') return res.status(404).json({ erro: 'Rota indisponível.' });
+        next();
+    }, async (req, res) => {
+        const { id } = req.params;
+        const resultados = [];
+        const log = (msg) => { console.log(`[DEBUG-PUT] ${msg}`); };
+
+        try {
+            const token      = await rcoApiService.getToken();
+            const jwtPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
+            const codUsuario = Number(jwtPayload.resoucreowner_id || jwtPayload.resouceowner_id || 0);
+
+            log(`=== INÍCIO DEBUG para avaliação ${id} ===`);
+            log(`codUsuario: ${codUsuario}`);
+
+            /* Passo 1: GET completo da avaliação */
+            const gr = await rcoApiService.get(
+                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}?listas=recuperacaos,recuperadas,alunos,conteudos`
+            );
+            if (gr.status !== 200 || !gr.data) {
+                return res.status(502).json({ erro: `GET falhou (status ${gr.status})` });
+            }
+            const av = gr.data;
+            log(`GET OK. Campos top-level: ${Object.keys(av).join(', ')}`);
+            log(`pesoDecimal: ${JSON.stringify(av.pesoDecimal)} (tipo: ${typeof av.pesoDecimal})`);
+            log(`dataAtualizacao: ${av.dataAtualizacao}`);
+            log(`alunos: ${av.alunos?.length ?? 0}`);
+            log(`recuperadas: ${av.recuperadas?.length ?? 0}`);
+            log(`recuperacaos: ${av.recuperacaos?.length ?? 0}`);
+            log(`conteudos: ${av.conteudos?.length ?? 0}`);
+
+            /* Passo 2: GET matrizAlunos */
+            const codClasse = req.body.codClasse ?? req.query.codClasse;
+            let matrizMap = {};
+            if (codClasse) {
+                const mr = await rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/matrizAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=9&data=2026-12-31&pesoDecimal=4.0`
+                );
+                if (mr.status === 200 && Array.isArray(mr.data)) {
+                    mr.data.forEach(a => { matrizMap[String(a.codMatrizAluno)] = a; });
+                    log(`matrizAlunos OK: ${mr.data.length}`);
+                }
+            }
+
+            /* Pegar 1 aluno com nota existente como cobaia */
+            const alunoComNota = av.alunos.find(a => a.notaDecimal != null && Number(a.notaDecimal) > 0);
+            if (!alunoComNota) {
+                return res.status(400).json({ erro: 'Nenhum aluno com nota encontrado para teste.' });
+            }
+            const mAluno = matrizMap[String(alunoComNota.codMatrizAluno)] ?? {};
+            log(`Aluno cobaia: ${alunoComNota.codMatrizAluno} (nota original: ${alunoComNota.notaDecimal})`);
+
+            const limpar = arr => (arr ?? []).map(({ alunos: _a, ...r }) => r);
+
+            /* ══════════════════════════════════════════════════
+               TESTE A: PUT idêntico ao GET (echo-back)
+               Envia exatamente o que recebeu do GET
+            ══════════════════════════════════════════════════ */
+            const testeA = {
+                ...av,
+                alunos: av.alunos,
+                recuperadas: limpar(av.recuperadas),
+                recuperacaos: undefined,
+                conteudos: undefined,
+                descrAvaliacaoParcial: undefined,
+            };
+            delete testeA.recuperacaos;
+            delete testeA.conteudos;
+            delete testeA.descrAvaliacaoParcial;
+
+            log(`\n── TESTE A: Echo-back do GET (sem recuperacaos/conteudos/descr) ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeA, { grupo: 'D' }
+                );
+                log(`A: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`A body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'A: Echo-back GET', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`A: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'A: Echo-back GET', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE B: PUT mínimo — só 1 aluno, nota inalterada
+            ══════════════════════════════════════════════════ */
+            const testeB = {
+                codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+                codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
+                numAvaliacaoParcial:       av.numAvaliacaoParcial,
+                dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
+                pesoDecimal:               av.pesoDecimal,
+                dataAtualizacao:           av.dataAtualizacao,
+                codUsuario,
+                recuperadas:               limpar(av.recuperadas),
+                alunos: [{
+                    codAvaliacaoParcialAluno: alunoComNota.codAvaliacaoParcialAluno,
+                    codMatrizAluno:           alunoComNota.codMatrizAluno,
+                    notaDecimal:             alunoComNota.notaDecimal,
+                }],
+            };
+
+            log(`\n── TESTE B: Mínimo 1 aluno, nota original (${alunoComNota.notaDecimal}) ──`);
+            log(`B payload: ${JSON.stringify(testeB, null, 2)}`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeB, { grupo: 'D' }
+                );
+                log(`B: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`B body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'B: Mínimo 1 aluno', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`B: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'B: Mínimo 1 aluno', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE C: PUT mínimo — 1 aluno, nota como STRING "X.X"
+            ══════════════════════════════════════════════════ */
+            const testeC = {
+                ...testeB,
+                alunos: [{
+                    codAvaliacaoParcialAluno: alunoComNota.codAvaliacaoParcialAluno,
+                    codMatrizAluno:           alunoComNota.codMatrizAluno,
+                    notaDecimal:             String(Number(alunoComNota.notaDecimal).toFixed(1)),
+                }],
+            };
+
+            log(`\n── TESTE C: 1 aluno, nota STRING "${testeC.alunos[0].notaDecimal}" ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeC, { grupo: 'D' }
+                );
+                log(`C: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`C body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'C: 1 aluno nota STRING', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`C: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'C: 1 aluno nota STRING', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE D: PUT mínimo — 1 aluno completo (com matrizAlunos)
+            ══════════════════════════════════════════════════ */
+            const testeD = {
+                ...testeB,
+                alunos: [{
+                    codAvaliacaoParcialAluno: alunoComNota.codAvaliacaoParcialAluno,
+                    codMatrizAluno:           alunoComNota.codMatrizAluno,
+                    numChamada:              mAluno.numChamada ?? alunoComNota.numChamada,
+                    nome:                    mAluno.nome ?? '',
+                    indAtivo:                mAluno.indAtivo ?? true,
+                    situacaoMatricula:       mAluno.situacaoMatricula ?? 'Matric',
+                    cgmAluno:                mAluno.cgmAluno ?? 0,
+                    notaDecimal:             String(Number(alunoComNota.notaDecimal).toFixed(1)),
+                }],
+            };
+
+            log(`\n── TESTE D: 1 aluno completo (matrizAlunos) ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeD, { grupo: 'D' }
+                );
+                log(`D: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`D body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'D: 1 aluno completo', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`D: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'D: 1 aluno completo', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE E: PUT sem recuperadas
+            ══════════════════════════════════════════════════ */
+            const testeE = { ...testeB };
+            delete testeE.recuperadas;
+
+            log(`\n── TESTE E: Sem recuperadas ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeE, { grupo: 'D' }
+                );
+                log(`E: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`E body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'E: Sem recuperadas', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`E: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'E: Sem recuperadas', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE F: PUT pesoDecimal como string "4.0"
+            ══════════════════════════════════════════════════ */
+            const testeF = { ...testeB, pesoDecimal: String(av.pesoDecimal) };
+
+            log(`\n── TESTE F: pesoDecimal como string "${testeF.pesoDecimal}" ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeF, { grupo: 'D' }
+                );
+                log(`F: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`F body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'F: pesoDecimal string', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`F: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'F: pesoDecimal string', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE G: PUT com TODOS os alunos (37), notas originais do GET
+            ══════════════════════════════════════════════════ */
+            const testeG = {
+                ...testeB,
+                alunos: av.alunos.map(a => ({
+                    codAvaliacaoParcialAluno: a.codAvaliacaoParcialAluno,
+                    codMatrizAluno:           a.codMatrizAluno,
+                    notaDecimal:             a.notaDecimal ?? 0,
+                })),
+            };
+
+            log(`\n── TESTE G: Todos ${testeG.alunos.length} alunos, notas originais GET ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeG, { grupo: 'D' }
+                );
+                log(`G: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`G body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'G: Todos alunos notas GET', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`G: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'G: Todos alunos notas GET', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE H: PUT mínimo SEM header grupo
+            ══════════════════════════════════════════════════ */
+            log(`\n── TESTE H: PUT mínimo SEM header grupo ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeB
+                );
+                log(`H: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`H body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'H: PUT sem header grupo', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`H: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'H: PUT sem header grupo', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE I: POST para /avaliacaoParcialClasses (sem ID) — criar nova
+            ══════════════════════════════════════════════════ */
+            const testeI = { ...testeB };
+            delete testeI.codAvaliacaoParcialClasse;
+            delete testeI.dataAtualizacao;
+            delete testeI.codUsuario;
+
+            log(`\n── TESTE I: POST sem ID (criar nova) ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`, testeI, { grupo: 'D' }
+                );
+                log(`I: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`I body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'I: POST sem ID', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`I: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'I: POST sem ID', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE J: PUT mínimo com notaDecimal como NÚMERO (não string)
+            ══════════════════════════════════════════════════ */
+            const testeJ = {
+                ...testeB,
+                pesoDecimal: Number(av.pesoDecimal),
+                alunos: [{
+                    codAvaliacaoParcialAluno: alunoComNota.codAvaliacaoParcialAluno,
+                    codMatrizAluno:           alunoComNota.codMatrizAluno,
+                    notaDecimal:             Number(alunoComNota.notaDecimal),
+                }],
+            };
+
+            log(`\n── TESTE J: PUT nota como NÚMERO ${testeJ.alunos[0].notaDecimal} ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeJ, { grupo: 'D' }
+                );
+                log(`J: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`J body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'J: PUT nota NÚMERO', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`J: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'J: PUT nota NÚMERO', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE K: PUT com descrAvaliacaoParcial no top-level (como GET retornou)
+            ══════════════════════════════════════════════════ */
+            const testeK = {
+                ...testeB,
+                descrAvaliacaoParcial: av.descrAvaliacaoParcial,
+            };
+
+            log(`\n── TESTE K: PUT com descrAvaliacaoParcial top-level ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeK, { grupo: 'D' }
+                );
+                log(`K: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`K body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'K: PUT com descrAvaliacaoParcial', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`K: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'K: PUT com descrAvaliacaoParcial', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE L: PUT com recuperacaos (lista vazia) além de recuperadas
+            ══════════════════════════════════════════════════ */
+            const testeL = {
+                ...testeB,
+                recuperacaos: av.recuperacaos ?? [],
+            };
+
+            log(`\n── TESTE L: PUT com recuperacaos ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeL, { grupo: 'D' }
+                );
+                log(`L: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`L body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'L: PUT com recuperacaos', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`L: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'L: PUT com recuperacaos', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE M: PUT ALL fields from GET + codUsuario current
+            ══════════════════════════════════════════════════ */
+            const testeM = {
+                codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+                codTipoAvaliacaoParcial:   av.codTipoAvaliacaoParcial,
+                numAvaliacaoParcial:       av.numAvaliacaoParcial,
+                dataAvaliacaoParcial:      av.dataAvaliacaoParcial,
+                pesoDecimal:               av.pesoDecimal,
+                dataAtualizacao:           av.dataAtualizacao,
+                codUsuario,
+                descrAvaliacaoParcial:     av.descrAvaliacaoParcial,
+                recuperadas:               limpar(av.recuperadas),
+                recuperacaos:              av.recuperacaos ?? [],
+                conteudos:                 av.conteudos ?? [],
+                alunos:                    av.alunos,
+            };
+
+            log(`\n── TESTE M: PUT com TODOS os campos do GET ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeM, { grupo: 'D' }
+                );
+                log(`M: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`M body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'M: PUT todos campos', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`M: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'M: PUT todos campos', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE N: PUT na avaliação ORIGINAL (tipo=1) — 56002422
+               Testa se o PUT funciona para avaliações normais
+            ══════════════════════════════════════════════════ */
+            const idOriginal = av.recuperadas?.[0]?.codAvaliacaoParcialClasse;
+            if (idOriginal) {
+                log(`\n── TESTE N: PUT na avaliação ORIGINAL tipo=1 (${idOriginal}) ──`);
+                try {
+                    const grOrig = await rcoApiService.get(
+                        `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${idOriginal}?listas=alunos,conteudos`
+                    );
+                    if (grOrig.status === 200 && grOrig.data) {
+                        const avOrig = grOrig.data;
+                        const alunoOrigCobaia = avOrig.alunos?.find(a => a.notaDecimal != null && Number(a.notaDecimal) > 0);
+                        if (alunoOrigCobaia) {
+                            const payloadN = {
+                                codAvaliacaoParcialClasse: avOrig.codAvaliacaoParcialClasse,
+                                codTipoAvaliacaoParcial:   avOrig.codTipoAvaliacaoParcial,
+                                numAvaliacaoParcial:       avOrig.numAvaliacaoParcial,
+                                dataAvaliacaoParcial:      avOrig.dataAvaliacaoParcial,
+                                pesoDecimal:               avOrig.pesoDecimal,
+                                dataAtualizacao:           avOrig.dataAtualizacao,
+                                codUsuario,
+                                alunos: [{
+                                    codAvaliacaoParcialAluno: alunoOrigCobaia.codAvaliacaoParcialAluno,
+                                    codMatrizAluno:           alunoOrigCobaia.codMatrizAluno,
+                                    notaDecimal:             alunoOrigCobaia.notaDecimal,
+                                }],
+                            };
+                            log(`N payload: ${JSON.stringify(payloadN, null, 2)}`);
+                            const r = await rcoApiService.put(
+                                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${idOriginal}`, payloadN, { grupo: 'D' }
+                            );
+                            log(`N: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                            if (r.status >= 400) log(`N body: ${JSON.stringify(r.data)}`);
+                            resultados.push({ teste: `N: PUT tipo=1 (${idOriginal})`, status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+                        }
+                    }
+                } catch (e) {
+                    log(`N: EXCEPTION ${e.message}`);
+                    resultados.push({ teste: `N: PUT tipo=1`, status: 'ERR', ok: false, body: e.message });
+                }
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE O: PUT com dataAtualizacao ATUAL (não a do GET)
+            ══════════════════════════════════════════════════ */
+            const agora = new Date().toISOString().replace('Z', '+0000');
+            const testeO = {
+                ...testeB,
+                dataAtualizacao: agora,
+            };
+            log(`\n── TESTE O: PUT com dataAtualizacao ATUAL (${agora}) ──`);
+            try {
+                const r = await rcoApiService.put(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, testeO, { grupo: 'D' }
+                );
+                log(`O: status ${r.status} ${r.status < 400 ? 'OK' : 'ERRO'}`);
+                if (r.status >= 400) log(`O body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'O: PUT dataAtualizacao atual', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : undefined });
+            } catch (e) {
+                log(`O: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'O: PUT dataAtualizacao atual', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* ══════════════════════════════════════════════════
+               TESTE P: DELETE da avaliação recuperação e re-POST
+               Estratégia: apagar a avaliação existente e recriar via POST
+            ══════════════════════════════════════════════════ */
+            log(`\n── TESTE P: DELETE avaliação ${id} + re-POST ──`);
+            try {
+                const delR = await rcoApiService.delete(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${id}`, { grupo: 'D' }
+                );
+                log(`P-DELETE: status ${delR.status} body: ${JSON.stringify(delR.data)}`);
+                resultados.push({ teste: 'P-DELETE', status: delR.status, ok: delR.status < 400, body: delR.status >= 400 ? delR.data : 'deleted' });
+
+                if (delR.status < 400) {
+                    const postPayload = {
+                        codTipoAvaliacaoParcial: av.codTipoAvaliacaoParcial,
+                        dataAvaliacaoParcial:    av.dataAvaliacaoParcial,
+                        numAvaliacaoParcial:     av.numAvaliacaoParcial,
+                        pesoDecimal:             av.pesoDecimal,
+                        recuperadas:             limpar(av.recuperadas),
+                        alunos: av.alunos.map(a => ({
+                            codMatrizAluno: a.codMatrizAluno,
+                            notaDecimal:   a.notaDecimal ?? '0.0',
+                        })),
+                    };
+                    log(`P-POST payload (base): ${JSON.stringify({ ...postPayload, alunos: `[${postPayload.alunos.length}]` }, null, 2)}`);
+                    const postR = await rcoApiService.post(
+                        `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`, postPayload, { grupo: 'D' }
+                    );
+                    log(`P-POST: status ${postR.status} ${postR.status < 400 ? 'OK' : 'ERRO'}`);
+                    if (postR.status >= 400) log(`P-POST body: ${JSON.stringify(postR.data)}`);
+                    resultados.push({ teste: 'P-POST (re-criar)', status: postR.status, ok: postR.status < 400, body: postR.status >= 400 ? postR.data : 'created' });
+                }
+            } catch (e) {
+                log(`P: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'P: DELETE+POST', status: 'ERR', ok: false, body: e.message });
+            }
+
+            log(`\n=== RESULTADO FINAL ===`);
+            resultados.forEach(r => log(`  ${r.teste}: ${r.ok ? '✅' : '❌'} (${r.status})`));
+
+            res.json({
+                avaliacaoId: id,
+                codUsuario,
+                getOriginal: {
+                    pesoDecimal: av.pesoDecimal,
+                    pesoTipo: typeof av.pesoDecimal,
+                    dataAtualizacao: av.dataAtualizacao,
+                    totalAlunos: av.alunos?.length,
+                    totalRecuperadas: av.recuperadas?.length,
+                    totalRecuperacaos: av.recuperacaos?.length,
+                    totalConteudos: av.conteudos?.length,
+                    camposTopLevel: Object.keys(av),
+                    alunoAmostra: av.alunos?.[0],
+                },
+                resultados,
+            });
+        } catch (e) {
+            log(`FALHA GERAL: ${e.message}`);
+            res.status(500).json({ erro: e.message, stack: e.stack });
+        }
+    });
+
+    /* ── POST /api/rco-lancamento/debug-recriar-rec
+       Recria avaliação de recuperação com diferentes estratégias
+       ⚠️ Apenas disponível em ambiente de desenvolvimento.
+    ─────────────────────────────────────────────────────── */
+    router.post('/rco-lancamento/debug-recriar-rec', (req, res, next) => {
+        if (process.env.NODE_ENV === 'production') return res.status(404).json({ erro: 'Rota indisponível.' });
+        next();
+    }, async (req, res) => {
+        const { codClasse } = req.body;
+        if (!codClasse) return res.status(400).json({ erro: 'codClasse obrigatório' });
+
+        const resultados = [];
+        const log = (msg) => { console.log(`[DEBUG-RECRIAR] ${msg}`); };
+
+        try {
+            const token      = await rcoApiService.getToken();
+            const jwtPayload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'));
+            const codUsuario = Number(jwtPayload.resoucreowner_id || jwtPayload.resouceowner_id || 0);
+
+            log(`=== RECRIAR RECUPERAÇÃO para classe ${codClasse} ===`);
+
+            const avOrigId = 56002422;
+            const grOrig = await rcoApiService.get(
+                `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${avOrigId}?listas=recuperacaos,recuperadas,alunos,conteudos`
+            );
+            if (grOrig.status !== 200) {
+                return res.status(502).json({ erro: `GET avaliação original ${avOrigId} falhou (${grOrig.status})` });
+            }
+            const avOrig = grOrig.data;
+            log(`GET avaliação original OK: ${avOrig.alunos?.length ?? 0} alunos`);
+
+            const basePayload = {
+                codTipoAvaliacaoParcial: 2,
+                dataAvaliacaoParcial:    '2026-04-01T00:00:00',
+                numAvaliacaoParcial:     1,
+                pesoDecimal:             avOrig.pesoDecimal,
+                recuperadas: [{
+                    codAvaliacaoParcialClasse: avOrigId,
+                    codTipoAvaliacaoParcial:   1,
+                    numAvaliacaoParcial:       1,
+                    dataAvaliacaoParcial:      avOrig.dataAvaliacaoParcial,
+                    pesoDecimal:               avOrig.pesoDecimal,
+                    dataAtualizacao:           avOrig.dataAtualizacao,
+                    codUsuario:               avOrig.codUsuario,
+                    descrAvaliacaoParcial:     avOrig.descrAvaliacaoParcial,
+                }],
+                alunos: (avOrig.alunos ?? []).map(a => ({
+                    codMatrizAluno: a.codMatrizAluno,
+                    notaDecimal:   '0.0',
+                })),
+            };
+
+            /* Teste R1: POST /avaliacaoParcialClasses sem query params */
+            log(`\n── R1: POST sem query params ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    basePayload, { grupo: 'D' }
+                );
+                log(`R1: status ${r.status}`);
+                if (r.status >= 400) log(`R1 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R1: POST sem query', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R1: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R1', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R2: POST /avaliacaoParcialClasses?codClasse=... */
+            log(`\n── R2: POST com ?codClasse=${codClasse} ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}`,
+                    basePayload, { grupo: 'D' }
+                );
+                log(`R2: status ${r.status}`);
+                if (r.status >= 400) log(`R2 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R2: POST com codClasse', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R2: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R2', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R3: POST com codClasse no body */
+            log(`\n── R3: POST com codClasse no body ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    { ...basePayload, codClasse: Number(codClasse) }, { grupo: 'D' }
+                );
+                log(`R3: status ${r.status}`);
+                if (r.status >= 400) log(`R3 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R3: POST codClasse body', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R3: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R3', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R4: POST com codClasse em query E body, + codUsuario */
+            log(`\n── R4: POST com codClasse query+body + codUsuario ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}`,
+                    { ...basePayload, codClasse: Number(codClasse), codUsuario }, { grupo: 'D' }
+                );
+                log(`R4: status ${r.status}`);
+                if (r.status >= 400) log(`R4 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R4: POST full', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R4: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R4', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R5: POST com alunos=[] (vazio) — testar se o schema é aceito */
+            log(`\n── R5: POST com alunos vazio ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}`,
+                    { ...basePayload, alunos: [], codClasse: Number(codClasse) }, { grupo: 'D' }
+                );
+                log(`R5: status ${r.status}`);
+                if (r.status >= 400) log(`R5 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R5: POST alunos vazio', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R5: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R5', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R6: POST com headers do web app (Origin, Referer, Accept) */
+            log(`\n── R6: POST com headers do web app ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    basePayload,
+                    {
+                        grupo: 'D',
+                        'Origin': 'https://rco.paas.pr.gov.br',
+                        'Referer': 'https://rco.paas.pr.gov.br/',
+                        'Accept': 'application/json, text/plain, */*',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                );
+                log(`R6: status ${r.status}`);
+                if (r.status >= 400) log(`R6 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R6: POST headers web', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R6: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R6', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R7: POST com path diferente (sem /classe/v1/) */
+            log(`\n── R7: POST sem /classe/v1/ prefix ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `/avaliacaoParcialClasses`,
+                    basePayload,
+                    { grupo: 'D' }
+                );
+                log(`R7: status ${r.status}`);
+                if (r.status >= 400) log(`R7 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R7: POST sem classe/v1', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R7: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R7', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R8: POST para /classe/v1/avaliacaoParcialClasses/{codClasse} */
+            log(`\n── R8: POST com codClasse como path param ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${codClasse}`,
+                    basePayload,
+                    { grupo: 'D' }
+                );
+                log(`R8: status ${r.status}`);
+                if (r.status >= 400) log(`R8 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R8: POST codClasse path', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R8: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R8', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R9: POST payload mínimo absoluto — sem alunos */
+            log(`\n── R9: POST sem alunos no payload ──`);
+            try {
+                const minPayload = { ...basePayload };
+                delete minPayload.alunos;
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    minPayload,
+                    { grupo: 'D' }
+                );
+                log(`R9: status ${r.status}`);
+                if (r.status >= 400) log(`R9 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R9: POST sem alunos', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R9: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R9', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R10: POST ultra-mínimo: recuperadas só com codAvaliacaoParcialClasse,
+               1 aluno, descrAvaliacaoParcial sem newline */
+            log(`\n── R10: POST ultra-mínimo ──`);
+            try {
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    {
+                        codTipoAvaliacaoParcial: 2,
+                        dataAvaliacaoParcial:    '2026-04-01T00:00:00',
+                        numAvaliacaoParcial:     1,
+                        pesoDecimal:             '4.0',
+                        recuperadas: [{ codAvaliacaoParcialClasse: avOrigId }],
+                        alunos: [{ codMatrizAluno: (avOrig.alunos ?? [])[0]?.codMatrizAluno, notaDecimal: '0.0' }],
+                    },
+                    { grupo: 'D' }
+                );
+                log(`R10: status ${r.status}`);
+                if (r.status >= 400) log(`R10 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R10: POST ultra-min', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R10: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R10', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R11: POST com recuperadas contendo descrAvaliacaoParcial SEM newline */
+            log(`\n── R11: POST recuperadas sem newline ──`);
+            try {
+                const cleanRecup = { ...basePayload.recuperadas[0] };
+                cleanRecup.descrAvaliacaoParcial = (cleanRecup.descrAvaliacaoParcial ?? '').replace(/\n/g, ' ');
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    { ...basePayload, recuperadas: [cleanRecup] },
+                    { grupo: 'D' }
+                );
+                log(`R11: status ${r.status}`);
+                if (r.status >= 400) log(`R11 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R11: POST sem newline', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R11: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R11', status: 'ERR', ok: false, body: e.message });
+            }
+
+            /* Teste R12: POST exatamente como tipo=1 funciona, mas trocando tipo para 2
+               (tipo=1 retorna 400 "sem conteúdos" - validação normal, sem 500) */
+            log(`\n── R12: POST com conteudos (como tipo=1 exige) ──`);
+            try {
+                const grOrig2 = await rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${avOrigId}?listas=conteudos`
+                );
+                const conteudos = grOrig2.data?.conteudos ?? [];
+                const r = await rcoApiService.post(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses`,
+                    {
+                        ...basePayload,
+                        conteudos: conteudos.map(c => ({
+                            descrConteudo: c.descrConteudo,
+                            codPeriodoAvaliacao: c.codPeriodoAvaliacao ?? 9,
+                        })),
+                    },
+                    { grupo: 'D' }
+                );
+                log(`R12: status ${r.status}`);
+                if (r.status >= 400) log(`R12 body: ${JSON.stringify(r.data)}`);
+                resultados.push({ teste: 'R12: POST com conteudos', status: r.status, ok: r.status < 400, body: r.status >= 400 ? r.data : r.data });
+            } catch (e) {
+                log(`R12: EXCEPTION ${e.message}`);
+                resultados.push({ teste: 'R12', status: 'ERR', ok: false, body: e.message });
+            }
+
+            log(`\n=== RESULTADO ===`);
+            resultados.forEach(r => log(`  ${r.teste}: ${r.ok ? '✅' : '❌'} (${r.status})`));
+
+            res.json({ resultados });
+        } catch (e) {
+            log(`FALHA: ${e.message}`);
+            res.status(500).json({ erro: e.message });
+        }
     });
 
     /* ── PATCH /api/rco-lancamento/grupos/:grupoId/cod-classe

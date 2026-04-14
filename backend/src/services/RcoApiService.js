@@ -61,6 +61,18 @@ export class RcoApiService {
         return response;
     }
 
+    async delete(path, extraHeaders = {}) {
+        const headers = await this.#headers();
+        const all = { ...headers, ...extraHeaders };
+        let response = await axios.delete(BASE + path, { headers: all, timeout: 30000, validateStatus: () => true });
+        if (response.status === 401 || response.status === 403) {
+            const newH = await this.#refreshHeaders();
+            const all2 = { ...newH, ...extraHeaders };
+            response = await axios.delete(BASE + path, { headers: all2, timeout: 30000, validateStatus: () => true });
+        }
+        return response;
+    }
+
     async getToken() {
         return this.#tokenService.getValidToken();
     }
