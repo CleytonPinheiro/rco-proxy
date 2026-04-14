@@ -131,6 +131,18 @@ export async function initializeDatabase() {
         `);
 
         await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_config (
+                chave  VARCHAR(50)  PRIMARY KEY,
+                valor  TEXT         NOT NULL DEFAULT '',
+                obs    TEXT
+            )
+        `);
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES ('portal_modo_demo', 'false', 'Permite login nos portais com qualquer email Google (sem restrição de domínio)')
+            ON CONFLICT (chave) DO NOTHING
+        `);
+
+        await client.query(`
             CREATE TABLE IF NOT EXISTS edusync_plano_historico (
                 id             SERIAL PRIMARY KEY,
                 usuario_id     INTEGER      NOT NULL REFERENCES edusync_usuarios(id),

@@ -25,6 +25,7 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **DB**: colunas `plano`, `plano_inicio`, `plano_renovacao`, `plano_obs` em `edusync_usuarios` e `edusync_escolas`; tabela `edusync_plano_historico` (registro de todas as alterações de plano); tabela `edusync_suporte` (tickets de suporte/solicitações)
 - **Admin bypass**: perfil `admin` ignora todas as restrições de plano
 - **RCO Launch gating**: endpoints `POST /rco-lancamento/avaliacoes/:id/lancar`, `/salvar-db`, `/avaliacoes/criar` e `PATCH /grupos/:id/cod-classe` protegidos por `requireFuncionalidade('classroom-escrita')`
+- **Modo Demo**: tabela `edusync_config` com chave `portal_modo_demo`; quando `true`, portais aceitam qualquer email Google (sem restrição de domínio). Toggle no admin em aba "Configurações"
 
 ### Sistema de Suporte
 - **Página**: `frontend/pages/suporte/` — acessível por todos os perfis (não-admin)

@@ -129,7 +129,7 @@ export function createPedagogicoPortalRouter() {
         });
     });
 
-    router.get('/pedagogico-portal/auth-url', (req, res) => {
+    router.get('/pedagogico-portal/auth-url', async (req, res) => {
         const oauth2 = getPedagogoOAuth2(req);
         if (!oauth2) return res.status(400).json({ erro: 'Google não configurado.' });
         const state = crypto.randomBytes(16).toString('hex');
@@ -137,13 +137,21 @@ export function createPedagogicoPortalRouter() {
             httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/',
             secure: process.env.NODE_ENV === 'production',
         });
-        const url = oauth2.generateAuthUrl({
+
+        const { rows: [cfgDemo] } = await pool.query(
+            `SELECT valor FROM edusync_config WHERE chave = 'portal_modo_demo'`
+        ).catch(() => ({ rows: [] }));
+        const modoDemo = cfgDemo?.valor === 'true';
+
+        const authOpts = {
             access_type: 'online',
             scope:       PEDAGOGO_SCOPES,
             prompt:      'select_account',
             state,
-            hd:          'escola.pr.gov.br',
-        });
+        };
+        if (!modoDemo) authOpts.hd = 'escola.pr.gov.br';
+
+        const url = oauth2.generateAuthUrl(authOpts);
         res.json({ url });
     });
 
@@ -175,7 +183,13 @@ export function createPedagogicoPortalRouter() {
 
             const dominiosPermitidos = ['escola.pr.gov.br', 'seed.pr.gov.br'];
             const dominio = email.split('@')[1];
-            if (!dominiosPermitidos.includes(dominio)) {
+
+            const { rows: [cfgDemo] } = await pool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'portal_modo_demo'`
+            ).catch(() => ({ rows: [] }));
+            const modoDemo = cfgDemo?.valor === 'true';
+
+            if (!modoDemo && !dominiosPermitidos.includes(dominio)) {
                 logPedagogo(req, email, nome, 'login_pedagogo_portal_negado', { motivo: 'dominio_invalido', dominio });
                 return res.redirect('/pedagogico-portal/?erro=dominio_invalido');
             }

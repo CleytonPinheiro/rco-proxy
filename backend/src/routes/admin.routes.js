@@ -489,6 +489,45 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     });
 
     /* ════════════════════════════════════════════════════════
+       CONFIGURAÇÕES DO SISTEMA
+    ════════════════════════════════════════════════════════ */
+
+    router.get('/admin/config', async (req, res) => {
+        try {
+            const { rows } = await pool.query(`SELECT chave, valor, obs FROM edusync_config ORDER BY chave`);
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.patch('/admin/config/:chave', async (req, res) => {
+        const { chave } = req.params;
+        const { valor } = req.body;
+        if (valor === undefined) return res.status(400).json({ erro: 'valor obrigatório.' });
+        try {
+            const { rows } = await pool.query(
+                `UPDATE edusync_config SET valor = $1 WHERE chave = $2 RETURNING *`,
+                [String(valor), chave],
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Configuração não encontrada.' });
+
+            await auditLogger.registrar({
+                usuarioId: req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao: 'CONFIG_ALTERADA',
+                modulo: 'admin',
+                detalhes: { chave, valor },
+                ip: req.ip,
+            });
+
+            res.json(rows[0]);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════
        IMPERSONAÇÃO — visualizar o sistema como outro perfil
        Segurança: requirePerfil usa o perfil REAL da sessão,
        portanto o admin continua protegido mesmo enquanto impersona.

@@ -19,6 +19,7 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         if (btn.dataset.tab === 'audit')   carregarAuditLog();
         if (btn.dataset.tab === 'escolas') carregarEscolas();
         if (btn.dataset.tab === 'suporte') carregarSuporte();
+        if (btn.dataset.tab === 'config')  carregarConfig();
     });
 });
 
@@ -881,6 +882,95 @@ window.responderSuporte = async function (id, acao) {
 };
 
 document.getElementById('filtroSuporteStatus').addEventListener('change', carregarSuporte);
+
+/* ════════════════════════════════════════════════════════════
+   CONFIGURAÇÕES DO SISTEMA
+════════════════════════════════════════════════════════════ */
+const CONFIG_LABELS = {
+    portal_modo_demo: {
+        nome: 'Modo Demonstração dos Portais',
+        desc: 'Quando ativado, permite login no Portal do Aluno e Portal Pedagógico com qualquer email Google (sem restrição de domínio @escola.pr.gov.br). Útil para testes e demonstrações.',
+        tipo: 'toggle',
+    },
+};
+
+async function carregarConfig() {
+    const el = document.getElementById('configContainer');
+    try {
+        const res = await api('/admin/config');
+        const configs = await res.json();
+        if (!configs.length) {
+            el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhuma configuração disponível.</div>';
+            return;
+        }
+
+        el.innerHTML = configs.map(c => {
+            const meta = CONFIG_LABELS[c.chave] || { nome: c.chave, desc: c.obs || '', tipo: 'text' };
+            const isToggle = meta.tipo === 'toggle';
+            const isOn = c.valor === 'true';
+
+            if (isToggle) {
+                return `<div style="padding:16px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg-hover);display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+                    <div style="flex:1">
+                        <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">${meta.nome}</div>
+                        <div style="font-size:.8rem;color:var(--text-secondary)">${meta.desc}</div>
+                    </div>
+                    <label style="position:relative;width:52px;height:28px;flex-shrink:0;cursor:pointer">
+                        <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleConfig('${c.chave}', this.checked)"
+                               style="position:absolute;opacity:0;width:0;height:0" />
+                        <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${isOn ? '#22c55e' : '#d1d5db'};border-radius:14px;transition:background .2s"></span>
+                        <span style="position:absolute;top:2px;left:${isOn ? '26px' : '2px'};width:24px;height:24px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+                    </label>
+                </div>`;
+            }
+            return `<div style="padding:16px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg-hover)">
+                <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">${meta.nome}</div>
+                <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:8px">${meta.desc}</div>
+                <div style="display:flex;gap:8px">
+                    <input type="text" value="${c.valor}" id="cfgVal_${c.chave}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg-input);color:var(--text-primary)" />
+                    <button onclick="salvarConfig('${c.chave}')" style="padding:7px 14px;background:var(--accent,#2563eb);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:.82rem;cursor:pointer">Salvar</button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        el.innerHTML = `<div style="color:#dc2626">Erro: ${e.message}</div>`;
+    }
+}
+
+window.toggleConfig = async function (chave, ativo) {
+    try {
+        const res = await api(`/admin/config/${chave}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ valor: ativo ? 'true' : 'false' }),
+        });
+        if (!res.ok) {
+            const d = await res.json();
+            alert(d.erro || 'Erro ao salvar.');
+        }
+        carregarConfig();
+    } catch (e) {
+        alert('Erro: ' + e.message);
+    }
+};
+
+window.salvarConfig = async function (chave) {
+    const valor = document.getElementById(`cfgVal_${chave}`).value;
+    try {
+        const res = await api(`/admin/config/${chave}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ valor }),
+        });
+        if (!res.ok) {
+            const d = await res.json();
+            alert(d.erro || 'Erro ao salvar.');
+        }
+        carregarConfig();
+    } catch (e) {
+        alert('Erro: ' + e.message);
+    }
+};
 
 /* ── Init ── */
 carregarUsuarios();
