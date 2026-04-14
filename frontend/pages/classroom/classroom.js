@@ -1308,6 +1308,12 @@ elBtnFecharNota.addEventListener('click', async () => {
                     </div>
                     <div class="cl-fechar-pendencias-dica">Clique em ▼ para ver os alunos, ou no nome da atividade para ir até ela.</div>
                 </div>`;
+        } else {
+            pendenciasHtml = `
+                <div class="cl-fechar-correcao-ok">
+                    <span class="cl-fechar-correcao-ok-icon">✅</span>
+                    <span>Nenhuma entrega pendente de correção</span>
+                </div>`;
         }
 
         const alunosPendentes = (dados?.alunosResumo || [])
