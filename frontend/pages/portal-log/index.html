@@ -41,7 +41,26 @@
     <main class="pl-main">
         <div class="pl-header">
             <h1 class="pl-titulo">🎓 Log Portal do Aluno</h1>
-            <p class="pl-subtitulo">Registros de eventos e atividades dos alunos no Portal</p>
+            <p class="pl-subtitulo">Registros de ações dos alunos no Portal — linha do tempo</p>
+        </div>
+
+        <div class="pl-stats" id="plStats">
+            <div class="pl-stat">
+                <div class="pl-stat-num pl-stat-num--login" id="plCntLogin">—</div>
+                <div class="pl-stat-label">Logins</div>
+            </div>
+            <div class="pl-stat">
+                <div class="pl-stat-num pl-stat-num--logout" id="plCntLogout">—</div>
+                <div class="pl-stat-label">Logouts</div>
+            </div>
+            <div class="pl-stat">
+                <div class="pl-stat-num pl-stat-num--solicitar" id="plCntSolicitar">—</div>
+                <div class="pl-stat-label">Solicitações</div>
+            </div>
+            <div class="pl-stat">
+                <div class="pl-stat-num pl-stat-num--outros" id="plCntOutros">—</div>
+                <div class="pl-stat-label">Outros</div>
+            </div>
         </div>
 
         <div class="pl-filtros">
@@ -61,7 +80,7 @@
 
         <div id="plInfo" class="pl-info" style="display:none"></div>
 
-        <div id="plLista" class="pl-lista">
+        <div id="plLista" class="pl-timeline">
             <div class="pl-empty">Carregando logs…</div>
         </div>
 
