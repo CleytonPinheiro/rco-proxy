@@ -1414,7 +1414,7 @@ async function abrirModalTardias() {
         const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
         renderTardias(tardias);
     } catch (e) {
-        elTardiasBody.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
+        elTardiasBody.innerHTML = `<div class="cl-tardias-empty"><div class="cl-tardias-empty-icon">❌</div><div class="cl-tardias-empty-title" style="color:#ef4444">${esc(e.message)}</div></div>`;
     }
 }
 
@@ -1441,7 +1441,7 @@ elTardiasDetectar.addEventListener('click', async () => {
 
 function renderTardias(tardias) {
     if (!tardias.length) {
-        elTardiasBody.innerHTML = '<div class="cl-empty-state"><p>Nenhuma entrega tardia detectada.</p><p style="font-size:0.85em;color:#888">Clique em "Verificar novas entregas tardias" para buscar no Classroom.</p></div>';
+        elTardiasBody.innerHTML = '<div class="cl-tardias-empty"><div class="cl-tardias-empty-icon">✅</div><div class="cl-tardias-empty-title">Nenhuma entrega tardia detectada</div><div class="cl-tardias-empty-desc">Clique em "Verificar novas entregas tardias" para buscar no Classroom.</div></div>';
         return;
     }
 
