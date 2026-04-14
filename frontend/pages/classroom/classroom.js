@@ -1267,9 +1267,7 @@ elBtnFecharNota.addEventListener('click', async () => {
                 if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.fezRec && !atv.eDeRecuperacao) {
                     if (!semCorrecao[atvId]) semCorrecao[atvId] = { count: 0, alunos: [] };
                     semCorrecao[atvId].count++;
-                    if (semCorrecao[atvId].alunos.length < 3) {
-                        semCorrecao[atvId].alunos.push(a.aluno?.nome || a.userId);
-                    }
+                    semCorrecao[atvId].alunos.push(a.aluno?.nome || a.userId);
                 }
             });
         });
@@ -1288,19 +1286,27 @@ elBtnFecharNota.addEventListener('click', async () => {
                         <strong>${totalSemCorrecao} entrega(s) sem corrigir em ${atvsSemCorrecao.length} atividade(s)</strong>
                     </div>
                     <div class="cl-fechar-pendencias-list">
-                        ${atvsSemCorrecao.map(atvId => {
+                        ${atvsSemCorrecao.map((atvId, idx) => {
                             const info = dados.atividades?.find(x => String(x.id) === String(atvId));
                             const titulo = info?.titulo || atvId;
                             const { count, alunos } = semCorrecao[atvId];
-                            const nomes = alunos.join(', ') + (count > 3 ? ` +${count - 3}` : '');
-                            return `<div class="cl-fechar-pendencias-item" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
-                                <span class="cl-fechar-pendencias-icon">⚠</span>
-                                <span class="cl-fechar-pendencias-nome">${esc(titulo)}</span>
-                                <span class="cl-fechar-pendencias-qty">${count} sem nota</span>
+                            const alunosHtml = alunos.sort((a, b) => a.localeCompare(b)).map(n =>
+                                `<div class="cl-fechar-sc-aluno">${esc(n)}</div>`
+                            ).join('');
+                            return `<div class="cl-fechar-pendencias-item" data-atv-id="${esc(atvId)}">
+                                <div class="cl-fechar-sc-row">
+                                    <span class="cl-fechar-pendencias-icon">⚠</span>
+                                    <span class="cl-fechar-pendencias-nome">${esc(titulo)}</span>
+                                    <span class="cl-fechar-pendencias-qty">${count} sem nota</span>
+                                    <span class="cl-fechar-sc-toggle" data-idx="${idx}">▼</span>
+                                </div>
+                                <div class="cl-fechar-sc-alunos" id="clFecharScAlunos${idx}" style="display:none">
+                                    ${alunosHtml}
+                                </div>
                             </div>`;
                         }).join('')}
                     </div>
-                    <div class="cl-fechar-pendencias-dica">Clique em uma atividade acima para ir até ela e corrigir antes de fechar.</div>
+                    <div class="cl-fechar-pendencias-dica">Clique em ▼ para ver os alunos, ou no nome da atividade para ir até ela.</div>
                 </div>`;
         }
 
@@ -1387,10 +1393,23 @@ elBtnFecharNota.addEventListener('click', async () => {
                     if (arrow) arrow.textContent = aberto ? '▼' : '▲';
                 });
             }
-            document.querySelectorAll('.cl-fechar-pendencias-item').forEach(item => {
-                item.style.cursor = 'pointer';
-                item.addEventListener('click', () => {
-                    const atvId = item.dataset.atvId;
+            document.querySelectorAll('.cl-fechar-sc-toggle').forEach(tog => {
+                tog.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = tog.dataset.idx;
+                    const panel = document.getElementById(`clFecharScAlunos${idx}`);
+                    if (!panel) return;
+                    const aberto = panel.style.display !== 'none';
+                    panel.style.display = aberto ? 'none' : 'block';
+                    tog.textContent = aberto ? '▼' : '▲';
+                });
+            });
+            document.querySelectorAll('.cl-fechar-pendencias-nome').forEach(nomeEl => {
+                nomeEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const item = nomeEl.closest('.cl-fechar-pendencias-item');
+                    const atvId = item?.dataset?.atvId;
+                    if (!atvId) return;
                     const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
                     if (!ativ) { toast('Atividade não encontrada.', 'erro'); return; }
                     document.getElementById('clConfirmCancelar').click();
