@@ -198,6 +198,20 @@
         });
     })();
     </script>
+    <div class="sol-modal-overlay" id="solNegarOverlay">
+        <div class="sol-modal">
+            <div class="sol-modal-header">
+                <span class="sol-modal-icone">❌</span>
+                <h3 class="sol-modal-titulo">Negar solicitação</h3>
+            </div>
+            <p class="sol-modal-desc">Informe o motivo da negativa (opcional). O aluno receberá uma notificação.</p>
+            <textarea id="solNegarMotivo" class="sol-modal-textarea" rows="3" placeholder="Ex: Prazo já encerrado definitivamente…"></textarea>
+            <div class="sol-modal-acoes">
+                <button class="sol-btn sol-btn--sm sol-btn--cancel" id="solNegarCancelar">Cancelar</button>
+                <button class="sol-btn sol-btn--sm sol-btn--danger" id="solNegarConfirmar">❌ Negar</button>
+            </div>
+        </div>
+    </div>
     <div class="sol-toast" id="solToast"></div>
     <script src="../../shared/js/auth.js"></script>
     <script src="./solicitacoes.js"></script>

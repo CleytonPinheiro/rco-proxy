@@ -329,6 +329,80 @@
     .sol-day-label { margin-left: -22px; padding-left: 30px; }
 }
 
+.sol-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+}
+.sol-modal-overlay--visivel { display: flex; }
+.sol-modal {
+    background: var(--bg-card, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 14px;
+    padding: 28px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.4);
+    animation: solModalIn .2s ease;
+}
+@keyframes solModalIn {
+    from { opacity: 0; transform: scale(.95) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.sol-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.sol-modal-icone { font-size: 1.4rem; }
+.sol-modal-titulo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0;
+}
+.sol-modal-desc {
+    font-size: .82rem;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0 0 14px;
+    line-height: 1.4;
+}
+.sol-modal-textarea {
+    width: 100%;
+    background: var(--bg-primary, #0f172a);
+    color: var(--text-primary, #f1f5f9);
+    border: 1px solid var(--border, #334155);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: .85rem;
+    resize: vertical;
+    font-family: inherit;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+}
+.sol-modal-textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+}
+.sol-modal-acoes {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+.sol-btn--cancel {
+    background: transparent;
+    border: 1px solid var(--border, #334155);
+    color: var(--text-secondary, #94a3b8);
+}
+.sol-btn--cancel:hover { background: var(--bg-hover, rgba(255,255,255,.05)); }
+
 .sol-toast {
     position: fixed;
     bottom: 24px;

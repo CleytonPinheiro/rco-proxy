@@ -14,7 +14,7 @@ const TOKEN_FILE  = path.join(__dirname, '../../data/classroom_token.json');
 const SCOPES = [
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.me',
-    'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
+    'https://www.googleapis.com/auth/classroom.coursework.students',
     'https://www.googleapis.com/auth/classroom.rosters.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
@@ -1065,8 +1065,67 @@ export function createClassroomRouter(deps = {}) {
             );
             if (!rows.length) return res.status(404).json({ erro: 'Solicitação não encontrada.' });
 
-            /* Notifica o aluno — bloqueante na próxima visita ao portal */
             const sol = rows[0];
+            let classroomReaberto = false;
+
+            if (acao === 'aprovar') {
+                try {
+                    const auth = await getAuthenticatedClient(req);
+                    if (auth) {
+                        const cl = google.classroom({ version: 'v1', auth });
+
+                        let targetSub = null;
+                        try {
+                            const subsResp = await cl.courses.courseWork.studentSubmissions.list({
+                                courseId: sol.curso_id,
+                                courseWorkId: sol.coursework_id,
+                                userId: sol.aluno_email,
+                                pageSize: 5,
+                            });
+                            const subs = subsResp.data.studentSubmissions || [];
+                            if (subs.length) targetSub = subs[0];
+                        } catch (filterErr) {
+                            console.warn('[CLASSROOM] Busca por userId falhou, tentando listagem completa…');
+                            const subsResp = await cl.courses.courseWork.studentSubmissions.list({
+                                courseId: sol.curso_id,
+                                courseWorkId: sol.coursework_id,
+                                pageSize: 100,
+                            });
+                            const subs = subsResp.data.studentSubmissions || [];
+                            for (const s of subs) {
+                                try {
+                                    const profile = await cl.userProfiles.get({ userId: s.userId });
+                                    if (profile.data.emailAddress?.toLowerCase() === sol.aluno_email.toLowerCase()) {
+                                        targetSub = s;
+                                        break;
+                                    }
+                                } catch (_) {}
+                            }
+                        }
+
+                        if (targetSub && targetSub.state === 'TURNED_IN') {
+                            await cl.courses.courseWork.studentSubmissions.return({
+                                courseId: sol.curso_id,
+                                courseWorkId: sol.coursework_id,
+                                id: targetSub.id,
+                                requestBody: {},
+                            });
+                            classroomReaberto = true;
+                            console.log(`[CLASSROOM] Entrega devolvida: ${sol.aluno_email} → ${sol.coursework_titulo}`);
+                        } else if (targetSub && targetSub.state === 'RETURNED') {
+                            classroomReaberto = true;
+                            console.log(`[CLASSROOM] Entrega já devolvida: ${sol.aluno_email} → ${sol.coursework_titulo}`);
+                        } else if (targetSub) {
+                            console.log(`[CLASSROOM] Entrega em estado ${targetSub.state}, não requer devolução: ${sol.aluno_email}`);
+                        } else {
+                            console.warn(`[CLASSROOM] Submissão não encontrada para ${sol.aluno_email} em ${sol.coursework_titulo}`);
+                        }
+                    }
+                } catch (clErr) {
+                    console.error('[CLASSROOM] Erro ao reabrir no Classroom:', clErr.message);
+                }
+            }
+
             const tipo    = acao === 'aprovar' ? 'reabertura_aprovada' : 'reabertura_negada';
             const titulo  = acao === 'aprovar' ? '✅ Reabertura aprovada!' : '❌ Reabertura negada';
             const msgBase = acao === 'aprovar'
@@ -1083,7 +1142,7 @@ export function createClassroomRouter(deps = {}) {
                  JSON.stringify({ coursework_id: sol.coursework_id, curso_nome: sol.curso_nome })]
             ).catch(() => {});
 
-            res.json({ ok: true, solicitacao: rows[0] });
+            res.json({ ok: true, solicitacao: rows[0], classroomReaberto });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

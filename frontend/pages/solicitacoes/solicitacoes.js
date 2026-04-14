@@ -159,13 +159,38 @@ function renderizar() {
     });
 }
 
-window.responder = async function(id, acao) {
-    let resposta = null;
-    if (acao === 'negar') {
-        resposta = prompt('Motivo da negativa (opcional):');
-        if (resposta === null) return;
+const elNegarOverlay = document.getElementById('solNegarOverlay');
+const elNegarMotivo  = document.getElementById('solNegarMotivo');
+const elNegarOk      = document.getElementById('solNegarConfirmar');
+const elNegarCancel  = document.getElementById('solNegarCancelar');
+
+function abrirModalNegar(id) {
+    elNegarMotivo.value = '';
+    elNegarOverlay.classList.add('sol-modal-overlay--visivel');
+    elNegarMotivo.focus();
+
+    function fechar() {
+        elNegarOverlay.classList.remove('sol-modal-overlay--visivel');
+        elNegarOk.removeEventListener('click', onOk);
+        elNegarCancel.removeEventListener('click', onCancel);
+        elNegarOverlay.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
     }
-    const sol = allData.find(s => s.id === id);
+    function onOk() { fechar(); executarResposta(id, 'negar', elNegarMotivo.value.trim() || null); }
+    function onCancel() { fechar(); }
+    function onBackdrop(e) { if (e.target === elNegarOverlay) fechar(); }
+    function onKey(e) {
+        if (e.key === 'Escape') fechar();
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onOk(); }
+    }
+
+    elNegarOk.addEventListener('click', onOk);
+    elNegarCancel.addEventListener('click', onCancel);
+    elNegarOverlay.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+}
+
+async function executarResposta(id, acao, resposta) {
     const card = elLista.querySelector(`[data-id="${id}"] .sol-card`);
     if (card) card.style.opacity = '.5';
     try {
@@ -176,17 +201,30 @@ window.responder = async function(id, acao) {
             body: JSON.stringify({ acao, resposta: resposta || null }),
         });
         if (!res.ok) throw new Error(`Erro ${res.status}`);
-        toast(acao === 'aprovar' ? '✅ Solicitação aprovada!' : '❌ Solicitação negada.', 'ok');
+        const data = await res.json();
 
-        if (acao === 'aprovar' && sol?.submission_link) {
-            window.open(sol.submission_link, '_blank');
-            toast('Abrindo atividade no Classroom para reabertura…', 'ok', 4000);
+        if (acao === 'aprovar') {
+            if (data.classroomReaberto) {
+                toast('✅ Aprovada e reaberta no Classroom!', 'ok', 4000);
+            } else {
+                toast('✅ Aprovada! (verifique manualmente no Classroom)', 'ok', 5000);
+            }
+        } else {
+            toast('❌ Solicitação negada.', 'ok');
         }
 
         carregar();
     } catch (e) {
         if (card) card.style.opacity = '';
         toast('Erro: ' + e.message, 'erro', 8000);
+    }
+}
+
+window.responder = function(id, acao) {
+    if (acao === 'negar') {
+        abrirModalNegar(id);
+    } else {
+        executarResposta(id, 'aprovar', null);
     }
 };
 
