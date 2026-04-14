@@ -405,7 +405,8 @@ export function createRcoLancamentoRouter(deps = {}) {
                 /* ── Passo 4: Monta lista de alunos ──
                    Itera sobre TODOS os alunos do RCO (alunosRcoMap), enriquecendo
                    com matrizAlunos e aplicando notas do frontend.
-                   PUT: inclui codAvaliacaoParcialAluno; POST: sem ele. */
+                   PUT: inclui codAvaliacaoParcialAluno; POST: sem ele.
+                   Alunos sem nota no Classroom mantêm a nota original do RCO (do GET). */
                 const allRcoKeys = new Set(Object.keys(alunosRcoMap));
                 alunos.forEach(a => allRcoKeys.add(String(a.codMatrizAluno)));
 
@@ -416,6 +417,15 @@ export function createRcoLancamentoRouter(deps = {}) {
                     const notaCalc = notaMap[key];
                     const codMatriz = Number(key);
 
+                    let notaFinal;
+                    if (notaCalc != null) {
+                        notaFinal = Number(notaCalc).toFixed(1);
+                    } else if (aRco?.notaDecimal != null && aRco.notaDecimal !== '') {
+                        notaFinal = Number(aRco.notaDecimal).toFixed(1);
+                    } else {
+                        notaFinal = '0.0';
+                    }
+
                     const aluno = {
                         ...(recJaExiste && aRco?.codAvaliacaoParcialAluno != null
                             ? { codAvaliacaoParcialAluno: aRco.codAvaliacaoParcialAluno } : {}),
@@ -425,7 +435,7 @@ export function createRcoLancamentoRouter(deps = {}) {
                         ...(mAluno.indAtivo          != null ? { indAtivo: mAluno.indAtivo }                   : {}),
                         ...(mAluno.situacaoMatricula != null ? { situacaoMatricula: mAluno.situacaoMatricula } : {}),
                         ...(mAluno.cgmAluno          != null ? { cgmAluno: mAluno.cgmAluno }                   : {}),
-                        notaDecimal: notaCalc != null ? Number(notaCalc).toFixed(1) : '',
+                        notaDecimal: notaFinal,
                     };
                     alunosEnviar.push(aluno);
                 }
