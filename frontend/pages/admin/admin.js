@@ -527,6 +527,44 @@ function esconderFormMsg() {
 /* ════════════════════════════════════════════════════════════
    PLANO DO USUÁRIO
 ════════════════════════════════════════════════════════════ */
+function calcTrialStatus(plano, planoInicio) {
+    if (plano !== 'trial' || !planoInicio) return null;
+    const inicio = new Date(planoInicio);
+    const expira = new Date(inicio);
+    expira.setDate(expira.getDate() + 30);
+    const agora = new Date();
+    const diffMs = expira.getTime() - agora.getTime();
+    const diasRestantes = Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+    return { expirado: diasRestantes <= 0, diasRestantes, expiraEm: expira.toLocaleDateString('pt-BR') };
+}
+
+function atualizarStatusPlanoModal() {
+    const plano = document.getElementById('modalPlanoTipo').value;
+    const inicio = document.getElementById('modalPlanoInicio').value;
+    const statusEl = document.getElementById('modalPlanoStatus');
+    const estenderWrap = document.getElementById('modalPlanoEstenderWrap');
+
+    const trial = calcTrialStatus(plano, inicio);
+    if (trial) {
+        statusEl.style.display = 'block';
+        estenderWrap.style.display = 'block';
+        if (trial.expirado) {
+            statusEl.style.background = '#fef2f2';
+            statusEl.style.color = '#dc2626';
+            statusEl.style.border = '1px solid #fca5a5';
+            statusEl.innerHTML = `<strong>Expirado</strong> — O trial venceu em ${trial.expiraEm}.`;
+        } else {
+            statusEl.style.background = '#fffbeb';
+            statusEl.style.color = '#92400e';
+            statusEl.style.border = '1px solid #fcd34d';
+            statusEl.innerHTML = `<strong>${trial.diasRestantes} dia(s) restante(s)</strong> — Expira em ${trial.expiraEm}.`;
+        }
+    } else {
+        statusEl.style.display = 'none';
+        estenderWrap.style.display = 'none';
+    }
+}
+
 window.abrirModalPlano = function (id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return;
@@ -537,6 +575,7 @@ window.abrirModalPlano = function (id) {
     document.getElementById('modalPlanoRenovacao').value = u.plano_renovacao ? u.plano_renovacao.slice(0, 10) : '';
     document.getElementById('modalPlanoObs').value = u.plano_obs || '';
     document.getElementById('formPlanoMsg').style.display = 'none';
+    atualizarStatusPlanoModal();
     document.getElementById('modalPlano').classList.add('modal-overlay--ativo');
 };
 
@@ -544,6 +583,27 @@ document.getElementById('modalPlanoTipo').addEventListener('change', function ()
     if (this.value === 'trial' && !document.getElementById('modalPlanoInicio').value) {
         document.getElementById('modalPlanoInicio').value = new Date().toISOString().slice(0, 10);
     }
+    atualizarStatusPlanoModal();
+});
+document.getElementById('modalPlanoInicio').addEventListener('change', atualizarStatusPlanoModal);
+
+document.getElementById('btnEstenderPlano').addEventListener('click', function () {
+    const inicioEl = document.getElementById('modalPlanoInicio');
+    const atual = inicioEl.value;
+    if (!atual) {
+        inicioEl.value = new Date().toISOString().slice(0, 10);
+        atualizarStatusPlanoModal();
+        return;
+    }
+    const dataAtual = new Date(atual);
+    dataAtual.setDate(dataAtual.getDate() + 30);
+    inicioEl.value = dataAtual.toISOString().slice(0, 10);
+    atualizarStatusPlanoModal();
+    const msg = document.getElementById('formPlanoMsg');
+    msg.textContent = 'Data de início avançada em +30 dias. Clique "Salvar plano" para confirmar.';
+    msg.style.display = 'block';
+    msg.style.background = '#f0fdf4';
+    msg.style.color = '#166534';
 });
 
 document.getElementById('btnCancelarPlano').addEventListener('click', () => {

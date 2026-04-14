@@ -199,6 +199,7 @@
                 <div style="margin-bottom:12px;padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
                     <strong id="modalPlanoUserNome"></strong>
                 </div>
+                <div id="modalPlanoStatus" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:.84rem"></div>
                 <div class="form-group">
                     <label>Plano</label>
                     <select id="modalPlanoTipo">
@@ -212,6 +213,11 @@
                 <div class="form-group">
                     <label>Data de início</label>
                     <input type="date" id="modalPlanoInicio">
+                </div>
+                <div id="modalPlanoEstenderWrap" style="display:none;margin-bottom:12px">
+                    <button type="button" id="btnEstenderPlano" style="width:100%;padding:9px 16px;background:#d97706;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                        <span style="font-size:1rem">📅</span> Estender +30 dias
+                    </button>
                 </div>
                 <div class="form-group">
                     <label>Renovação (opcional)</label>
