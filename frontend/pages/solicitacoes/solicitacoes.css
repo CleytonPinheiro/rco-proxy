@@ -152,6 +152,18 @@
     border: 2px solid var(--bg-primary, #fff);
     z-index: 1;
 }
+.sol-turma-count {
+    font-size: .65rem;
+    font-weight: 700;
+    background: #f59e0b;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0;
+    text-transform: none;
+}
 
 .sol-tl-item {
     position: relative;

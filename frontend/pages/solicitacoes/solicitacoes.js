@@ -40,33 +40,21 @@ function atualizarStats() {
     elCntN.textContent = n;
 }
 
-function agruparPorDia(lista) {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const ontem = new Date(hoje);
-    ontem.setDate(ontem.getDate() - 1);
-
+function agruparPorTurma(lista) {
     const map = new Map();
 
     lista.forEach(s => {
-        const dt = new Date(s.criado_em);
-        dt.setHours(0, 0, 0, 0);
-        const key = dt.toISOString().slice(0, 10);
-        let label;
-        if (dt.getTime() === hoje.getTime()) {
-            label = 'Hoje';
-        } else if (dt.getTime() === ontem.getTime()) {
-            label = 'Ontem';
-        } else {
-            label = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        }
-        if (!map.has(key)) map.set(key, { label, items: [] });
-        map.get(key).items.push(s);
+        const turma = s.curso_nome || 'Sem turma';
+        if (!map.has(turma)) map.set(turma, []);
+        map.get(turma).push(s);
     });
 
-    const sorted = [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
     const result = [];
-    sorted.forEach(([, v]) => result.push(v));
+    for (const [turma, items] of map) {
+        items.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+        result.push({ turma, items });
+    }
+    result.sort((a, b) => a.turma.localeCompare(b.turma, 'pt-BR'));
     return result;
 }
 
@@ -83,18 +71,16 @@ function renderizar() {
         (s.curso_nome || '').toLowerCase().includes(q)
     );
 
-    filtrada.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
-
     if (!filtrada.length) {
         elLista.innerHTML = '<div class="sol-empty">Nenhuma solicitação encontrada.</div>';
         elInfo.style.display = 'none';
         return;
     }
 
-    elInfo.textContent = `${filtrada.length} solicitação${filtrada.length !== 1 ? 'ões' : ''}`;
+    elInfo.textContent = `${filtrada.length} solicitaç${filtrada.length !== 1 ? 'ões' : 'ão'}`;
     elInfo.style.display = '';
 
-    const grupos = agruparPorDia(filtrada);
+    const grupos = agruparPorTurma(filtrada);
     const statusIcon = { pendente: '⏳', aprovada: '✅', negada: '❌' };
     const statusLabel = { pendente: 'Pendente', aprovada: 'Aprovada', negada: 'Negada' };
     const statusCls   = { pendente: 'pendente', aprovada: 'aprovada', negada: 'negada' };
@@ -106,11 +92,16 @@ function renderizar() {
         day: '2-digit', month: '2-digit', year: '2-digit',
         hour: '2-digit', minute: '2-digit'
     }) : '—';
+    const fmtData = iso => iso ? new Date(iso).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit'
+    }) : '';
 
     let html = '';
-    for (const { label, items } of grupos) {
+    for (const { turma, items } of grupos) {
+        const pendentes = items.filter(i => i.status === 'pendente').length;
+        const badgeCount = pendentes > 0 ? `<span class="sol-turma-count">${pendentes} pendente${pendentes > 1 ? 's' : ''}</span>` : '';
         html += `<div class="sol-day-group">`;
-        html += `<div class="sol-day-label">${esc(label)}</div>`;
+        html += `<div class="sol-day-label">📚 ${esc(turma)} ${badgeCount}</div>`;
         items.forEach(s => {
             const cls = statusCls[s.status] || '';
             const icon = statusIcon[s.status] || '•';
@@ -126,15 +117,13 @@ function renderizar() {
                         <span class="sol-status sol-status--${cls}">${statusLabel[s.status] || s.status}</span>
                     </div>
                     <div class="sol-ativ">
-                        <span class="sol-disciplina">${esc(s.curso_nome || '—')}</span>
-                        <span class="sol-sep">›</span>
-                        <span>${esc(s.coursework_titulo || '—')}</span>
+                        <span class="sol-disciplina">${esc(s.coursework_titulo || '—')}</span>
                         ${s.submission_link ? `<a href="${esc(s.submission_link)}" target="_blank" class="sol-link" title="Ver no Classroom">↗</a>` : ''}
                     </div>
                     ${s.justificativa ? `<div class="sol-justi">"${esc(s.justificativa)}"</div>` : ''}
                     ${s.resposta ? `<div class="sol-resposta">💬 ${esc(s.resposta)}</div>` : ''}
                     <div class="sol-footer">
-                        <span class="sol-time"><span class="sol-time-icon">🕐</span> ${fmtHora(s.criado_em)}</span>
+                        <span class="sol-time"><span class="sol-time-icon">🕐</span> ${fmtData(s.criado_em)} ${fmtHora(s.criado_em)}</span>
                         ${s.respondido_em ? `<span class="sol-time"><span class="sol-time-icon">✔</span> Respondido ${fmtFull(s.respondido_em)}</span>` : ''}
                         ${s.status === 'pendente' ? `
                         <div class="sol-acoes">

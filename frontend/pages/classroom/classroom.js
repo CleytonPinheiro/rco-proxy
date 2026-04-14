@@ -1022,6 +1022,37 @@ function atualizarBtnLivro(grupo) {
 elBtnLivro.addEventListener('click', async () => {
     if (!grupoAtivo) return;
     const novoEstado = !grupoAtivo.lancadoLivro;
+
+    if (novoEstado && grupoResumoData?.alunosResumo) {
+        const naoCorrigidos = [];
+        grupoResumoData.alunosResumo.forEach(a => {
+            Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
+                if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.fezRec && !atv.eDeRecuperacao) {
+                    const atvInfo = grupoResumoData.atividades?.find(x => String(x.id) === String(atvId));
+                    naoCorrigidos.push({
+                        aluno: a.aluno?.nome || a.userId,
+                        atividade: atvInfo?.titulo || atvId,
+                    });
+                }
+            });
+        });
+
+        if (naoCorrigidos.length) {
+            const lista = naoCorrigidos.slice(0, 10).map(x => `• ${x.aluno} → ${x.atividade}`).join('\n');
+            const extra = naoCorrigidos.length > 10 ? `\n… e mais ${naoCorrigidos.length - 10}` : '';
+            const prosseguir = await confirmar(
+                `⚠️ ${naoCorrigidos.length} entrega${naoCorrigidos.length > 1 ? 's' : ''} ainda não corrigida${naoCorrigidos.length > 1 ? 's' : ''}:\n\n${lista}${extra}\n\nEssas notas ficarão como 0 no cálculo. Deseja prosseguir mesmo assim?`,
+                {
+                    titulo: 'Entregas sem correção',
+                    confirmLabel: 'Prosseguir mesmo assim',
+                    tipo: 'warning',
+                    icone: '⚠️',
+                }
+            );
+            if (!prosseguir) return;
+        }
+    }
+
     const msg        = novoEstado
         ? `As notas do grupo "${grupoAtivo.nome}" foram lançadas no livro de chamada?`
         : `Desmarcar o grupo "${grupoAtivo.nome}" como lançado no livro?`;
