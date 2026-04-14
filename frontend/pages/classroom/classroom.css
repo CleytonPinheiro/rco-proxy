@@ -1809,7 +1809,7 @@ body.cl-popout .logo-icon { font-size: 15px; }
 
 /* ── Modal de Confirmação ─────────────────────────────────────────── */
 .cl-confirm-modal {
-    max-width: 400px;
+    max-width: 420px;
     text-align: center;
     border-top: 4px solid var(--cl-accent, #4285f4);
 }
@@ -1841,6 +1841,75 @@ body.cl-popout .logo-icon { font-size: 15px; }
     padding: 20px 24px 24px;
     border-top: 1px solid var(--border);
     margin-top: 20px;
+}
+
+.cl-fechar-resumo {
+    text-align: left;
+}
+.cl-fechar-grupo-nome {
+    text-align: center;
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 4px 12px;
+    background: rgba(255,255,255,.06);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cl-fechar-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.cl-fechar-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    background: rgba(255,255,255,.04);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    transition: border-color .15s;
+}
+.cl-fechar-stat--alerta {
+    border-color: #f59e0b;
+    background: rgba(245,158,11,.08);
+}
+.cl-fechar-stat-valor {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+.cl-fechar-stat--alerta .cl-fechar-stat-valor {
+    color: #f59e0b;
+}
+.cl-fechar-stat-label {
+    font-size: .72rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-top: 3px;
+}
+.cl-fechar-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(220,38,38,.08);
+    border: 1px solid rgba(220,38,38,.25);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: .82rem;
+    line-height: 1.45;
+}
+.cl-fechar-aviso strong {
+    color: #fecaca;
 }
 
 @keyframes clSpinIcon {

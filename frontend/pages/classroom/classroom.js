@@ -7,7 +7,7 @@
    Uso: await confirmar('Mensagem', { titulo, confirmLabel, tipo, icone })
    Retorna: true (confirmou) | false (cancelou)
 ══════════════════════════════════════════════════════════════════ */
-function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Confirmar', tipo = 'info', icone } = {}) {
+function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Confirmar', tipo = 'info', icone, html = false } = {}) {
     return new Promise(resolve => {
         const overlay  = document.getElementById('clConfirmModal');
         const elTitulo = document.getElementById('clConfirmTitulo');
@@ -18,7 +18,7 @@ function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Conf
         const elModal  = overlay.querySelector('.cl-confirm-modal');
 
         elTitulo.textContent = titulo;
-        elMsg.textContent    = mensagem;
+        if (html) { elMsg.innerHTML = mensagem; } else { elMsg.textContent = mensagem; }
         elOk.textContent     = confirmLabel;
 
         const iconeDefault = tipo === 'danger' ? '⚠️' : '❓';
@@ -1222,18 +1222,39 @@ elBtnFecharNota.addEventListener('click', async () => {
         const pendentes = dados?.alunosResumo?.filter(a => a.pendentes > 0).length || 0;
         const nAtivs = dados?.atividades?.length || 0;
 
-        const resumoTexto = `Resumo atualizado do Classroom:\n\n` +
-            `  ${totalAlunos} alunos  ·  ${nAtivs} atividades\n` +
-            `  Média da turma: ${media} pts\n` +
-            `  ${pendentes} aluno(s) com pendências\n\n` +
-            `Fechar as notas do grupo "${grupoAtivo.nome}"?\n` +
-            `Toda entrega recebida após este momento será registrada como TARDIA e não entrará no cálculo.`;
+        const resumoHtml = `
+            <div class="cl-fechar-resumo">
+                <div class="cl-fechar-grupo-nome">${esc(grupoAtivo.nome)}</div>
+                <div class="cl-fechar-stats">
+                    <div class="cl-fechar-stat">
+                        <span class="cl-fechar-stat-valor">${totalAlunos}</span>
+                        <span class="cl-fechar-stat-label">Alunos</span>
+                    </div>
+                    <div class="cl-fechar-stat">
+                        <span class="cl-fechar-stat-valor">${nAtivs}</span>
+                        <span class="cl-fechar-stat-label">Atividades</span>
+                    </div>
+                    <div class="cl-fechar-stat">
+                        <span class="cl-fechar-stat-valor">${media}</span>
+                        <span class="cl-fechar-stat-label">Média (pts)</span>
+                    </div>
+                    <div class="cl-fechar-stat ${pendentes > 0 ? 'cl-fechar-stat--alerta' : ''}">
+                        <span class="cl-fechar-stat-valor">${pendentes}</span>
+                        <span class="cl-fechar-stat-label">Com pendências</span>
+                    </div>
+                </div>
+                <div class="cl-fechar-aviso">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0;margin-top:2px"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.5h1.5v5h-1.5v-5zm.75 7.5a.75.75 0 110-1.5.75.75 0 010 1.5z"/></svg>
+                    <span>Toda entrega recebida <strong>após este momento</strong> será registrada como <strong>tardia</strong> e não entrará no cálculo da nota.</span>
+                </div>
+            </div>`;
 
-        const ok = await confirmar(resumoTexto, {
-            titulo: 'Fechar notas — dados recalculados',
+        const ok = await confirmar(resumoHtml, {
+            titulo: 'Fechar notas',
             confirmLabel: 'Sim, fechar agora',
             tipo: 'danger',
             icone: '🔒',
+            html: true,
         });
         if (!ok) return;
         try {
