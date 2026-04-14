@@ -129,8 +129,19 @@ function renderLogs(logs) {
             if (det.so)          tags.push(det.so);
             if (det.navegador)   tags.push(`🌐 ${det.navegador}`);
 
+            const extraLabels = {
+                cursoNome: '📚 Disciplina',
+                courseworkTitulo: '📝 Atividade',
+                cursoId: null,
+                courseworkId: null,
+                notifId: '🔔 Notificação #',
+            };
             const extraKeys = Object.keys(det).filter(k => !['email', 'navegador', 'so', 'dispositivo'].includes(k));
-            extraKeys.forEach(k => tags.push(`${k}: ${det[k]}`));
+            extraKeys.forEach(k => {
+                if (extraLabels[k] === null) return;
+                const lbl = extraLabels[k] || k;
+                tags.push(`${lbl}: ${det[k]}`);
+            });
 
             html += `
             <div class="pl-tl-item">
