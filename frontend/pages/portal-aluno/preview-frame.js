@@ -131,14 +131,22 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
         }
     }
 
-    const linkPart = aguardando
-        ? `<span class="pa-aguard-status">Entregue</span>`
-        : ativ.link
+    let linkPart;
+    if (aguardando) {
+        linkPart = `<span class="pa-aguard-status">Entregue</span>`;
+    } else if (zerada && ativ.vencida) {
+        linkPart = `<button class="pa-link-ativ pa-link-ativ--zerada pa-link-ativ--desabilitado"
+                        disabled title="Prazo encerrado — solicite a reabertura ao professor">
+                        Prazo encerrado ✕
+                    </button>`;
+    } else {
+        linkPart = ativ.link
             ? `<a href="${esc(ativ.link)}" target="_blank" rel="noopener"
                   class="pa-link-ativ${zerada ? ' pa-link-ativ--zerada' : ''}">
                    ${zerada ? 'Tentar novamente ↗' : 'Abrir ↗'}
                </a>`
             : '';
+    }
 
     li.innerHTML = `
         <div class="pa-ativ-left">
@@ -229,7 +237,7 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
 
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
-        gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ)));
+        gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
         secao.appendChild(lista);
 
         card.appendChild(secao);
@@ -248,7 +256,7 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
 
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
-        semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ)));
+        semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
         secao.appendChild(lista);
 
         card.appendChild(secao);
