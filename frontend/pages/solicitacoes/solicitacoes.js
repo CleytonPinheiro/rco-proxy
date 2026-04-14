@@ -12,8 +12,12 @@ const collapsedTurmas = new Set();
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function toast(msg, tipo, dur) {
-    if (typeof window.toast === 'function') { window.toast(msg, tipo, dur); return; }
-    alert(msg);
+    const el = document.getElementById('solToast');
+    if (!el) { alert(msg); return; }
+    clearTimeout(toast._t);
+    el.textContent = msg;
+    el.className = 'sol-toast sol-toast--visivel' + (tipo ? ' sol-toast--' + tipo : '');
+    toast._t = setTimeout(() => el.classList.remove('sol-toast--visivel'), dur || 3500);
 }
 
 async function carregar() {

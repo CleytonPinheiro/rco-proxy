@@ -88,6 +88,8 @@ document.addEventListener('DOMContentLoaded', function () {
     flyout.className = 'classroom-flyout';
     flyout.innerHTML =
         '<div class="classroom-flyout-label">Classroom</div>' +
+        '<a href="/pages/classroom/" class="classroom-flyout-item">' +
+            '<span>📚</span> Atividades</a>' +
         '<a href="/pages/portal-aluno/" class="classroom-flyout-item">' +
             '<span>👤</span> Portal do Aluno</a>' +
         '<a href="/pages/solicitacoes/" class="classroom-flyout-item" id="sideNavSolicita">' +

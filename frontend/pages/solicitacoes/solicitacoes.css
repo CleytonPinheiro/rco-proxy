@@ -328,3 +328,28 @@
     .sol-tl-dot { left: -22px; width: 14px; height: 14px; font-size: 8px; }
     .sol-day-label { margin-left: -22px; padding-left: 30px; }
 }
+
+.sol-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: .85rem;
+    font-weight: 500;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .3s ease, opacity .3s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,.3);
+}
+.sol-toast--visivel {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+.sol-toast--ok   { background: #16a34a; }
+.sol-toast--erro { background: #dc2626; }
