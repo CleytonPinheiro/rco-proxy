@@ -904,18 +904,44 @@ export function createClassroomRouter(deps = {}) {
                        senão cai para creationTime do submission como proxy de "quando entregou" */
                     const submissionTime = s.creationTime ? new Date(s.creationTime) : updateTime;
 
-                    /* Submission pertence à recuperação se ultrapassou o corte do grupo original */
-                    const eDeRecuperacao = dataCorteOriginal && updateTime
+                    /* Submission pertence à recuperação se ultrapassou o corte do grupo original.
+                       Só se aplica a grupos NORMAIS — no grupo de recuperação, eDeRecuperacao é sempre false
+                       porque não há dataCorteOriginal (o grupo de rec. não tem um "pai" que o proteja). */
+                    const eDeRecuperacao = (!isRecuperacao && dataCorteOriginal && updateTime)
                         ? updateTime >= dataCorteOriginal
                         : false;
 
-                    /* Submission entregue APÓS o fechamento da nota do grupo? */
+                    /* Submission entregue APÓS o fechamento da nota DESTE grupo específico.
+                       REGRAS DE ISOLAMENTO:
+                       1. Cada grupo usa exclusivamente SEU PRÓPRIO data_fechamento.
+                       2. Fechar o grupo de recuperação NÃO afeta o grupo principal (e vice-versa).
+                       3. Se a submission já é eDeRecuperacao (pertence ao grupo de rec.),
+                          NÃO pode ser marcada como tardia no grupo principal.
+                       4. Se a submission já tinha nota atribuída (RETURNED) e o updateTime
+                          mudou apenas porque o professor corrigiu/devolveu DEPOIS do fechamento,
+                          NÃO deve ser marcada como tardia — o aluno entregou antes.
+                          Para distinguir: usamos submissionHistory se disponível, senão
+                          o flag `late` do Classroom (indica que o Classroom já sabe que atrasou). */
                     const dataFechGrupo = grupoInfo?.data_fechamento
                         ? new Date(grupoInfo.data_fechamento)
                         : null;
-                    const eTardia = dataFechGrupo && entregue && updateTime
-                        ? updateTime > dataFechGrupo
-                        : false;
+
+                    let eTardia = false;
+                    if (!eDeRecuperacao && dataFechGrupo && entregue && updateTime && updateTime > dataFechGrupo) {
+                        /* Para submissions RETURNED (já corrigidas pelo professor):
+                           o updateTime reflete a última ação (pode ser correção, não entrega).
+                           Verifica submissionHistory para a data real de TURN_IN. */
+                        const histEntrega = (s.submissionHistory || [])
+                            .filter(h => h.stateHistory?.state === 'TURNED_IN')
+                            .map(h => new Date(h.stateHistory.stateTimestamp))
+                            .sort((a, b) => b - a);
+
+                        if (histEntrega.length > 0) {
+                            eTardia = histEntrega[0] > dataFechGrupo;
+                        } else {
+                            eTardia = true;
+                        }
+                    }
 
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
                         nota, estado: s.state, entregue, atrasado, updateTime,
@@ -926,12 +952,10 @@ export function createClassroomRouter(deps = {}) {
                         /* Atividade sem escala de pontos definida em nenhum lugar:
                            não participa do cálculo de nota (ignorada no numerador e denominador) */
                     } else if (eDeRecuperacao) {
-                        /* Submission foi re-enviada após o início da recuperação:
-                           a nota atual reflete a recuperação, não a avaliação original.
-                           Exclui do totalGanho do grupo original (mantém avaliação original intacta).
-                           Esta submission será contabilizada somente no grupo de recuperação. */
+                        /* Submission pertence ao grupo de recuperação (updateTime >= dataCorteOriginal).
+                           Excluída do grupo original: nota intacta, calculada apenas no grupo de rec. */
                     } else if (eTardia) {
-                        /* Submission entregue após o fechamento da nota:
+                        /* Submission entregue após o fechamento da nota DESTE grupo:
                            não entra no cálculo — registrada como entrega tardia separadamente. */
                     } else if (nota !== null) {
                         // Soma os pontos brutos obtidos (capped no máximo da atividade)
