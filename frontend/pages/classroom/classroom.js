@@ -87,7 +87,14 @@ let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
 let filtrosGrupoAtivos = new Set(['todos']); // filtros de faixa de cor ativos (múltiplos)
 let quizizzCache     = {};    // quizId → dados retornados pela API do Quizizz
-let solicitacoesCache = [];   // cache de reabertura_solicitacoes do professor
+let solicitacoesCache = [];
+
+async function carregarSolicitacoesCache() {
+    try {
+        const d = await api('/solicitacoes?status=pendente');
+        solicitacoesCache = d.solicitacoes || [];
+    } catch (_) {}
+}
 let solicitBadgeCount = 0;   // contagem de pendentes
 
 /* ── Elementos ── */
@@ -130,20 +137,7 @@ const elTabs           = document.getElementById('clTabs');
 const elTabAtiv        = document.getElementById('clTabAtiv');
 const elTabGrupos      = document.getElementById('clTabGrupos');
 const elTabAudit       = document.getElementById('clTabAudit');
-const elTabSolicita    = document.getElementById('clTabSolicita');
-const elSolicitaPanel  = document.getElementById('clSolicitaPanel');
-const elSolicitaLista  = document.getElementById('clSolicitaLista');
-const elSolitaBadge    = document.getElementById('clSolitaBadge');
 const elSideNavSolitaBadge = document.getElementById('sideNavSolitaBadge');
-/* Portal Log (admin only) */
-const elTabPortalLog    = document.getElementById('clTabPortalLog');
-const elPortalLogPanel  = document.getElementById('clPortalLogPanel');
-const elPortalLogLista  = document.getElementById('clPortalLogLista');
-const elPortalLogInfo   = document.getElementById('clPortalLogInfo');
-const elPortalLogPag    = document.getElementById('clPortalLogPag');
-const elPortalLogPagInfo = document.getElementById('clPortalLogPagInfo');
-const elSideNavSolicita  = document.getElementById('sideNavSolicita');
-const elSideNavPortalLog = document.getElementById('sideNavPortalLog');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
@@ -266,24 +260,9 @@ async function init() {
     if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
     carregarCursos();
     carregarSolicitacoesBadge();
+    carregarSolicitacoesCache();
 
-    /* Verifica se é admin (sidebar controla visibilidade dos sub-itens) */
-    try {
-        const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.json());
-        if (me?.perfil === 'admin') {
-            if (elSideNavSolicita)  { elSideNavSolicita.removeAttribute('data-perm-hidden'); elSideNavSolicita.style.display  = ''; }
-            if (elSideNavPortalLog) { elSideNavPortalLog.removeAttribute('data-perm-hidden'); elSideNavPortalLog.style.display = ''; }
-        }
-    } catch (_) { /* silencia — não é admin ou sem sessão */ }
 
-    /* Abre tab vinda do parâmetro ?tab= (flyout do sidebar) */
-    const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam === 'solicitacoes' || tabParam === 'portal_log') {
-        elTabs.style.display = '';
-        setTab(tabParam);
-        if (tabParam === 'portal_log' && !portalLogCarregado) carregarPortalLog();
-        history.replaceState({}, '', window.location.pathname);
-    }
 }
 
 /* ── Conectar ── */
@@ -600,20 +579,14 @@ function setTab(tab) {
     elTabAtiv.classList.toggle('cl-tab--ativo', tab === 'atividades');
     elTabGrupos.classList.toggle('cl-tab--ativo', tab === 'grupos');
     elTabAudit.classList.toggle('cl-tab--ativo', tab === 'auditoria');
-    elTabSolicita.classList.toggle('cl-tab--ativo', tab === 'solicitacoes');
-    if (elTabPortalLog) elTabPortalLog.classList.toggle('cl-tab--ativo', tab === 'portal_log');
 
     elAtivLista.style.display        = tab === 'atividades' ? '' : 'none';
     elGrupoLista.style.display       = tab === 'grupos' ? '' : 'none';
     elAuditPanel.style.display       = tab === 'auditoria' ? '' : 'none';
-    elSolicitaPanel.style.display    = tab === 'solicitacoes' ? '' : 'none';
-    if (elPortalLogPanel) elPortalLogPanel.style.display = tab === 'portal_log' ? '' : 'none';
     elAtivLink.style.display         = tab === 'atividades' && cursoAtivo?.link ? 'flex' : 'none';
     elBtnNovoGrupo.style.display     = tab === 'grupos' && cursoAtivo ? 'flex' : 'none';
     elBtnCriarRec.style.display      = tab === 'grupos' && grupoAtivo?.tipo === 'normal' && !grupoAtivo?.recuperacaoId ? 'flex' : 'none';
-    elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : tab === 'auditoria' ? 'Auditoria'
-                                      : tab === 'solicitacoes' ? 'Solicitações'
-                                      : tab === 'portal_log' ? 'Log Portal Aluno' : 'Atividades';
+    elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : tab === 'auditoria' ? 'Auditoria' : 'Atividades';
 
     if (tab === 'atividades') {
         elAtivCount.textContent = atividadesCache.length
@@ -623,9 +596,6 @@ function setTab(tab) {
         elAtivCount.textContent = gruposCache.length
             ? `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`
             : 'Nenhum grupo criado';
-    } else if (tab === 'solicitacoes') {
-        elAtivCount.textContent = 'Reabertura de atividades';
-        carregarSolicitacoes();
     } else {
         elAtivCount.textContent = auditResultado
             ? `${auditResultado.atividades.length} atividade${auditResultado.atividades.length !== 1 ? 's' : ''} auditadas`
@@ -653,11 +623,6 @@ function setTab(tab) {
 elTabAtiv.addEventListener('click', () => setTab('atividades'));
 elTabGrupos.addEventListener('click', () => setTab('grupos'));
 elTabAudit.addEventListener('click', () => setTab('auditoria'));
-elTabSolicita.addEventListener('click', () => setTab('solicitacoes'));
-if (elTabPortalLog) elTabPortalLog.addEventListener('click', () => {
-    setTab('portal_log');
-    if (!portalLogCarregado) carregarPortalLog();
-});
 
 /* ══════════════════════════════════════════════════════════════
    SOLICITAÇÕES DE REABERTURA
@@ -684,224 +649,6 @@ async function carregarSolicitacoesBadge() {
     } catch (_) {}
 }
 
-async function carregarSolicitacoes() {
-    const sel    = document.getElementById('clSolicitaFiltroStatus');
-    const busca  = document.getElementById('clSolicitaBusca');
-    const status = sel?.value || 'pendente';
-    elSolicitaLista.innerHTML = '<div class="cl-loading">Carregando…</div>';
-    try {
-        const params = new URLSearchParams({ status });
-        const d = await api(`/solicitacoes?${params}`);
-        solicitacoesCache = d.solicitacoes || [];
-        atualizarBadgeSolicita(solicitacoesCache.filter(s => s.status === 'pendente').length);
-        renderSolicitacoesPanel(solicitacoesCache, busca?.value || '');
-    } catch (e) {
-        elSolicitaLista.innerHTML = `<div class="cl-empty-state"><p>Erro ao carregar: ${esc(e.message)}</p></div>`;
-    }
-}
-
-function renderSolicitacoesPanel(lista, filtroTexto = '') {
-    const q = filtroTexto.toLowerCase().trim();
-    const filtrada = q
-        ? lista.filter(s => s.aluno_nome?.toLowerCase().includes(q)
-                        || s.aluno_email?.toLowerCase().includes(q)
-                        || s.coursework_titulo?.toLowerCase().includes(q)
-                        || s.curso_nome?.toLowerCase().includes(q))
-        : lista;
-
-    if (!filtrada.length) {
-        elSolicitaLista.innerHTML = '<div class="cl-empty-state"><p>Nenhuma solicitação encontrada.</p></div>';
-        return;
-    }
-
-    const fmt = iso => iso ? new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
-    const statusLabel = { pendente: '⏳ Pendente', aprovada: '✅ Aprovada', negada: '❌ Negada' };
-    const statusCls   = { pendente: 'cl-sol-status--pendente', aprovada: 'cl-sol-status--aprovada', negada: 'cl-sol-status--negada' };
-
-    elSolicitaLista.innerHTML = filtrada.map(s => `
-        <div class="cl-sol-card" data-id="${s.id}">
-            <div class="cl-sol-header">
-                <div class="cl-sol-aluno">
-                    <span class="cl-sol-nome">${esc(s.aluno_nome || s.aluno_email)}</span>
-                    <span class="cl-sol-email">${esc(s.aluno_email)}</span>
-                </div>
-                <span class="cl-sol-status ${statusCls[s.status] || ''}">${statusLabel[s.status] || s.status}</span>
-            </div>
-            <div class="cl-sol-ativ">
-                <span class="cl-sol-disciplina">${esc(s.curso_nome || '—')}</span>
-                <span class="cl-sol-sep">›</span>
-                <span class="cl-sol-titulo">${esc(s.coursework_titulo || '—')}</span>
-                ${s.submission_link ? `<a href="${esc(s.submission_link)}" target="_blank" class="cl-sol-link" title="Ver entrega no Classroom">↗</a>` : ''}
-            </div>
-            ${s.justificativa ? `<div class="cl-sol-justi">"${esc(s.justificativa)}"</div>` : ''}
-            ${s.resposta      ? `<div class="cl-sol-resposta">Resposta: ${esc(s.resposta)}</div>` : ''}
-            <div class="cl-sol-footer">
-                <span class="cl-sol-data">Solicitado em ${fmt(s.criado_em)}</span>
-                ${s.respondido_em ? `<span class="cl-sol-data">Respondido em ${fmt(s.respondido_em)}</span>` : ''}
-                ${s.status === 'pendente' ? `
-                <div class="cl-sol-acoes">
-                    <button class="cl-btn cl-btn--sm cl-btn--primary" onclick="responderSolicitacao(${s.id},'aprovar')">✅ Aprovar</button>
-                    <button class="cl-btn cl-btn--sm cl-btn--danger" onclick="responderSolicitacao(${s.id},'negar')">❌ Negar</button>
-                </div>` : ''}
-            </div>
-        </div>`).join('');
-}
-
-async function responderSolicitacao(id, acao) {
-    let resposta = null;
-    if (acao === 'negar') {
-        resposta = prompt('Motivo da negativa (opcional):') ?? '';
-        /* se prompt for cancelado, retorna null */
-        if (resposta === null) return;
-    }
-    const card = elSolicitaLista.querySelector(`[data-id="${id}"]`);
-    if (card) card.style.opacity = '.5';
-    try {
-        await api(`/solicitacoes/${id}/responder`, { method: 'POST', body: { acao, resposta: resposta || null } });
-        toast(acao === 'aprovar' ? '✅ Solicitação aprovada!' : '❌ Solicitação negada.', 'ok');
-        carregarSolicitacoes();
-    } catch (e) {
-        if (card) card.style.opacity = '';
-        toast('Erro: ' + e.message, 'erro', 8000);
-    }
-}
-
-window.irParaSolicitacoes = function irParaSolicitacoes() {
-    fecharSidePanel?.();
-    elTabs.style.display = '';
-    setTab('solicitacoes');
-};
-
-window.irParaPortalLog = function () {
-    fecharSidePanel?.();
-    elTabs.style.display = '';
-    setTab('portal_log');
-    if (!portalLogCarregado) carregarPortalLog();
-};
-
-/* Evento: filtros do painel de solicitações */
-document.getElementById('clSolicitaFiltroStatus')?.addEventListener('change', carregarSolicitacoes);
-document.getElementById('clSolicitaBusca')?.addEventListener('input', () => {
-    const q = document.getElementById('clSolicitaBusca').value;
-    renderSolicitacoesPanel(solicitacoesCache, q);
-});
-document.getElementById('clSolicitaAtualizar')?.addEventListener('click', carregarSolicitacoes);
-
-/* ══════════════════════════════════════════════════════════════
-   LOG PORTAL DO ALUNO (somente admin)
-══════════════════════════════════════════════════════════════ */
-const PL_POR_PAG = 50;
-let portalLogCarregado = false;
-let portalLogPagina    = 0;
-let portalLogTotal     = 0;
-
-const ACOES_LABEL = {
-    LOGIN:                '🔐 Login',
-    LOGOUT:               '🚪 Logout',
-    SOLICITAR_REABERTURA: '↩ Reabertura',
-    NOTIF_LIDA:           '🔔 Notif. lida',
-};
-
-async function carregarPortalLog(resetar = true) {
-    if (resetar) portalLogPagina = 0;
-
-    const busca = document.getElementById('clPortalLogBusca')?.value.trim() || '';
-    const acao  = document.getElementById('clPortalLogAcao')?.value       || '';
-
-    const params = new URLSearchParams({
-        limite: PL_POR_PAG,
-        offset: portalLogPagina * PL_POR_PAG,
-    });
-    if (busca) params.set('busca', busca);
-    if (acao)  params.set('acao', acao);
-
-    elPortalLogLista.innerHTML = '<div class="cl-empty-state"><p>Carregando…</p></div>';
-    elPortalLogInfo.style.display = 'none';
-
-    try {
-        const data = await api(`/admin/portal-aluno/audit-log?${params}`);
-        portalLogTotal     = data.total;
-        portalLogCarregado = true;
-        renderPortalLog(data.logs);
-        renderPortalLogPaginacao();
-    } catch (e) {
-        elPortalLogLista.innerHTML = `<div class="cl-empty-state"><p style="color:var(--danger)">Erro: ${e.message}</p></div>`;
-    }
-}
-
-function renderPortalLog(logs) {
-    if (!logs.length) {
-        elPortalLogLista.innerHTML = '<div class="cl-empty-state"><p>Nenhum registro encontrado.</p></div>';
-        return;
-    }
-
-    const inicio = portalLogPagina * PL_POR_PAG + 1;
-    const fim    = Math.min(inicio + logs.length - 1, portalLogTotal);
-    elPortalLogInfo.textContent  = `Exibindo ${inicio}–${fim} de ${portalLogTotal} registros`;
-    elPortalLogInfo.style.display = '';
-
-    elPortalLogLista.innerHTML = logs.map(log => {
-        const det      = log.detalhes || {};
-        const label    = ACOES_LABEL[log.acao] || log.acao;
-        const email    = det.email || '—';
-        const data     = new Date(log.criado_em).toLocaleString('pt-BR');
-        const ip       = log.ip ? `<span class="pl-ip">${log.ip}</span>` : '';
-
-        const UA_KEYS  = new Set(['navegador', 'so', 'dispositivo']);
-        const dispIcon = { mobile: '📱', tablet: '📲', desktop: '🖥️' };
-        const dispLabel = det.dispositivo || null;
-        const dispIco   = dispLabel ? (dispIcon[dispLabel] || '💻') : null;
-
-        const uaParts = [
-            dispIco   ? `${dispIco} ${dispLabel}` : null,
-            det.so        ? `${det.so}`         : null,
-            det.navegador ? `🌐 ${det.navegador}` : null,
-        ].filter(Boolean);
-
-        const uaHtml  = uaParts.length
-            ? `<div class="pl-ua">${uaParts.map(p => `<span>${p}</span>`).join('')}</div>`
-            : '';
-
-        const extras  = Object.entries(det)
-            .filter(([k]) => k !== 'email' && !UA_KEYS.has(k))
-            .map(([k, v]) => `<span class="pl-det-kv"><b>${k}:</b> ${v ?? '—'}</span>`)
-            .join('');
-
-        return `<div class="pl-item pl-item--${log.acao.toLowerCase()}">
-            <div class="pl-item-top">
-                <span class="pl-acao">${label}</span>
-                <span class="pl-nome">${log.usuario_nome}</span>
-                ${ip}
-                <span class="pl-data">${data}</span>
-            </div>
-            <div class="pl-item-email">${email}</div>
-            ${uaHtml}
-            ${extras ? `<div class="pl-det">${extras}</div>` : ''}
-        </div>`;
-    }).join('');
-}
-
-function renderPortalLogPaginacao() {
-    const totalPags = Math.ceil(portalLogTotal / PL_POR_PAG);
-    if (totalPags <= 1) { elPortalLogPag.style.display = 'none'; return; }
-
-    elPortalLogPag.style.display = '';
-    elPortalLogPagInfo.textContent = `Página ${portalLogPagina + 1} de ${totalPags}`;
-
-    document.getElementById('clPortalLogPrev').disabled = portalLogPagina === 0;
-    document.getElementById('clPortalLogNext').disabled = portalLogPagina >= totalPags - 1;
-}
-
-document.getElementById('clPortalLogAtualizar')?.addEventListener('click', () => carregarPortalLog(true));
-document.getElementById('clPortalLogBusca')?.addEventListener('input',  () => carregarPortalLog(true));
-document.getElementById('clPortalLogAcao')?.addEventListener('change',  () => carregarPortalLog(true));
-document.getElementById('clPortalLogPrev')?.addEventListener('click', () => {
-    if (portalLogPagina > 0) { portalLogPagina--; carregarPortalLog(false); }
-});
-document.getElementById('clPortalLogNext')?.addEventListener('click', () => {
-    const totalPags = Math.ceil(portalLogTotal / PL_POR_PAG);
-    if (portalLogPagina < totalPags - 1) { portalLogPagina++; carregarPortalLog(false); }
-});
 
 /* ══════════════════════════════════════════════════════════════
    ATIVIDADES (lista individual)

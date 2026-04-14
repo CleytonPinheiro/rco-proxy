@@ -530,25 +530,6 @@
                                                                 /></svg
                                                         >Auditoria
                                                 </button>
-                                                <button
-                                                        class="cl-tab cl-tab--solicita"
-                                                        id="clTabSolicita"
-                                                        style="display: none"
-                                                >
-                                                        ↩ Solicitações<span
-                                                                class="cl-solicita-badge"
-                                                                id="clSolitaBadge"
-                                                                style="display: none"
-                                                                >0</span
-                                                        >
-                                                </button>
-                                                <button
-                                                        class="cl-tab cl-tab--portal-log"
-                                                        id="clTabPortalLog"
-                                                        style="display: none"
-                                                >
-                                                        🎓 Log Portal
-                                                </button>
                                         </div>
 
                                         <!-- Lista de atividades -->
@@ -719,102 +700,6 @@
                                                 </div>
                                         </div>
 
-                                        <!-- Painel de Solicitações de Reabertura -->
-                                        <div
-                                                class="cl-solicita-panel"
-                                                id="clSolicitaPanel"
-                                                style="display: none"
-                                        >
-                                                <div class="cl-solicita-filtros">
-                                                        <select
-                                                                class="cl-select cl-select--sm"
-                                                                id="clSolicitaFiltroStatus"
-                                                        >
-                                                                <option value="todas">Todas</option>
-                                                                <option value="pendente" selected>Pendentes</option>
-                                                                <option value="aprovada">Aprovadas</option>
-                                                                <option value="negada">Negadas</option>
-                                                        </select>
-                                                        <input
-                                                                class="cl-busca cl-busca--sm"
-                                                                type="search"
-                                                                id="clSolicitaBusca"
-                                                                placeholder="Buscar aluno ou atividade…"
-                                                        />
-                                                        <button
-                                                                class="cl-btn cl-btn--sm cl-btn--outline"
-                                                                id="clSolicitaAtualizar"
-                                                        >
-                                                                ↺ Atualizar
-                                                        </button>
-                                                </div>
-                                                <div id="clSolicitaLista" class="cl-solicita-lista">
-                                                        <div class="cl-empty-state"><p>Carregando…</p></div>
-                                                </div>
-                                        </div>
-
-                                        <!-- Painel Log Portal do Aluno — somente admin -->
-                                        <div
-                                                class="cl-portal-log-panel"
-                                                id="clPortalLogPanel"
-                                                style="display: none"
-                                        >
-                                                <div class="cl-portal-log-filtros">
-                                                        <input
-                                                                class="cl-busca cl-busca--sm"
-                                                                type="search"
-                                                                id="clPortalLogBusca"
-                                                                placeholder="Buscar por aluno ou e-mail…"
-                                                        />
-                                                        <select
-                                                                class="cl-select cl-select--sm"
-                                                                id="clPortalLogAcao"
-                                                        >
-                                                                <option value="">Todas as ações</option>
-                                                                <option value="LOGIN">Login</option>
-                                                                <option value="LOGOUT">Logout</option>
-                                                                <option value="SOLICITAR_REABERTURA">
-                                                                        Solicitação de reabertura
-                                                                </option>
-                                                                <option value="NOTIF_LIDA">Notificação lida</option>
-                                                        </select>
-                                                        <button
-                                                                class="cl-btn cl-btn--sm cl-btn--outline"
-                                                                id="clPortalLogAtualizar"
-                                                        >
-                                                                ↺ Atualizar
-                                                        </button>
-                                                </div>
-                                                <div
-                                                        id="clPortalLogInfo"
-                                                        class="cl-portal-log-info"
-                                                        style="display: none"
-                                                ></div>
-                                                <div id="clPortalLogLista" class="cl-portal-log-lista">
-                                                        <div class="cl-empty-state">
-                                                                <p>Selecione a aba para carregar os logs.</p>
-                                                        </div>
-                                                </div>
-                                                <div
-                                                        class="cl-portal-log-paginacao"
-                                                        id="clPortalLogPag"
-                                                        style="display: none"
-                                                >
-                                                        <button
-                                                                class="cl-btn cl-btn--sm cl-btn--outline"
-                                                                id="clPortalLogPrev"
-                                                        >
-                                                                ← Anterior
-                                                        </button>
-                                                        <span id="clPortalLogPagInfo"></span>
-                                                        <button
-                                                                class="cl-btn cl-btn--sm cl-btn--outline"
-                                                                id="clPortalLogNext"
-                                                        >
-                                                                Próxima →
-                                                        </button>
-                                                </div>
-                                        </div>
                                 </section>
 
                                 <!-- Handle 2 -->
