@@ -7,6 +7,7 @@ const elCntA   = document.getElementById('solCountAprovada');
 const elCntN   = document.getElementById('solCountNegada');
 
 let allData = [];
+const collapsedTurmas = new Set();
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -100,8 +101,11 @@ function renderizar() {
     for (const { turma, items } of grupos) {
         const pendentes = items.filter(i => i.status === 'pendente').length;
         const badgeCount = pendentes > 0 ? `<span class="sol-turma-count">${pendentes} pendente${pendentes > 1 ? 's' : ''}</span>` : '';
-        html += `<div class="sol-day-group">`;
-        html += `<div class="sol-day-label">📚 ${esc(turma)} ${badgeCount}</div>`;
+        const collapsed = collapsedTurmas.has(turma);
+        const chevron = collapsed ? '▶' : '▼';
+        html += `<div class="sol-day-group${collapsed ? ' sol-group--collapsed' : ''}">`;
+        html += `<div class="sol-day-label sol-day-label--toggle" data-turma="${esc(turma)}"><span class="sol-chevron">${chevron}</span> 📚 ${esc(turma)} ${badgeCount}</div>`;
+        html += `<div class="sol-group-items"${collapsed ? ' style="display:none"' : ''}>`;
         items.forEach(s => {
             const cls = statusCls[s.status] || '';
             const icon = statusIcon[s.status] || '•';
@@ -136,10 +140,19 @@ function renderizar() {
                 </div>
             </div>`;
         });
-        html += `</div>`;
+        html += `</div></div>`;
     }
 
     elLista.innerHTML = html;
+
+    elLista.querySelectorAll('.sol-day-label--toggle').forEach(label => {
+        label.addEventListener('click', () => {
+            const turma = label.dataset.turma;
+            if (collapsedTurmas.has(turma)) collapsedTurmas.delete(turma);
+            else collapsedTurmas.add(turma);
+            renderizar();
+        });
+    });
 }
 
 window.responder = async function(id, acao) {

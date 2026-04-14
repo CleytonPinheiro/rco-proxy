@@ -148,6 +148,8 @@
     color: var(--text-secondary);
     background: var(--bg-primary, var(--bg-card));
     padding: 4px 10px;
+    cursor: pointer;
+    user-select: none;
     margin-bottom: 10px;
     margin-left: -28px;
     padding-left: 36px;
@@ -176,6 +178,18 @@
     vertical-align: middle;
     letter-spacing: 0;
     text-transform: none;
+}
+.sol-chevron {
+    display: inline-block;
+    font-size: .65rem;
+    width: 12px;
+    transition: transform .2s ease;
+}
+.sol-day-label--toggle:hover {
+    color: var(--text-primary, #fff);
+}
+.sol-group-items {
+    overflow: hidden;
 }
 
 .sol-tl-item {
