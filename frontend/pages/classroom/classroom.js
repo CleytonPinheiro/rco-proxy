@@ -1199,19 +1199,49 @@ elBtnFecharNota.addEventListener('click', async () => {
             grupoAtivo.dataFechamento = null;
             atualizarBtnFecharNota(grupoAtivo);
             await carregarGrupos();
+            await carregarResumoGrupo(grupoAtivo);
             toast('Notas reabertas!', 'ok');
         } catch (e) { toast('Erro ao reabrir: ' + e.message, 'erro'); }
     } else {
-        const ok = await confirmar(
-            `Fechar as notas do grupo "${grupoAtivo.nome}"?\n\nToda entrega recebida após este momento será registrada como TARDIA e não entrará no cálculo de nota.`,
-            { titulo: 'Fechar notas', confirmLabel: 'Sim, fechar agora', tipo: 'danger', icone: '🔒' }
-        );
+        toast('Recalculando dados do Classroom antes de fechar...', 'info');
+        elBtnFecharNota.disabled = true;
+        try {
+            await carregarResumoGrupo(grupoAtivo);
+        } catch (e) {
+            toast('Erro ao recalcular: ' + e.message, 'erro');
+            elBtnFecharNota.disabled = false;
+            return;
+        }
+        elBtnFecharNota.disabled = false;
+
+        const dados = grupoResumoData;
+        const totalAlunos = dados?.alunosResumo?.length || 0;
+        const media = totalAlunos
+            ? rco(dados.alunosResumo.reduce((s, a) => s + a.soma, 0) / totalAlunos)
+            : '—';
+        const pendentes = dados?.alunosResumo?.filter(a => a.pendentes > 0).length || 0;
+        const nAtivs = dados?.atividades?.length || 0;
+
+        const resumoTexto = `Resumo atualizado do Classroom:\n\n` +
+            `  ${totalAlunos} alunos  ·  ${nAtivs} atividades\n` +
+            `  Média da turma: ${media} pts\n` +
+            `  ${pendentes} aluno(s) com pendências\n\n` +
+            `Fechar as notas do grupo "${grupoAtivo.nome}"?\n` +
+            `Toda entrega recebida após este momento será registrada como TARDIA e não entrará no cálculo.`;
+
+        const ok = await confirmar(resumoTexto, {
+            titulo: 'Fechar notas — dados recalculados',
+            confirmLabel: 'Sim, fechar agora',
+            tipo: 'danger',
+            icone: '🔒',
+        });
         if (!ok) return;
         try {
             const r = await api(`/groups/${grupoAtivo.id}/fechar`, { method: 'POST', body: {} });
             grupoAtivo.dataFechamento = r.dataFechamento;
             atualizarBtnFecharNota(grupoAtivo);
             await carregarGrupos();
+            await carregarResumoGrupo(grupoAtivo);
             toast('Notas fechadas! Entregas futuras serão registradas como tardias.', 'ok');
         } catch (e) { toast('Erro ao fechar: ' + e.message, 'erro'); }
     }
