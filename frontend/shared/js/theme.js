@@ -93,23 +93,21 @@ document.addEventListener('DOMContentLoaded', function () {
         '<a href="/pages/classroom/?tab=solicitacoes" class="classroom-flyout-item" id="sideNavSolicita" data-tab="solicitacoes">' +
             '<span>↩</span> Solicitações' +
             '<span class="side-nav-solicita-badge" id="sideNavSolitaBadge" style="display:none">0</span></a>' +
-        '<a href="/pages/classroom/?tab=portal_log" class="classroom-flyout-item" id="sideNavPortalLog" data-tab="portal_log">' +
+        '<a href="/pages/portal-log/" class="classroom-flyout-item" id="sideNavPortalLog">' +
             '<span>🎓</span> Log Portal Aluno</a>';
 
     var isClassroomPage = window.location.pathname.replace(/\/+$/, '') === '/pages/classroom';
     if (isClassroomPage) {
-        flyout.querySelectorAll('[data-tab]').forEach(function (link) {
-            link.addEventListener('click', function (e) {
+        var solicitaLink = flyout.querySelector('[data-tab="solicitacoes"]');
+        if (solicitaLink) {
+            solicitaLink.addEventListener('click', function (e) {
                 e.preventDefault();
-                var tab = link.getAttribute('data-tab');
-                if (tab === 'solicitacoes' && typeof irParaSolicitacoes === 'function') {
-                    irParaSolicitacoes();
-                } else if (tab === 'portal_log' && typeof irParaPortalLog === 'function') {
-                    window.irParaPortalLog();
+                if (typeof irParaSolicitacoes === 'function') {
+                    window.irParaSolicitacoes();
                 }
                 closeFlyout();
             });
-        });
+        }
     }
     document.body.appendChild(flyout);
 
