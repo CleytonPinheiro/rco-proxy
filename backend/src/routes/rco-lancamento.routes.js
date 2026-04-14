@@ -9,6 +9,7 @@
  */
 
 import { Router }              from 'express';
+import { requireFuncionalidade } from '../middleware/auth.middleware.js';
 import { rcoApiService }       from '../services/RcoApiService.js';
 import { RcoWebAutomation }    from '../services/RcoWebAutomation.js';
 import pkg                     from 'pg';
@@ -241,7 +242,7 @@ export function createRcoLancamentoRouter(deps = {}) {
        Nota: meta.conteudos (se presente) é re-enviado ao RCO via spread do meta.
        Retorna HTTP 207 (Multi-Status) se o PUT ao RCO foi OK mas o banco falhou.
     ─────────────────────────────────────────────────────── */
-    router.post('/rco-lancamento/avaliacoes/:id/lancar', async (req, res) => {
+    router.post('/rco-lancamento/avaliacoes/:id/lancar', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { id } = req.params;
         const { meta, alunos } = req.body;
 
@@ -657,7 +658,7 @@ export function createRcoLancamentoRouter(deps = {}) {
        Usado quando o lançamento foi OK no RCO mas o banco falhou.
        Body: { alunos: [{codMatrizAluno, notaDecimal, usouRecuperacao, matched}] }
     ─────────────────────────────────────────────────────── */
-    router.post('/rco-lancamento/avaliacoes/:id/salvar-db', async (req, res) => {
+    router.post('/rco-lancamento/avaliacoes/:id/salvar-db', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { id } = req.params;
         const { alunos } = req.body;
 
@@ -1708,7 +1709,7 @@ export function createRcoLancamentoRouter(deps = {}) {
        o formulário web do RCO Digital.
        Body: { codClasse, tipo: "AV1"|"Recuperação", dataAvaliacao: "YYYY-MM-DD" }
     ─────────────────────────────────────────────────────── */
-    router.post('/rco-lancamento/avaliacoes/criar', async (req, res) => {
+    router.post('/rco-lancamento/avaliacoes/criar', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { codClasse, tipo, dataAvaliacao, nomeDisciplina } = req.body;
         if (!codClasse || !tipo || !dataAvaliacao || !nomeDisciplina) {
             return res.status(400).json({ erro: 'codClasse, tipo, dataAvaliacao e nomeDisciplina são obrigatórios.' });
@@ -1748,7 +1749,7 @@ export function createRcoLancamentoRouter(deps = {}) {
     /* ── PATCH /api/rco-lancamento/grupos/:grupoId/cod-classe
        Salva/atualiza o codClasseRco vinculado a um grupo.
     ─────────────────────────────────────────────────────── */
-    router.patch('/rco-lancamento/grupos/:grupoId/cod-classe', async (req, res) => {
+    router.patch('/rco-lancamento/grupos/:grupoId/cod-classe', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { codClasseRco } = req.body;
         if (!codClasseRco) return res.status(400).json({ erro: 'codClasseRco obrigatório' });
         try {

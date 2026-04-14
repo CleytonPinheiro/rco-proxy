@@ -19,11 +19,19 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Planos de usuário**: `trial` (30 dias, só leitura), `basico` (classroom completo), `completo` (tudo), `classroom-individual` (legado)
 - **Planos de escola**: `inicial` (leitura), `profissional` (escrita + frequências), `rede` (tudo)
 - **Funcionalidades gateadas**: `classroom-leitura`, `classroom-escrita`, `atividades-leitura`, `atividades-escrita`, `dashboard`, `grupos`, `frequencias`
-- **Admin**: gerencia planos via modal no painel admin (clique no badge de plano na tabela de usuários/escolas)
+- **Admin**: gerencia planos via modal no painel admin (clique no badge de plano na tabela de usuários/escolas); botão "Estender +30 dias" para trials; histórico de alterações visível no modal
 - **Trial auto-expiração**: baseado em `plano_inicio` + 30 dias; após expiração, funcionalidades bloqueadas
 - **Frontend**: banner de status do plano no topo da página classroom (trial countdown, expiração, sem plano)
-- **DB**: colunas `plano`, `plano_inicio`, `plano_renovacao`, `plano_obs` em `edusync_usuarios` e `edusync_escolas`
+- **DB**: colunas `plano`, `plano_inicio`, `plano_renovacao`, `plano_obs` em `edusync_usuarios` e `edusync_escolas`; tabela `edusync_plano_historico` (registro de todas as alterações de plano); tabela `edusync_suporte` (tickets de suporte/solicitações)
 - **Admin bypass**: perfil `admin` ignora todas as restrições de plano
+- **RCO Launch gating**: endpoints `POST /rco-lancamento/avaliacoes/:id/lancar`, `/salvar-db`, `/avaliacoes/criar` e `PATCH /grupos/:id/cod-classe` protegidos por `requireFuncionalidade('classroom-escrita')`
+
+### Sistema de Suporte
+- **Página**: `frontend/pages/suporte/` — acessível por todos os perfis (não-admin)
+- **Funcionalidades**: visualizar status do plano, histórico de alterações, enviar solicitações (extensão, dúvida, bug, sugestão, outro), acompanhar respostas
+- **Backend**: `backend/src/routes/suporte.routes.js` — endpoints protegidos por auth: `GET /suporte/meu-plano`, `GET /suporte/meus-tickets`, `POST /suporte/ticket`
+- **Admin**: aba "Suporte" no painel admin com badge de pendentes, filtro por status, botões resolver/negar com resposta
+- **Extensão automática**: ao aprovar uma solicitação de extensão, o sistema estende automaticamente o trial em +30 dias e registra no histórico
 
 ### Classroom (Google Classroom API)
 - **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD

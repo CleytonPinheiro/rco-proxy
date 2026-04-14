@@ -66,6 +66,7 @@
             <div class="admin-tabs">
                 <button class="admin-tab admin-tab--ativo" data-tab="usuarios">Usuários</button>
                 <button class="admin-tab" data-tab="escolas">Escolas</button>
+                <button class="admin-tab" data-tab="suporte">Suporte <span id="suporteBadge" style="display:none;background:#ef4444;color:#fff;font-size:.7rem;padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:700"></span></button>
                 <button class="admin-tab" data-tab="audit">Audit Log</button>
             </div>
 
@@ -90,6 +91,22 @@
                 <div id="tabelaEscolasWrap">
                     <p style="color:var(--text-muted)">Carregando...</p>
                 </div>
+            </div>
+
+            <!-- Painel Suporte -->
+            <div class="admin-panel" id="panel-suporte">
+                <div class="admin-section-header">
+                    <h3>Tickets de suporte</h3>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="filtroSuporteStatus" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;background:var(--bg-input);color:var(--text-primary)">
+                            <option value="">Todos</option>
+                            <option value="pendente" selected>Pendentes</option>
+                            <option value="resolvido">Resolvidos</option>
+                            <option value="negado">Negados</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="suporteContainer" style="margin-top:12px">Carregando...</div>
             </div>
 
             <!-- Painel Audit Log -->
@@ -233,6 +250,7 @@
                     <button type="submit" class="btn-modal-salvar" id="btnSalvarPlano">Salvar plano</button>
                 </div>
             </form>
+            <div id="planoHistoricoAdmin" style="margin-top:16px;max-height:200px;overflow-y:auto;border-top:1px solid var(--border);padding-top:12px"></div>
         </div>
     </div>
 

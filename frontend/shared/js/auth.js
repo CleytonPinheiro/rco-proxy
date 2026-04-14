@@ -36,16 +36,17 @@
         '/pages/admin/':                  'admin',
         '/pages/portal-aluno/':           'portal-aluno',
         '/pages/planos/':                 'planos',
+        '/pages/suporte/':               'suporte',
     };
 
     /* ── Permissões por perfil — espelho exato de backend/src/config/permissions.js ── */
     const PERFIL_MODULOS = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados'],
-        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao'],
-        aux_turno:  ['circulacao','presenca'],
-        cozinha:    ['cozinha'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','suporte'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','suporte'],
+        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','suporte'],
+        aux_turno:  ['circulacao','presenca','suporte'],
+        cozinha:    ['cozinha','suporte'],
     };
 
     const PERFIL_LABEL = {
@@ -477,6 +478,7 @@
             '/pages/retorno-pedagogico/':     '💬',
             '/pages/admin/':                  '⚙️',
             '/pages/planos/':                 '💎',
+            '/pages/suporte/':               '🎫',
         };
         return m[href] || '🔗';
     }

@@ -18,6 +18,7 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
 
         if (btn.dataset.tab === 'audit')   carregarAuditLog();
         if (btn.dataset.tab === 'escolas') carregarEscolas();
+        if (btn.dataset.tab === 'suporte') carregarSuporte();
     });
 });
 
@@ -576,8 +577,42 @@ window.abrirModalPlano = function (id) {
     document.getElementById('modalPlanoObs').value = u.plano_obs || '';
     document.getElementById('formPlanoMsg').style.display = 'none';
     atualizarStatusPlanoModal();
+    carregarPlanoHistorico(id);
     document.getElementById('modalPlano').classList.add('modal-overlay--ativo');
 };
+
+async function carregarPlanoHistorico(userId) {
+    const el = document.getElementById('planoHistoricoAdmin');
+    el.innerHTML = '<div style="font-size:.8rem;color:var(--text-secondary)">Carregando histórico...</div>';
+    try {
+        const res = await api(`/admin/usuarios/${userId}/plano-historico`);
+        const hist = await res.json();
+        if (!hist.length) {
+            el.innerHTML = '<div style="font-size:.8rem;color:var(--text-secondary)">Nenhum histórico registrado.</div>';
+            return;
+        }
+        const acaoLabel = {
+            PLANO_ATIVADO: '🟢 Ativado',
+            PLANO_ALTERADO: '🔵 Alterado',
+            PLANO_ESTENDIDO: '🟡 Estendido',
+            PLANO_REMOVIDO: '🔴 Removido',
+            EXTENSAO_APROVADA: '🟣 Extensão aprovada',
+        };
+        const fmtDt = iso => iso ? new Date(iso).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+        el.innerHTML = `<div style="font-size:.82rem;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Histórico de plano (${hist.length})</div>` +
+            hist.map(h => `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem">
+                <div>
+                    <div>${acaoLabel[h.acao] || h.acao}</div>
+                    ${h.plano_novo ? `<div style="color:var(--text-secondary)">${h.plano_anterior || 'nenhum'} → ${h.plano_novo}</div>` : ''}
+                    ${h.admin_nome ? `<div style="color:var(--text-secondary)">por ${h.admin_nome}</div>` : ''}
+                    ${h.obs ? `<div style="color:var(--text-secondary);font-style:italic">${h.obs}</div>` : ''}
+                </div>
+                <div style="white-space:nowrap;color:var(--text-secondary);font-size:.75rem">${fmtDt(h.criado_em)}</div>
+            </div>`).join('');
+    } catch (e) {
+        el.innerHTML = `<div style="font-size:.8rem;color:#dc2626">Erro: ${e.message}</div>`;
+    }
+}
 
 document.getElementById('modalPlanoTipo').addEventListener('change', function () {
     if (this.value === 'trial' && !document.getElementById('modalPlanoInicio').value) {
@@ -761,6 +796,93 @@ document.getElementById('btnImpersonar')?.addEventListener('click', async () => 
     }
 });
 
+/* ════════════════════════════════════════════════════════════
+   SUPORTE / TICKETS
+════════════════════════════════════════════════════════════ */
+const TIPO_LABEL_SUPORTE = {
+    extensao: '📅 Extensão',
+    duvida: '❓ Dúvida',
+    bug: '🐛 Bug',
+    sugestao: '💡 Sugestão',
+    outro: '📌 Outro',
+};
+const STATUS_LABEL_SUPORTE = { pendente: 'Pendente', resolvido: 'Resolvido', negado: 'Negado' };
+
+async function carregarSuporte() {
+    const el = document.getElementById('suporteContainer');
+    const status = document.getElementById('filtroSuporteStatus').value;
+    try {
+        const q = status ? `?status=${status}` : '';
+        const res = await api(`/admin/suporte${q}`);
+        const tickets = await res.json();
+
+        const badgeEl = document.getElementById('suporteBadge');
+        const badgeRes = await api('/admin/suporte/badge');
+        const badgeData = await badgeRes.json();
+        if (badgeData.pendentes > 0) {
+            badgeEl.textContent = badgeData.pendentes;
+            badgeEl.style.display = 'inline';
+        } else {
+            badgeEl.style.display = 'none';
+        }
+
+        if (!tickets.length) {
+            el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum ticket encontrado.</div>';
+            return;
+        }
+
+        const fmtDt = iso => iso ? new Date(iso).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+
+        el.innerHTML = tickets.map(t => `
+            <div style="padding:14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--bg-hover)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <span style="font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:12px;background:${t.tipo==='extensao'?'#fef3c7':t.tipo==='bug'?'#fef2f2':'#dbeafe'};color:${t.tipo==='extensao'?'#92400e':t.tipo==='bug'?'#dc2626':'#1e40af'}">${TIPO_LABEL_SUPORTE[t.tipo] || t.tipo}</span>
+                        <span style="font-size:.78rem;color:var(--text-secondary)">${t.usuario_nome}</span>
+                    </div>
+                    <span style="font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:12px;background:${t.status==='pendente'?'#fef3c7':t.status==='resolvido'?'#d1fae5':'#fef2f2'};color:${t.status==='pendente'?'#92400e':t.status==='resolvido'?'#065f46':'#dc2626'}">${STATUS_LABEL_SUPORTE[t.status]}</span>
+                </div>
+                <div style="font-weight:600;font-size:.88rem;margin-bottom:4px">${t.assunto}</div>
+                <div style="font-size:.83rem;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:6px">${t.mensagem}</div>
+                <div style="font-size:.76rem;color:var(--text-secondary)">${fmtDt(t.criado_em)}</div>
+                ${t.resposta ? `<div style="margin-top:8px;padding:8px 12px;background:var(--bg-card);border-radius:8px;border-left:3px solid var(--accent,#2563eb);font-size:.83rem"><strong style="display:block;font-size:.78rem;color:var(--accent,#2563eb);margin-bottom:4px">Resposta (${fmtDt(t.respondido_em)})</strong>${t.resposta}</div>` : ''}
+                ${t.status === 'pendente' ? `
+                    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+                        <input type="text" placeholder="Resposta (opcional)" id="respSuporte${t.id}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;background:var(--bg-input);color:var(--text-primary)" />
+                        <button onclick="responderSuporte(${t.id},'resolvido')" style="padding:7px 14px;background:#22c55e;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:.8rem;cursor:pointer">Resolver</button>
+                        <button onclick="responderSuporte(${t.id},'negado')" style="padding:7px 14px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:.8rem;cursor:pointer">Negar</button>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    } catch (e) {
+        el.innerHTML = `<div style="color:#dc2626">Erro: ${e.message}</div>`;
+    }
+}
+
+window.responderSuporte = async function (id, acao) {
+    const respInput = document.getElementById(`respSuporte${id}`);
+    const resposta = respInput ? respInput.value.trim() : '';
+    try {
+        const res = await api(`/admin/suporte/${id}/responder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao, resposta }),
+        });
+        if (!res.ok) {
+            const d = await res.json();
+            alert(d.erro || 'Erro ao responder.');
+            return;
+        }
+        carregarSuporte();
+    } catch (e) {
+        alert('Erro: ' + e.message);
+    }
+};
+
+document.getElementById('filtroSuporteStatus').addEventListener('change', carregarSuporte);
+
 /* ── Init ── */
 carregarUsuarios();
 carregarEscolas();
+carregarSuporte();

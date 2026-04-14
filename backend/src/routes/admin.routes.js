@@ -79,6 +79,10 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
 
         try {
+            const { rows: [anterior] } = await pool.query(
+                `SELECT plano, plano_inicio FROM edusync_usuarios WHERE id = $1`, [id],
+            );
+
             const { rows } = await pool.query(
                 `UPDATE edusync_usuarios
                     SET plano           = $1,
@@ -91,14 +95,115 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             );
             if (!rows.length) return res.status(404).json({ erro: 'Usuário não encontrado.' });
 
+            let acao = 'PLANO_ALTERADO';
+            if (anterior) {
+                if (anterior.plano === plano && anterior.plano_inicio !== plano_inicio) acao = 'PLANO_ESTENDIDO';
+                else if (!anterior.plano && plano) acao = 'PLANO_ATIVADO';
+                else if (anterior.plano && !plano) acao = 'PLANO_REMOVIDO';
+            }
+
+            await pool.query(
+                `INSERT INTO edusync_plano_historico
+                    (usuario_id, acao, plano_anterior, plano_novo, inicio_anterior, inicio_novo, admin_id, admin_nome, obs)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                [id, acao, anterior?.plano ?? null, plano ?? null,
+                 anterior?.plano_inicio ?? null, plano_inicio ?? null,
+                 req.userSession.userId, req.userSession.nome, plano_obs ?? null],
+            );
+
             await auditLogger.registrar({
                 usuarioId:   req.userSession.userId,
                 usuarioNome: req.userSession.nome,
                 acao:        'USUARIO_PLANO_ALTERADO',
                 modulo:      'admin',
-                detalhes:    { usuarioId: id, planoNovo: plano },
+                detalhes:    { usuarioId: id, planoNovo: plano, acaoPlano: acao },
                 ip:          req.ip,
             });
+
+            res.json(rows[0]);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Histórico de alterações de plano de um usuário ── */
+    router.get('/admin/usuarios/:id/plano-historico', async (req, res) => {
+        try {
+            const { rows } = await pool.query(
+                `SELECT * FROM edusync_plano_historico WHERE usuario_id = $1 ORDER BY criado_em DESC LIMIT 50`,
+                [req.params.id],
+            );
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Listar tickets de suporte (admin) ── */
+    router.get('/admin/suporte', async (req, res) => {
+        const { status } = req.query;
+        try {
+            let q = `SELECT * FROM edusync_suporte`;
+            const params = [];
+            if (status) {
+                q += ` WHERE status = $1`;
+                params.push(status);
+            }
+            q += ` ORDER BY criado_em DESC LIMIT 100`;
+            const { rows } = await pool.query(q, params);
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Badge de tickets pendentes ── */
+    router.get('/admin/suporte/badge', async (req, res) => {
+        try {
+            const { rows: [{ count }] } = await pool.query(
+                `SELECT COUNT(*)::int AS count FROM edusync_suporte WHERE status = 'pendente'`,
+            );
+            res.json({ pendentes: count });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Responder ticket de suporte (admin) ── */
+    router.post('/admin/suporte/:id/responder', async (req, res) => {
+        const { acao, resposta } = req.body;
+        if (!['resolvido', 'negado'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });
+        try {
+            const { rows } = await pool.query(
+                `UPDATE edusync_suporte
+                    SET status = $1, resposta = $2, respondido_por = $3, respondido_em = NOW()
+                  WHERE id = $4
+                  RETURNING *`,
+                [acao, resposta || null, req.userSession.userId, req.params.id],
+            );
+            if (!rows.length) return res.status(404).json({ erro: 'Ticket não encontrado.' });
+
+            if (rows[0].tipo === 'extensao' && acao === 'resolvido') {
+                const uid = rows[0].usuario_id;
+                const { rows: [user] } = await pool.query(
+                    `SELECT plano, plano_inicio FROM edusync_usuarios WHERE id = $1`, [uid],
+                );
+                if (user && user.plano === 'trial' && user.plano_inicio) {
+                    const novaData = new Date(user.plano_inicio);
+                    novaData.setDate(novaData.getDate() + 30);
+                    await pool.query(
+                        `UPDATE edusync_usuarios SET plano_inicio = $1 WHERE id = $2`,
+                        [novaData.toISOString().slice(0, 10), uid],
+                    );
+                    await pool.query(
+                        `INSERT INTO edusync_plano_historico
+                            (usuario_id, acao, plano_anterior, plano_novo, inicio_anterior, inicio_novo, admin_id, admin_nome, obs)
+                         VALUES ($1, 'EXTENSAO_APROVADA', $2, $2, $3, $4, $5, $6, $7)`,
+                        [uid, user.plano, user.plano_inicio, novaData.toISOString().slice(0, 10),
+                         req.userSession.userId, req.userSession.nome, `Solicitação #${req.params.id} aprovada`],
+                    );
+                }
+            }
 
             res.json(rows[0]);
         } catch (e) {

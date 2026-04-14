@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg" />
+    <link rel="stylesheet" href="../../shared/css/theme.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EduSync — Suporte</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css" />
+    <link rel="stylesheet" href="./suporte.css" />
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+                <nav class="nav-menu">
+                    <a href="/pages/dashboard/">Turmas</a>
+                    <a href="/pages/frequencias/">Frequências</a>
+                    <a href="/pages/comportamento/">Comportamento</a>
+                    <a href="/pages/suporte/" class="active">Suporte</a>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <button class="btn-avatar" id="btnAvatar" title="Meu perfil">
+                    <span class="avatar-circle" id="avatarCircle"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content" style="max-width:900px;margin:0 auto;padding:24px 16px">
+        <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:24px">🎫 Suporte & Meu Plano</h1>
+
+        <div class="sp-grid">
+            <section class="sp-card" id="secaoPlano">
+                <h2 class="sp-card-title">📋 Meu Plano</h2>
+                <div id="planoStatus" class="sp-plano-status">Carregando...</div>
+                <div id="planoHistorico" style="margin-top:16px"></div>
+            </section>
+
+            <section class="sp-card">
+                <h2 class="sp-card-title">📝 Nova Solicitação</h2>
+                <form id="formTicket" novalidate>
+                    <div class="sp-form-group">
+                        <label for="ticketTipo">Tipo</label>
+                        <select id="ticketTipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="extensao">📅 Solicitar extensão de plano</option>
+                            <option value="duvida">❓ Dúvida</option>
+                            <option value="bug">🐛 Reportar problema</option>
+                            <option value="sugestao">💡 Sugestão</option>
+                            <option value="outro">📌 Outro</option>
+                        </select>
+                    </div>
+                    <div class="sp-form-group">
+                        <label for="ticketAssunto">Assunto</label>
+                        <input type="text" id="ticketAssunto" maxlength="200" placeholder="Breve descrição" required />
+                    </div>
+                    <div class="sp-form-group">
+                        <label for="ticketMensagem">Mensagem</label>
+                        <textarea id="ticketMensagem" rows="4" placeholder="Descreva sua solicitação em detalhes..." required></textarea>
+                    </div>
+                    <div id="formTicketMsg" class="sp-msg" style="display:none"></div>
+                    <button type="submit" class="sp-btn-primary" id="btnEnviarTicket">Enviar solicitação</button>
+                </form>
+            </section>
+        </div>
+
+        <section class="sp-card" style="margin-top:20px">
+            <h2 class="sp-card-title">📜 Minhas Solicitações</h2>
+            <div id="listaTickets">Carregando...</div>
+        </section>
+    </main>
+
+    <script src="../../shared/js/auth.js"></script>
+    <script src="./suporte.js"></script>
+</body>
+</html>

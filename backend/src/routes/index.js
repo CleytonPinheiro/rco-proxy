@@ -23,6 +23,7 @@ import { createAlunosPortalRouter }       from './alunos-portal.routes.js';
 import { createPedagogicoPortalRouter }  from './pedagogico-portal.routes.js';
 import { createRcoLancamentoRouter }     from './rco-lancamento.routes.js';
 import { createQRCodeRouter }            from './qrcode.routes.js';
+import { createSuporteRouter }          from './suporte.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -73,6 +74,7 @@ export function createApiRouter(deps) {
     router.use('/', createLivrosRouter());
     router.use('/', createAdminRouter(deps));
     router.use('/', createRcoLancamentoRouter(deps));
+    router.use('/', createSuporteRouter());
 
     return router;
 }

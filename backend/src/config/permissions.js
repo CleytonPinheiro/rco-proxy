@@ -11,23 +11,23 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'suporte'],
     },
     pedagogo: {
         nome: 'Pedagogo',
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'suporte'],
     },
     secretaria: {
         nome: 'Secretaria',
-        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao'],
+        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'suporte'],
     },
     aux_turno: {
         nome: 'Aux. de Turno',
-        modulos: ['circulacao', 'presenca'],
+        modulos: ['circulacao', 'presenca', 'suporte'],
     },
     cozinha: {
         nome: 'Cozinha',
-        modulos: ['cozinha'],
+        modulos: ['cozinha', 'suporte'],
     },
 };
 

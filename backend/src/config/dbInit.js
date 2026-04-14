@@ -130,6 +130,43 @@ export async function initializeDatabase() {
             CREATE INDEX IF NOT EXISTS idx_conquistas_grupo ON conquistas_aluno(grupo_id);
         `);
 
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_plano_historico (
+                id             SERIAL PRIMARY KEY,
+                usuario_id     INTEGER      NOT NULL REFERENCES edusync_usuarios(id),
+                acao           VARCHAR(50)  NOT NULL,
+                plano_anterior VARCHAR(30),
+                plano_novo     VARCHAR(30),
+                inicio_anterior TIMESTAMP,
+                inicio_novo    TIMESTAMP,
+                admin_id       INTEGER      REFERENCES edusync_usuarios(id),
+                admin_nome     VARCHAR(100),
+                obs            TEXT,
+                criado_em      TIMESTAMP    NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_plano_hist_usuario ON edusync_plano_historico(usuario_id);
+            CREATE INDEX IF NOT EXISTS idx_plano_hist_criado  ON edusync_plano_historico(criado_em DESC);
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_suporte (
+                id             SERIAL PRIMARY KEY,
+                usuario_id     INTEGER      NOT NULL REFERENCES edusync_usuarios(id),
+                usuario_nome   VARCHAR(100) NOT NULL,
+                tipo           VARCHAR(30)  NOT NULL,
+                assunto        VARCHAR(200) NOT NULL,
+                mensagem       TEXT         NOT NULL,
+                status         VARCHAR(20)  NOT NULL DEFAULT 'pendente',
+                resposta       TEXT,
+                respondido_por INTEGER      REFERENCES edusync_usuarios(id),
+                respondido_em  TIMESTAMP,
+                criado_em      TIMESTAMP    NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_suporte_usuario ON edusync_suporte(usuario_id);
+            CREATE INDEX IF NOT EXISTS idx_suporte_status  ON edusync_suporte(status);
+            CREATE INDEX IF NOT EXISTS idx_suporte_criado  ON edusync_suporte(criado_em DESC);
+        `);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();
