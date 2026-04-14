@@ -166,6 +166,46 @@ function encontrarMatchAluno(nomeClNorm, mapaAlunosRco) {
     return melhorScore >= 2 ? melhor : null;
 }
 
+async function saveTokenToDB(cpf, email, tokens) {
+    try {
+        await pool.query(`
+            INSERT INTO classroom_tokens (cpf, email, tokens, atualizado)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (cpf) DO UPDATE SET email = $2, tokens = $3, atualizado = NOW()
+        `, [cpf, email, JSON.stringify(tokens)]);
+    } catch (e) {
+        console.warn('[CLASSROOM] Erro ao salvar token no DB:', e.message);
+    }
+}
+
+async function loadTokenFromDB(cpf) {
+    try {
+        const { rows } = await pool.query(
+            `SELECT tokens FROM classroom_tokens WHERE cpf = $1`, [cpf]
+        );
+        return rows[0]?.tokens || null;
+    } catch (_) { return null; }
+}
+
+async function getAuthenticatedClientForCpf(req, cpf) {
+    const oauth2Client = getOAuth2Client(req);
+    if (!oauth2Client) return null;
+    const token = await loadTokenFromDB(cpf);
+    if (!token) return null;
+    oauth2Client.setCredentials(token);
+    if (token.expiry_date && token.expiry_date < Date.now()) {
+        try {
+            const { credentials } = await oauth2Client.refreshAccessToken();
+            await saveTokenToDB(cpf, token.email || credentials.email || null, credentials);
+            oauth2Client.setCredentials(credentials);
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao renovar token (DB):', e.message);
+            return null;
+        }
+    }
+    return oauth2Client;
+}
+
 export function createClassroomPublicRouter() {
     const router = Router();
 
@@ -183,6 +223,14 @@ export function createClassroomPublicRouter() {
                 tokens.email = data.email;
             } catch (_) {}
             saveToken(tokens);
+
+            const userCpf = req.cookies?.cl_oauth_cpf || null;
+            res.clearCookie('cl_oauth_cpf', { path: '/' });
+            if (userCpf && /^\d{11}$/.test(userCpf)) {
+                await saveTokenToDB(userCpf, tokens.email || null, tokens);
+                console.log('[CLASSROOM] Token salvo no DB para CPF:', userCpf);
+            }
+
             console.log('[CLASSROOM] Conectado. Email:', tokens.email || '(sem email)');
             res.redirect('/pages/classroom/?sucesso=conectado');
         } catch (e) {
@@ -209,6 +257,13 @@ export function createClassroomRouter(deps = {}) {
     router.get('/classroom/auth-url', (req, res) => {
         const oauth2Client = getOAuth2Client(req);
         if (!oauth2Client) return res.status(400).json({ erro: 'Credenciais do Google não configuradas.' });
+        const cpf = req.userSession?.cpf || '';
+        if (cpf) {
+            res.cookie('cl_oauth_cpf', cpf, {
+                httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/',
+                secure: process.env.NODE_ENV === 'production',
+            });
+        }
         const url = oauth2Client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, prompt: 'consent' });
         res.json({ url });
     });
@@ -1474,6 +1529,55 @@ export function createClassroomRouter(deps = {}) {
             ).catch(() => {});
 
             res.json({ ok: true, solicitacao: rows[0], classroomReaberto });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════════
+       ACESSO PEDAGOGO — professor concede/revoga acesso
+    ════════════════════════════════════════════════════════════ */
+
+    router.get('/classroom/acesso-pedagogos', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, pedagogo_email, criado_em FROM classroom_acesso_pedagogo WHERE professor_cpf = $1 ORDER BY criado_em DESC`,
+                [cpf]
+            );
+            res.json(rows);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/classroom/acesso-pedagogos', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { email } = req.body;
+        if (!email || !email.includes('@')) return res.status(400).json({ erro: 'Email inválido.' });
+        try {
+            await pool.query(
+                `INSERT INTO classroom_acesso_pedagogo (professor_cpf, pedagogo_email)
+                 VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+                [cpf, email.toLowerCase().trim()]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.delete('/classroom/acesso-pedagogos/:id', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            await pool.query(
+                `DELETE FROM classroom_acesso_pedagogo WHERE id = $1 AND professor_cpf = $2`,
+                [req.params.id, cpf]
+            );
+            res.json({ ok: true });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

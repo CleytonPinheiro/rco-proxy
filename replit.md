@@ -37,10 +37,20 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 ### Classroom (Google Classroom API)
 - **Backend**: `backend/src/routes/classroom.routes.js` — OAuth2 + endpoints CRUD
 - **Frontend**: `frontend/pages/classroom/` — página de 3 colunas (disciplinas → atividades/grupos/auditoria → notas)
-- **Token**: armazenado em `backend/data/classroom_token.json`
+- **Token global**: armazenado em `backend/data/classroom_token.json` (retrocompatibilidade)
+- **Tokens por usuário**: tabela `classroom_tokens` (cpf, email, tokens JSONB) — salvo automaticamente no callback OAuth via cookie seguro `cl_oauth_cpf`
 - **Credenciais necessárias**: `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (env secrets)
 - **Redirect URI** (registrar no Google Cloud Console): `https://{domínio}/api/classroom/callback`
 - **Escopos**: `classroom.courses.readonly`, `classroom.coursework.students`, `classroom.rosters.readonly`, `classroom.student-submissions.students.readonly`
+
+### Acesso Pedagogo ao Classroom
+- **Tabela de concessão**: `classroom_acesso_pedagogo` (professor_cpf, pedagogo_email) — UNIQUE pair
+- **Fluxo professor**: Na página Classroom, seção "Acesso pedagógico" no sidebar — professor adiciona email da pedagoga
+- **Endpoints professor**: `GET/POST/DELETE /api/classroom/acesso-pedagogos` — listar, conceder, revogar
+- **Fluxo pedagoga**: No Portal Pedagógico, tela de seleção de professor antes de ver disciplinas
+- **Endpoint portal**: `GET /api/pedagogico-portal/professores` — lista professores que concederam acesso (JOIN com `edusync_usuarios` e `classroom_tokens`)
+- **Roteamento de token**: `resolveTeacherAuth(req)` — se `professorCpf` presente e pedagoga autorizada, usa token do professor do DB; sem `professorCpf`, fallback para token global
+- **Segurança**: grant verificado no servidor em cada chamada; cookie httpOnly para binding CPF→token no OAuth
 
 ### Portal do Aluno (Google OAuth — público)
 - **URL pública**: `/alunos/` — sem login EduSync, acessível por alunos

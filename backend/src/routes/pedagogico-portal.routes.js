@@ -80,6 +80,54 @@ async function getTeacherAuth(req) {
     return client;
 }
 
+async function getTeacherAuthByCpf(req, cpf) {
+    const id  = process.env.GOOGLE_CLIENT_ID;
+    const sec = process.env.GOOGLE_CLIENT_SECRET;
+    if (!id || !sec) return null;
+    try {
+        const { rows } = await pool.query(
+            `SELECT tokens FROM classroom_tokens WHERE cpf = $1`, [cpf]
+        );
+        if (!rows[0]?.tokens) return null;
+        const token = rows[0].tokens;
+        const uri = `${req.protocol}://${req.get('host')}/api/classroom/callback`;
+        const client = new google.auth.OAuth2(id, sec, uri);
+        client.setCredentials(token);
+        if (token.expiry_date && token.expiry_date < Date.now()) {
+            try {
+                const { credentials } = await client.refreshAccessToken();
+                await pool.query(
+                    `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW() WHERE cpf = $2`,
+                    [JSON.stringify(credentials), cpf]
+                );
+                client.setCredentials(credentials);
+            } catch (e) {
+                console.error('[PEDAGOGICO-PORTAL] Erro ao renovar token do professor (DB):', e.message);
+                return null;
+            }
+        }
+        return client;
+    } catch (e) {
+        console.error('[PEDAGOGICO-PORTAL] Erro ao carregar token do professor:', e.message);
+        return null;
+    }
+}
+
+async function resolveTeacherAuth(req) {
+    const professorCpf = req.query.professorCpf || req.body?.professorCpf;
+    if (!professorCpf) {
+        return getTeacherAuth(req);
+    }
+    const sess = await getPedagogoSession(req);
+    if (!sess) return null;
+    const { rows } = await pool.query(
+        `SELECT 1 FROM classroom_acesso_pedagogo WHERE professor_cpf = $1 AND pedagogo_email = $2`,
+        [professorCpf, sess.email.toLowerCase()]
+    );
+    if (rows.length === 0) return null;
+    return getTeacherAuthByCpf(req, professorCpf);
+}
+
 async function getPedagogoSession(req) {
     const sid = req.cookies?.pedagogo_sid;
     if (!sid) return null;
@@ -228,11 +276,35 @@ export function createPedagogicoPortalRouter() {
         res.json({ ok: true });
     });
 
+    router.get('/pedagogico-portal/professores', async (req, res) => {
+        const sess = await getPedagogoSession(req);
+        if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(`
+                SELECT a.professor_cpf AS cpf, u.nome, ct.email AS classroom_email, a.criado_em
+                FROM classroom_acesso_pedagogo a
+                JOIN edusync_usuarios u ON u.cpf = a.professor_cpf
+                LEFT JOIN classroom_tokens ct ON ct.cpf = a.professor_cpf
+                WHERE a.pedagogo_email = $1 AND u.ativo = true
+                ORDER BY u.nome
+            `, [sess.email.toLowerCase()]);
+            res.json(rows.map(r => ({
+                cpf: r.cpf,
+                nome: r.nome,
+                classroomEmail: r.classroom_email || null,
+                classroomVinculado: !!r.classroom_email,
+                concedidoEm: r.criado_em,
+            })));
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     router.get('/pedagogico-portal/cursos', async (req, res) => {
         const sess = await getPedagogoSession(req);
         if (!sess) return res.status(401).json({ erro: 'Não autenticado.' });
 
-        const auth = await getTeacherAuth(req);
+        const auth = await resolveTeacherAuth(req);
         if (!auth) return res.status(503).json({ erro: 'Token do professor não disponível.' });
 
         try {
@@ -318,7 +390,7 @@ export function createPedagogicoPortalRouter() {
         const { courseId } = req.query;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
 
-        const auth = await getTeacherAuth(req);
+        const auth = await resolveTeacherAuth(req);
         if (!auth) return res.status(503).json({ erro: 'Token do professor não disponível.' });
 
         try {
@@ -512,7 +584,7 @@ export function createPedagogicoPortalRouter() {
         const { courseId } = req.query;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
 
-        const auth = await getTeacherAuth(req);
+        const auth = await resolveTeacherAuth(req);
         if (!auth) return res.status(503).json({ erro: 'Token do professor não disponível.' });
 
         try {
@@ -649,7 +721,7 @@ export function createPedagogicoPortalRouter() {
         const { courseId } = req.body;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
 
-        const auth = await getTeacherAuth(req);
+        const auth = await resolveTeacherAuth(req);
         if (!auth) return res.status(503).json({ erro: 'Token do professor não disponível.' });
 
         try {

@@ -7,6 +7,7 @@ let _pedagogo = null;
 let _cursoAtivo = null;
 let _grupoAtivo = null;
 let _alunosMap = {};
+let _professorAtivo = null;
 
 function esc(s) {
     const d = document.createElement('div');
@@ -103,6 +104,59 @@ function mostrarDashboard(p) {
         $('ppDropPlaceholder').style.display = 'none';
     }
 
+    carregarProfessores();
+}
+
+async function carregarProfessores() {
+    _professorAtivo = null;
+    _cursoAtivo = null;
+    _grupoAtivo = null;
+    $('ppTituloPagina').textContent = 'Selecione um professor';
+    $('ppBtnVoltar').style.display = 'none';
+    $('ppCursosList').style.display = 'none';
+    $('ppGruposList').style.display = 'none';
+    $('ppResumoArea').style.display = 'none';
+    $('ppProfList').style.display = '';
+
+    loading(true);
+    try {
+        const profs = await api('/professores');
+        loading(false);
+        if (!profs.length) {
+            $('ppProfList').innerHTML = `<div class="pp-empty">
+                <span class="pp-empty-icon">🔒</span>
+                <div style="max-width:360px;text-align:center">
+                    <p style="margin-bottom:8px">Nenhum professor concedeu acesso para você ainda.</p>
+                    <p style="font-size:.82rem;color:var(--pp-sub)">Solicite ao professor que vá em <strong>Classroom > Acesso pedagógico</strong> e adicione seu email <strong>${esc(_pedagogo.email)}</strong>.</p>
+                </div>
+            </div>`;
+            return;
+        }
+        $('ppProfList').innerHTML = profs.map(p => {
+            const vinculado = p.classroomVinculado;
+            return `<div class="pp-prof-card ${vinculado ? '' : 'pp-prof-card--disabled'}" data-cpf="${esc(p.cpf)}" data-nome="${esc(p.nome)}" ${vinculado ? '' : 'title="Professor ainda não vinculou o Google Classroom"'}>
+                <div class="pp-prof-avatar">${(p.nome || 'P').charAt(0).toUpperCase()}</div>
+                <div class="pp-prof-info">
+                    <div class="pp-prof-nome">${esc(p.nome)}</div>
+                    <div class="pp-prof-email">${vinculado ? esc(p.classroomEmail) : '<span style="color:var(--pp-warn)">Classroom não vinculado</span>'}</div>
+                </div>
+                ${vinculado ? '<svg class="pp-prof-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>' : ''}
+            </div>`;
+        }).join('');
+        $('ppProfList').querySelectorAll('.pp-prof-card:not(.pp-prof-card--disabled)').forEach(el => {
+            el.addEventListener('click', () => selecionarProfessor(el.dataset.cpf, el.dataset.nome));
+        });
+    } catch (e) {
+        loading(false);
+        toast('Erro ao carregar professores: ' + e.message, 'erro');
+    }
+}
+
+function selecionarProfessor(cpf, nome) {
+    _professorAtivo = { cpf, nome };
+    $('ppProfList').style.display = 'none';
+    $('ppProfBadge').textContent = nome;
+    $('ppProfBadge').style.display = '';
     carregarCursos();
 }
 
@@ -121,6 +175,7 @@ async function fazerLogout() {
     _cursoAtivo = null;
     _grupoAtivo = null;
     _alunosMap = {};
+    _professorAtivo = null;
     mostrarPreLogin();
     toast('Sessão encerrada.', 'ok');
 }
@@ -138,18 +193,27 @@ function fecharModal() {
     $('ppModalOverlay').style.display = 'none';
 }
 
+function _profParam() {
+    return _professorAtivo ? `professorCpf=${_professorAtivo.cpf}` : '';
+}
+
 async function carregarCursos() {
     _cursoAtivo = null;
     _grupoAtivo = null;
-    $('ppTituloPagina').textContent = 'Disciplinas disponíveis';
-    $('ppBtnVoltar').style.display = 'none';
+    const profNome = _professorAtivo ? _professorAtivo.nome : '';
+    $('ppTituloPagina').textContent = profNome ? `Disciplinas — ${profNome}` : 'Disciplinas disponíveis';
+    $('ppBtnVoltar').style.display = _professorAtivo ? '' : 'none';
+    if (_professorAtivo) {
+        $('ppBtnVoltar').onclick = () => carregarProfessores();
+    }
     $('ppCursosList').style.display = '';
     $('ppGruposList').style.display = 'none';
     $('ppResumoArea').style.display = 'none';
+    $('ppProfList').style.display = 'none';
 
     loading(true);
     try {
-        const cursos = await api('/cursos');
+        const cursos = await api('/cursos?' + _profParam());
         loading(false);
         if (!cursos.length) {
             $('ppCursosList').innerHTML = '<div class="pp-empty"><span class="pp-empty-icon">📭</span>Nenhuma disciplina encontrada.</div>';
@@ -179,11 +243,12 @@ async function selecionarCurso(id, nome) {
     $('ppCursosList').style.display = 'none';
     $('ppGruposList').style.display = '';
     $('ppResumoArea').style.display = 'none';
+    $('ppProfList').style.display = 'none';
 
     loading(true);
     try {
         const [grupos] = await Promise.all([
-            api('/grupos?courseId=' + id),
+            api('/grupos?courseId=' + id + '&' + _profParam()),
             carregarAlunosCurso(id),
         ]);
         loading(false);
@@ -231,7 +296,7 @@ async function selecionarCurso(id, nome) {
 
 async function carregarAlunosCurso(courseId) {
     try {
-        _alunosMap = await api('/alunos?courseId=' + courseId);
+        _alunosMap = await api('/alunos?courseId=' + courseId + '&' + _profParam());
     } catch (e) {
         _alunosMap = {};
     }
@@ -338,7 +403,7 @@ async function selecionarGrupo(grupoId) {
 
     loading(true);
     try {
-        const dados = await api(`/grupos/${grupoId}/summary?courseId=${_cursoAtivo.id}`);
+        const dados = await api(`/grupos/${grupoId}/summary?courseId=${_cursoAtivo.id}&${_profParam()}`);
         loading(false);
         renderResumo(dados, grupoData);
     } catch (e) {
@@ -523,7 +588,7 @@ async function detectarTardias(grupoId) {
     try {
         const resp = await api(`/grupos/${grupoId}/detectar-tardias`, {
             method: 'POST',
-            body: { courseId: _cursoAtivo.id },
+            body: { courseId: _cursoAtivo.id, professorCpf: _professorAtivo?.cpf || undefined },
         });
         loading(false);
 
@@ -557,7 +622,7 @@ async function verAusencias() {
 
     loading(true);
     try {
-        const ausencias = await api(`/ausencias?courseId=${_cursoAtivo.id}`);
+        const ausencias = await api(`/ausencias?courseId=${_cursoAtivo.id}&${_profParam()}`);
         loading(false);
 
         if (!ausencias.length) {
@@ -598,7 +663,11 @@ async function verAusencias() {
 }
 
 function voltarParaCursos() {
-    carregarCursos();
+    if (_professorAtivo) {
+        carregarCursos();
+    } else {
+        carregarProfessores();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

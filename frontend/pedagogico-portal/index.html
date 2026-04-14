@@ -73,14 +73,18 @@
 
         <section id="ppDashboard" class="pp-dashboard" style="display:none">
             <div class="pp-dashboard-header">
-                <h2 id="ppTituloPagina">Selecione uma disciplina</h2>
-                <button id="ppBtnVoltar" class="pp-btn pp-btn--outline pp-btn--sm" onclick="voltarParaCursos()" style="display:none">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
-                    Voltar
-                </button>
+                <h2 id="ppTituloPagina">Selecione um professor</h2>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span id="ppProfBadge" class="pp-prof-badge" style="display:none"></span>
+                    <button id="ppBtnVoltar" class="pp-btn pp-btn--outline pp-btn--sm" onclick="voltarParaCursos()" style="display:none">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Voltar
+                    </button>
+                </div>
             </div>
 
-            <div id="ppCursosList" class="pp-cursos-grid"></div>
+            <div id="ppProfList" class="pp-profs-grid"></div>
+            <div id="ppCursosList" class="pp-cursos-grid" style="display:none"></div>
             <div id="ppGruposList" class="pp-grupos-grid" style="display:none"></div>
 
             <div id="ppResumoArea" class="pp-resumo-area" style="display:none">

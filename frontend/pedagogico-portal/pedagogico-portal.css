@@ -171,6 +171,37 @@ html, body {
 }
 .pp-dashboard-header h2 { font-size: 1.2rem; font-weight: 700; }
 
+.pp-profs-grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.pp-prof-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--pp-card); border-radius: var(--pp-radius);
+    padding: 18px 20px; border: 1px solid var(--pp-border);
+    cursor: pointer; transition: box-shadow .15s, border-color .15s;
+}
+.pp-prof-card:hover { box-shadow: 0 4px 16px var(--pp-shadow); border-color: var(--pp-primary); }
+.pp-prof-card--disabled { opacity: .55; cursor: not-allowed; }
+.pp-prof-card--disabled:hover { box-shadow: none; border-color: var(--pp-border); }
+.pp-prof-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--pp-primary); color: #fff; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+}
+.pp-prof-info { flex: 1; min-width: 0; }
+.pp-prof-nome { font-weight: 600; font-size: .92rem; }
+.pp-prof-email { font-size: .78rem; color: var(--pp-sub); margin-top: 2px; }
+.pp-prof-arrow { color: var(--pp-muted); flex-shrink: 0; }
+.pp-prof-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(124,58,237,.12); color: var(--pp-primary);
+    font-size: .78rem; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+}
+[data-theme="dark"] .pp-prof-badge { background: rgba(167,139,250,.15); }
+
 .pp-cursos-grid, .pp-grupos-grid {
     display: grid; gap: 14px;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -358,7 +389,7 @@ html, body {
 
 @media (max-width: 600px) {
     .pp-main { padding: 16px 12px 40px; }
-    .pp-cursos-grid, .pp-grupos-grid { grid-template-columns: 1fr; }
+    .pp-cursos-grid, .pp-grupos-grid, .pp-profs-grid { grid-template-columns: 1fr; }
     .pp-resumo-stats { grid-template-columns: 1fr 1fr; }
     .pp-user-nome { display: none; }
     .pp-modal { width: 96vw; max-height: 90vh; }

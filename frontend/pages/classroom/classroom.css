@@ -3301,3 +3301,13 @@ body.cl-popout .logo-icon { font-size: 15px; }
     color: #fde047;
 }
 
+.cl-pedagogo-toggle {
+    display: flex; align-items: center; gap: 4px;
+    width: 100%; padding: 8px 10px;
+    background: var(--bg-hover,#f3f4f6); border: 1px solid var(--border,#e5e7eb);
+    border-radius: 8px; cursor: pointer;
+    font-size: .8rem; font-weight: 600; color: var(--text-primary,#111);
+    transition: background .15s;
+}
+.cl-pedagogo-toggle:hover { background: var(--border,#e5e7eb); }
+

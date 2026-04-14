@@ -4525,6 +4525,93 @@ function popoutNotas() {
 })();
 
 /* ══════════════════════════════════════════════════════════════
+   ACESSO PEDAGOGO — professor concede/revoga acesso
+══════════════════════════════════════════════════════════════ */
+let _pedagogosPanelOpen = false;
+
+function togglePedagogoPanel() {
+    _pedagogosPanelOpen = !_pedagogosPanelOpen;
+    document.getElementById('clPedagogoPanel').style.display = _pedagogosPanelOpen ? '' : 'none';
+    if (_pedagogosPanelOpen) carregarPedagogos();
+}
+
+async function carregarPedagogos() {
+    const el = document.getElementById('clPedagogoLista');
+    try {
+        const resp = await fetch('/api/classroom/acesso-pedagogos', { credentials: 'include' });
+        const lista = await resp.json();
+        const badge = document.getElementById('clPedagogoBadge');
+        if (lista.length > 0) {
+            badge.textContent = lista.length;
+            badge.style.display = '';
+        } else {
+            badge.style.display = 'none';
+        }
+        if (!lista.length) {
+            el.innerHTML = '<div style="color:var(--text-secondary,#9ca3af);text-align:center;padding:8px">Nenhum acesso concedido.</div>';
+            return;
+        }
+        el.innerHTML = lista.map(p => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#e5e7eb)">
+                <span style="color:var(--text-primary,#111)">${p.pedagogo_email}</span>
+                <button onclick="revogarPedagogo(${p.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:.75rem;font-weight:600;padding:2px 6px" title="Revogar acesso">✕</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        el.innerHTML = '<div style="color:#ef4444">Erro ao carregar.</div>';
+    }
+}
+
+async function adicionarPedagogo() {
+    const input = document.getElementById('clPedagogoEmail');
+    const email = input.value.trim().toLowerCase();
+    if (!email || !email.includes('@')) { toast('Informe um email válido.', 'erro'); return; }
+    try {
+        const resp = await fetch('/api/classroom/acesso-pedagogos', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!resp.ok) { const d = await resp.json(); toast(d.erro || 'Erro', 'erro'); return; }
+        input.value = '';
+        toast('Acesso concedido!', 'ok');
+        carregarPedagogos();
+    } catch (e) {
+        toast('Erro: ' + e.message, 'erro');
+    }
+}
+
+async function revogarPedagogo(id) {
+    if (!await confirmar('Deseja revogar o acesso desta pedagoga?', { titulo: 'Revogar acesso', confirmLabel: 'Revogar', tipo: 'danger', icone: '🔒' })) return;
+    try {
+        await fetch(`/api/classroom/acesso-pedagogos/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
+        toast('Acesso revogado.', 'ok');
+        carregarPedagogos();
+    } catch (e) {
+        toast('Erro: ' + e.message, 'erro');
+    }
+}
+
+(async function initPedagogoAccess() {
+    try {
+        const resp = await fetch('/api/classroom/acesso-pedagogos', { credentials: 'include' });
+        if (resp.ok) {
+            document.getElementById('clPedagogoAccess').style.display = '';
+            const lista = await resp.json();
+            const badge = document.getElementById('clPedagogoBadge');
+            if (lista.length > 0) {
+                badge.textContent = lista.length;
+                badge.style.display = '';
+            }
+        }
+    } catch (_) {}
+})();
+
+/* ══════════════════════════════════════════════════════════════
    INICIA
 ══════════════════════════════════════════════════════════════ */
 init();

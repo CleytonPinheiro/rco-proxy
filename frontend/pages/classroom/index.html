@@ -418,6 +418,19 @@
                                                 </div>
                                         </div>
                                         <div class="cl-conta-badge" id="clContaBadge"></div>
+                                        <div id="clPedagogoAccess" style="display:none;padding:0 10px 8px">
+                                                <button id="clBtnPedagogos" class="cl-pedagogo-toggle" onclick="togglePedagogoPanel()">
+                                                        👩‍🏫 Acesso pedagógico <span id="clPedagogoBadge" style="display:none;background:#8b5cf6;color:#fff;font-size:.68rem;padding:1px 5px;border-radius:8px;margin-left:4px"></span>
+                                                </button>
+                                                <div id="clPedagogoPanel" style="display:none;margin-top:6px;padding:10px;background:var(--bg-hover,#f8f9fa);border-radius:8px;border:1px solid var(--border,#e5e7eb)">
+                                                        <div style="font-size:.78rem;color:var(--text-secondary,#6b7280);margin-bottom:8px">Conceda acesso para pedagogas consultarem suas turmas no Portal Pedagógico.</div>
+                                                        <div style="display:flex;gap:6px;margin-bottom:8px">
+                                                                <input type="email" id="clPedagogoEmail" placeholder="email@escola.pr.gov.br" style="flex:1;padding:6px 8px;border:1px solid var(--border,#d1d5db);border-radius:6px;font-size:.8rem;background:var(--bg-input,#fff);color:var(--text-primary,#111)">
+                                                                <button onclick="adicionarPedagogo()" style="padding:6px 10px;background:#8b5cf6;color:#fff;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap">Conceder</button>
+                                                        </div>
+                                                        <div id="clPedagogoLista" style="font-size:.8rem"></div>
+                                                </div>
+                                        </div>
                                         <div class="cl-lista" id="clCursoLista">
                                                 <div class="cl-loading">Carregando disciplinas...</div>
                                         </div>

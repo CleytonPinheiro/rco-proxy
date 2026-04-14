@@ -179,6 +179,29 @@ export async function initializeDatabase() {
             CREATE INDEX IF NOT EXISTS idx_suporte_criado  ON edusync_suporte(criado_em DESC);
         `);
 
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS classroom_tokens (
+                id          SERIAL PRIMARY KEY,
+                cpf         VARCHAR(11)  NOT NULL UNIQUE,
+                email       VARCHAR(255),
+                tokens      JSONB        NOT NULL,
+                atualizado  TIMESTAMP    NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_ct_cpf ON classroom_tokens(cpf);
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS classroom_acesso_pedagogo (
+                id              SERIAL PRIMARY KEY,
+                professor_cpf   VARCHAR(11)  NOT NULL,
+                pedagogo_email  VARCHAR(255) NOT NULL,
+                criado_em       TIMESTAMP    NOT NULL DEFAULT NOW(),
+                UNIQUE(professor_cpf, pedagogo_email)
+            );
+            CREATE INDEX IF NOT EXISTS idx_cap_prof   ON classroom_acesso_pedagogo(professor_cpf);
+            CREATE INDEX IF NOT EXISTS idx_cap_pedag  ON classroom_acesso_pedagogo(pedagogo_email);
+        `);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();
