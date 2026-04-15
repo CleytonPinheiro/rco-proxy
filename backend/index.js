@@ -64,6 +64,35 @@ app.use('/api/pedagogico-portal/callback', loginLimiter);
 app.get('/health', (_req, res) => res.status(200).send('OK'));
 app.get('/',       (_req, res) => res.redirect('/login/'));
 
+// Redirecionar URLs antigas (.html) para nova estrutura de pastas
+const paginasRedirect = [
+    'dashboard', 'frequencias', 'crachas', 'comportamento',
+    'presenca', 'grupos', 'materiais', 'emprestimos', 'cozinha', 'quiosque',
+];
+paginasRedirect.forEach(p => {
+    app.get(`/${p}.html`, (req, res) => res.redirect(301, `/pages/${p}/`));
+});
+app.get('/app', (_req, res) => res.redirect('/login/'));
+
+// Arquivos estáticos servidos ANTES do listen para evitar "Cannot GET" durante inicialização
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// API router placeholder — preenchido após inicialização assíncrona
+import { Router } from 'express';
+const apiRouter = Router();
+apiRouter.use((req, res, next) => {
+    if (!apiRouter._ready) {
+        return res.status(503).json({ erro: 'Servidor inicializando, tente novamente em instantes.' });
+    }
+    next();
+});
+app.use('/api', apiRouter);
+
+// SPA fallback (deve vir DEPOIS do static e API)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
 // Servidor sobe imediatamente para não travar o health check
 const PORT = 5000;
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -77,11 +106,9 @@ async function initializeApp() {
     try {
         console.log('Carregando dependências...');
 
-        // Inicializar banco de dados (tabelas de usuários e audit log)
         const { initializeDatabase }    = await import('./src/config/dbInit.js');
         await initializeDatabase();
 
-        // Serviços e configurações
         const { supabase, supabaseAdmin }                     = await import('./src/config/supabase.js');
         const { loginWithPuppeteer, decodeJwtExpiration }     = await import('./auth-puppeteer.js');
         const { tokenService }                                = await import('./src/services/TokenService.js');
@@ -89,40 +116,20 @@ async function initializeApp() {
         const { syncService }                                 = await import('./src/services/SyncService.js');
         const { presencaService }                             = await import('./src/services/PresencaService.js');
 
-        // Injeção de dependências
         tokenService.initialize(loginWithPuppeteer, decodeJwtExpiration);
         rcoApiService.initialize(tokenService);
         syncService.initialize(supabaseAdmin, rcoApiService);
         presencaService.initialize(supabaseAdmin, rcoApiService);
 
-        // Registro de rotas com dependências injetadas
         const { createApiRouter } = await import('./src/routes/index.js');
         const deps = {
             supabase, supabaseAdmin,
             tokenService, rcoApiService, syncService, presencaService,
-            loginWithPuppeteer, decodeJwtExpiration,   // necessário para UserSession nas rotas de auth
+            loginWithPuppeteer, decodeJwtExpiration,
         };
 
-        // Redirecionar URLs antigas (.html) para nova estrutura de pastas
-        const paginasRedirect = [
-            'dashboard', 'frequencias', 'crachas', 'comportamento',
-            'presenca', 'grupos', 'materiais', 'emprestimos', 'cozinha', 'quiosque',
-        ];
-        paginasRedirect.forEach(p => {
-            app.get(`/${p}.html`, (req, res) => res.redirect(301, `/pages/${p}/`));
-        });
-
-        // Rota raiz do app redireciona para login
-        app.get('/app', (_req, res) => res.redirect('/login/'));
-
-        app.use(express.static(path.join(__dirname, '../frontend')));
-        app.use('/api', createApiRouter(deps));
-
-        // SPA fallback
-        app.get('*', (req, res) => {
-            // Se a rota começa com /pages/ serve as páginas normalmente
-            res.sendFile(path.join(__dirname, '../frontend/index.html'));
-        });
+        apiRouter.use(createApiRouter(deps));
+        apiRouter._ready = true;
 
         console.log('Dependências e rotas carregadas com sucesso!');
 

@@ -3,6 +3,10 @@ const { Pool } = pg;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+pool.on('error', (err) => {
+    console.error('[DB] Erro inesperado no pool:', err.message);
+});
+
 export async function initializeDatabase() {
     const client = await pool.connect();
     try {
