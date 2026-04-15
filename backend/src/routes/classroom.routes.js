@@ -429,7 +429,10 @@ export function createClassroomRouter(deps = {}) {
     /* ── Atualizar nota de uma entrega ── */
     router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const auth = await getAuthenticatedClient(req);
-        if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
+        if (!auth) {
+            console.error('[CLASSROOM] Grade: token Classroom não encontrado ou expirado.');
+            return res.status(401).json({ erro: 'Token do Google Classroom expirado. Reconecte o Classroom.' });
+        }
         const { nota } = req.body;
         if (nota === undefined || nota === null) return res.status(400).json({ erro: 'Campo "nota" obrigatório.' });
         try {
@@ -448,7 +451,10 @@ export function createClassroomRouter(deps = {}) {
     /* ── Devolver entrega ── */
     router.post('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const auth = await getAuthenticatedClient(req);
-        if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
+        if (!auth) {
+            console.error('[CLASSROOM] Devolver: token Classroom não encontrado ou expirado (global token file).');
+            return res.status(401).json({ erro: 'Token do Google Classroom expirado. Reconecte o Classroom.' });
+        }
         try {
             const classroom = google.classroom({ version: 'v1', auth });
             await classroom.courses.courseWork.studentSubmissions.return({

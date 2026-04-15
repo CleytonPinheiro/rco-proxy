@@ -173,9 +173,15 @@ const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
 async function api(path, opts = {}) {
     const r = await fetch('/api/classroom' + path, {
         ...opts,
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
+    if (r.status === 401) {
+        toast('Sessão expirada. Redirecionando para login...', 'erro');
+        setTimeout(() => { window.location.href = '/login/'; }, 1500);
+        throw new Error('Sessão expirada. Faça login novamente.');
+    }
     let data;
     try { data = await r.json(); }
     catch { throw new Error(`Erro ${r.status} — resposta inválida do servidor.`); }
@@ -192,9 +198,15 @@ async function api(path, opts = {}) {
 async function apiRaw(path, opts = {}) {
     const r = await fetch('/api' + path, {
         ...opts,
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
+    if (r.status === 401) {
+        toast('Sessão expirada. Redirecionando para login...', 'erro');
+        setTimeout(() => { window.location.href = '/login/'; }, 1500);
+        throw new Error('Sessão expirada. Faça login novamente.');
+    }
     let data;
     try { data = await r.json(); }
     catch { throw new Error(`Erro ${r.status} — resposta inválida do servidor.`); }
