@@ -1207,7 +1207,8 @@ body.cl-popout .logo-icon { font-size: 15px; }
     font-size: .82rem;
     transition: background .1s;
 }
-.cl-resumo-row:hover { background: var(--bg); }
+.cl-resumo-row { cursor: pointer; }
+.cl-resumo-row:hover { background: rgba(255,255,255,.06); box-shadow: inset 3px 0 0 var(--accent, #a78bfa); }
 .cl-resumo-info { min-width: 0; }
 .cl-passos-barra {
     display: flex;
