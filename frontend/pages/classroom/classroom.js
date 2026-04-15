@@ -3470,31 +3470,33 @@ function initResizeHandles() {
     const workspace = document.getElementById('clWorkspace');
     if (!workspace) return;
 
-    const MIN_W   = 150;
+    const MIN_W   = 140;
+    const MAX_W   = 500;
     const LS_KEY1 = 'cl-col1-w';
     const LS_KEY2 = 'cl-col2-w';
 
-    let w1 = parseInt(localStorage.getItem(LS_KEY1) || '260', 10);
-    let w2 = parseInt(localStorage.getItem(LS_KEY2) || '280', 10);
+    let w1 = Math.max(MIN_W, Math.min(MAX_W, parseInt(localStorage.getItem(LS_KEY1) || '260', 10)));
+    let w2 = Math.max(MIN_W, Math.min(MAX_W, parseInt(localStorage.getItem(LS_KEY2) || '280', 10)));
 
     function applyWidths() {
+        if (window.innerWidth <= 768) return;
         workspace.style.gridTemplateColumns = `${w1}px 4px ${w2}px 4px 1fr`;
     }
     applyWidths();
 
     function setupHandle(handleEl, colIdx) {
-        handleEl.addEventListener('mousedown', e => {
-            e.preventDefault();
+        if (!handleEl) return;
+
+        function startDrag(startX) {
             handleEl.classList.add('cl-resize-handle--dragging');
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
-
-            const startX = e.clientX;
             const startW = colIdx === 1 ? w1 : w2;
 
             const onMove = ev => {
-                const delta = ev.clientX - startX;
-                const newW  = Math.max(MIN_W, startW + delta);
+                const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                const delta = clientX - startX;
+                const newW  = Math.max(MIN_W, Math.min(MAX_W, startW + delta));
                 if (colIdx === 1) w1 = newW;
                 else              w2 = newW;
                 applyWidths();
@@ -3507,11 +3509,18 @@ function initResizeHandles() {
                 localStorage.setItem(colIdx === 1 ? LS_KEY1 : LS_KEY2, colIdx === 1 ? w1 : w2);
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
             };
 
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
-        });
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onUp);
+        }
+
+        handleEl.addEventListener('mousedown', e => { e.preventDefault(); startDrag(e.clientX); });
+        handleEl.addEventListener('touchstart', e => { e.preventDefault(); startDrag(e.touches[0].clientX); }, { passive: false });
     }
 
     setupHandle(document.getElementById('clHandle1'), 1);

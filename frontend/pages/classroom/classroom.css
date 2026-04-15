@@ -883,18 +883,46 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-toast--alerta  { background: #d97706; }
 
 /* ── Responsive ── */
-@media (max-width: 900px) {
-    .cl-workspace { grid-template-columns: 220px 240px 1fr; }
+@media (max-width: 1100px) {
+    .cl-workspace { grid-template-columns: 200px 4px 240px 4px 1fr; }
 }
-@media (max-width: 700px) {
+@media (max-width: 900px) {
+    .cl-workspace { grid-template-columns: 180px 4px 220px 4px 1fr; }
+    .cl-col-head { padding: 6px 8px; }
+    .cl-col-head h3 { font-size: .82rem; }
+    .cl-col-head small { font-size: .68rem; }
+}
+@media (max-width: 768px) {
     .cl-workspace {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto;
+        display: flex;
+        flex-direction: column;
         overflow: auto;
     }
-    .cl-col { min-height: 300px; border-right: none; border-bottom: 1px solid var(--border); }
+    .cl-resize-handle { display: none; }
+    .cl-col--cursos { min-height: 0; max-height: 35vh; border-bottom: 2px solid var(--border); }
+    .cl-col--atividades { min-height: 0; max-height: 40vh; border-bottom: 2px solid var(--border); }
+    .cl-col--notas { min-height: 50vh; flex: 1; }
+    .cl-col { border-right: none !important; }
     .cl-notas-stats { grid-template-columns: repeat(2, 1fr); }
     .cl-nota-row { grid-template-columns: 30px 1fr 70px 70px 60px; gap: 4px; font-size: .76rem; }
+    .cl-gaveta-tab { display: none !important; }
+    .cl-workspace--gaveta { grid-template-columns: unset !important; }
+    .cl-workspace--gaveta .cl-col--cursos,
+    .cl-workspace--gaveta .cl-col--atividades {
+        min-width: unset; overflow: auto; pointer-events: auto;
+    }
+}
+@media (max-width: 480px) {
+    .cl-main { height: auto; min-height: 100vh; }
+    .cl-col--cursos { max-height: 30vh; }
+    .cl-col--atividades { max-height: 35vh; }
+    .cl-col-head { padding: 5px 6px; gap: 4px; }
+    .cl-col-head h3 { font-size: .78rem; }
+    .cl-tab { font-size: .7rem; padding: 6px 0; }
+    .cl-nota-row { grid-template-columns: 24px 1fr 60px 60px 50px; gap: 2px; font-size: .72rem; }
+    .cl-notas-stats { grid-template-columns: 1fr 1fr; gap: 4px; }
+    .cl-connect-card { padding: 28px 20px; }
+    .cl-connect-titulo { font-size: 1.2rem; }
 }
 
 /* ══════════════════════════════════════════════════════════════
