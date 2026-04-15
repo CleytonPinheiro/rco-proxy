@@ -941,8 +941,16 @@ elBtnImprimir.addEventListener('click', () => {
     if (grupoAtivo) imprimirRelatorioGrupo();
 });
 
-elBtnAtualizar.addEventListener('click', () => {
-    if (grupoAtivo) carregarResumoGrupo(grupoAtivo);
+elBtnAtualizar.addEventListener('click', async () => {
+    if (!cursoAtivo) return;
+    if (grupoAtivo) {
+        try {
+            const estudantes = await api(`/courses/${cursoAtivo.id}/students`);
+            alunos = {};
+            estudantes.forEach(a => { alunos[a.userId] = a; });
+        } catch (_) {}
+        carregarResumoGrupo(grupoAtivo);
+    }
 });
 
 elBtnExportar.addEventListener('click', () => {

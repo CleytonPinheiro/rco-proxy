@@ -1024,8 +1024,26 @@ export function createClassroomRouter(deps = {}) {
                 });
             });
 
-            // mediaIndice = porcentagem dos pontos ganhos sobre o total possível do grupo
-            // Inclui atividades faltantes como 0, refletindo o desempenho real
+            // Buscar lista completa de alunos matriculados para incluir quem não tem submissions
+            try {
+                let rosterToken;
+                do {
+                    const rosterResp = await classroom.courses.students.list({ courseId, pageSize: 100, pageToken: rosterToken });
+                    const enrolled = rosterResp.data.students || [];
+                    for (const st of enrolled) {
+                        if (!alunoMap[st.userId]) {
+                            alunoMap[st.userId] = {
+                                userId: st.userId,
+                                totalGanho: 0,
+                                pendentes: ativs.length,
+                                atividades: {},
+                            };
+                        }
+                    }
+                    rosterToken = rosterResp.data.nextPageToken;
+                } while (rosterToken);
+            } catch (_) {}
+
             let alunos = Object.values(alunoMap).map(a => ({
                 userId:      a.userId,
                 mediaIndice: totalPossivel > 0 ? (a.totalGanho / totalPossivel) * 100 : 0,
