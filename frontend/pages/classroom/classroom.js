@@ -1241,15 +1241,38 @@ function atualizarBtnFecharNota(grupo) {
 async function verificarTardiasExistentes(grupoId) {
     try {
         const tardias = await api(`/groups/${grupoId}/tardias`);
-        const badge = elBtnTardias.querySelector('.cl-tardias-badge');
-        if (badge) badge.remove();
-        if (tardias.length > 0) {
-            const span = document.createElement('span');
-            span.className = 'cl-tardias-badge';
-            span.textContent = tardias.length;
-            elBtnTardias.appendChild(span);
-        }
+        atualizarTardiasBadgeCount(tardias.length);
     } catch (_) {}
+}
+
+function atualizarTardiasBadgeCount(count) {
+    const badge = elBtnTardias.querySelector('.cl-tardias-badge');
+    if (badge) badge.remove();
+    if (count > 0) {
+        const span = document.createElement('span');
+        span.className = 'cl-tardias-badge';
+        span.textContent = count;
+        elBtnTardias.appendChild(span);
+    }
+}
+
+function atualizarTardiasBadgeFromResumo() {
+    if (!grupoResumoData?.alunosResumo) return;
+    let count = 0;
+    grupoResumoData.alunosResumo.forEach(a => {
+        Object.values(a.atividades || {}).forEach(atv => {
+            if (atv.eTardia) count++;
+        });
+    });
+    atualizarTardiasBadgeCount(count);
+}
+
+function detectarTardiasBackground(grupo) {
+    if (!grupo?.id || !cursoAtivo?.id) return;
+    api(`/groups/${grupo.id}/detectar-tardias`, {
+        method: 'POST',
+        body: { courseId: cursoAtivo.id },
+    }).then(() => verificarTardiasExistentes(grupo.id)).catch(() => {});
 }
 
 elBtnFecharNota.addEventListener('click', async () => {
@@ -1689,6 +1712,11 @@ async function carregarResumoGrupo(grupo) {
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
         renderAvisoCorrecao();
+
+        if (grupo.dataFechamento) {
+            atualizarTardiasBadgeFromResumo();
+            detectarTardiasBackground(grupo);
+        }
 
         toast('Dados atualizados do Classroom', 'ok');
 
