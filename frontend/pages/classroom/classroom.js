@@ -1472,11 +1472,29 @@ async function abrirModalTardias() {
     if (!grupoAtivo || !cursoAtivo) return;
     elTardiasModal.classList.add('cl-modal-overlay--visivel');
     elTardiasInfo.innerHTML = `<p>Grupo: <strong>${esc(grupoAtivo.nome)}</strong> — Fechado em: <strong>${fmtDatetime(grupoAtivo.dataFechamento)}</strong></p>`;
-    elTardiasBody.innerHTML = '<div class="cl-loading">Carregando entregas tardias...</div>';
+    elTardiasBody.innerHTML = '<div class="cl-loading">Buscando entregas tardias...</div>';
 
     try {
-        const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
-        renderTardias(tardias);
+        const tardiasSalvas = await api(`/groups/${grupoAtivo.id}/tardias`);
+        if (tardiasSalvas.length > 0) {
+            renderTardias(tardiasSalvas);
+        } else {
+            elTardiasBody.innerHTML = '<div class="cl-loading">Verificando entregas tardias no Classroom...</div>';
+            elTardiasDetectar.disabled = true;
+            elTardiasDetectar.textContent = 'Verificando...';
+            try {
+                const r = await api(`/groups/${grupoAtivo.id}/detectar-tardias`, {
+                    method: 'POST',
+                    body: { courseId: cursoAtivo.id },
+                });
+                const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
+                renderTardias(tardias);
+                verificarTardiasExistentes(grupoAtivo.id);
+            } finally {
+                elTardiasDetectar.disabled = false;
+                elTardiasDetectar.textContent = 'Verificar novas entregas tardias';
+            }
+        }
     } catch (e) {
         elTardiasBody.innerHTML = `<div class="cl-tardias-empty"><div class="cl-tardias-empty-icon">❌</div><div class="cl-tardias-empty-title" style="color:#ef4444">${esc(e.message)}</div></div>`;
     }
@@ -1521,7 +1539,7 @@ function renderTardias(tardias) {
         html += `<div class="cl-tardias-grupo">
             <div class="cl-tardias-grupo-titulo">${esc(data.titulo)}</div>
             <table class="cl-tardias-table">
-                <thead><tr><th>Aluno</th><th>Email</th><th>Entregou em</th><th>Nota</th><th>Status</th></tr></thead>
+                <thead><tr><th>Aluno</th><th>Email</th><th>Entregou em</th><th>Nota (RCO)</th><th>Status</th></tr></thead>
                 <tbody>`;
         data.alunos.sort((a, b) => (a.nomeAluno || '').localeCompare(b.nomeAluno || ''));
         for (const a of data.alunos) {

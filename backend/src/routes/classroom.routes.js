@@ -1290,15 +1290,18 @@ export function createClassroomRouter(deps = {}) {
             let profileMap = {};
             if (tardias.length > 0) {
                 try {
-                    const userIds = [...new Set(tardias.map(t => t.userId))];
-                    const studentsResp = await classroom.courses.students.list({ courseId, pageSize: 100 });
-                    const students = studentsResp.data.students || [];
-                    for (const st of students) {
-                        profileMap[st.userId] = {
-                            nome: st.profile?.name?.fullName || st.userId,
-                            email: st.profile?.emailAddress || '',
-                        };
-                    }
+                    let pageToken;
+                    do {
+                        const studentsResp = await classroom.courses.students.list({ courseId, pageSize: 100, pageToken });
+                        const students = studentsResp.data.students || [];
+                        for (const st of students) {
+                            profileMap[st.userId] = {
+                                nome: st.profile?.name?.fullName || st.userId,
+                                email: st.profile?.emailAddress || '',
+                            };
+                        }
+                        pageToken = studentsResp.data.nextPageToken;
+                    } while (pageToken);
                 } catch (_) {}
             }
 
