@@ -2344,21 +2344,24 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
     const rows = atividades.map(atv => {
         const sub      = alunoData.atividades?.[atv.id];
         const nota     = sub?.nota ?? null;
+        const notaRasc = sub?.notaRascunho ?? null;
         const entregue = sub?.entregue ?? false;
         const atrasado = sub?.atrasado ?? false;
         const estado   = sub?.estado ?? null;
 
         let statusHtml, tipo;
-        const entrou = nota === 0 && entregue;   // entrou mas não realizou (nota=0 devolvida)
+        const notaEfetiva = nota ?? notaRasc;
+        const entrou = notaEfetiva === 0 && entregue;
 
         if (entrou) {
             const ptMax = atv.pontos ?? 100;
             statusHtml  = `<span class="cl-nota-status-badge cl-nota-status--entrou">↩ Entrou (0 / ${rco(ptMax)} pts)</span>`;
             tipo        = 'entrou';
-        } else if (nota !== null) {
+        } else if (notaEfetiva !== null) {
             const ptMax  = atv.pontos ?? 100;
-            const pctAtv = ptMax > 0 ? ((nota / ptMax) * 100).toFixed(0) : nota;
-            statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(nota)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
+            const pctAtv = ptMax > 0 ? ((notaEfetiva / ptMax) * 100).toFixed(0) : notaEfetiva;
+            const rascLabel = nota === null && notaRasc !== null ? ' <small style="opacity:.6">(rascunho)</small>' : '';
+            statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)${rascLabel}</span>`;
             tipo = 'realizada';
         } else if (entregue) {
             statusHtml = `<span class="cl-nota-status-badge cl-nota-status--aguard">⏳ Realizou — aguardando correção</span>`;
@@ -2386,12 +2389,12 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
             if (entrou) {
                 qzStatusTxt = '↩ Entrou no jogo mas saiu sem realizar — ficou com 0 pts';
                 qzStatusCls = 'cl-qz-status--entrou';
-            } else if (nota !== null && nota > 0) {
+            } else if (notaEfetiva !== null && notaEfetiva > 0) {
                 const ptMax = atv.pontos ?? 0;
-                const pctQ  = ptMax > 0 ? ` (${((nota / ptMax) * 100).toFixed(0)}%)` : '';
-                qzStatusTxt = `✓ Realizou — nota no Quizizz: ${rco(nota)} pts${pctQ}`;
+                const pctQ  = ptMax > 0 ? ` (${((notaEfetiva / ptMax) * 100).toFixed(0)}%)` : '';
+                qzStatusTxt = `✓ Realizou — nota no Quizizz: ${rco(notaEfetiva)} pts${pctQ}`;
                 qzStatusCls = 'cl-qz-status--ok';
-            } else if (nota === 0 && !entregue) {
+            } else if (notaEfetiva === 0 && !entregue) {
                 qzStatusTxt = '✗ Não realizou o quiz';
                 qzStatusCls = 'cl-qz-status--nao';
             } else if (entregue) {

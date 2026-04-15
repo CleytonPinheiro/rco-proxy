@@ -1138,7 +1138,7 @@ export function createClassroomRouter(deps = {}) {
             const classroom = google.classroom({ version: 'v1', auth });
 
             const { rows: ativs } = await pool.query(
-                `SELECT atividade_id, atividade_titulo FROM classroom_atividades WHERE grupo_id = $1`,
+                `SELECT atividade_id, atividade_titulo FROM classroom_grupo_atividades WHERE grupo_id = $1`,
                 [req.params.id]
             );
             console.log(`[AUTO-GRADE] Grupo ${req.params.id}: ${ativs.length} atividades`);
