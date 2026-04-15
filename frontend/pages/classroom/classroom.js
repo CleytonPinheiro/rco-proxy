@@ -2724,29 +2724,63 @@ async function carregarTodosGrupos() {
     return _allGroupsCache;
 }
 
+function _buildFonteOptionsGrouped(selectedId) {
+    const grupos = (_allGroupsCache || [])
+        .filter(g => String(g.id) !== String(elGrupoId.value));
+    const porCurso = {};
+    for (const g of grupos) {
+        const cursoNome = _cursosCache?.find(c => c.id === g.cursoId)?.nome || 'Outra disciplina';
+        if (!porCurso[cursoNome]) porCurso[cursoNome] = [];
+        porCurso[cursoNome].push(g);
+    }
+    return Object.entries(porCurso)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([cursoNome, gs]) => {
+            const opts = gs.map(g => {
+                const sel = String(g.id) === String(selectedId) ? 'selected' : '';
+                const tipoTag = g.tipo === 'recuperacao' ? ' (Rec.)' : '';
+                const pts = g.pontosMeta ? ` · ${(g.pontosMeta / 10).toFixed(1)} pts` : '';
+                return `<option value="${g.id}" ${sel}>${esc(g.nome)}${tipoTag}${pts}</option>`;
+            }).join('');
+            return `<optgroup label="${esc(cursoNome)}">${opts}</optgroup>`;
+        }).join('');
+}
+
+function _fonteResumoSelecionado(fonteGrupoId) {
+    if (!fonteGrupoId) return '';
+    const g = (_allGroupsCache || []).find(x => String(x.id) === String(fonteGrupoId));
+    if (!g) return '';
+    const cursoNome = _cursosCache?.find(c => c.id === g.cursoId)?.nome || '';
+    const pts = g.pontosMeta ? `${(g.pontosMeta / 10).toFixed(1)} pts` : '';
+    return `<div class="cl-fonte-info">
+        <span class="cl-fonte-info-curso">${esc(cursoNome)}</span>
+        ${pts ? `<span class="cl-fonte-info-pts">${pts}</span>` : ''}
+    </div>`;
+}
+
 function renderFontesModal() {
     if (!_fontesModalData.length) {
-        elFontesLista.innerHTML = '<div class="cl-fontes-empty">Nenhuma fonte configurada</div>';
+        elFontesLista.innerHTML = '<div class="cl-fontes-empty">Nenhuma fonte externa configurada</div>';
         return;
     }
     elFontesLista.innerHTML = _fontesModalData.map((f, i) => {
-        const gruposOptions = (_allGroupsCache || [])
-            .filter(g => String(g.id) !== String(elGrupoId.value))
-            .map(g => {
-                const cursoNome = _cursosCache?.find(c => c.id === g.cursoId)?.nome || g.cursoId;
-                const sel = String(g.id) === String(f.fonteGrupoId) ? 'selected' : '';
-                return `<option value="${g.id}" ${sel}>${esc(g.nome)} — ${esc(cursoNome)}</option>`;
-            }).join('');
+        const optionsHtml = _buildFonteOptionsGrouped(f.fonteGrupoId);
+        const infoHtml = _fonteResumoSelecionado(f.fonteGrupoId);
         return `
             <div class="cl-fonte-row" data-idx="${i}">
-                <select class="cl-fonte-sel">
-                    <option value="">— selecionar grupo —</option>
-                    ${gruposOptions}
-                </select>
-                <span class="cl-fonte-peso-label">Peso:</span>
-                <input type="number" class="cl-fonte-peso" value="${f.peso}" min="1" max="200" step="1" title="Peso % da fonte">
-                <span class="cl-fonte-peso-label">%</span>
-                <button type="button" class="cl-fonte-remove" title="Remover fonte">✕</button>
+                <div class="cl-fonte-row-main">
+                    <select class="cl-fonte-sel">
+                        <option value="">Selecionar grupo...</option>
+                        ${optionsHtml}
+                    </select>
+                    <div class="cl-fonte-peso-wrap">
+                        <label class="cl-fonte-peso-label">Aproveitar</label>
+                        <input type="number" class="cl-fonte-peso" value="${f.peso}" min="1" max="200" step="1">
+                        <span class="cl-fonte-peso-label">%</span>
+                    </div>
+                    <button type="button" class="cl-fonte-remove" title="Remover fonte">✕</button>
+                </div>
+                ${infoHtml}
             </div>`;
     }).join('');
 
@@ -2754,6 +2788,7 @@ function renderFontesModal() {
         sel.addEventListener('change', () => {
             const idx = Number(sel.closest('.cl-fonte-row').dataset.idx);
             _fontesModalData[idx].fonteGrupoId = sel.value ? Number(sel.value) : null;
+            renderFontesModal();
         });
     });
     elFontesLista.querySelectorAll('.cl-fonte-peso').forEach(inp => {
