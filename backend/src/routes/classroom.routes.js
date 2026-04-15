@@ -1018,9 +1018,8 @@ export function createClassroomRouter(deps = {}) {
                     } else if (eDeRecuperacao) {
                         /* Submission pertence ao grupo de recuperação (updateTime >= dataCorteOriginal).
                            Excluída do grupo original: nota intacta, calculada apenas no grupo de rec. */
-                    } else if (eTardia || atrasado) {
-                        /* Submission entregue após o fechamento (eTardia) OU marcada como
-                           atrasada pelo Classroom (s.late — entregou depois do prazo da atividade):
+                    } else if (eTardia) {
+                        /* Submission entregue após o fechamento da nota DESTE grupo:
                            não entra no cálculo — registrada como entrega tardia separadamente. */
                     } else if (nota !== null) {
                         alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
@@ -1163,21 +1162,20 @@ export function createClassroomRouter(deps = {}) {
                     continue;
                 }
 
-                const semAssigned = allSubs.filter(s => s.assignedGrade == null && !s.late);
+                const semAssigned = allSubs.filter(s => s.assignedGrade == null);
                 if (!semAssigned.length) {
-                    console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → todas já têm assignedGrade ou são tardias`);
+                    console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → todas já têm assignedGrade`);
                     continue;
                 }
 
-                const temDraft = allSubs.some(s => s.draftGrade != null && !s.late);
+                const temDraft = allSubs.some(s => s.draftGrade != null);
                 if (!temDraft) {
-                    console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → nenhum draftGrade não-tardio (correção manual)`);
+                    console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → nenhum draftGrade (correção manual)`);
                     continue;
                 }
 
                 autoDetectados++;
-                const tardias = allSubs.filter(s => s.late && s.assignedGrade == null).length;
-                console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → auto-corrigida, ${semAssigned.length} sem assignedGrade (${tardias} tardias ignoradas)`);
+                console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → auto-corrigida, ${semAssigned.length} sem assignedGrade`);
 
                 for (const s of semAssigned) {
                     const novaNota = s.draftGrade != null ? s.draftGrade : 0;
