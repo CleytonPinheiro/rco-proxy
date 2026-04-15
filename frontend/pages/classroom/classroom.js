@@ -7,7 +7,7 @@
    Uso: await confirmar('Mensagem', { titulo, confirmLabel, tipo, icone })
    Retorna: true (confirmou) | false (cancelou)
 ══════════════════════════════════════════════════════════════════ */
-function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Confirmar', tipo = 'info', icone, html = false } = {}) {
+function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tipo = 'info', icone, html = false } = {}) {
     return new Promise(resolve => {
         const overlay  = document.getElementById('clConfirmModal');
         const elTitulo = document.getElementById('clConfirmTitulo');
@@ -20,6 +20,7 @@ function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Conf
         elTitulo.textContent = titulo;
         if (html) { elMsg.innerHTML = mensagem; } else { elMsg.textContent = mensagem; }
         elOk.textContent     = confirmLabel;
+        elCancel.textContent = cancelLabel;
 
         const iconeDefault = tipo === 'danger' ? '⚠️' : '❓';
         elIcone.textContent = icone || iconeDefault;
@@ -2617,6 +2618,15 @@ function popularRecOrigem(grupoIdAtual = null) {
 
 function abrirModalGrupo(grupo = null) {
     elCorPicker.innerHTML = '';
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.className = 'cl-cor-input';
+    colorInput.value = corSelecionada;
+    colorInput.addEventListener('input', () => {
+        corSelecionada = colorInput.value;
+        elCorPicker.querySelectorAll('.cl-cor-btn').forEach(b => b.classList.remove('cl-cor-btn--ativo'));
+    });
+    elCorPicker.appendChild(colorInput);
     GRUPO_CORES.forEach(cor => {
         const btn = document.createElement('button');
         btn.className = 'cl-cor-btn';
@@ -2625,6 +2635,7 @@ function abrirModalGrupo(grupo = null) {
         btn.type     = 'button';
         btn.addEventListener('click', () => {
             corSelecionada = cor;
+            colorInput.value = cor;
             elCorPicker.querySelectorAll('.cl-cor-btn').forEach(b => b.classList.remove('cl-cor-btn--ativo'));
             btn.classList.add('cl-cor-btn--ativo');
         });
@@ -2662,6 +2673,8 @@ function abrirModalGrupo(grupo = null) {
     /* Configura campo de código RCO conforme tipo (herda e bloqueia se for recuperação) */
     configurarCampoCodClasse(tipo === 'recuperacao', grupo?.grupoOrigemId ?? null);
 
+    const corInp = elCorPicker.querySelector('.cl-cor-input');
+    if (corInp) corInp.value = corSelecionada;
     elCorPicker.querySelectorAll('.cl-cor-btn').forEach(b => {
         b.classList.toggle('cl-cor-btn--ativo', b.style.background === corSelecionada ||
             b.title === corSelecionada);
@@ -2703,9 +2716,9 @@ function abrirModalGrupo(grupo = null) {
         peso: f.peso ?? 100,
     }));
     if (_fontesModalData.length > 0) {
-        carregarTodosGrupos().then(() => renderFontesModal());
+        carregarTodosGrupos().then(() => renderFontesLista());
     } else {
-        renderFontesModal();
+        renderFontesLista();
     }
 
     elModal.classList.add('cl-modal-overlay--visivel');
@@ -2754,51 +2767,105 @@ function _buildFontesAgrupados() {
     return Object.values(porCurso).sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
-function _fonteGrupoLabel(g) {
-    if (!g) return '';
-    const curso = _cursosCache?.find(c => c.id === g.cursoId);
-    return curso?.nome || '';
+const elFontesModal      = document.getElementById('clFontesModal');
+const elFontesModalList  = document.getElementById('clFontesModalList');
+const elFontesModalBusca = document.getElementById('clFontesModalBusca');
+let _fontesModalEditIdx  = -1;
+let _fontesModalSelGid   = null;
+
+function abrirFontesSelecaoModal(editIdx) {
+    _fontesModalEditIdx = editIdx;
+    _fontesModalSelGid  = editIdx >= 0 ? (_fontesModalData[editIdx]?.fonteGrupoId || null) : null;
+    const cursosAgrupados = _buildFontesAgrupados();
+    const jaUsados = new Set(_fontesModalData.filter((_, i) => i !== editIdx).map(f => String(f.fonteGrupoId)));
+
+    elFontesModalList.innerHTML = cursosAgrupados.length === 0
+        ? '<div class="cl-fontes-empty">Nenhum grupo disponível em outras disciplinas</div>'
+        : cursosAgrupados.map(c => {
+            const items = c.grupos
+                .filter(g => !jaUsados.has(String(g.id)))
+                .map(g => {
+                    const active = String(g.id) === String(_fontesModalSelGid) ? ' cl-fmodal-item--active' : '';
+                    const tipoTag = g.tipo === 'recuperacao' ? '<span class="cl-fdrop-tag">Rec.</span>' : '';
+                    const pts = g.pontosMeta ? `${(g.pontosMeta / 10).toFixed(1)} pts` : '';
+                    return `<div class="cl-fmodal-item${active}" data-gid="${g.id}">
+                        <div class="cl-fmodal-item-nome">${esc(g.nome)} ${tipoTag}</div>
+                        <div class="cl-fmodal-item-pts">${pts}</div>
+                    </div>`;
+                }).join('');
+            if (!items) return '';
+            return `<div class="cl-fmodal-group">
+                <div class="cl-fmodal-header">${esc(c.nome)}</div>
+                ${items}
+            </div>`;
+        }).join('');
+
+    elFontesModalBusca.value = '';
+    elFontesModal.classList.add('cl-modal-overlay--visivel');
+
+    elFontesModalList.querySelectorAll('.cl-fmodal-item').forEach(item => {
+        item.addEventListener('click', () => {
+            elFontesModalList.querySelectorAll('.cl-fmodal-item').forEach(i => i.classList.remove('cl-fmodal-item--active'));
+            item.classList.add('cl-fmodal-item--active');
+            _fontesModalSelGid = Number(item.dataset.gid);
+        });
+    });
 }
 
-function renderFontesModal() {
+function fecharFontesSelecaoModal() {
+    elFontesModal.classList.remove('cl-modal-overlay--visivel');
+}
+
+document.getElementById('clFontesModalFechar').addEventListener('click', fecharFontesSelecaoModal);
+document.getElementById('clFontesModalCancelar').addEventListener('click', fecharFontesSelecaoModal);
+elFontesModal.addEventListener('click', e => { if (e.target === elFontesModal) fecharFontesSelecaoModal(); });
+
+document.getElementById('clFontesModalConfirmar').addEventListener('click', () => {
+    if (!_fontesModalSelGid) { toast('Selecione um grupo.', 'alerta'); return; }
+    if (_fontesModalEditIdx >= 0) {
+        _fontesModalData[_fontesModalEditIdx].fonteGrupoId = _fontesModalSelGid;
+    } else {
+        _fontesModalData.push({ fonteGrupoId: _fontesModalSelGid, peso: 100 });
+    }
+    fecharFontesSelecaoModal();
+    renderFontesLista();
+});
+
+elFontesModalBusca.addEventListener('input', () => {
+    const q = elFontesModalBusca.value.toLowerCase().trim();
+    elFontesModalList.querySelectorAll('.cl-fmodal-group').forEach(grp => {
+        let any = false;
+        const headerMatch = grp.querySelector('.cl-fmodal-header').textContent.toLowerCase().includes(q);
+        grp.querySelectorAll('.cl-fmodal-item').forEach(it => {
+            const match = !q || headerMatch || it.textContent.toLowerCase().includes(q);
+            it.style.display = match ? '' : 'none';
+            if (match) any = true;
+        });
+        grp.style.display = any ? '' : 'none';
+    });
+});
+
+function renderFontesLista() {
     if (!_fontesModalData.length) {
         elFontesLista.innerHTML = '<div class="cl-fontes-empty">Nenhuma fonte externa configurada</div>';
         return;
     }
-    const cursosAgrupados = _buildFontesAgrupados();
-
     elFontesLista.innerHTML = _fontesModalData.map((f, i) => {
-        const gSel = f.fonteGrupoId ? (_allGroupsCache || []).find(x => String(x.id) === String(f.fonteGrupoId)) : null;
-        const selLabel = gSel
-            ? `${esc(gSel.nome)}${gSel.tipo === 'recuperacao' ? ' (Rec.)' : ''}`
-            : 'Selecionar grupo...';
-        const selCurso = gSel ? _fonteGrupoLabel(gSel) : '';
-        const selPts   = gSel?.pontosMeta ? `${(gSel.pontosMeta / 10).toFixed(1)} pts` : '';
-
-        const dropdownItems = cursosAgrupados.map(c => {
-            const items = c.grupos.map(g => {
-                const active = String(g.id) === String(f.fonteGrupoId) ? ' cl-fdrop-item--active' : '';
-                const tipoTag = g.tipo === 'recuperacao' ? '<span class="cl-fdrop-tag">Rec.</span>' : '';
-                const pts = g.pontosMeta ? `<span class="cl-fdrop-pts">${(g.pontosMeta / 10).toFixed(1)} pts</span>` : '';
-                return `<div class="cl-fdrop-item${active}" data-gid="${g.id}">${esc(g.nome)} ${tipoTag} ${pts}</div>`;
-            }).join('');
-            return `<div class="cl-fdrop-group"><div class="cl-fdrop-header">${esc(c.nome)}</div>${items}</div>`;
-        }).join('');
+        const g = f.fonteGrupoId ? (_allGroupsCache || []).find(x => String(x.id) === String(f.fonteGrupoId)) : null;
+        const nome = g ? esc(g.nome) + (g.tipo === 'recuperacao' ? ' <span class="cl-fdrop-tag">Rec.</span>' : '') : '<em>Não definido</em>';
+        const curso = g ? (_cursosCache?.find(c => c.id === g.cursoId)?.nome || '') : '';
+        const pts = g?.pontosMeta ? `${(g.pontosMeta / 10).toFixed(1)} pts` : '';
 
         return `
             <div class="cl-fonte-row" data-idx="${i}">
                 <div class="cl-fonte-row-main">
-                    <div class="cl-fonte-dropdown-wrap">
-                        <button type="button" class="cl-fonte-trigger" title="Selecionar grupo fonte">
-                            <span class="cl-fonte-trigger-label">${selLabel}</span>
-                            ${selCurso ? `<span class="cl-fonte-trigger-curso">${esc(selCurso)}${selPts ? ' · ' + selPts : ''}</span>` : ''}
-                            <svg class="cl-fonte-trigger-arrow" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-                        </button>
-                        <div class="cl-fonte-dropdown" style="display:none">
-                            <input type="text" class="cl-fonte-search" placeholder="Buscar grupo...">
-                            <div class="cl-fonte-dropdown-list">${dropdownItems || '<div class="cl-fontes-empty">Nenhum grupo disponível</div>'}</div>
+                    <button type="button" class="cl-fonte-trigger cl-fonte-trigger--card" data-idx="${i}" title="Alterar grupo">
+                        <div class="cl-fonte-trigger-top">
+                            <span class="cl-fonte-trigger-label">${nome}</span>
+                            ${pts ? `<span class="cl-fonte-info-pts">${pts}</span>` : ''}
                         </div>
-                    </div>
+                        ${curso ? `<span class="cl-fonte-trigger-curso">${esc(curso)}</span>` : ''}
+                    </button>
                     <div class="cl-fonte-peso-wrap">
                         <label class="cl-fonte-peso-label">Aproveitar</label>
                         <input type="number" class="cl-fonte-peso" value="${f.peso}" min="1" max="200" step="1">
@@ -2809,43 +2876,9 @@ function renderFontesModal() {
             </div>`;
     }).join('');
 
-    elFontesLista.querySelectorAll('.cl-fonte-trigger').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const dd = btn.nextElementSibling;
-            const wasOpen = dd.style.display !== 'none';
-            document.querySelectorAll('.cl-fonte-dropdown').forEach(d => d.style.display = 'none');
-            if (!wasOpen) {
-                dd.style.display = '';
-                dd.querySelector('.cl-fonte-search').value = '';
-                dd.querySelectorAll('.cl-fdrop-group, .cl-fdrop-item').forEach(el => el.style.display = '');
-                dd.querySelector('.cl-fonte-search').focus();
-            }
-        });
-    });
-    elFontesLista.querySelectorAll('.cl-fonte-search').forEach(inp => {
-        inp.addEventListener('input', () => {
-            const q = inp.value.toLowerCase().trim();
-            const list = inp.closest('.cl-fonte-dropdown').querySelector('.cl-fonte-dropdown-list');
-            list.querySelectorAll('.cl-fdrop-group').forEach(grp => {
-                let anyVisible = false;
-                grp.querySelectorAll('.cl-fdrop-item').forEach(it => {
-                    const match = !q || it.textContent.toLowerCase().includes(q);
-                    it.style.display = match ? '' : 'none';
-                    if (match) anyVisible = true;
-                });
-                grp.style.display = anyVisible ? '' : 'none';
-            });
-        });
-        inp.addEventListener('click', e => e.stopPropagation());
-    });
-    elFontesLista.querySelectorAll('.cl-fdrop-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const row = item.closest('.cl-fonte-row');
-            const idx = Number(row.dataset.idx);
-            _fontesModalData[idx].fonteGrupoId = Number(item.dataset.gid);
-            renderFontesModal();
+    elFontesLista.querySelectorAll('.cl-fonte-trigger--card').forEach(btn => {
+        btn.addEventListener('click', () => {
+            abrirFontesSelecaoModal(Number(btn.dataset.idx));
         });
     });
     elFontesLista.querySelectorAll('.cl-fonte-peso').forEach(inp => {
@@ -2858,19 +2891,14 @@ function renderFontesModal() {
         btn.addEventListener('click', () => {
             const idx = Number(btn.closest('.cl-fonte-row').dataset.idx);
             _fontesModalData.splice(idx, 1);
-            renderFontesModal();
+            renderFontesLista();
         });
     });
 }
 
-document.addEventListener('click', () => {
-    document.querySelectorAll('.cl-fonte-dropdown').forEach(d => d.style.display = 'none');
-});
-
 elBtnAddFonte.addEventListener('click', async () => {
     await carregarTodosGrupos();
-    _fontesModalData.push({ fonteGrupoId: null, peso: 100 });
-    renderFontesModal();
+    abrirFontesSelecaoModal(-1);
 });
 
 /* ── Edição inline dos pontos de cada atividade no modal ── */
@@ -3035,6 +3063,17 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
             pontos_max:       cb.dataset.pontos !== '' ? Number(cb.dataset.pontos) : null,
         });
     });
+
+    const ativsCom100 = atividades.filter(a => a.pontos_max === 100);
+    if (ativsCom100.length > 0) {
+        const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const nomes = ativsCom100.map(a => `• ${esc(a.atividade_titulo)}`).join('<br>');
+        const continuar = await confirmar(
+            `${ativsCom100.length} atividade${ativsCom100.length > 1 ? 's' : ''} com <b>10.0 pts</b> (valor padrão do Classroom):<br><br>${nomes}<br><br>Deseja continuar mesmo assim ou voltar para ajustar?`,
+            { titulo: 'Atividades com pontuação padrão', confirmLabel: 'Continuar assim', cancelLabel: 'Voltar e ajustar', tipo: 'alerta', icone: '⚠️', html: true }
+        );
+        if (!continuar) return;
+    }
 
     const btn = document.getElementById('clGrupoModalSalvar');
     btn.disabled    = true;
