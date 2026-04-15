@@ -528,6 +528,151 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     });
 
     /* ════════════════════════════════════════════════════════
+       EXPORTAR / IMPORTAR CONFIGURAÇÃO
+    ════════════════════════════════════════════════════════ */
+
+    router.get('/admin/export-config', async (req, res) => {
+        try {
+            const { rows: grupos } = await pool.query(`SELECT id, curso_id, nome, pontos_meta, cor, cod_classe_rco FROM classroom_grupos ORDER BY id`);
+            const { rows: grupoAtividades } = await pool.query(`SELECT grupo_id, atividade_id, atividade_titulo, pontos_max, due_date_original FROM classroom_grupo_atividades ORDER BY id`);
+            const { rows: ausencias } = await pool.query(`SELECT curso_id, atividade_id, user_id, nome_aluno, data_atividade, cod_classe FROM classroom_ausencias ORDER BY id`);
+            const { rows: tardias } = await pool.query(`SELECT grupo_id, curso_id, atividade_id, atividade_titulo, user_id, nome_aluno, email_aluno, data_entrega, data_fechamento, nota, estado FROM classroom_entregas_tardias ORDER BY id`);
+            const { rows: configs } = await pool.query(`SELECT chave, valor, obs FROM edusync_config ORDER BY chave`);
+            const { rows: acessosPedagogo } = await pool.query(`SELECT professor_cpf, pedagogo_email FROM classroom_acesso_pedagogo ORDER BY id`);
+
+            const exportData = {
+                versao: 1,
+                exportadoEm: new Date().toISOString(),
+                classroom_grupos: grupos,
+                classroom_grupo_atividades: grupoAtividades,
+                classroom_ausencias: ausencias,
+                classroom_entregas_tardias: tardias,
+                edusync_config: configs,
+                classroom_acesso_pedagogo: acessosPedagogo,
+            };
+
+            res.setHeader('Content-Disposition', `attachment; filename="edusync-config-${new Date().toISOString().slice(0, 10)}.json"`);
+            res.json(exportData);
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    router.post('/admin/import-config', async (req, res) => {
+        const data = req.body;
+        if (!data || !data.versao) return res.status(400).json({ erro: 'JSON inválido — campo "versao" ausente.' });
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const resultado = { grupos: 0, atividades: 0, ausencias: 0, tardias: 0, configs: 0, acessos: 0 };
+
+            if (data.classroom_grupos?.length) {
+                const idMap = {};
+                for (const g of data.classroom_grupos) {
+                    const { rows } = await client.query(
+                        `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, cod_classe_rco)
+                         VALUES ($1, $2, $3, $4, $5)
+                         ON CONFLICT DO NOTHING
+                         RETURNING id`,
+                        [g.curso_id, g.nome, g.pontos_meta || 40, g.cor || '#4285F4', g.cod_classe_rco || null]
+                    );
+                    if (rows.length) {
+                        idMap[g.id] = rows[0].id;
+                        resultado.grupos++;
+                    } else {
+                        const { rows: existing } = await client.query(
+                            `SELECT id FROM classroom_grupos WHERE curso_id = $1 AND nome = $2`,
+                            [g.curso_id, g.nome]
+                        );
+                        if (existing.length) idMap[g.id] = existing[0].id;
+                    }
+                }
+
+                if (data.classroom_grupo_atividades?.length) {
+                    for (const a of data.classroom_grupo_atividades) {
+                        const newGrupoId = idMap[a.grupo_id];
+                        if (!newGrupoId) continue;
+                        await client.query(
+                            `INSERT INTO classroom_grupo_atividades (grupo_id, atividade_id, atividade_titulo, pontos_max, due_date_original)
+                             VALUES ($1, $2, $3, $4, $5)
+                             ON CONFLICT (grupo_id, atividade_id) DO NOTHING`,
+                            [newGrupoId, a.atividade_id, a.atividade_titulo || '', a.pontos_max, a.due_date_original || null]
+                        );
+                        resultado.atividades++;
+                    }
+                }
+
+                if (data.classroom_entregas_tardias?.length) {
+                    for (const t of data.classroom_entregas_tardias) {
+                        const newGrupoId = idMap[t.grupo_id];
+                        if (!newGrupoId) continue;
+                        await client.query(
+                            `INSERT INTO classroom_entregas_tardias (grupo_id, curso_id, atividade_id, atividade_titulo, user_id, nome_aluno, email_aluno, data_entrega, data_fechamento, nota, estado)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                             ON CONFLICT (grupo_id, atividade_id, user_id) DO NOTHING`,
+                            [newGrupoId, t.curso_id, t.atividade_id, t.atividade_titulo, t.user_id, t.nome_aluno, t.email_aluno, t.data_entrega, t.data_fechamento, t.nota, t.estado]
+                        );
+                        resultado.tardias++;
+                    }
+                }
+            }
+
+            if (data.classroom_ausencias?.length) {
+                for (const a of data.classroom_ausencias) {
+                    await client.query(
+                        `INSERT INTO classroom_ausencias (curso_id, atividade_id, user_id, nome_aluno, data_atividade, cod_classe)
+                         VALUES ($1, $2, $3, $4, $5, $6)
+                         ON CONFLICT (curso_id, atividade_id, user_id) DO NOTHING`,
+                        [a.curso_id, a.atividade_id, a.user_id, a.nome_aluno, a.data_atividade, a.cod_classe]
+                    );
+                    resultado.ausencias++;
+                }
+            }
+
+            if (data.edusync_config?.length) {
+                for (const c of data.edusync_config) {
+                    await client.query(
+                        `INSERT INTO edusync_config (chave, valor, obs) VALUES ($1, $2, $3)
+                         ON CONFLICT (chave) DO UPDATE SET valor = $2`,
+                        [c.chave, c.valor, c.obs || '']
+                    );
+                    resultado.configs++;
+                }
+            }
+
+            if (data.classroom_acesso_pedagogo?.length) {
+                for (const a of data.classroom_acesso_pedagogo) {
+                    await client.query(
+                        `INSERT INTO classroom_acesso_pedagogo (professor_cpf, pedagogo_email) VALUES ($1, $2)
+                         ON CONFLICT DO NOTHING`,
+                        [a.professor_cpf, a.pedagogo_email]
+                    );
+                    resultado.acessos++;
+                }
+            }
+
+            await client.query('COMMIT');
+
+            await auditLogger.registrar({
+                usuarioId: req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao: 'CONFIG_IMPORTADA',
+                modulo: 'admin',
+                detalhes: resultado,
+                ip: req.ip,
+            });
+
+            res.json({ ok: true, resultado });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════
        IMPERSONAÇÃO — visualizar o sistema como outro perfil
        Segurança: requirePerfil usa o perfil REAL da sessão,
        portanto o admin continua protegido mesmo enquanto impersona.

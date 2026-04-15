@@ -15,7 +15,7 @@ const app = express();
 // incluindo as que chegam durante a inicialização assíncrona do app.
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // Impedir cache de respostas da API no navegador

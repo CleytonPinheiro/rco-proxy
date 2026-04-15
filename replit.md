@@ -56,6 +56,13 @@ Sistema de gestão escolar para professores do Paraná. Inclui **Gerador de QR C
 - **Endpoints portal**: `GET /buscar-professores?q=`, `POST /solicitar-acesso`, `GET /minhas-solicitacoes`
 - **Endpoints professor**: `GET /solicitacoes-acesso`, `POST /solicitacoes-acesso/:id/responder` (aceitar: true/false)
 
+### Exportar / Importar Configuração
+- **Admin aba "Configurações"**: botões "Exportar Configuração" e "Importar Configuração"
+- **Export** (`GET /admin/export-config`): gera JSON com `classroom_grupos`, `classroom_grupo_atividades`, `classroom_ausencias`, `classroom_entregas_tardias`, `edusync_config`, `classroom_acesso_pedagogo`
+- **Import** (`POST /admin/import-config`): lê JSON exportado, insere dados com `ON CONFLICT DO NOTHING` (não sobrescreve existentes), remapeia IDs de grupos, transação atômica
+- **JSON body limit**: `10mb` para suportar exports grandes
+- **Uso**: exportar config do dev → importar no ambiente de produção (transfere grupos, atividades vinculadas, ausências, tardias, configurações e acessos pedagógicos)
+
 ### Portal do Aluno (Google OAuth — público)
 - **URL pública**: `/alunos/` — sem login EduSync, acessível por alunos
 - **Backend**: `backend/src/routes/alunos-portal.routes.js` — montado ANTES do `requireAuth`

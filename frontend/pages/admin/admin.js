@@ -972,6 +972,72 @@ window.salvarConfig = async function (chave) {
     }
 };
 
+/* ════════════════════════════════════════════════════════════════
+   EXPORTAR / IMPORTAR CONFIGURAÇÃO
+══════════════════════════════════════════════════════════════ */
+
+window.exportarConfig = async function () {
+    try {
+        const res = await api('/admin/export-config');
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `edusync-config-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Configuração exportada com sucesso!', 'success');
+    } catch (e) {
+        showToast('Erro ao exportar: ' + e.message, 'error');
+    }
+};
+
+window.importarConfig = function () {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            if (!data.versao) { showToast('Arquivo inválido — não é um export do EduSync.', 'error'); return; }
+
+            const resumo = [];
+            if (data.classroom_grupos?.length) resumo.push(`${data.classroom_grupos.length} grupos`);
+            if (data.classroom_grupo_atividades?.length) resumo.push(`${data.classroom_grupo_atividades.length} atividades vinculadas`);
+            if (data.classroom_ausencias?.length) resumo.push(`${data.classroom_ausencias.length} ausências`);
+            if (data.classroom_entregas_tardias?.length) resumo.push(`${data.classroom_entregas_tardias.length} tardias`);
+            if (data.edusync_config?.length) resumo.push(`${data.edusync_config.length} configurações`);
+            if (data.classroom_acesso_pedagogo?.length) resumo.push(`${data.classroom_acesso_pedagogo.length} acessos pedagógicos`);
+
+            const msg = `Importar configuração?\n\nArquivo: ${file.name}\nExportado em: ${data.exportadoEm || '?'}\n\nConteúdo:\n• ${resumo.join('\n• ') || 'Vazio'}\n\nDados existentes não serão sobrescritos (apenas novos serão adicionados).`;
+            if (!confirm(msg)) return;
+
+            const btn = document.getElementById('btnImportar');
+            if (btn) { btn.disabled = true; btn.textContent = 'Importando...'; }
+
+            const res = await api('/admin/import-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const result = await res.json();
+            if (btn) { btn.disabled = false; btn.textContent = 'Importar Configuração'; }
+
+            if (result.erro) { showToast('Erro: ' + result.erro, 'error'); return; }
+
+            const r = result.resultado;
+            showToast(`Importado: ${r.grupos} grupos, ${r.atividades} atividades, ${r.ausencias} ausências, ${r.tardias} tardias, ${r.configs} configs, ${r.acessos} acessos`, 'success');
+        } catch (err) {
+            showToast('Erro ao importar: ' + err.message, 'error');
+        }
+    };
+    input.click();
+};
+
 /* ── Init ── */
 carregarUsuarios();
 carregarEscolas();
