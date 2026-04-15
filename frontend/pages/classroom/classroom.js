@@ -820,6 +820,7 @@ function filtrarNotas() {
         if (status === 'pendente' && (n.entregue || n.estado === 'RETURNED')) return false;
         if (status === 'atrasado' && !n.atrasado) return false;
         if (status === 'ausente' && !n.ausente) return false;
+        if (status === 'corrigir' && !(n.estado === 'TURNED_IN' && n.nota === null && (n.notaRascunho === undefined || n.notaRascunho === null))) return false;
         return true;
     });
 }
@@ -1498,14 +1499,14 @@ elBtnFecharNota.addEventListener('click', async () => {
                     if (!ativ) { toast('Atividade não encontrada.', 'erro'); return; }
                     document.getElementById('clConfirmCancelar').click();
                     if (viewMode !== 'atividades') elTabAtiv.click();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         const itemEl = document.querySelector(`.cl-ativ-item[data-ativ-id="${atvId}"]`);
                         if (itemEl) {
                             itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            selecionarAtividade(ativ, itemEl);
-                        } else {
-                            selecionarAtividade(ativ, document.createElement('div'));
                         }
+                        await selecionarAtividade(ativ, itemEl || document.createElement('div'));
+                        elFiltroStatus.value = 'corrigir';
+                        renderNotas();
                     }, 150);
                 });
             });
@@ -1806,14 +1807,14 @@ function renderAvisoCorrecao() {
             if (viewMode !== 'atividades') {
                 elTabAtiv.click();
             }
-            setTimeout(() => {
+            setTimeout(async () => {
                 const itemEl = document.querySelector(`.cl-ativ-item[data-ativ-id="${atvId}"]`);
                 if (itemEl) {
                     itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    selecionarAtividade(ativ, itemEl);
-                } else {
-                    selecionarAtividade(ativ, document.createElement('div'));
                 }
+                await selecionarAtividade(ativ, itemEl || document.createElement('div'));
+                elFiltroStatus.value = 'corrigir';
+                renderNotas();
             }, 100);
         });
     });
