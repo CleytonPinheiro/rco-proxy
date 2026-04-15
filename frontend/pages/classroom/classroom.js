@@ -1725,7 +1725,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null, fontes: resumo.fontes || [] };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
         renderAvisoCorrecao();
@@ -1933,7 +1933,7 @@ function toggleFiltro(chave) {
 
 function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal, dataFechamento } = grupoResumoData;
+    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal, dataFechamento, fontes } = grupoResumoData;
 
     // Contagens por faixa
     const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
@@ -2038,6 +2038,7 @@ function renderListaFiltrada() {
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#f97316"></span>Entrou (0 pts)</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue s/ nota</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:var(--border)"></span>Pendente</span>
+            ${fontes.length > 0 ? '<span class="cl-legenda-item"><span class="cl-legenda-sep">│</span>Fonte externa</span>' : ''}
             <span class="cl-legenda-hint">Clique no aluno para ver detalhes</span>
         </div>
         <div class="cl-faixa-filtros">
@@ -2053,7 +2054,7 @@ function renderListaFiltrada() {
         </div>
         <div class="cl-faixa-lista" id="clFaixaLista">
             ${filtrados.length
-                ? filtrados.map(a => renderResumoRow(a, meta, atividades, hasRec, colsVisiveis, gridTpl)).join('')
+                ? filtrados.map(a => renderResumoRow(a, meta, atividades, hasRec, colsVisiveis, gridTpl, fontes)).join('')
                 : `<div class="cl-empty-state"><p>Nenhum aluno nessa faixa.</p></div>`}
         </div>`;
 
@@ -2065,7 +2066,7 @@ function renderListaFiltrada() {
     // Rows → detalhe do aluno
     elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
         row.style.cursor = 'pointer';
-        row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta));
+        row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta, fontes));
     });
 
     // Headers → drag-to-reorder + click-to-sort
@@ -2076,7 +2077,7 @@ function renderListaFiltrada() {
     if (painel) renderQuizizzPainel(atividades, painel);
 }
 
-function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis = ['aluno','soma','pendentes'], gridTpl = '36px 1fr 100px 90px') {
+function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis = ['aluno','soma','pendentes'], gridTpl = '36px 1fr 100px 90px', fontes = []) {
     const al       = a.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
@@ -2084,9 +2085,7 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
     const pct      = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
     const somaCor  = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
 
-    // Barra de passos: um segmento por atividade
-    const stepsHtml = atividades.map(atv => {
-        const sub    = a.atividades?.[atv.id];
+    const stepHtml = (atv, sub, prefixLabel = '') => {
         const nota   = sub?.nota ?? null;
         const ent    = sub?.entregue ?? false;
         const fezRec = sub?.fezRec ?? false;
@@ -2095,14 +2094,28 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
                      : nota !== null      ? '#10b981'
                      : ent               ? '#4285F4'
                      : 'var(--border)';
-        const label  = (fezRec ? '🔄 Recuperação — ' : '')
+        const label  = prefixLabel + (fezRec ? '🔄 Recuperação — ' : '')
             + (entrou
                 ? `${atv.titulo}: Entrou (0 pts) — não realizou`
                 : nota !== null
                     ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
                     : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`);
         return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}${fezRec ? ' cl-passo--rec' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
-    }).join('');
+    };
+
+    let stepsHtml = atividades.map(atv => stepHtml(atv, a.atividades?.[atv.id])).join('');
+
+    if (fontes.length > 0) {
+        for (const fonte of fontes) {
+            if (!fonte.atividades?.length) continue;
+            stepsHtml += `<span class="cl-passo-sep" title="Fonte: ${esc(fonte.nome)}">│</span>`;
+            for (const fatv of fonte.atividades) {
+                const key = `f_${fonte.fonteGrupoId}_${fatv.id}`;
+                const sub = a.fontesAtividades?.[key] || null;
+                stepsHtml += stepHtml(fatv, sub, `📥 ${fonte.nome} → `);
+            }
+        }
+    }
 
     const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
 
@@ -2349,7 +2362,7 @@ function imprimirRelatorioGrupo() {
 /* ══════════════════════════════════════════════════════════════
    DETALHE DO ALUNO NO GRUPO
 ══════════════════════════════════════════════════════════════ */
-function mostrarDetalheAluno(alunoData, atividades, meta) {
+function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
     const al      = alunoData.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
@@ -2462,6 +2475,64 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
         </div>`;
     }).join('');
 
+    let fontesHtml = '';
+    let fonteRealizadas = 0, fonteNaoRealizadas = 0, fonteEntrou = 0;
+    if (fontes.length > 0) {
+        for (const fonte of fontes) {
+            if (!fonte.atividades?.length) continue;
+            const pesoLabel = fonte.peso !== 100 ? ` (peso ${fonte.peso}%)` : '';
+            let fonteRows = '';
+            for (const fatv of fonte.atividades) {
+                const key = `f_${fonte.fonteGrupoId}_${fatv.id}`;
+                const sub = alunoData.fontesAtividades?.[key];
+                const nota = sub?.nota ?? null;
+                const entregue = sub?.entregue ?? false;
+                const entrou = nota === 0 && entregue;
+
+                let statusHtml, tipo;
+                if (entrou) {
+                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entrou">↩ Entrou (0 / ${rco(fatv.pontos)} pts)</span>`;
+                    tipo = 'entrou';
+                    fonteEntrou++;
+                } else if (nota !== null) {
+                    const pctAtv = fatv.pontos > 0 ? ((nota / fatv.pontos) * 100).toFixed(0) : nota;
+                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(nota)} / ${rco(fatv.pontos)} pts &nbsp;(${pctAtv}%)</span>`;
+                    tipo = 'realizada';
+                    fonteRealizadas++;
+                } else if (entregue) {
+                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--aguard">⏳ Realizou — aguardando correção</span>`;
+                    tipo = 'realizada';
+                    fonteRealizadas++;
+                } else {
+                    statusHtml = `<span class="cl-nota-status-badge" style="background:var(--bg-alt);color:var(--text-muted)">Pendente</span>`;
+                    tipo = 'nao-realizada';
+                    fonteNaoRealizadas++;
+                }
+
+                fonteRows += `
+                <div class="cl-detalhe-row cl-detalhe-row--fonte" data-tipo="${tipo}">
+                    <div class="cl-detalhe-row-titulo">${esc(fatv.titulo)}</div>
+                    <div class="cl-detalhe-row-status">${statusHtml}</div>
+                </div>`;
+            }
+            fontesHtml += `
+            <div class="cl-detalhe-fonte-section">
+                <div class="cl-detalhe-fonte-header">
+                    <span class="cl-detalhe-fonte-ico">📥</span>
+                    <span class="cl-detalhe-fonte-nome">${esc(fonte.nome)}${pesoLabel}</span>
+                    <span class="cl-detalhe-fonte-pts">${rco(fonte.pontosMax)} pts</span>
+                </div>
+                ${fonteRows}
+            </div>`;
+        }
+    }
+
+    const totalRealizadas    = realizadas + fonteRealizadas;
+    const totalNaoRealizadas = naoRealizadas + fonteNaoRealizadas;
+    const totalEntrou        = entrarEm + fonteEntrou;
+    const totalFonteAtivs    = fontes.reduce((s, f) => s + (f.atividades?.length || 0), 0);
+    const totalGeral         = totalAtiv + totalFonteAtivs;
+
     elNotasLista.innerHTML = `
         <div class="cl-detalhe-header">
             <button class="cl-btn cl-btn--ghost cl-detalhe-voltar" id="clDetalheVoltar">
@@ -2482,22 +2553,23 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
 
         <div class="cl-detalhe-tabs">
             <button class="cl-detalhe-tab cl-detalhe-tab--ativa" data-filtro="todas">
-                Todas <span class="cl-detalhe-tab-cnt">${totalAtiv}</span>
+                Todas <span class="cl-detalhe-tab-cnt">${totalGeral}</span>
             </button>
             <button class="cl-detalhe-tab" data-filtro="realizada">
-                Realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--ok">${realizadas}</span>
+                Realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--ok">${totalRealizadas}</span>
             </button>
-            ${entrarEm > 0 ? `
+            ${totalEntrou > 0 ? `
             <button class="cl-detalhe-tab" data-filtro="entrou">
-                Entrou (0 pts) <span class="cl-detalhe-tab-cnt cl-tab-cnt--entrou">${entrarEm}</span>
+                Entrou (0 pts) <span class="cl-detalhe-tab-cnt cl-tab-cnt--entrou">${totalEntrou}</span>
             </button>` : ''}
             <button class="cl-detalhe-tab" data-filtro="nao-realizada">
-                Não realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--err">${naoRealizadas}</span>
+                Não realizadas <span class="cl-detalhe-tab-cnt cl-tab-cnt--err">${totalNaoRealizadas}</span>
             </button>
         </div>
 
         <div class="cl-detalhe-lista" id="clDetalheLista">
             ${rowsHtml}
+            ${fontesHtml}
         </div>`;
 
     // Tabs de filtro
@@ -2508,6 +2580,10 @@ function mostrarDetalheAluno(alunoData, atividades, meta) {
             const filtro = btn.dataset.filtro;
             elNotasLista.querySelectorAll('.cl-detalhe-row').forEach(row => {
                 row.style.display = filtro === 'todas' || row.dataset.tipo === filtro ? '' : 'none';
+            });
+            elNotasLista.querySelectorAll('.cl-detalhe-fonte-section').forEach(sec => {
+                const visibleRows = sec.querySelectorAll('.cl-detalhe-row:not([style*="display: none"])');
+                sec.style.display = filtro === 'todas' || visibleRows.length > 0 ? '' : 'none';
             });
         });
     });

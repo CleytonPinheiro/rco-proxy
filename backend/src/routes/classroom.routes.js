@@ -1169,7 +1169,7 @@ export function createClassroomRouter(deps = {}) {
                 for (const fc of fontesConfig) {
                     try {
                         const { rows: fonteAtivs } = await pool.query(
-                            `SELECT atividade_id, pontos_max FROM classroom_grupo_atividades WHERE grupo_id = $1`,
+                            `SELECT atividade_id, atividade_titulo, pontos_max FROM classroom_grupo_atividades WHERE grupo_id = $1`,
                             [fc.fonte_grupo_id]
                         );
                         if (!fonteAtivs.length) continue;
@@ -1192,6 +1192,7 @@ export function createClassroomRouter(deps = {}) {
                         } catch (_) {}
 
                         const fonteScores = {};
+                        const fonteAtvSubs = {};
                         for (const fa of fonteAtivs) {
                             const pm = Number(fa.pontos_max) || 0;
                             if (pm <= 0) continue;
@@ -1203,11 +1204,17 @@ export function createClassroomRouter(deps = {}) {
                                     });
                                     for (const s of (resp3.data.studentSubmissions || [])) {
                                         const grade = s.assignedGrade ?? s.draftGrade ?? null;
+                                        const email = fonteEmailMap[s.userId];
+                                        if (!email) continue;
+                                        const entregue = ['TURNED_IN','RETURNED','RECLAIMED_BY_STUDENT'].includes(s.state);
+                                        if (!fonteAtvSubs[email]) fonteAtvSubs[email] = {};
+                                        fonteAtvSubs[email][fa.atividade_id] = {
+                                            nota: grade !== null ? Math.min(grade, pm) : null,
+                                            entregue,
+                                            estado: s.state || null,
+                                        };
                                         if (grade !== null) {
-                                            const email = fonteEmailMap[s.userId];
-                                            if (email) {
-                                                fonteScores[email] = (fonteScores[email] || 0) + Math.min(grade, pm);
-                                            }
+                                            fonteScores[email] = (fonteScores[email] || 0) + Math.min(grade, pm);
                                         }
                                     }
                                     pt3 = resp3.data.nextPageToken;
@@ -1222,6 +1229,16 @@ export function createClassroomRouter(deps = {}) {
                             }
                         }
 
+                        for (const [email, atvMap] of Object.entries(fonteAtvSubs)) {
+                            const localUserId = emailMap[email];
+                            if (localUserId && alunoMap[localUserId]) {
+                                if (!alunoMap[localUserId].fontesAtividades) alunoMap[localUserId].fontesAtividades = {};
+                                for (const [atvId, sub] of Object.entries(atvMap)) {
+                                    alunoMap[localUserId].fontesAtividades[`f_${fc.fonte_grupo_id}_${atvId}`] = sub;
+                                }
+                            }
+                        }
+
                         totalPossivelComFontes += fontePontosMax * pesoFrac;
 
                         const { rows: [fonteGrupo] } = await pool.query(
@@ -1232,6 +1249,11 @@ export function createClassroomRouter(deps = {}) {
                             nome: fonteGrupo?.nome || '',
                             pontosMax: fontePontosMax,
                             peso: fc.peso,
+                            atividades: fonteAtivs.map(fa => ({
+                                id: fa.atividade_id,
+                                titulo: fa.atividade_titulo || fa.atividade_id,
+                                pontos: Number(fa.pontos_max) || 0,
+                            })),
                         });
                     } catch (e) {
                         console.error(`[CLASSROOM] Erro ao carregar fonte ${fc.fonte_grupo_id}:`, e.message);
@@ -1246,6 +1268,7 @@ export function createClassroomRouter(deps = {}) {
                 mediaIndice: totalFinal > 0 ? (a.totalGanho / totalFinal) * 100 : 0,
                 pendentes:   a.pendentes,
                 atividades:  a.atividades,
+                fontesAtividades: a.fontesAtividades || {},
             }));
 
             /* ─── Filtro de recuperação por data ───────────────────────────────────
