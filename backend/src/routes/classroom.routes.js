@@ -1113,6 +1113,66 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
+    /* ── Sincronizar notas Quizizz (draftGrade → assignedGrade) ── */
+    router.post('/classroom/groups/:id/sync-quizizz', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+        const { courseId } = req.body;
+        if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório.' });
+        try {
+            const auth = await getAuthenticatedClient(req);
+            if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            const { rows: ativs } = await pool.query(
+                `SELECT atividade_id, atividade_titulo FROM classroom_atividades WHERE grupo_id = $1`,
+                [req.params.id]
+            );
+            if (!ativs.length) return res.json({ total: 0, sincronizados: 0 });
+
+            let sincronizados = 0;
+            for (const atv of ativs) {
+                let quizizzId = null;
+                try {
+                    const cwResp = await classroom.courses.courseWork.get({ courseId, id: atv.atividade_id });
+                    const materiais = cwResp.data.materials || [];
+                    for (const m of materiais) {
+                        if (/quizizz\.com/i.test(m.link?.url || '')) { quizizzId = 'LINK'; break; }
+                    }
+                } catch (_) {}
+                if (!quizizzId && /quiziz{1,2}/i.test(atv.atividade_titulo)) quizizzId = 'TITULO';
+                if (!quizizzId) continue;
+
+                const allSubs = [];
+                let pageToken;
+                do {
+                    const resp = await classroom.courses.courseWork.studentSubmissions.list({
+                        courseId, courseWorkId: atv.atividade_id, pageSize: 100, pageToken,
+                    });
+                    allSubs.push(...(resp.data.studentSubmissions || []));
+                    pageToken = resp.data.nextPageToken;
+                } while (pageToken);
+
+                for (const s of allSubs) {
+                    if (s.draftGrade != null && (s.assignedGrade == null || s.assignedGrade === undefined)) {
+                        try {
+                            await classroom.courses.courseWork.studentSubmissions.patch({
+                                courseId, courseWorkId: atv.atividade_id, id: s.id,
+                                updateMask: 'assignedGrade',
+                                requestBody: { assignedGrade: s.draftGrade },
+                            });
+                            sincronizados++;
+                        } catch (e) {
+                            console.error(`[QUIZIZZ-SYNC] Erro ao publicar nota ${s.id}:`, e.message);
+                        }
+                    }
+                }
+            }
+            res.json({ total: ativs.length, sincronizados });
+        } catch (e) {
+            console.error('[QUIZIZZ-SYNC] Erro:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Fechar/Abrir grupo (definir data_fechamento + sync dueDate no Classroom) ── */
     router.post('/classroom/groups/:id/fechar', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { dataFechamento, syncClassroom } = req.body;

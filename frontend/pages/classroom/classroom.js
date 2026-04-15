@@ -1720,6 +1720,9 @@ async function carregarResumoGrupo(grupo) {
 
         toast('Dados atualizados do Classroom', 'ok');
 
+        /* Sincroniza notas Quizizz (draftGrade → assignedGrade) em background */
+        syncQuizizzBackground(grupo, resumo.atividades);
+
         /* Enriquece atividades Quizizz em background (sem bloquear a UI) */
         enriquecerQuizizz(resumo.atividades);
 
@@ -1764,12 +1767,13 @@ function renderAvisoCorrecao() {
     atvIds.forEach(atvId => {
         const info = grupoResumoData.atividades?.find(x => String(x.id) === String(atvId));
         const titulo = info?.titulo || atvId;
+        const isQuizizz = !!info?.quizizzId;
         const { count, alunos } = porAtividade[atvId];
         const nomes = alunos.join(', ') + (count > 3 ? ` +${count - 3}` : '');
         linksHtml += `
             <div class="cl-correcao-link" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
-                <span class="cl-correcao-link__icon">!</span>
-                <span class="cl-correcao-link__ativ">${esc(titulo)}</span>
+                <span class="cl-correcao-link__icon">${isQuizizz ? '🎮' : '!'}</span>
+                <span class="cl-correcao-link__ativ">${esc(titulo)}${isQuizizz ? ' <small style="opacity:.6">(Quizizz)</small>' : ''}</span>
                 <span class="cl-correcao-link__qty">${count} entrega${count > 1 ? 's' : ''}</span>
                 <span class="cl-correcao-link__arrow">→</span>
             </div>`;
@@ -1820,6 +1824,27 @@ function faixaCor(soma, meta) {
 }
 
 /* Busca dados oficiais do Quizizz para atividades detectadas e re-renderiza o painel */
+let _syncQuizizzRunning = false;
+async function syncQuizizzBackground(grupo, atividades = []) {
+    if (_syncQuizizzRunning) return;
+    if (!grupo?.id || !cursoAtivo?.id) return;
+    const temQuizizz = atividades.some(a => a.quizizzId);
+    if (!temQuizizz) return;
+    _syncQuizizzRunning = true;
+    try {
+        const r = await api(`/groups/${grupo.id}/sync-quizizz`, {
+            method: 'POST',
+            body: { courseId: cursoAtivo.id },
+        });
+        if (r.sincronizados > 0) {
+            toast(`${r.sincronizados} nota(s) Quizizz sincronizada(s) automaticamente.`, 'ok');
+            await carregarResumoGrupo(grupo);
+        }
+    } catch (_) {} finally {
+        _syncQuizizzRunning = false;
+    }
+}
+
 async function enriquecerQuizizz(atividades = []) {
     const aQuizizz = atividades.filter(a => a.quizizzId && /^[0-9a-f]{24}$/i.test(a.quizizzId));
     if (!aQuizizz.length) return;
