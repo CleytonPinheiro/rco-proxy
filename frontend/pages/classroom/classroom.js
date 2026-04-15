@@ -149,6 +149,7 @@ const elSideNavSolitaBadge = document.getElementById('sideNavSolitaBadge');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
+const elNotasBreadcrumb = document.getElementById('clNotasBreadcrumb');
 const elCorrecaoAviso  = document.getElementById('clCorrecaoAviso');
 
 /* ── Toast ── */
@@ -334,6 +335,8 @@ function resetColuna3() {
     elNotasLista.innerHTML        = '<div class="cl-empty-state"><p>← Selecione uma atividade para ver as entregas</p></div>';
     elNotasCount.textContent      = 'Selecione uma atividade';
     elNotasTitulo.textContent     = 'Notas & Entregas';
+    elNotasBreadcrumb.style.display = 'none';
+    elNotasBreadcrumb.textContent = '';
     elNotasStats.style.display    = 'none';
     elNotasFiltro.style.display   = 'none';
     elNotasActions.style.display  = 'none';
@@ -632,11 +635,15 @@ function setTab(tab) {
         auditAtivAtiva = null;
         resetColuna3();
     }
-    if (tab === 'auditoria' && cursoAtivo) {
+    if (tab === 'auditoria') {
         ativAtiva  = null;
         grupoAtivo = null;
-        prepararAuditSelector();
-        if (auditResultado) renderAuditAtividades();
+        elNotasBreadcrumb.style.display = 'none';
+        elNotasBreadcrumb.textContent = '';
+        if (cursoAtivo) {
+            prepararAuditSelector();
+            if (auditResultado) renderAuditAtividades();
+        }
     }
 }
 
@@ -711,6 +718,8 @@ async function selecionarAtividade(ativ, itemEl) {
     grupoAtivo = null;
     clBc?.postMessage({ type: 'atividade', cursoId: cursoAtivo?.id, ativId: ativ.id });
 
+    elNotasBreadcrumb.textContent = cursoAtivo ? `${cursoAtivo.nome} — Atividades` : '';
+    elNotasBreadcrumb.style.display = cursoAtivo ? '' : 'none';
     elNotasTitulo.textContent    = 'Notas & Entregas';
     elNotasCount.textContent     = 'Carregando...';
     elNotasStats.style.display   = 'none';
@@ -1007,6 +1016,9 @@ async function selecionarGrupo(grupo, itemEl) {
     ativAtiva  = null;
     clBc?.postMessage({ type: 'grupo', cursoId: cursoAtivo?.id, grupoId: grupo.id });
 
+    const tipoLabel = grupo.tipo === 'recuperacao' ? 'Recuperação' : 'Atividades';
+    elNotasBreadcrumb.textContent = `${cursoAtivo?.nome || 'Disciplina'} — ${tipoLabel}`;
+    elNotasBreadcrumb.style.display = '';
     elNotasTitulo.textContent    = `Soma — ${grupo.nome}`;
     elNotasCount.textContent     = 'Carregando...';
     elNotasStats.style.display   = 'none';

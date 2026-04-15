@@ -201,6 +201,14 @@ body.cl-popout .logo-icon { font-size: 15px; }
     color: var(--text-primary);
     margin: 0 0 2px;
 }
+.cl-col-breadcrumb {
+    font-size: .7rem;
+    color: var(--accent, #a78bfa);
+    margin: 0 0 2px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+}
 .cl-col-sub {
     font-size: .75rem;
     color: var(--text-muted);
