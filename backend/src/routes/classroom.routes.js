@@ -947,10 +947,8 @@ export function createClassroomRouter(deps = {}) {
                             atividades: {},
                         };
                     }
-                    // Usa APENAS assignedGrade (nota publicada/devolvida ao aluno).
-                    // draftGrade (rascunho não publicado) é ignorado: não deve inflacionar
-                    // a média enquanto o aluno ainda não viu a nota.
-                    const nota     = s.assignedGrade ?? null;
+                    const nota           = s.assignedGrade ?? null;
+                    const notaRascunho   = s.draftGrade   ?? null;
                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
                     const atrasado = s.late || false;
 
@@ -996,12 +994,12 @@ export function createClassroomRouter(deps = {}) {
                         if (histEntrega.length > 0) {
                             eTardia = histEntrega[0] > dataFechGrupo;
                         } else {
-                            eTardia = true;
+                            eTardia = s.late || false;
                         }
                     }
 
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
-                        nota, estado: s.state, entregue, atrasado, updateTime,
+                        nota, notaRascunho, estado: s.state, entregue, atrasado, updateTime,
                         eDeRecuperacao, eTardia,
                     };
 

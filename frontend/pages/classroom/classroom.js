@@ -1107,7 +1107,7 @@ elBtnLivro.addEventListener('click', async () => {
         const naoCorrigidos = [];
         grupoResumoData.alunosResumo.forEach(a => {
             Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
-                if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.eDeRecuperacao && !atv.eTardia) {
+                if (atv.estado === 'TURNED_IN' && atv.nota === null && (atv.notaRascunho === undefined || atv.notaRascunho === null) && !atv.eDeRecuperacao && !atv.eTardia) {
                     const atvInfo = grupoResumoData.atividades?.find(x => String(x.id) === String(atvId));
                     naoCorrigidos.push({
                         aluno: a.aluno?.nome || a.userId,
@@ -1316,7 +1316,7 @@ elBtnFecharNota.addEventListener('click', async () => {
         const semCorrecao = {};
         (dados?.alunosResumo || []).forEach(a => {
             Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
-                if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.eDeRecuperacao && !atv.eTardia) {
+                if (atv.estado === 'TURNED_IN' && atv.nota === null && (atv.notaRascunho === undefined || atv.notaRascunho === null) && !atv.eDeRecuperacao && !atv.eTardia) {
                     if (!semCorrecao[atvId]) semCorrecao[atvId] = { count: 0, alunos: [] };
                     semCorrecao[atvId].count++;
                     semCorrecao[atvId].alunos.push(a.aluno?.nome || a.userId);
@@ -1714,7 +1714,7 @@ function renderAvisoCorrecao() {
     const porAtividade = {};
     grupoResumoData.alunosResumo.forEach(a => {
         Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
-            if (atv.estado === 'TURNED_IN' && atv.nota === null && !atv.eDeRecuperacao && !atv.eTardia) {
+            if (atv.estado === 'TURNED_IN' && atv.nota === null && (atv.notaRascunho === undefined || atv.notaRascunho === null) && !atv.eDeRecuperacao && !atv.eTardia) {
                 if (!porAtividade[atvId]) porAtividade[atvId] = { count: 0, alunos: [] };
                 porAtividade[atvId].count++;
                 if (porAtividade[atvId].alunos.length < 3) {
