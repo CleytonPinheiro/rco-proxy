@@ -884,7 +884,7 @@ export function createClassroomRouter(deps = {}) {
 
                     /* Sempre busca o courseWork para:
                        1. Obter maxPoints real quando o DB não tem
-                       2. Detectar link Quizizz nos materiais */
+                       2. Detectar link Quizizz nos materiais / add-ons */
                     try {
                         const cwResp = await classroom.courses.courseWork.get({
                             courseId, id: a.atividade_id,
@@ -894,11 +894,20 @@ export function createClassroomRouter(deps = {}) {
                         }
                         const materiais = cwResp.data.materials || [];
                         for (const m of materiais) {
-                            const url = m.link?.url || '';
+                            const url = m.link?.url || m.form?.formUrl || '';
                             if (/quizizz\.com/i.test(url)) {
                                 const match = url.match(/([0-9a-f]{24})/i);
                                 quizizzId = match ? match[1] : 'LINK';
                                 break;
+                            }
+                        }
+                        if (!quizizzId) {
+                            const addOns = cwResp.data.addOnAttachments || [];
+                            for (const ao of addOns) {
+                                if (/quizizz/i.test(ao.title || '') || /quizizz/i.test(ao.teacherViewUri?.uri || '')) {
+                                    quizizzId = 'ADDON';
+                                    break;
+                                }
                             }
                         }
                     } catch (_) { /* mantém valores já resolvidos */ }
@@ -1113,7 +1122,13 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
-    /* ── Sincronizar notas Quizizz (draftGrade → assignedGrade) ── */
+    /* ── Sincronizar notas automáticas (draftGrade → assignedGrade) ──
+       Para cada atividade do grupo:
+       1. Busca todas as submissions
+       2. Se a atividade tem ≥1 submission com draftGrade → é auto-corrigida (Quizizz, Forms, etc.)
+       3. Para essas atividades: publica draftGrade como assignedGrade, e zera quem não tem nenhuma nota
+       4. Atividades sem nenhum draftGrade em nenhuma submission → ignora (precisa correção manual)
+    ── */
     router.post('/classroom/groups/:id/sync-quizizz', requireFuncionalidade('classroom-escrita'), async (req, res) => {
         const { courseId } = req.body;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório.' });
@@ -1126,33 +1141,43 @@ export function createClassroomRouter(deps = {}) {
                 `SELECT atividade_id, atividade_titulo FROM classroom_atividades WHERE grupo_id = $1`,
                 [req.params.id]
             );
-            if (!ativs.length) return res.json({ total: 0, sincronizados: 0 });
+            console.log(`[AUTO-GRADE] Grupo ${req.params.id}: ${ativs.length} atividades`);
+            if (!ativs.length) return res.json({ total: 0, sincronizados: 0, autoDetectados: 0 });
 
             let sincronizados = 0;
+            let autoDetectados = 0;
             for (const atv of ativs) {
-                let quizizzId = null;
-                try {
-                    const cwResp = await classroom.courses.courseWork.get({ courseId, id: atv.atividade_id });
-                    const materiais = cwResp.data.materials || [];
-                    for (const m of materiais) {
-                        if (/quizizz\.com/i.test(m.link?.url || '')) { quizizzId = 'LINK'; break; }
-                    }
-                } catch (_) {}
-                if (!quizizzId && /quiziz{1,2}/i.test(atv.atividade_titulo)) quizizzId = 'TITULO';
-                if (!quizizzId) continue;
-
                 const allSubs = [];
                 let pageToken;
-                do {
-                    const resp = await classroom.courses.courseWork.studentSubmissions.list({
-                        courseId, courseWorkId: atv.atividade_id, pageSize: 100, pageToken,
-                    });
-                    allSubs.push(...(resp.data.studentSubmissions || []));
-                    pageToken = resp.data.nextPageToken;
-                } while (pageToken);
+                try {
+                    do {
+                        const resp = await classroom.courses.courseWork.studentSubmissions.list({
+                            courseId, courseWorkId: atv.atividade_id, pageSize: 100, pageToken,
+                        });
+                        allSubs.push(...(resp.data.studentSubmissions || []));
+                        pageToken = resp.data.nextPageToken;
+                    } while (pageToken);
+                } catch (e) {
+                    console.error(`[AUTO-GRADE] Erro ao listar subs de "${atv.atividade_titulo}":`, e.message);
+                    continue;
+                }
 
-                for (const s of allSubs) {
-                    if (s.assignedGrade != null) continue;
+                const semAssigned = allSubs.filter(s => s.assignedGrade == null);
+                if (!semAssigned.length) {
+                    console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → todas já têm assignedGrade`);
+                    continue;
+                }
+
+                const temDraft = allSubs.some(s => s.draftGrade != null);
+                if (!temDraft) {
+                    console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → nenhum draftGrade (correção manual)`);
+                    continue;
+                }
+
+                autoDetectados++;
+                console.log(`[AUTO-GRADE]   "${atv.atividade_titulo}" → auto-corrigida, ${semAssigned.length} sem assignedGrade`);
+
+                for (const s of semAssigned) {
                     const novaNota = s.draftGrade != null ? s.draftGrade : 0;
                     try {
                         await classroom.courses.courseWork.studentSubmissions.patch({
@@ -1162,13 +1187,14 @@ export function createClassroomRouter(deps = {}) {
                         });
                         sincronizados++;
                     } catch (e) {
-                        console.error(`[QUIZIZZ-SYNC] Erro ao publicar nota ${s.id}:`, e.message);
+                        console.error(`[AUTO-GRADE] Erro ao publicar nota ${s.id}:`, e.message);
                     }
                 }
             }
-            res.json({ total: ativs.length, sincronizados });
+            console.log(`[AUTO-GRADE] Resultado: ${autoDetectados} auto-corrigidas, ${sincronizados} notas publicadas`);
+            res.json({ total: ativs.length, sincronizados, autoDetectados });
         } catch (e) {
-            console.error('[QUIZIZZ-SYNC] Erro:', e.message);
+            console.error('[AUTO-GRADE] Erro:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

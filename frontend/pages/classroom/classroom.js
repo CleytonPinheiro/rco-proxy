@@ -1828,8 +1828,6 @@ let _syncQuizizzRunning = false;
 async function syncQuizizzBackground(grupo, atividades = []) {
     if (_syncQuizizzRunning) return;
     if (!grupo?.id || !cursoAtivo?.id) return;
-    const temQuizizz = atividades.some(a => a.quizizzId);
-    if (!temQuizizz) return;
     _syncQuizizzRunning = true;
     try {
         const r = await api(`/groups/${grupo.id}/sync-quizizz`, {
@@ -1837,7 +1835,7 @@ async function syncQuizizzBackground(grupo, atividades = []) {
             body: { courseId: cursoAtivo.id },
         });
         if (r.sincronizados > 0) {
-            toast(`Quizizz: ${r.sincronizados} nota(s) atribuída(s) automaticamente.`, 'ok');
+            toast(`${r.sincronizados} nota(s) auto-corrigida(s) publicada(s).`, 'ok');
             await carregarResumoGrupo(grupo);
         }
     } catch (_) {} finally {
