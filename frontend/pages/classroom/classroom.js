@@ -937,7 +937,18 @@ async function devolverEntrega(btn) {
     btn.disabled    = true;
     btn.textContent = '...';
     try {
-        await api(`/courses/${cursoAtivo.id}/coursework/${ativAtiva.id}/submissions/${subId}/return`, { method: 'POST' });
+        const r = await apiRaw(`/courses/${cursoAtivo.id}/coursework/${ativAtiva.id}/submissions/${subId}/return`, { method: 'POST' });
+        if (!r.ok) {
+            const data = await r.json().catch(() => ({}));
+            if (r.status === 403) {
+                toast(data.erro || 'Sem permissão para devolver. Faça a devolução pelo Google Classroom.', 'alerta');
+            } else {
+                toast('Erro: ' + (data.erro || r.statusText), 'erro');
+            }
+            btn.disabled    = false;
+            btn.textContent = 'Devolver';
+            return;
+        }
         const sub = todasNotas.find(n => n.id === subId);
         if (sub) sub.estado = 'RETURNED';
         toast('Entrega devolvida!', 'ok');

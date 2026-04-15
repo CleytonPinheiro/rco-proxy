@@ -463,6 +463,9 @@ export function createClassroomRouter(deps = {}) {
             res.json({ ok: true });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao devolver entrega:', e.message);
+            if (e.message?.includes('ProjectPermissionDenied') || e.code === 403) {
+                return res.status(403).json({ erro: 'O projeto Google Cloud não tem permissão para devolver entregas. A nota foi salva, mas a devolução precisa ser feita manualmente no Google Classroom.' });
+            }
             res.status(500).json({ erro: e.message });
         }
     });
