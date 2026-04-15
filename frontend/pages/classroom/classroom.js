@@ -1017,12 +1017,15 @@ function renderGrupos() {
         const fechadoHtml = g.dataFechamento
             ? `<span class="cl-grupo-fechado-badge" title="Notas fechadas em ${fmtDatetime(g.dataFechamento)}">🔒 Fechado</span>`
             : '';
+        const fontesHtml = g.fontes?.length
+            ? `<span class="cl-fonte-badge" title="Importa notas de: ${esc(g.fontes.map(f => f.fonteNome).join(', '))}">📥 ${g.fontes.length} fonte${g.fontes.length > 1 ? 's' : ''}</span>`
+            : '';
         if (g.dataFechamento) item.classList.add('cl-grupo-item--fechado');
 
         item.innerHTML  = `
             <div class="cl-grupo-cor" style="background:${g.cor}"></div>
             <div class="cl-grupo-info">
-                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}${fechadoHtml}</div>
+                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}${fechadoHtml}${fontesHtml}</div>
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
@@ -2682,6 +2685,16 @@ function abrirModalGrupo(grupo = null) {
         }).join('');
     }
 
+    _fontesModalData = (grupo?.fontes || []).map(f => ({
+        fonteGrupoId: f.fonteGrupoId,
+        peso: f.peso ?? 100,
+    }));
+    if (_fontesModalData.length > 0) {
+        carregarTodosGrupos().then(() => renderFontesModal());
+    } else {
+        renderFontesModal();
+    }
+
     elModal.classList.add('cl-modal-overlay--visivel');
 }
 
@@ -2693,6 +2706,75 @@ elBtnNovoGrupo.addEventListener('click', () => abrirModalGrupo(null));
 document.getElementById('clGrupoModalFechar').addEventListener('click', fecharModal);
 document.getElementById('clGrupoModalCancelar').addEventListener('click', fecharModal);
 elModal.addEventListener('click', e => { if (e.target === elModal) fecharModal(); });
+
+/* ── Fontes de nota ── */
+const elFontesLista = document.getElementById('clFontesLista');
+const elBtnAddFonte = document.getElementById('clBtnAddFonte');
+let _allGroupsCache = null;
+let _fontesModalData = [];
+
+async function carregarTodosGrupos() {
+    if (_allGroupsCache) return _allGroupsCache;
+    try {
+        _allGroupsCache = await api('/all-groups');
+    } catch (_) {
+        _allGroupsCache = [];
+    }
+    return _allGroupsCache;
+}
+
+function renderFontesModal() {
+    if (!_fontesModalData.length) {
+        elFontesLista.innerHTML = '<div class="cl-fontes-empty">Nenhuma fonte configurada</div>';
+        return;
+    }
+    elFontesLista.innerHTML = _fontesModalData.map((f, i) => {
+        const gruposOptions = (_allGroupsCache || [])
+            .filter(g => String(g.id) !== String(elGrupoId.value))
+            .map(g => {
+                const cursoNome = _cursosCache?.find(c => c.id === g.cursoId)?.nome || g.cursoId;
+                const sel = String(g.id) === String(f.fonteGrupoId) ? 'selected' : '';
+                return `<option value="${g.id}" ${sel}>${esc(g.nome)} — ${esc(cursoNome)}</option>`;
+            }).join('');
+        return `
+            <div class="cl-fonte-row" data-idx="${i}">
+                <select class="cl-fonte-sel">
+                    <option value="">— selecionar grupo —</option>
+                    ${gruposOptions}
+                </select>
+                <span class="cl-fonte-peso-label">Peso:</span>
+                <input type="number" class="cl-fonte-peso" value="${f.peso}" min="1" max="200" step="1" title="Peso % da fonte">
+                <span class="cl-fonte-peso-label">%</span>
+                <button type="button" class="cl-fonte-remove" title="Remover fonte">✕</button>
+            </div>`;
+    }).join('');
+
+    elFontesLista.querySelectorAll('.cl-fonte-sel').forEach(sel => {
+        sel.addEventListener('change', () => {
+            const idx = Number(sel.closest('.cl-fonte-row').dataset.idx);
+            _fontesModalData[idx].fonteGrupoId = sel.value ? Number(sel.value) : null;
+        });
+    });
+    elFontesLista.querySelectorAll('.cl-fonte-peso').forEach(inp => {
+        inp.addEventListener('change', () => {
+            const idx = Number(inp.closest('.cl-fonte-row').dataset.idx);
+            _fontesModalData[idx].peso = Math.max(1, Math.min(200, Number(inp.value) || 100));
+        });
+    });
+    elFontesLista.querySelectorAll('.cl-fonte-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = Number(btn.closest('.cl-fonte-row').dataset.idx);
+            _fontesModalData.splice(idx, 1);
+            renderFontesModal();
+        });
+    });
+}
+
+elBtnAddFonte.addEventListener('click', async () => {
+    await carregarTodosGrupos();
+    _fontesModalData.push({ fonteGrupoId: null, peso: 100 });
+    renderFontesModal();
+});
 
 /* ── Edição inline dos pontos de cada atividade no modal ── */
 elModalAtivs.addEventListener('click', e => {
@@ -2872,7 +2954,12 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
             grupoId = r.id;
         }
         await api(`/groups/${grupoId}/activities`, { method: 'PUT', body: { atividades } });
+
+        const fontesValidas = _fontesModalData.filter(f => f.fonteGrupoId);
+        await api(`/groups/${grupoId}/fontes`, { method: 'PUT', body: { fontes: fontesValidas } });
+
         fecharModal();
+        _allGroupsCache = null;
         toast('Grupo salvo!', 'ok');
         await carregarGrupos();
         if (viewMode === 'grupos') {

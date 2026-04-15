@@ -80,7 +80,17 @@ async function migrarTabelas() {
                 UNIQUE(grupo_id, atividade_id, user_id)
             )
         `);
-        console.log('[CLASSROOM] Tabelas OK (grupos + ausências + entregas tardias)');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS classroom_grupo_fontes (
+                id               SERIAL  PRIMARY KEY,
+                grupo_id         INTEGER NOT NULL REFERENCES classroom_grupos(id) ON DELETE CASCADE,
+                fonte_grupo_id   INTEGER NOT NULL REFERENCES classroom_grupos(id) ON DELETE CASCADE,
+                peso             NUMERIC NOT NULL DEFAULT 100,
+                criado_em        TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(grupo_id, fonte_grupo_id)
+            )
+        `);
+        console.log('[CLASSROOM] Tabelas OK (grupos + ausências + entregas tardias + fontes)');
     } catch (e) {
         console.warn('[CLASSROOM] Erro na migração:', e.message);
     }
@@ -696,6 +706,26 @@ export function createClassroomRouter(deps = {}) {
                 GROUP BY g.id, gorigem.cod_classe_rco
                 ORDER BY g.id
             `, [courseId]);
+            const { rows: fontesRows } = await pool.query(`
+                SELECT f.grupo_id, f.fonte_grupo_id, f.peso,
+                       fg.nome AS fonte_nome, fg.curso_id AS fonte_curso_id, fg.pontos_meta AS fonte_pontos_meta
+                FROM classroom_grupo_fontes f
+                JOIN classroom_grupos fg ON fg.id = f.fonte_grupo_id
+                WHERE f.grupo_id = ANY($1::int[])
+                ORDER BY f.id
+            `, [rows.map(g => g.id)]);
+            const fontesMap = {};
+            fontesRows.forEach(f => {
+                if (!fontesMap[f.grupo_id]) fontesMap[f.grupo_id] = [];
+                fontesMap[f.grupo_id].push({
+                    fonteGrupoId: f.fonte_grupo_id,
+                    fonteNome: f.fonte_nome,
+                    fonteCursoId: f.fonte_curso_id,
+                    fontePontosMeta: Number(f.fonte_pontos_meta),
+                    peso: Number(f.peso),
+                });
+            });
+
             res.json(rows.map(g => ({
                 id:             g.id,
                 nome:           g.nome,
@@ -711,6 +741,7 @@ export function createClassroomRouter(deps = {}) {
                 recuperacaoId:  g.rec_id      ?? null,
                 recuperacaoNome:g.rec_nome    ?? null,
                 codClasseRco:   g.cod_classe_rco_efetivo || null,
+                fontes:         fontesMap[g.id] || [],
             })));
         } catch (e) {
             console.error('[CLASSROOM] Erro ao listar grupos:', e.message);
@@ -828,6 +859,55 @@ export function createClassroomRouter(deps = {}) {
             res.json({ ok: true });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao salvar atividades do grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Fontes de nota (grupos externos que compõem a nota deste grupo) ── */
+    router.put('/classroom/groups/:id/fontes', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+        const { fontes } = req.body;
+        const grupoId = req.params.id;
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query(`DELETE FROM classroom_grupo_fontes WHERE grupo_id = $1`, [grupoId]);
+            for (const f of (fontes || [])) {
+                if (!f.fonteGrupoId || Number(f.fonteGrupoId) === Number(grupoId)) continue;
+                const peso = Math.max(1, Math.min(200, Number(f.peso) || 100));
+                await client.query(
+                    `INSERT INTO classroom_grupo_fontes (grupo_id, fonte_grupo_id, peso)
+                     VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+                    [grupoId, f.fonteGrupoId, peso]
+                );
+            }
+            await client.query('COMMIT');
+            res.json({ ok: true });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            console.error('[CLASSROOM] Erro ao salvar fontes:', e.message);
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    /* ── Buscar todos os grupos de todas as disciplinas (para seletor de fontes) ── */
+    router.get('/classroom/all-groups', async (req, res) => {
+        try {
+            const { rows } = await pool.query(`
+                SELECT g.id, g.nome, g.curso_id, g.pontos_meta, g.cor, g.tipo
+                FROM classroom_grupos g
+                ORDER BY g.curso_id, g.id
+            `);
+            res.json(rows.map(g => ({
+                id: g.id,
+                nome: g.nome,
+                cursoId: g.curso_id,
+                pontosMeta: Number(g.pontos_meta),
+                cor: g.cor,
+                tipo: g.tipo || 'normal',
+            })));
+        } catch (e) {
             res.status(500).json({ erro: e.message });
         }
     });
@@ -1051,9 +1131,113 @@ export function createClassroomRouter(deps = {}) {
                 } while (rosterToken);
             } catch (_) {}
 
+            /* ─── Fontes de nota externas ─────────────────────────────────
+               Se o grupo tem fontes configuradas, busca o resumo de cada fonte
+               e combina a nota (média ponderada) no totalGanho de cada aluno.
+               Match é feito por email (profile) pois os cursos podem ter userIds diferentes.
+            ─────────────────────────────────────────────────────────────── */
+            const { rows: fontesConfig } = await pool.query(
+                `SELECT f.fonte_grupo_id, f.peso, fg.curso_id AS fonte_curso_id
+                 FROM classroom_grupo_fontes f
+                 JOIN classroom_grupos fg ON fg.id = f.fonte_grupo_id
+                 WHERE f.grupo_id = $1`,
+                [req.params.id]
+            );
+
+            let fontesInfo = [];
+            let totalPossivelComFontes = totalPossivel;
+
+            if (fontesConfig.length > 0) {
+                let emailMap = {};
+                try {
+                    let pageToken;
+                    do {
+                        const resp = await classroom.courses.students.list({ courseId, pageSize: 100, pageToken });
+                        for (const st of (resp.data.students || [])) {
+                            emailMap[st.profile?.emailAddress?.toLowerCase()] = st.userId;
+                        }
+                        pageToken = resp.data.nextPageToken;
+                    } while (pageToken);
+                } catch (_) {}
+
+                for (const fc of fontesConfig) {
+                    try {
+                        const { rows: fonteAtivs } = await pool.query(
+                            `SELECT atividade_id, pontos_max FROM classroom_grupo_atividades WHERE grupo_id = $1`,
+                            [fc.fonte_grupo_id]
+                        );
+                        if (!fonteAtivs.length) continue;
+
+                        const fontePontosMax = fonteAtivs.reduce((s, a) => s + (Number(a.pontos_max) || 0), 0);
+                        if (fontePontosMax <= 0) continue;
+
+                        const pesoFrac = (fc.peso || 100) / 100;
+
+                        let fonteEmailMap = {};
+                        try {
+                            let pt2;
+                            do {
+                                const resp2 = await classroom.courses.students.list({ courseId: fc.fonte_curso_id, pageSize: 100, pageToken: pt2 });
+                                for (const st of (resp2.data.students || [])) {
+                                    fonteEmailMap[st.userId] = st.profile?.emailAddress?.toLowerCase();
+                                }
+                                pt2 = resp2.data.nextPageToken;
+                            } while (pt2);
+                        } catch (_) {}
+
+                        const fonteScores = {};
+                        for (const fa of fonteAtivs) {
+                            const pm = Number(fa.pontos_max) || 0;
+                            if (pm <= 0) continue;
+                            try {
+                                let pt3;
+                                do {
+                                    const resp3 = await classroom.courses.courseWork.studentSubmissions.list({
+                                        courseId: fc.fonte_curso_id, courseWorkId: fa.atividade_id, pageSize: 100, pageToken: pt3,
+                                    });
+                                    for (const s of (resp3.data.studentSubmissions || [])) {
+                                        const grade = s.assignedGrade ?? s.draftGrade ?? null;
+                                        if (grade !== null) {
+                                            const email = fonteEmailMap[s.userId];
+                                            if (email) {
+                                                fonteScores[email] = (fonteScores[email] || 0) + Math.min(grade, pm);
+                                            }
+                                        }
+                                    }
+                                    pt3 = resp3.data.nextPageToken;
+                                } while (pt3);
+                            } catch (_) {}
+                        }
+
+                        for (const [email, score] of Object.entries(fonteScores)) {
+                            const localUserId = emailMap[email];
+                            if (localUserId && alunoMap[localUserId]) {
+                                alunoMap[localUserId].totalGanho += score * pesoFrac;
+                            }
+                        }
+
+                        totalPossivelComFontes += fontePontosMax * pesoFrac;
+
+                        const { rows: [fonteGrupo] } = await pool.query(
+                            `SELECT nome FROM classroom_grupos WHERE id = $1`, [fc.fonte_grupo_id]
+                        );
+                        fontesInfo.push({
+                            fonteGrupoId: fc.fonte_grupo_id,
+                            nome: fonteGrupo?.nome || '',
+                            pontosMax: fontePontosMax,
+                            peso: fc.peso,
+                        });
+                    } catch (e) {
+                        console.error(`[CLASSROOM] Erro ao carregar fonte ${fc.fonte_grupo_id}:`, e.message);
+                    }
+                }
+            }
+
+            const totalFinal = fontesConfig.length > 0 ? totalPossivelComFontes : totalPossivel;
+
             let alunos = Object.values(alunoMap).map(a => ({
                 userId:      a.userId,
-                mediaIndice: totalPossivel > 0 ? (a.totalGanho / totalPossivel) * 100 : 0,
+                mediaIndice: totalFinal > 0 ? (a.totalGanho / totalFinal) * 100 : 0,
                 pendentes:   a.pendentes,
                 atividades:  a.atividades,
             }));
@@ -1115,6 +1299,7 @@ export function createClassroomRouter(deps = {}) {
                 dataCorteOriginal:  dataCorteOriginal  ? dataCorteOriginal.toISOString()  : null,
                 dataFechamento:     dataFechamento     ? dataFechamento.toISOString()     : null,
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
+                fontes: fontesInfo,
             });
         } catch (e) {
             console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);
