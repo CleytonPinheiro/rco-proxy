@@ -209,6 +209,14 @@ body.cl-popout .logo-icon { font-size: 15px; }
     letter-spacing: .3px;
     text-transform: uppercase;
 }
+.cl-breadcrumb-back {
+    cursor: pointer;
+    transition: opacity .15s;
+}
+.cl-breadcrumb-back:hover {
+    opacity: .7;
+    text-decoration: underline;
+}
 .cl-col-sub {
     font-size: .75rem;
     color: var(--text-muted);

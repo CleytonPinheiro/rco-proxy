@@ -57,6 +57,7 @@ try { clBc = new BroadcastChannel(CL_BC_NAME); } catch(_) { clBc = null; }
 let cursoAtivo      = null;   // { id, nome, link }
 let ativAtiva       = null;   // { id, titulo, pontos }
 let grupoAtivo      = null;   // { id, nome, pontosMeta, cor, atividades }
+let _grupoAnterior  = null;   // salva grupo ao navegar para atividade individual (botão voltar)
 let viewMode        = 'atividades'; // 'atividades' | 'grupos' | 'auditoria'
 let alunos          = {};     // { [userId]: { nome, email, foto } }
 let submissions     = [];     // entregas da atividade individual
@@ -714,12 +715,19 @@ function renderAtividades(atividades) {
 async function selecionarAtividade(ativ, itemEl) {
     document.querySelectorAll('.cl-ativ-item--ativo').forEach(el => el.classList.remove('cl-ativ-item--ativo'));
     itemEl.classList.add('cl-ativ-item--ativo');
+    if (grupoAtivo) _grupoAnterior = grupoAtivo;
     ativAtiva  = ativ;
     grupoAtivo = null;
     clBc?.postMessage({ type: 'atividade', cursoId: cursoAtivo?.id, ativId: ativ.id });
 
-    elNotasBreadcrumb.textContent = cursoAtivo ? `${cursoAtivo.nome} — Atividades` : '';
-    elNotasBreadcrumb.style.display = cursoAtivo ? '' : 'none';
+    if (_grupoAnterior && cursoAtivo) {
+        const tipoLabel = _grupoAnterior.tipo === 'recuperacao' ? 'Recuperação' : 'Atividades';
+        elNotasBreadcrumb.innerHTML = `<span class="cl-breadcrumb-back" id="clBreadcrumbBack" title="Voltar para ${esc(_grupoAnterior.nome)}">← ${esc(cursoAtivo.nome)} — ${esc(tipoLabel)} — ${esc(_grupoAnterior.nome)}</span>`;
+        elNotasBreadcrumb.style.display = '';
+    } else {
+        elNotasBreadcrumb.textContent = cursoAtivo ? `${cursoAtivo.nome} — Atividades` : '';
+        elNotasBreadcrumb.style.display = cursoAtivo ? '' : 'none';
+    }
     elNotasTitulo.textContent    = 'Notas & Entregas';
     elNotasCount.textContent     = 'Carregando...';
     elNotasStats.style.display   = 'none';
@@ -756,10 +764,33 @@ async function selecionarAtividade(ativ, itemEl) {
         document.getElementById('clStPendentesLabel').textContent = 'Pendentes';
         atualizarStats();
         renderNotas();
+
+        const backBtn = document.getElementById('clBreadcrumbBack');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => voltarParaGrupo());
+        }
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
         toast(e.message, 'erro');
     }
+}
+
+function voltarParaGrupo() {
+    if (!_grupoAnterior) return;
+    const grupo = _grupoAnterior;
+    _grupoAnterior = null;
+    if (viewMode !== 'grupos') {
+        elTabGrupos.click();
+    }
+    setTimeout(() => {
+        const itemEl = document.querySelector(`.cl-grupo-item[data-id="${grupo.id}"]`);
+        if (itemEl) {
+            itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            selecionarGrupo(grupo, itemEl);
+        } else {
+            selecionarGrupo(grupo, document.createElement('div'));
+        }
+    }, 50);
 }
 
 /* ── Stats (atividade individual) ── */
@@ -1014,6 +1045,7 @@ async function selecionarGrupo(grupo, itemEl) {
     itemEl.classList.add('cl-grupo-item--ativo');
     grupoAtivo = grupo;
     ativAtiva  = null;
+    _grupoAnterior = null;
     clBc?.postMessage({ type: 'grupo', cursoId: cursoAtivo?.id, grupoId: grupo.id });
 
     const tipoLabel = grupo.tipo === 'recuperacao' ? 'Recuperação' : 'Atividades';
