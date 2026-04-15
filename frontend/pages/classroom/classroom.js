@@ -1837,7 +1837,7 @@ async function syncQuizizzBackground(grupo, atividades = []) {
             body: { courseId: cursoAtivo.id },
         });
         if (r.sincronizados > 0) {
-            toast(`${r.sincronizados} nota(s) Quizizz sincronizada(s) automaticamente.`, 'ok');
+            toast(`Quizizz: ${r.sincronizados} nota(s) atribuída(s) automaticamente.`, 'ok');
             await carregarResumoGrupo(grupo);
         }
     } catch (_) {} finally {

@@ -1152,17 +1152,17 @@ export function createClassroomRouter(deps = {}) {
                 } while (pageToken);
 
                 for (const s of allSubs) {
-                    if (s.draftGrade != null && (s.assignedGrade == null || s.assignedGrade === undefined)) {
-                        try {
-                            await classroom.courses.courseWork.studentSubmissions.patch({
-                                courseId, courseWorkId: atv.atividade_id, id: s.id,
-                                updateMask: 'assignedGrade',
-                                requestBody: { assignedGrade: s.draftGrade },
-                            });
-                            sincronizados++;
-                        } catch (e) {
-                            console.error(`[QUIZIZZ-SYNC] Erro ao publicar nota ${s.id}:`, e.message);
-                        }
+                    if (s.assignedGrade != null) continue;
+                    const novaNota = s.draftGrade != null ? s.draftGrade : 0;
+                    try {
+                        await classroom.courses.courseWork.studentSubmissions.patch({
+                            courseId, courseWorkId: atv.atividade_id, id: s.id,
+                            updateMask: 'assignedGrade',
+                            requestBody: { assignedGrade: novaNota },
+                        });
+                        sincronizados++;
+                    } catch (e) {
+                        console.error(`[QUIZIZZ-SYNC] Erro ao publicar nota ${s.id}:`, e.message);
                     }
                 }
             }
