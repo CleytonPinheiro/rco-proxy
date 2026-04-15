@@ -1015,12 +1015,11 @@ export function createClassroomRouter(deps = {}) {
                         /* Submission entregue após o fechamento da nota DESTE grupo:
                            não entra no cálculo — registrada como entrega tardia separadamente. */
                     } else if (nota !== null) {
-                        // Soma os pontos brutos obtidos (capped no máximo da atividade)
                         alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
-                    } else if (!entregue) {
-                        // Atividade não entregue / atrasada sem nota = 0 pontos + conta como pendente
+                    } else if (entregue) {
                         alunoMap[s.userId].pendentes++;
-                        // totalGanho não cresce → pontos ficam em 0 para esta atividade
+                    } else {
+                        alunoMap[s.userId].pendentes++;
                     }
                 });
             });
