@@ -1795,6 +1795,7 @@ function renderAvisoCorrecao() {
                 toast('Atividade não encontrada. Navegue manualmente pela lista.', 'erro');
                 return;
             }
+            if (grupoAtivo) _grupoAnterior = grupoAtivo;
             if (viewMode !== 'atividades') {
                 elTabAtiv.click();
             }
