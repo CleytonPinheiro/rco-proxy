@@ -2724,38 +2724,28 @@ async function carregarTodosGrupos() {
     return _allGroupsCache;
 }
 
-function _buildFonteOptionsGrouped(selectedId) {
-    const grupos = (_allGroupsCache || [])
-        .filter(g => String(g.id) !== String(elGrupoId.value));
-    const porCurso = {};
-    for (const g of grupos) {
-        const cursoNome = _cursosCache?.find(c => c.id === g.cursoId)?.nome || 'Outra disciplina';
-        if (!porCurso[cursoNome]) porCurso[cursoNome] = [];
-        porCurso[cursoNome].push(g);
-    }
-    return Object.entries(porCurso)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([cursoNome, gs]) => {
-            const opts = gs.map(g => {
-                const sel = String(g.id) === String(selectedId) ? 'selected' : '';
-                const tipoTag = g.tipo === 'recuperacao' ? ' (Rec.)' : '';
-                const pts = g.pontosMeta ? ` · ${(g.pontosMeta / 10).toFixed(1)} pts` : '';
-                return `<option value="${g.id}" ${sel}>${esc(g.nome)}${tipoTag}${pts}</option>`;
-            }).join('');
-            return `<optgroup label="${esc(cursoNome)}">${opts}</optgroup>`;
-        }).join('');
+function _getFontesGruposAptos() {
+    const cursoAtualId = cursoAtivo?.id;
+    return (_allGroupsCache || [])
+        .filter(g => String(g.id) !== String(elGrupoId.value) && g.cursoId !== cursoAtualId);
 }
 
-function _fonteResumoSelecionado(fonteGrupoId) {
-    if (!fonteGrupoId) return '';
-    const g = (_allGroupsCache || []).find(x => String(x.id) === String(fonteGrupoId));
+function _buildFontesAgrupados() {
+    const grupos = _getFontesGruposAptos();
+    const porCurso = {};
+    for (const g of grupos) {
+        const curso = _cursosCache?.find(c => c.id === g.cursoId);
+        const cursoNome = curso?.nome || 'Outra disciplina';
+        if (!porCurso[g.cursoId]) porCurso[g.cursoId] = { nome: cursoNome, grupos: [] };
+        porCurso[g.cursoId].grupos.push(g);
+    }
+    return Object.values(porCurso).sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+function _fonteGrupoLabel(g) {
     if (!g) return '';
-    const cursoNome = _cursosCache?.find(c => c.id === g.cursoId)?.nome || '';
-    const pts = g.pontosMeta ? `${(g.pontosMeta / 10).toFixed(1)} pts` : '';
-    return `<div class="cl-fonte-info">
-        <span class="cl-fonte-info-curso">${esc(cursoNome)}</span>
-        ${pts ? `<span class="cl-fonte-info-pts">${pts}</span>` : ''}
-    </div>`;
+    const curso = _cursosCache?.find(c => c.id === g.cursoId);
+    return curso?.nome || '';
 }
 
 function renderFontesModal() {
@@ -2763,16 +2753,40 @@ function renderFontesModal() {
         elFontesLista.innerHTML = '<div class="cl-fontes-empty">Nenhuma fonte externa configurada</div>';
         return;
     }
+    const cursosAgrupados = _buildFontesAgrupados();
+
     elFontesLista.innerHTML = _fontesModalData.map((f, i) => {
-        const optionsHtml = _buildFonteOptionsGrouped(f.fonteGrupoId);
-        const infoHtml = _fonteResumoSelecionado(f.fonteGrupoId);
+        const gSel = f.fonteGrupoId ? (_allGroupsCache || []).find(x => String(x.id) === String(f.fonteGrupoId)) : null;
+        const selLabel = gSel
+            ? `${esc(gSel.nome)}${gSel.tipo === 'recuperacao' ? ' (Rec.)' : ''}`
+            : 'Selecionar grupo...';
+        const selCurso = gSel ? _fonteGrupoLabel(gSel) : '';
+        const selPts   = gSel?.pontosMeta ? `${(gSel.pontosMeta / 10).toFixed(1)} pts` : '';
+
+        const dropdownItems = cursosAgrupados.map(c => {
+            const items = c.grupos.map(g => {
+                const active = String(g.id) === String(f.fonteGrupoId) ? ' cl-fdrop-item--active' : '';
+                const tipoTag = g.tipo === 'recuperacao' ? '<span class="cl-fdrop-tag">Rec.</span>' : '';
+                const pts = g.pontosMeta ? `<span class="cl-fdrop-pts">${(g.pontosMeta / 10).toFixed(1)} pts</span>` : '';
+                return `<div class="cl-fdrop-item${active}" data-gid="${g.id}">${esc(g.nome)} ${tipoTag} ${pts}</div>`;
+            }).join('');
+            return `<div class="cl-fdrop-group"><div class="cl-fdrop-header">${esc(c.nome)}</div>${items}</div>`;
+        }).join('');
+
         return `
             <div class="cl-fonte-row" data-idx="${i}">
                 <div class="cl-fonte-row-main">
-                    <select class="cl-fonte-sel">
-                        <option value="">Selecionar grupo...</option>
-                        ${optionsHtml}
-                    </select>
+                    <div class="cl-fonte-dropdown-wrap">
+                        <button type="button" class="cl-fonte-trigger" title="Selecionar grupo fonte">
+                            <span class="cl-fonte-trigger-label">${selLabel}</span>
+                            ${selCurso ? `<span class="cl-fonte-trigger-curso">${esc(selCurso)}${selPts ? ' · ' + selPts : ''}</span>` : ''}
+                            <svg class="cl-fonte-trigger-arrow" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                        </button>
+                        <div class="cl-fonte-dropdown" style="display:none">
+                            <input type="text" class="cl-fonte-search" placeholder="Buscar grupo...">
+                            <div class="cl-fonte-dropdown-list">${dropdownItems || '<div class="cl-fontes-empty">Nenhum grupo disponível</div>'}</div>
+                        </div>
+                    </div>
                     <div class="cl-fonte-peso-wrap">
                         <label class="cl-fonte-peso-label">Aproveitar</label>
                         <input type="number" class="cl-fonte-peso" value="${f.peso}" min="1" max="200" step="1">
@@ -2780,14 +2794,45 @@ function renderFontesModal() {
                     </div>
                     <button type="button" class="cl-fonte-remove" title="Remover fonte">✕</button>
                 </div>
-                ${infoHtml}
             </div>`;
     }).join('');
 
-    elFontesLista.querySelectorAll('.cl-fonte-sel').forEach(sel => {
-        sel.addEventListener('change', () => {
-            const idx = Number(sel.closest('.cl-fonte-row').dataset.idx);
-            _fontesModalData[idx].fonteGrupoId = sel.value ? Number(sel.value) : null;
+    elFontesLista.querySelectorAll('.cl-fonte-trigger').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dd = btn.nextElementSibling;
+            const wasOpen = dd.style.display !== 'none';
+            document.querySelectorAll('.cl-fonte-dropdown').forEach(d => d.style.display = 'none');
+            if (!wasOpen) {
+                dd.style.display = '';
+                dd.querySelector('.cl-fonte-search').value = '';
+                dd.querySelectorAll('.cl-fdrop-group, .cl-fdrop-item').forEach(el => el.style.display = '');
+                dd.querySelector('.cl-fonte-search').focus();
+            }
+        });
+    });
+    elFontesLista.querySelectorAll('.cl-fonte-search').forEach(inp => {
+        inp.addEventListener('input', () => {
+            const q = inp.value.toLowerCase().trim();
+            const list = inp.closest('.cl-fonte-dropdown').querySelector('.cl-fonte-dropdown-list');
+            list.querySelectorAll('.cl-fdrop-group').forEach(grp => {
+                let anyVisible = false;
+                grp.querySelectorAll('.cl-fdrop-item').forEach(it => {
+                    const match = !q || it.textContent.toLowerCase().includes(q);
+                    it.style.display = match ? '' : 'none';
+                    if (match) anyVisible = true;
+                });
+                grp.style.display = anyVisible ? '' : 'none';
+            });
+        });
+        inp.addEventListener('click', e => e.stopPropagation());
+    });
+    elFontesLista.querySelectorAll('.cl-fdrop-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = item.closest('.cl-fonte-row');
+            const idx = Number(row.dataset.idx);
+            _fontesModalData[idx].fonteGrupoId = Number(item.dataset.gid);
             renderFontesModal();
         });
     });
@@ -2805,6 +2850,10 @@ function renderFontesModal() {
         });
     });
 }
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.cl-fonte-dropdown').forEach(d => d.style.display = 'none');
+});
 
 elBtnAddFonte.addEventListener('click', async () => {
     await carregarTodosGrupos();
