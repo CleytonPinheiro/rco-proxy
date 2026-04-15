@@ -1,24 +1,24 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-04-15T00:02:40.796Z",
+  "__export_date": "2026-04-15T00:04:42.374Z",
   "__export_source": "insomnia.desktop.app:v2023.5.8",
   "resources": [
     {
-      "_id": "wrk_edusync",
+      "_id": "wrk_edusync_001",
       "parentId": null,
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "name": "EduSync API",
-      "description": "Todas as rotas do projeto EduSync",
+      "description": "Todas as 201 rotas do projeto EduSync",
       "scope": "collection",
       "_type": "workspace"
     },
     {
-      "_id": "env_base",
-      "parentId": "wrk_edusync",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "env_base_001",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "name": "Base Environment",
       "data": {
         "base_url": "https://SEU-DOMINIO.replit.app",
@@ -33,10 +33,10 @@
       "_type": "environment"
     },
     {
-      "_id": "env_local",
-      "parentId": "env_base",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "env_local_001",
+      "parentId": "env_base_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "name": "Local",
       "data": {
         "base_url": "{{ local_url }}"
@@ -44,10 +44,10 @@
       "_type": "environment"
     },
     {
-      "_id": "env_prod",
-      "parentId": "env_base",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "env_prod_001",
+      "parentId": "env_base_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "name": "Produção",
       "data": {
         "base_url": "https://SEU-DOMINIO.replit.app"
@@ -55,18 +55,499 @@
       "_type": "environment"
     },
     {
-      "_id": "jar_1",
-      "parentId": "wrk_edusync",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "jar_001",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "name": "Default Jar",
       "cookies": [],
       "_type": "cookie_jar"
     },
     {
-      "_id": "req_6aaaeda2a42f4ebeb14cf495",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "fld_d26a9811a9384c7f8fb7d9cd",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Auth",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 0,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_9306b985e0304a06b0dca78d",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Admin",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 1,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_9eac2deaa4b74cefb520ac52",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Usuários",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 2,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_b0b4937d61d04ddf8a97f324",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Escolas",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 3,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_6b1ac56701784a6ab8c9d7dd",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Suporte",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 4,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_138831cce6124683b7cb3159",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Config",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 5,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_e7c15c719c1c436d8a6f5b6c",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Impersonar",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 6,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_67ead595fc444d6dbed92ca9",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Audit Log",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 7,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_14444e3aac194ea9bee8ae35",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Portal Aluno",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 8,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_53d213797e5243f395795a42",
+      "parentId": "fld_9306b985e0304a06b0dca78d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Debug",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 9,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_39c54f7906ce4403a12b6e5a",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Suporte",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 10,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_2630813a000b442ebb38f934",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "RCO",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 11,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_d1a0eca16a3249a28d1d7f6b",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "RCO Lançamento",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 12,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_5748691d3e06488ab804f86f",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Alunos",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 13,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_24c43b8db6c44a05aa17052b",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Classroom",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 14,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_a0cdce02a0e84a1ab5b24b6a",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Conexão",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 15,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_74665584593a47a3b999ee37",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Cursos",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 16,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_94fef09fc2294d4596488685",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Audit",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 17,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_4ba9f0031b6d483b9583da1c",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Ausências",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 18,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_1b7dc1b2981841f49cb23968",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Grupos",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 19,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_bdcb2ff5fcfe45c7963872d1",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Quizizz",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 20,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_78cf5cbcc4b5498ea21646df",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Solicitações",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 21,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_02a9663923884bb9b43a96b6",
+      "parentId": "fld_24c43b8db6c44a05aa17052b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Acesso Pedagogo",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 22,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_eb05f30a26194d8788d53f0d",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Grupos",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 23,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_744869d913504d699307a1f2",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Crachás",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 24,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_ad96bf6d31af455c93d4cdfb",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Comportamento",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 25,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_bb4cded4712847508b45b857",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Materiais",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 26,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_e8d89cfa48c84eb69dcc52cd",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Livros",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 27,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_dc5f3e6386ef421bb406d9f5",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Comunicados",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 28,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_727eb9f0874d42e4a0ea4f61",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Presença Diária",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 29,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_0711f6d2a5814c748b8b9abb",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Circulação",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 30,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_e943e6941be94bb58cd49487",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Cozinha",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 31,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_2713c59490fa402faa11723d",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Atividades de Sala",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 32,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_bc4d110ac0b54fb497be5e14",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Mapa de Sala",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 33,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_17201feb83cd4ab78b51d7f9",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "QR Code",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 34,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_7220b9127753409595c95c40",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Sync",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 35,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_f1c263c0920945b9b74ebcf7",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Debug",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 36,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_819bf054c42a414093c7289a",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Pedagógico",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 37,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_dc4b82db40264805b6c3d6c6",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Portal Aluno",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 38,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_142d297ead2b4bf092f8de34",
+      "parentId": "wrk_edusync_001",
+      "modified": 1776211482372,
+      "created": 1776211482372,
+      "name": "Portal Pedagógico",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 39,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_30ce84e410d44864846b5a85",
+      "parentId": "fld_d26a9811a9384c7f8fb7d9cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/auth/login",
       "name": "Login",
       "description": "",
@@ -94,9 +575,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_f71aa3e47c1748d29f2808a9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d1fe929403844af4bc4e5da0",
+      "parentId": "fld_d26a9811a9384c7f8fb7d9cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/auth/logout",
       "name": "Logout",
       "description": "",
@@ -116,9 +598,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_7543b7b1b81d444b8fa16da0",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5b36ba1aa7844c549072d4a7",
+      "parentId": "fld_d26a9811a9384c7f8fb7d9cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/status",
       "name": "Status da sessão",
       "description": "",
@@ -138,9 +621,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_282eda7aaaa4499ca78ab863",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f7955ac416204f148218dfb5",
+      "parentId": "fld_d26a9811a9384c7f8fb7d9cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/me",
       "name": "Dados do usuário logado",
       "description": "",
@@ -160,9 +644,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_79b9f74d1f7a48d7b70f3c1f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_184e938fddb8414ebce0aca3",
+      "parentId": "fld_d26a9811a9384c7f8fb7d9cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/auth/perfil",
       "name": "Atualizar perfil",
       "description": "",
@@ -190,9 +675,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_6b5f00a30ddf4c74bb1903b3",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_790dd9da3dba42e489ad8f27",
+      "parentId": "fld_d26a9811a9384c7f8fb7d9cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/configurar",
       "name": "Configurar",
       "description": "",
@@ -220,9 +706,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_fa73828f1dcd4c60a9576a90",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_8330ef2f3c7f475b861dbdf7",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/perfis",
       "name": "Listar perfis",
       "description": "",
@@ -242,9 +729,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_0530067bcf0149419b833fa3",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f78f0188045f408bab1877cc",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/usuarios",
       "name": "Listar usuários",
       "description": "",
@@ -264,9 +752,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_bcd07458afcc4d129498dcda",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9ccf7571ea054e088d5bea5e",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/usuarios",
       "name": "Criar usuário",
       "description": "",
@@ -294,9 +783,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_581edc8bc08b472399f04721",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_054643183ac94a8dadb9e4f1",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/usuarios/:id",
       "name": "Atualizar usuário",
       "description": "",
@@ -324,9 +814,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_265d957ef5b844b08e7c5ad0",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_8021fdab54ed4e7ab6ad99cf",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/usuarios/:id",
       "name": "Excluir usuário",
       "description": "",
@@ -346,9 +837,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_277ec476c7ed4ada904a970d",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_8596136c39d14e49a2cee33b",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/usuarios/:id/plano",
       "name": "Alterar plano do usuário",
       "description": "",
@@ -376,11 +868,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_b0015578fd5247c59def7977",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_97b94c0b665146e99847ab4b",
+      "parentId": "fld_9eac2deaa4b74cefb520ac52",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/usuarios/:id/plano-historico",
-      "name": "Histórico de planos do usuário",
+      "name": "Histórico de planos",
       "description": "",
       "method": "GET",
       "body": {},
@@ -398,9 +891,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_861744b2124c44219a956bf4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_8b8bceda8823440381b0eb96",
+      "parentId": "fld_b0b4937d61d04ddf8a97f324",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/escolas",
       "name": "Listar escolas",
       "description": "",
@@ -420,9 +914,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_a404b6e6db6b412cb5eee7f0",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4137436917f2433e9f586871",
+      "parentId": "fld_b0b4937d61d04ddf8a97f324",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/escolas",
       "name": "Criar escola",
       "description": "",
@@ -450,9 +945,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_87d462a57a3a4bfeb7ae35d7",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b0b1c63fb9184062a20461e1",
+      "parentId": "fld_b0b4937d61d04ddf8a97f324",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/escolas/:id",
       "name": "Atualizar escola",
       "description": "",
@@ -480,9 +976,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_eeef86c835a34af2b24f9703",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ba3110e3546040af994fb679",
+      "parentId": "fld_b0b4937d61d04ddf8a97f324",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/escolas/:id",
       "name": "Excluir escola",
       "description": "",
@@ -502,9 +999,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_476b3d9516b24bd29564cdfa",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_58e7e89df1fd41bb9eb2d9f8",
+      "parentId": "fld_b0b4937d61d04ddf8a97f324",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/escolas/:id/plano",
       "name": "Alterar plano da escola",
       "description": "",
@@ -532,9 +1030,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_652ce2fd4da54ef1af041db4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_49738b04441c4e1ca2fd6147",
+      "parentId": "fld_b0b4937d61d04ddf8a97f324",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/rco-estabelecimentos",
       "name": "Listar estabelecimentos RCO",
       "description": "",
@@ -554,9 +1053,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_4232bc88190f4eb5bac2c786",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b0e7a0b2482e4852a2df17d1",
+      "parentId": "fld_6b1ac56701784a6ab8c9d7dd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/suporte",
       "name": "Listar tickets (admin)",
       "description": "",
@@ -576,11 +1076,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_d27cd3a4d9654ece9691b88c",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_55a2c29859f746d3b60ecefd",
+      "parentId": "fld_6b1ac56701784a6ab8c9d7dd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/suporte/badge",
-      "name": "Badge pendentes (admin)",
+      "name": "Badge pendentes",
       "description": "",
       "method": "GET",
       "body": {},
@@ -598,9 +1099,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_6b0c866e9fb44a70949b4a7f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_17d0304bde0f4b83ab307088",
+      "parentId": "fld_6b1ac56701784a6ab8c9d7dd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/suporte/:id/responder",
       "name": "Responder ticket",
       "description": "",
@@ -628,9 +1130,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_d7d6e9039ecf4116afbc4d69",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c3e3f89343e944f6a196fadf",
+      "parentId": "fld_138831cce6124683b7cb3159",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/config",
       "name": "Listar configurações",
       "description": "",
@@ -650,9 +1153,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_54d95b5d8d384992a0c1520a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_a54571f414a84f898ff9849c",
+      "parentId": "fld_138831cce6124683b7cb3159",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/config/:chave",
       "name": "Alterar configuração",
       "description": "",
@@ -680,9 +1184,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b6dd189a08d342459c47ec8c",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_89f516784a6a4ee48c8f138b",
+      "parentId": "fld_e7c15c719c1c436d8a6f5b6c",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/impersonar",
       "name": "Impersonar usuário",
       "description": "",
@@ -710,9 +1215,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_a473cf5606bd4efdadc7be79",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_7ff71111a9654bca87faea30",
+      "parentId": "fld_e7c15c719c1c436d8a6f5b6c",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/impersonar/sair",
       "name": "Sair da impersonação",
       "description": "",
@@ -732,9 +1238,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_0baffb77c3de470f9277846a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5621d9c08e6a485182bd03e0",
+      "parentId": "fld_67ead595fc444d6dbed92ca9",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/audit-log",
       "name": "Audit log geral",
       "description": "",
@@ -754,11 +1261,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_26e1910ba977461c89e2ab95",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4f70ca325daf4cbd9fdc7806",
+      "parentId": "fld_14444e3aac194ea9bee8ae35",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/portal-aluno/cursos",
-      "name": "Cursos (admin portal aluno)",
+      "name": "Cursos",
       "description": "",
       "method": "GET",
       "body": {},
@@ -776,11 +1284,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_d7e239c8113847718dbca174",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_e6eda921dc0c444b91c8e4ff",
+      "parentId": "fld_14444e3aac194ea9bee8ae35",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/portal-aluno/preview?courseId=123",
-      "name": "Preview portal aluno",
+      "name": "Preview",
       "description": "",
       "method": "GET",
       "body": {},
@@ -798,11 +1307,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_00ad394d2f3f455488ce8cea",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_e6480f8889e840a6925f7991",
+      "parentId": "fld_14444e3aac194ea9bee8ae35",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/portal-aluno/alunos?courseId=123",
-      "name": "Alunos portal aluno",
+      "name": "Alunos",
       "description": "",
       "method": "GET",
       "body": {},
@@ -820,11 +1330,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_68bebbcfe9b4448682b52681",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3a898d3adfe34d1392085c09",
+      "parentId": "fld_14444e3aac194ea9bee8ae35",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/portal-aluno/disciplina?courseId=123",
-      "name": "Disciplina portal aluno",
+      "name": "Disciplina",
       "description": "",
       "method": "GET",
       "body": {},
@@ -842,11 +1353,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_a6ab0d5d977b43d6a2bfa7c0",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4123983eb89144df8b8b4121",
+      "parentId": "fld_14444e3aac194ea9bee8ae35",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/portal-aluno/audit-log",
-      "name": "Audit log portal aluno",
+      "name": "Audit log",
       "description": "",
       "method": "GET",
       "body": {},
@@ -864,9 +1376,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b7225dfd49d04db097c3fef9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_90ded766008c4dbf9721b891",
+      "parentId": "fld_53d213797e5243f395795a42",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/admin/seeds",
       "name": "Limpar seeds",
       "description": "",
@@ -886,9 +1399,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_310d59ea564a4ca286368f28",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_1873b3a6587940328a53bcb1",
+      "parentId": "fld_39c54f7906ce4403a12b6e5a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/suporte/meu-plano",
       "name": "Meu plano",
       "description": "",
@@ -908,9 +1422,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_d2a315fbd1c74f1da7fcd671",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_769ce61c940f4604b152fb29",
+      "parentId": "fld_39c54f7906ce4403a12b6e5a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/suporte/meus-tickets",
       "name": "Meus tickets",
       "description": "",
@@ -930,9 +1445,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_bd224912c6444b11b0273c80",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d43e00beef7248a29fd3f39f",
+      "parentId": "fld_39c54f7906ce4403a12b6e5a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/suporte/ticket",
       "name": "Enviar ticket",
       "description": "",
@@ -960,9 +1476,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_4c423769eb4f438ca2e46633",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_94a74e86fc764d0eb7947856",
+      "parentId": "fld_2630813a000b442ebb38f934",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/acessos",
       "name": "Listar acessos RCO",
       "description": "",
@@ -982,9 +1499,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_6d1de32ad8ed46beb4beb6b3",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_dcb595d7c8ee4b069a6d513a",
+      "parentId": "fld_2630813a000b442ebb38f934",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/frequencias?codAcesso=123&data=2026-01-01",
       "name": "Frequências RCO",
       "description": "",
@@ -1004,11 +1522,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_97fbcd9d7833410f8af13378",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_a38ddb8a72ea4f23b427beb8",
+      "parentId": "fld_2630813a000b442ebb38f934",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-rco",
-      "name": "Listar alunos RCO",
+      "name": "Alunos RCO",
       "description": "",
       "method": "GET",
       "body": {},
@@ -1026,9 +1545,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_f88acf9096374465b5c25a7a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b198a8e8407a4eae9db96e3e",
+      "parentId": "fld_2630813a000b442ebb38f934",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/observacoes?codAcesso=123&periodo=1",
       "name": "Observações RCO",
       "description": "",
@@ -1048,9 +1568,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b16a9fb547e74af48014b56a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_21f6733fc5df44ac982d05b1",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/classes?codAcesso=123",
       "name": "Listar classes",
       "description": "",
@@ -1070,9 +1591,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_70204f47a31e40e0a6e7fed2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4e609d4af2744c12b887b50a",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/avaliacoes?codClasse=123",
       "name": "Listar avaliações",
       "description": "",
@@ -1092,9 +1614,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_e0c4938f34c54564af4f610e",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_8c7b8b050c5a4b0b958a9480",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/avaliacoes/:id",
       "name": "Detalhe avaliação",
       "description": "",
@@ -1114,9 +1637,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b70562c31ddb40339a724935",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3df056371c7343aebee93051",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/conteudos-sugeridos?codClasse=123",
       "name": "Conteúdos sugeridos",
       "description": "",
@@ -1136,9 +1660,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_2d4f1a343ce24e42922a8a40",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_1e9644657885491a9b035033",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/avaliacoes/:id/lancar",
       "name": "Lançar notas (RCO)",
       "description": "",
@@ -1166,9 +1691,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b1c6695f074f47f6bff8449f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6eaca324d9ca4f079a66c2cd",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/avaliacoes/:id/salvar-db",
       "name": "Salvar notas no DB",
       "description": "",
@@ -1196,9 +1722,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_11539bfe42944ed2a8ed50e4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_37e4f6ab8c50497fa4e877c4",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/avaliacoes/criar",
       "name": "Criar avaliação",
       "description": "",
@@ -1226,9 +1753,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_82f18e5a3ab84f588057f78c",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_a327ed6a9802493aac97a41d",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/grupos/:grupoId/cod-classe",
       "name": "Vincular grupo a classe",
       "description": "",
@@ -1256,9 +1784,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_00122e5e8ed14a6db2b4bc71",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6abc3a833a3a4d23b0450e8b",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/debug/:id",
       "name": "Debug avaliação",
       "description": "",
@@ -1278,9 +1807,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_cce4239fd6dd4ed39ae30b70",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_77d06b729b9d47819cdbcaf3",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/debug/:id/put-variations",
       "name": "Debug PUT variations",
       "description": "",
@@ -1300,9 +1830,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_fd1068471a4d40ec9bedd8b8",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9405772ca1cc47bfa3803384",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/avaliacoes/:id/debug-put",
       "name": "Debug PUT notas",
       "description": "",
@@ -1330,9 +1861,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_8efed260a5434bb68400a712",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_52daa86427fb4464b6210a01",
+      "parentId": "fld_d1a0eca16a3249a28d1d7f6b",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/rco-lancamento/debug-recriar-rec",
       "name": "Debug recriar recuperação",
       "description": "",
@@ -1360,11 +1892,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_6898615bc2124aecbaf5e4e9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_44eb04b9c08d4a1ebf055b5a",
+      "parentId": "fld_5748691d3e06488ab804f86f",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos?codAcesso=123",
-      "name": "Listar alunos por acesso",
+      "name": "Listar alunos",
       "description": "",
       "method": "GET",
       "body": {},
@@ -1382,9 +1915,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_99ff9da904164a97bee7b071",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3f94da9073574af68319db35",
+      "parentId": "fld_5748691d3e06488ab804f86f",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos/turmas/lista",
       "name": "Listar turmas",
       "description": "",
@@ -1404,9 +1938,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_9b77c0338234444c99b413a4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_68d2cbb846f84e92a1e40a77",
+      "parentId": "fld_5748691d3e06488ab804f86f",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos/:registro",
       "name": "Detalhe aluno",
       "description": "",
@@ -1426,11 +1961,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_0dfb9e69d3304db1882831c8",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_782903aa9ad8475898eec74c",
+      "parentId": "fld_a0cdce02a0e84a1ab5b24b6a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/status",
-      "name": "Status do Classroom",
+      "name": "Status Classroom",
       "description": "",
       "method": "GET",
       "body": {},
@@ -1448,9 +1984,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_d2883485ed58430ebe58d7be",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5c4e05ec354047fdbd97a8e8",
+      "parentId": "fld_a0cdce02a0e84a1ab5b24b6a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/auth-url",
       "name": "URL de autorização OAuth",
       "description": "",
@@ -1470,9 +2007,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_127de8d7bdea42279e4adba6",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4aaab73061234296a3e6119a",
+      "parentId": "fld_a0cdce02a0e84a1ab5b24b6a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/callback?code=xxx",
       "name": "Callback OAuth (público)",
       "description": "",
@@ -1492,11 +2030,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_ea6575cafe9848b2abfe7223",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_09df4f5b6ff94705b56bd874",
+      "parentId": "fld_a0cdce02a0e84a1ab5b24b6a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/disconnect",
-      "name": "Desconectar Classroom",
+      "name": "Desconectar",
       "description": "",
       "method": "POST",
       "body": {},
@@ -1514,9 +2053,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_8987f81f6d4349d59b74e38f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ac53e5b187c542a2a2ba9804",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses",
       "name": "Listar cursos",
       "description": "",
@@ -1536,9 +2076,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_5765473d5bce4313a3881a78",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_236597dad4824ce4aff98548",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses/:courseId/students",
       "name": "Alunos do curso",
       "description": "",
@@ -1558,9 +2099,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_88d12e0916dc4398bae5862d",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d341a1e4410a4fb8873630a8",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses/:courseId/coursework",
       "name": "Atividades do curso",
       "description": "",
@@ -1580,9 +2122,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_900bef8b495842bfb3b48164",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_10b6dd109759454ea60a98e6",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses/:courseId/coursework/:cwId/submissions",
       "name": "Entregas da atividade",
       "description": "",
@@ -1602,9 +2145,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_95d9af6a73944444835fddcb",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3bf5bc20530540679b4a4fce",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade",
       "name": "Atribuir nota",
       "description": "",
@@ -1632,9 +2176,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_28d3964a39014d7093f2f9b8",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b7c8d2f21dcc4ae9b0d06dd3",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return",
       "name": "Devolver entrega",
       "description": "",
@@ -1654,11 +2199,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_a890a0ccbef34536ace3cf39",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d2abb2cd45964058b122fef8",
+      "parentId": "fld_74665584593a47a3b999ee37",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/courses/:courseId/activities/:activityId/pontos_max",
-      "name": "Alterar pontos máx da atividade",
+      "name": "Alterar pontos máx",
       "description": "",
       "method": "PATCH",
       "body": {
@@ -1684,11 +2230,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_162d4bc8e65a4ff2abba8c17",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b3c0dd7533784af3a3174c15",
+      "parentId": "fld_94fef09fc2294d4596488685",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/audit?courseId=123",
-      "name": "Audit log do Classroom",
+      "name": "Audit log Classroom",
       "description": "",
       "method": "GET",
       "body": {},
@@ -1706,9 +2253,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_2bb8a5aa134a4b3bb2850484",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3413de109ab443bba1829d33",
+      "parentId": "fld_4ba9f0031b6d483b9583da1c",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/ausencias?cursoId=123&atividadeId=456",
       "name": "Listar ausências",
       "description": "",
@@ -1728,9 +2276,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b8f8a26466d3495c93662595",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c9b2a0b0a50b49ae86c492dc",
+      "parentId": "fld_4ba9f0031b6d483b9583da1c",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/ausencias",
       "name": "Marcar ausência",
       "description": "",
@@ -1758,9 +2307,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_52886558360643d38aa78f3f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_dd4d1d0495104ab78e1dafc2",
+      "parentId": "fld_4ba9f0031b6d483b9583da1c",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/ausencias?cursoId=123&atividadeId=456&userId=789",
       "name": "Remover ausência",
       "description": "",
@@ -1780,9 +2330,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_a1dfd94e108149e3ae7acf87",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d9b990a781e943faa50273f9",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups?courseId=123",
       "name": "Listar grupos",
       "description": "",
@@ -1802,9 +2353,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_cf8b77a7c2314f03a939911a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_897360f66e4643e3b82141f3",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups",
       "name": "Criar grupo",
       "description": "",
@@ -1832,16 +2384,17 @@
       "_type": "request"
     },
     {
-      "_id": "req_d443331ea1db426cbbcab8e7",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4050cc416b0c4b3eb6213a9b",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id",
       "name": "Atualizar grupo",
       "description": "",
       "method": "PUT",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"nome\": \"Grupo atualizado\"\n}"
+        "text": "{\n  \"nome\": \"Atualizado\"\n}"
       },
       "parameters": [],
       "headers": [
@@ -1862,9 +2415,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_1622a3bcbfb14e2787d23ae9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_732f64def32240f3a5586d67",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id",
       "name": "Excluir grupo",
       "description": "",
@@ -1884,11 +2438,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_b939bfda23fe48ebaa027d35",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_43ad773a00ef464f8cbd7ff5",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/livro",
-      "name": "Abrir/fechar livro do grupo",
+      "name": "Abrir/fechar livro",
       "description": "",
       "method": "PATCH",
       "body": {
@@ -1914,11 +2469,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_8147b54925a446d08de1c042",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c1046a39fd6f4b2ba5e78877",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/activities",
-      "name": "Atualizar atividades do grupo",
+      "name": "Atualizar atividades",
       "description": "",
       "method": "PUT",
       "body": {
@@ -1944,9 +2500,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_4522bb7b273b483698b56056",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_49cab7c715ef42c9b62c592a",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/summary",
       "name": "Resumo do grupo",
       "description": "",
@@ -1966,11 +2523,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_357b2f224cc54c7ca0174e71",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_99ed0fb8612347a3b740f037",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/fechar",
-      "name": "Fechar notas do grupo",
+      "name": "Fechar notas",
       "description": "",
       "method": "POST",
       "body": {},
@@ -1988,11 +2546,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_bacda4b7cede40cf83059a05",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5f1d83a4ff1f41e1a46c48ed",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/abrir",
-      "name": "Reabrir notas do grupo",
+      "name": "Reabrir notas",
       "description": "",
       "method": "POST",
       "body": {},
@@ -2010,9 +2569,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_c3c842451089432e915931b9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_bc4edf6453d14f6e81bd909b",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/detectar-tardias",
       "name": "Detectar tardias",
       "description": "",
@@ -2032,9 +2592,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_c391ce720ea8446085c8dd96",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c9c21dac14ab4cdc93afe931",
+      "parentId": "fld_1b7dc1b2981841f49cb23968",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/groups/:id/tardias",
       "name": "Listar tardias",
       "description": "",
@@ -2054,11 +2615,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_4027b5f8c0284af9aaaa3c84",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ba0f0c02d388448e9fcf460c",
+      "parentId": "fld_bdcb2ff5fcfe45c7963872d1",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/quizizz/quiz/:quizId",
-      "name": "Buscar quiz do Quizizz",
+      "name": "Buscar quiz Quizizz",
       "description": "",
       "method": "GET",
       "body": {},
@@ -2076,9 +2638,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_bfb500885d8e439eb511ee45",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_eb92f1b92900489eadb6c671",
+      "parentId": "fld_78cf5cbcc4b5498ea21646df",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/solicitacoes/badge",
       "name": "Badge solicitações",
       "description": "",
@@ -2098,9 +2661,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_bc955223f5824c21a04b3a82",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ea0fccb1dfd34ae58f20e60f",
+      "parentId": "fld_78cf5cbcc4b5498ea21646df",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/solicitacoes",
       "name": "Listar solicitações de reabertura",
       "description": "",
@@ -2120,9 +2684,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_fff19da155744e2eaf1a02ef",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_00bc69d59e274b22b587e15c",
+      "parentId": "fld_78cf5cbcc4b5498ea21646df",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/solicitacoes/:id/responder",
       "name": "Responder solicitação",
       "description": "",
@@ -2150,11 +2715,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_c4385182facd451e8b17a64f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d02098212f3d4dcba17ec302",
+      "parentId": "fld_02a9663923884bb9b43a96b6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/acesso-pedagogos",
-      "name": "Listar acessos pedagógicos",
+      "name": "Listar acessos concedidos",
       "description": "",
       "method": "GET",
       "body": {},
@@ -2172,9 +2738,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_101b941434994ecd88449366",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_39f2b5a9c49f400baf02c948",
+      "parentId": "fld_02a9663923884bb9b43a96b6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/acesso-pedagogos",
       "name": "Conceder acesso",
       "description": "",
@@ -2202,9 +2769,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_ac91e76455d34bec93041444",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_eb8868ed1ce44807ab30fd27",
+      "parentId": "fld_02a9663923884bb9b43a96b6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/acesso-pedagogos/:id",
       "name": "Revogar acesso",
       "description": "",
@@ -2224,11 +2792,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_455f6344839445298ed73c08",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_532b345be59a448da21c9b6d",
+      "parentId": "fld_02a9663923884bb9b43a96b6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/solicitacoes-acesso",
-      "name": "Listar solicitações de acesso recebidas",
+      "name": "Solicitações de acesso recebidas",
       "description": "",
       "method": "GET",
       "body": {},
@@ -2246,9 +2815,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_fa1a8d75623344e6a6ac77d1",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c482d8b0acf64f99a17dc606",
+      "parentId": "fld_02a9663923884bb9b43a96b6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/classroom/solicitacoes-acesso/:id/responder",
       "name": "Responder solicitação de acesso",
       "description": "",
@@ -2276,9 +2846,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_c1d748082bc5446c852eea53",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_e824c4c8b484437e95a7e21f",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos?courseId=123",
       "name": "Listar grupos (notas)",
       "description": "",
@@ -2298,9 +2869,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_afc5316c836c4a5799f7efba",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_689e2ed95a9943babd027946",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos",
       "name": "Criar grupo",
       "description": "",
@@ -2328,9 +2900,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_0a5b6b424eb44bba8d63b5f8",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d2ee8fd3ff144f62a9bbf2fc",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id",
       "name": "Atualizar grupo",
       "description": "",
@@ -2358,9 +2931,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_866fa4ffbddd4eb3acd9d5ba",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_a3aa3b6d50a64023a3922054",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id",
       "name": "Excluir grupo",
       "description": "",
@@ -2380,11 +2954,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_401e99adca4649f8a331f50f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_bb1cba007fd748a59b39503b",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id/alunos",
-      "name": "Adicionar aluno ao grupo",
+      "name": "Adicionar aluno",
       "description": "",
       "method": "POST",
       "body": {
@@ -2410,11 +2985,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_33c96636774e4c43ab3b4865",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_7c8173e1707148bcbeb549fa",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id/alunos/:codMatrizAluno",
-      "name": "Remover aluno do grupo",
+      "name": "Remover aluno",
       "description": "",
       "method": "DELETE",
       "body": {},
@@ -2432,11 +3008,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_03b378054dd04884b93a7b80",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5586905903f84826960243c4",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id/atividades",
-      "name": "Adicionar atividade ao grupo",
+      "name": "Adicionar atividade",
       "description": "",
       "method": "POST",
       "body": {
@@ -2462,11 +3039,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_7ec05d1a7acc4aae9c1b091b",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_eecb8a2093d14676a9ade981",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id/atividades/:ativId",
-      "name": "Atualizar atividade do grupo",
+      "name": "Atualizar atividade",
       "description": "",
       "method": "PUT",
       "body": {
@@ -2492,11 +3070,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_bb091c9e6e6043a49b2d2712",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_647f70327b384a938c6bda38",
+      "parentId": "fld_eb05f30a26194d8788d53f0d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/grupos/:id/atividades/:ativId",
-      "name": "Remover atividade do grupo",
+      "name": "Remover atividade",
       "description": "",
       "method": "DELETE",
       "body": {},
@@ -2514,9 +3093,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_f041594904d44f5fac353f9a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_8abcf8ddf5d54f56a600843f",
+      "parentId": "fld_744869d913504d699307a1f2",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/crachas?codAcesso=123",
       "name": "Listar crachás",
       "description": "",
@@ -2536,11 +3116,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_9bc28d4c70d3448191d6ebcf",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c86c9726ba3548309fc1013b",
+      "parentId": "fld_744869d913504d699307a1f2",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/crachas/status",
-      "name": "Atualizar status do crachá",
+      "name": "Atualizar status",
       "description": "",
       "method": "POST",
       "body": {
@@ -2566,9 +3147,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_03e7a764043e45129cdd2f91",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_a2304f2747be4e67ab1428ff",
+      "parentId": "fld_ad96bf6d31af455c93d4cdfb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comportamento?codAcesso=123&data=2026-01-01",
       "name": "Listar ocorrências",
       "description": "",
@@ -2588,16 +3170,17 @@
       "_type": "request"
     },
     {
-      "_id": "req_f7e5ace5b6354a5bb168d42d",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f3e7a5e2b9ec4fd1b14b277f",
+      "parentId": "fld_ad96bf6d31af455c93d4cdfb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comportamento",
       "name": "Registrar ocorrência",
       "description": "",
       "method": "POST",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"codAcesso\": \"123\",\n  \"codMatrizAluno\": 123,\n  \"tipo\": \"positivo\",\n  \"descricao\": \"Bom aluno\"\n}"
+        "text": "{\n  \"codAcesso\": \"123\",\n  \"codMatrizAluno\": 123,\n  \"tipo\": \"positivo\",\n  \"descricao\": \"Bom\"\n}"
       },
       "parameters": [],
       "headers": [
@@ -2618,9 +3201,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_1ab66cd2ffaa480d97f0f786",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_04d9f09a5b43448eac140b4d",
+      "parentId": "fld_ad96bf6d31af455c93d4cdfb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comportamento/:id",
       "name": "Excluir ocorrência",
       "description": "",
@@ -2640,9 +3224,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_aa89bb004e7746e3aece0574",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_e50ac4b924f44579948c6405",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/materiais",
       "name": "Listar materiais",
       "description": "",
@@ -2662,9 +3247,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_eb52e1d7ce354b32a1e9eec2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_88972f0eeff24867afcd9647",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/materiais/:codigo",
       "name": "Material por código",
       "description": "",
@@ -2684,9 +3270,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_224180231fad414e8a1d30ba",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9b4524db5b624b3ba0ff9c2e",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/materiais",
       "name": "Criar material",
       "description": "",
@@ -2714,9 +3301,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_1f1cafc0cc494f059feba1c8",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6cd0420e2a3946cba61d37db",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/materiais/:id",
       "name": "Atualizar material",
       "description": "",
@@ -2744,9 +3332,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_2a250c910ab04f08963d7d2a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_79fd983acab24ddfa3414db0",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/materiais/:id",
       "name": "Excluir material",
       "description": "",
@@ -2766,9 +3355,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_a0b104c7839540edb538455c",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9128070bc5974d8f8333c32a",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/emprestimos",
       "name": "Listar empréstimos",
       "description": "",
@@ -2788,9 +3378,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_78a7b2a2d3ce427dbce34e32",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_809e6401b2ed4a45ab1c7d0b",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/emprestimos",
       "name": "Criar empréstimo",
       "description": "",
@@ -2818,9 +3409,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_124a756c538e40229f002bcd",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_0195c88d94284460a1c95c9a",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/emprestimos/:id/devolver",
       "name": "Devolver empréstimo",
       "description": "",
@@ -2840,11 +3432,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_7c94a692512248ed95a29b0d",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_84189874e3d24a1e873f45cc",
+      "parentId": "fld_bb4cded4712847508b45b857",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/estatisticas/materiais",
-      "name": "Estatísticas de materiais",
+      "name": "Estatísticas",
       "description": "",
       "method": "GET",
       "body": {},
@@ -2862,9 +3455,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_2f8265294e5348609b678e9b",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_092d61574e384e09af69b17c",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros",
       "name": "Listar livros",
       "description": "",
@@ -2884,9 +3478,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_35779182dda44c1089912607",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_e010538d80e64a4e97fb22fb",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros",
       "name": "Criar livro",
       "description": "",
@@ -2914,9 +3509,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_ee12a9824f26413ab59f18ee",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_0dba307ed1344bbe8acc882d",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros/:id",
       "name": "Atualizar livro",
       "description": "",
@@ -2944,9 +3540,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_c02e724cdd9f42a69375f0d4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_1de7ee0e1faf48bab0f74794",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros/:id",
       "name": "Excluir livro",
       "description": "",
@@ -2966,11 +3563,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_79a846b9929a4732ba502808",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_105513c2a1cb42e9a0a20fac",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros-emprestimos",
-      "name": "Listar empréstimos de livros",
+      "name": "Empréstimos de livros",
       "description": "",
       "method": "GET",
       "body": {},
@@ -2988,9 +3586,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_7edd7a03cfc748258ef0a434",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ac111cd35f884bc99a56f446",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros-emprestimos",
       "name": "Emprestar livro",
       "description": "",
@@ -3018,9 +3617,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_fe66e5e4311e4a30ae4e54a2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_425a1a1d485742d6b6e1a6e0",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros-emprestimos/:id/devolver",
       "name": "Devolver livro",
       "description": "",
@@ -3040,11 +3640,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_b265b528ae094a6fb5b5bb4e",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f1967f6a8bbf43c58965a962",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros-emprestimos/:id/perdido",
-      "name": "Marcar livro como perdido",
+      "name": "Marcar como perdido",
       "description": "",
       "method": "PUT",
       "body": {},
@@ -3062,9 +3663,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_bb6bffacb89b445793e7dfd9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b1974e0c1c4744c1b6c729a5",
+      "parentId": "fld_e8d89cfa48c84eb69dcc52cd",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/livros-emprestimos/aluno/:cod",
       "name": "Empréstimos do aluno",
       "description": "",
@@ -3084,11 +3686,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_f03ca9e521f944ccb8b4ff67",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b33e5e4be38d4f4b84ce2b4e",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/config",
-      "name": "Config de comunicados",
+      "name": "Config",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3106,9 +3709,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_a52b4f72b33847d3823b20c2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6d2255b16dde45d4b0fa500e",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/config",
       "name": "Atualizar config",
       "description": "",
@@ -3136,9 +3740,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_9206dbc7ad404c6b8c2c55f2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_0ee8cb39c6c74d9bab25102f",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/responsaveis/:cod",
       "name": "Responsáveis do aluno",
       "description": "",
@@ -3158,9 +3763,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_f04d58469bb54c99bfeba03b",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6521bf5c564c4a05b7cf80b9",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/responsaveis/:cod",
       "name": "Atualizar responsáveis",
       "description": "",
@@ -3188,9 +3794,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_0cca86bf3e6046d38f77bbb4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b5911d9f3464435fa11c9564",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados",
       "name": "Listar comunicados",
       "description": "",
@@ -3210,11 +3817,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_1b8103b3ec23429688b20277",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f049764b25cf4bfea7c822be",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/stats",
-      "name": "Estatísticas comunicados",
+      "name": "Estatísticas",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3232,11 +3840,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_8b0b943dcc7a49978549e2ca",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_7dea6f7b9ed4461f80398cf3",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/gerar",
-      "name": "Gerar comunicados de falta",
+      "name": "Gerar comunicados",
       "description": "",
       "method": "POST",
       "body": {
@@ -3262,9 +3871,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_6046f0c3048740edba9e2930",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9abc20c83b8b4533838f64d6",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/enviar",
       "name": "Enviar comunicados",
       "description": "",
@@ -3292,9 +3902,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_179ddefa0d2a4ea4a1cd9eea",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c5f17b22bb2048c4979546e9",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/resposta",
       "name": "Registrar resposta",
       "description": "",
@@ -3322,9 +3933,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_84329913343f41af8ffd6831",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ed121e4ea5504cb79ee4bdbb",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/:id/status",
       "name": "Atualizar status",
       "description": "",
@@ -3352,9 +3964,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_ea09b411dc4e4dad9eceea62",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4a28e12cac0f4430a7c1020d",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/:id/validar",
       "name": "Validar comunicado",
       "description": "",
@@ -3374,9 +3987,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_401d6ea6e7f74e2dad94a9ec",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_0c666f939e144566b1fbe889",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/:id/contato",
       "name": "Atualizar contato",
       "description": "",
@@ -3404,9 +4018,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_f0f024fa8fbe435eae7e20bc",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_2d3b5c718046468da249c149",
+      "parentId": "fld_dc5f3e6386ef421bb406d9f5",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/comunicados/:id",
       "name": "Excluir comunicado",
       "description": "",
@@ -3426,9 +4041,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_a636e13acc004b69a9e840c2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_422918c341714f01bee39633",
+      "parentId": "fld_727eb9f0874d42e4a0ea4f61",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/presenca-diaria?codAcesso=123&data=2026-01-01",
       "name": "Presença do dia",
       "description": "",
@@ -3448,11 +4064,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_8926d353db5546acbbf7feea",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_92127d8f8f9c473689b81a89",
+      "parentId": "fld_727eb9f0874d42e4a0ea4f61",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/presenca-diaria/sync",
-      "name": "Sincronizar presença",
+      "name": "Sincronizar",
       "description": "",
       "method": "POST",
       "body": {
@@ -3478,11 +4095,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_86678dabcdf14b238fd882d7",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_69f65bbf6a214067a24a4631",
+      "parentId": "fld_727eb9f0874d42e4a0ea4f61",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/presenca-diaria/seed",
-      "name": "Seed presença",
+      "name": "Seed",
       "description": "",
       "method": "POST",
       "body": {
@@ -3508,9 +4126,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_4b75706612034ad0bf7cfb13",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9d85793a906c4680bbdbc27b",
+      "parentId": "fld_727eb9f0874d42e4a0ea4f61",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/presenca-diaria/confirmar",
       "name": "Confirmar presença",
       "description": "",
@@ -3538,11 +4157,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_35ed944fd2c648c880b220ef",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c23dac7af952412dbedc9427",
+      "parentId": "fld_727eb9f0874d42e4a0ea4f61",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/presenca-diaria/historico?codAcesso=123",
-      "name": "Histórico de presença",
+      "name": "Histórico",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3560,9 +4180,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_0bf64471e4a144b69a5a22b0",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3ef58faa1c7b489e80784b2f",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/ambientes",
       "name": "Listar ambientes",
       "description": "",
@@ -3582,9 +4203,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_37b7ed14c6d54789a3f6f436",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_646fd54d59fd4682b444229c",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/ambientes",
       "name": "Criar ambiente",
       "description": "",
@@ -3612,9 +4234,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_9e03a7c4cd1342d9a3f7ff70",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_add75099c89846f1b8537f60",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/ambientes/:id",
       "name": "Atualizar ambiente",
       "description": "",
@@ -3642,9 +4265,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_5a4510f65372421d842058de",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c7bc61ca812549f08f210b65",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/ambientes/:id",
       "name": "Excluir ambiente",
       "description": "",
@@ -3664,11 +4288,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_2688a121baf8488d817f7dda",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_dcd6e6b88df6441a8733871b",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/scan",
-      "name": "Registrar scan de entrada",
+      "name": "Scan entrada",
       "description": "",
       "method": "POST",
       "body": {
@@ -3694,9 +4319,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_8e4227083d35439aaedc0f26",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c747cffcad594725b499eafc",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/saida/:id",
       "name": "Registrar saída",
       "description": "",
@@ -3716,11 +4342,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_21ed054db7f944d1a403771a",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d5a2c5be99d842d1b7d055fc",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/ativos",
-      "name": "Alunos em circulação",
+      "name": "Em circulação",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3738,11 +4365,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_bff63d984a604be49f5a2f4f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3b7392958660460d8b475920",
+      "parentId": "fld_0711f6d2a5814c748b8b9abb",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/circulacao/historico",
-      "name": "Histórico de circulação",
+      "name": "Histórico",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3760,9 +4388,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_d2d2e09a96ef4fbdae2d5513",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9784fcb5c9714908a7db653a",
+      "parentId": "fld_e943e6941be94bb58cd49487",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/cozinha",
       "name": "Dados da cozinha",
       "description": "",
@@ -3782,11 +4411,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_6df250a46c804185b61b3dc2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_bdd858bf23894c7a9558cded",
+      "parentId": "fld_e943e6941be94bb58cd49487",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/cozinha/confirmar",
-      "name": "Confirmar cozinha",
+      "name": "Confirmar",
       "description": "",
       "method": "POST",
       "body": {
@@ -3812,11 +4442,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_8c771f6fcad8476aa1a32287",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c16a881f62014d62a15b80ca",
+      "parentId": "fld_e943e6941be94bb58cd49487",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/cozinha/historico",
-      "name": "Histórico cozinha",
+      "name": "Histórico",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3834,9 +4465,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_9ec973abeccd4a28901b80fb",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_59b99145782346bcb9df00fe",
+      "parentId": "fld_2713c59490fa402faa11723d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/atividades?codAcesso=123&data=2026-01-01",
       "name": "Listar atividades",
       "description": "",
@@ -3856,9 +4488,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_094d6c1610d145b09a0445cb",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_2b0227fd77af49268f9f42e8",
+      "parentId": "fld_2713c59490fa402faa11723d",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/atividades/salvar",
       "name": "Salvar atividades",
       "description": "",
@@ -3886,11 +4519,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_ad88317987a74e308e3a9fa4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_2be83c198dfb4fbbb62ed873",
+      "parentId": "fld_bc4d110ac0b54fb497be5e14",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/mapa-sala?codAcesso=123",
-      "name": "Obter mapa da sala",
+      "name": "Obter mapa",
       "description": "",
       "method": "GET",
       "body": {},
@@ -3908,11 +4542,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_ddb7ac1924ad41dc84071fe7",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c6f0daca4061464a85880874",
+      "parentId": "fld_bc4d110ac0b54fb497be5e14",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/mapa-sala",
-      "name": "Salvar mapa da sala",
+      "name": "Salvar mapa",
       "description": "",
       "method": "POST",
       "body": {
@@ -3938,9 +4573,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_6f027b68dbec47379590c514",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b11069a11a2e4508a899a67c",
+      "parentId": "fld_17201feb83cd4ab78b51d7f9",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/qrcode/generate?text=Hello",
       "name": "Gerar QR Code",
       "description": "",
@@ -3960,9 +4596,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_4252e94f71664dd4a1286df2",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_fc701fd2c1b64785aa51677c",
+      "parentId": "fld_17201feb83cd4ab78b51d7f9",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/qrcode/matrix?text=Hello",
       "name": "Gerar matriz QR",
       "description": "",
@@ -3982,9 +4619,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_f4b54aaa39324d2c81a9c12e",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_13ee058296aa45fb8572554b",
+      "parentId": "fld_7220b9127753409595c95c40",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/setup-status",
       "name": "Status do setup",
       "description": "",
@@ -4004,9 +4642,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_cfeae7cfc50d41d9962b3f08",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_35b7c20fe8514695ac914de0",
+      "parentId": "fld_7220b9127753409595c95c40",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/sync",
       "name": "Sincronizar",
       "description": "",
@@ -4026,9 +4665,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_fbcee8ca725e4e1381fc4278",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5c2dab2ffbc54fed8221cd24",
+      "parentId": "fld_7220b9127753409595c95c40",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/sync/log",
       "name": "Log de sincronização",
       "description": "",
@@ -4048,11 +4688,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_eae516360f3847659de77db9",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ba4b900961c8429cafccf87c",
+      "parentId": "fld_f1c263c0920945b9b74ebcf7",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/debug/raw-rco",
-      "name": "Debug raw RCO",
+      "name": "Raw RCO",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4070,9 +4711,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_7d17afb552144bd69c0a3950",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_94c3985f11434ca185aefd13",
+      "parentId": "fld_f1c263c0920945b9b74ebcf7",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/debug/rco",
       "name": "Debug RCO",
       "description": "",
@@ -4092,11 +4734,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_0d6d1e135ab2438aa038a4dd",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9c954edfa899404db17ea500",
+      "parentId": "fld_f1c263c0920945b9b74ebcf7",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/debug/alunos-classe",
-      "name": "Debug alunos classe",
+      "name": "Alunos classe",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4114,11 +4757,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_9d7f277bbc6a4acbbdd98f20",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b50267b8a69143f2b36b640e",
+      "parentId": "fld_f1c263c0920945b9b74ebcf7",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/debug/alunos-rco",
-      "name": "Debug alunos RCO",
+      "name": "Alunos RCO",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4136,11 +4780,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_8a44ba4a571748fa9072302e",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_80f5b1ada4264520b9609190",
+      "parentId": "fld_819bf054c42a414093c7289a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico/sincronizar-rco",
-      "name": "Sincronizar pedagógico RCO",
+      "name": "Sincronizar RCO",
       "description": "",
       "method": "POST",
       "body": {
@@ -4166,9 +4811,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_e485086ac4754e69a7e0fc73",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_4c44af7bd3bd4c20b6dbd643",
+      "parentId": "fld_819bf054c42a414093c7289a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico?codAcesso=123",
       "name": "Dados pedagógicos",
       "description": "",
@@ -4188,11 +4834,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_520b395545554022bcf9ce4d",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_023ea78612d84c02ad00e245",
+      "parentId": "fld_819bf054c42a414093c7289a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico/observacoes-rco?codAcesso=123",
-      "name": "Observações RCO (pedagógico)",
+      "name": "Observações RCO",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4210,9 +4857,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_9997373804a145fc9debb708",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_deee3588757e4c5984256b23",
+      "parentId": "fld_819bf054c42a414093c7289a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico/retorno",
       "name": "Retorno pedagógico",
       "description": "",
@@ -4232,9 +4880,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_c4e20c5c9a2a4db1a2228e5d",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_73ac70cac062411e831be75f",
+      "parentId": "fld_819bf054c42a414093c7289a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico/retorno/confirmar",
       "name": "Confirmar retorno",
       "description": "",
@@ -4262,11 +4911,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_aae0ff60db074818bff410c6",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_82458280781d4df7be029eba",
+      "parentId": "fld_819bf054c42a414093c7289a",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico/nota",
-      "name": "Lançar nota pedagógica",
+      "name": "Lançar nota",
       "description": "",
       "method": "POST",
       "body": {
@@ -4292,11 +4942,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_48aaeb73aa234d709aa9a41e",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_96520bb94fa044cd949bcfa1",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/status",
-      "name": "Status sessão aluno",
+      "name": "Status sessão",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4314,11 +4965,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_04209fcb19604bc4b96f4c79",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_e6bd7de0c6404223b71b54a1",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/auth-url",
-      "name": "URL OAuth aluno",
+      "name": "URL OAuth",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4336,11 +4988,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_46a2f46e891a42719bf97208",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_788036fb78ec48849bdfdef7",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/callback?code=xxx",
-      "name": "Callback OAuth aluno",
+      "name": "Callback OAuth",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4358,11 +5011,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_56db864e7e3f40b996abe2dc",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_ea09cf8dc70445f68ae987f3",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/logout",
-      "name": "Logout aluno",
+      "name": "Logout",
       "description": "",
       "method": "POST",
       "body": {},
@@ -4380,11 +5034,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_21561e36511a4089aaf91e0f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5287fe7a2e83448ca4572bc7",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/atividades",
-      "name": "Atividades do aluno",
+      "name": "Atividades",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4402,16 +5057,17 @@
       "_type": "request"
     },
     {
-      "_id": "req_bb2305555f0540d785466a07",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c6223b6b61d94514999f6ea5",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/solicitar-reabertura",
       "name": "Solicitar reabertura",
       "description": "",
       "method": "POST",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"grupoId\": 1,\n  \"motivo\": \"Preciso corrigir\"\n}"
+        "text": "{\n  \"grupoId\": 1,\n  \"motivo\": \"Corrigir\"\n}"
       },
       "parameters": [],
       "headers": [
@@ -4432,11 +5088,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_7e064f75b2ca446abc3ffb21",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6d56f38360a5476cabae9434",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/notificacoes",
-      "name": "Notificações do aluno",
+      "name": "Notificações",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4454,11 +5111,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_cb23c51ece64402583558df7",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3ab9f305b84043fa9b204442",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/notificacoes/:id/ler",
-      "name": "Marcar notificação lida",
+      "name": "Marcar lida",
       "description": "",
       "method": "POST",
       "body": {},
@@ -4476,9 +5134,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_b6dd83a194f04fae9afd2c31",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_de7e369cfbd84824bcdc76ee",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/minhas-solicitacoes",
       "name": "Minhas solicitações",
       "description": "",
@@ -4498,11 +5157,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_a1f486c47ae949fc8e4436e4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f2d12ac84e8842a585337a96",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/conquistas",
-      "name": "Conquistas do aluno",
+      "name": "Conquistas",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4520,11 +5180,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_328fffbecf2044a283653bfb",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_6a364972155847dd9dcfe3df",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/conquistas/notificado",
-      "name": "Marcar conquistas notificadas",
+      "name": "Marcar notificadas",
       "description": "",
       "method": "PATCH",
       "body": {},
@@ -4542,11 +5203,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_1fdafe042c6449da80725f89",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_9346cada37fa4b55a2b3d655",
+      "parentId": "fld_dc4b82db40264805b6c3d6c6",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/alunos-portal/mural",
-      "name": "Mural do aluno",
+      "name": "Mural",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4564,11 +5226,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_62d7b79f2d264c35a371ae69",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_057ddb8aa7954049ae82619a",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/status",
-      "name": "Status sessão pedagoga",
+      "name": "Status sessão",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4586,11 +5249,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_e50c59942dbe437387836aad",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_7fb534aef9644a25a338700c",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/auth-url",
-      "name": "URL OAuth pedagoga",
+      "name": "URL OAuth",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4608,11 +5272,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_dad0b8e0e2f64bafbb1f5aa4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_bfb9e1ec7c744904b4e7d5bb",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/callback?code=xxx",
-      "name": "Callback OAuth pedagoga",
+      "name": "Callback OAuth",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4630,11 +5295,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_a2b215b8332448ce8df0f7b1",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_872656a078cc48c1a3924481",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/logout",
-      "name": "Logout pedagoga",
+      "name": "Logout",
       "description": "",
       "method": "POST",
       "body": {},
@@ -4652,11 +5318,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_4010c1cf46a4461681117a52",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d693af2702eb40709846069a",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/professores",
-      "name": "Listar professores (acesso concedido)",
+      "name": "Professores com acesso",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4674,11 +5341,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_d21d49e724454685972e5beb",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_3f959634c99d4c0ebcba51d6",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/buscar-professores?q=joao",
-      "name": "Buscar professores por nome/email",
+      "name": "Buscar professores",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4696,11 +5364,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_fa1ae4c91e5542a0b437ebdc",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_21abf7f4d36847abbc6939d6",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/solicitar-acesso",
-      "name": "Solicitar acesso a professor",
+      "name": "Solicitar acesso",
       "description": "",
       "method": "POST",
       "body": {
@@ -4726,11 +5395,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_336449c299f74a64bf006edb",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_0dacdee787e94c70bb48a643",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/minhas-solicitacoes",
-      "name": "Minhas solicitações de acesso",
+      "name": "Minhas solicitações",
       "description": "",
       "method": "GET",
       "body": {},
@@ -4748,9 +5418,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_3964dd5f7d224e99b8682004",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_40ca819530de4a04a9435f01",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/cursos?professorCpf=00000000000",
       "name": "Cursos do professor",
       "description": "",
@@ -4770,9 +5441,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_e987dcd7ed4f46c1937a22bc",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_0c75ad81f94a4ffda2689fe3",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos?courseId=123&professorCpf=00000000000",
       "name": "Grupos do curso",
       "description": "",
@@ -4792,9 +5464,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_886d42ca98994b7da0712d28",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_71e475202cdb47a4bc492658",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos/:id/summary?professorCpf=00000000000",
       "name": "Resumo do grupo",
       "description": "",
@@ -4814,11 +5487,12 @@
       "_type": "request"
     },
     {
-      "_id": "req_ad11c888563d440aa7efc060",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_c831deba4a234b39831006f8",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos/:id/fechar?professorCpf=00000000000",
-      "name": "Fechar notas do grupo",
+      "name": "Fechar notas",
       "description": "",
       "method": "POST",
       "body": {},
@@ -4836,9 +5510,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_205cd19a1f454538ad5f40d7",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_73309ee05b7141f6b341486c",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos/:id/abrir?professorCpf=00000000000",
       "name": "Reabrir notas",
       "description": "",
@@ -4858,9 +5533,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_bfaa42cbcccb43389a6d7d08",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5049b7f6c8a84a07ad2be60c",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos/:id?professorCpf=00000000000",
       "name": "Atualizar grupo",
       "description": "",
@@ -4888,9 +5564,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_8b0fc9e8c4a742979173a1d4",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_76887a1d1ceb41afbea2d8ae",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos/:id?professorCpf=00000000000",
       "name": "Excluir grupo",
       "description": "",
@@ -4910,9 +5587,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_60acb24eee254ec5b796d74f",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_5bb4e626385b40e6a52ba473",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/grupos/:id/detectar-tardias?professorCpf=00000000000",
       "name": "Detectar tardias",
       "description": "",
@@ -4932,9 +5610,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_d39c0230942d475eac2efd76",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_f07095d29b55483aa91ac57f",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/alunos?courseId=123&professorCpf=00000000000",
       "name": "Alunos do curso",
       "description": "",
@@ -4954,9 +5633,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_958376e8cf8f45ce8f04c785",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_b012989ba32546809874a11b",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/tardias?grupoId=1&professorCpf=00000000000",
       "name": "Listar tardias",
       "description": "",
@@ -4976,9 +5656,10 @@
       "_type": "request"
     },
     {
-      "_id": "req_7a22a151b4b44eb8bcd10656",
-      "modified": 1776211360795,
-      "created": 1776211360795,
+      "_id": "req_d2e1de3bd26e4b9fa152e3d9",
+      "parentId": "fld_142d297ead2b4bf092f8de34",
+      "modified": 1776211482372,
+      "created": 1776211482372,
       "url": "{{ base_url }}/api/pedagogico-portal/ausencias?cursoId=123&atividadeId=456&professorCpf=00000000000",
       "name": "Ausências",
       "description": "",
