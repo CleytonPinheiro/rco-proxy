@@ -2280,6 +2280,19 @@ body.cl-popout .logo-icon { font-size: 15px; }
     border-radius: 8px;
     overflow: hidden;
 }
+.cl-fechar-pendencias--fonte {
+    border-color: #6366f1;
+}
+.cl-fechar-pendencias--fonte .cl-fechar-pendencias-header {
+    background: rgba(99,102,241,.12);
+    color: #818cf8;
+}
+.cl-fechar-pendencias--fonte .cl-fechar-pendencias-item {
+    border-bottom-color: rgba(99,102,241,.08);
+}
+.cl-fechar-pendencias-nome--fonte {
+    cursor: default;
+}
 .cl-fechar-pendencias-header {
     display: flex;
     align-items: center;

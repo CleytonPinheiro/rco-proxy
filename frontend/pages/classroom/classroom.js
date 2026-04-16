@@ -1377,6 +1377,28 @@ elBtnFecharNota.addEventListener('click', async () => {
         const atvsSemCorrecao = Object.keys(semCorrecao);
         const totalSemCorrecao = atvsSemCorrecao.reduce((s, id) => s + semCorrecao[id].count, 0);
 
+        const fontesData = dados?.fontes || [];
+        const fonteSemCorrecao = {};
+        if (fontesData.length > 0) {
+            (dados?.alunosResumo || []).forEach(a => {
+                for (const fonte of fontesData) {
+                    if (!fonte.atividades?.length) continue;
+                    for (const fatv of fonte.atividades) {
+                        const key = `f_${fonte.fonteGrupoId}_${fatv.id}`;
+                        const sub = a.fontesAtividades?.[key];
+                        if (sub && sub.estado === 'TURNED_IN' && sub.nota === null) {
+                            const fkey = `${fonte.fonteGrupoId}_${fatv.id}`;
+                            if (!fonteSemCorrecao[fkey]) fonteSemCorrecao[fkey] = { fonteNome: fonte.nome, titulo: fatv.titulo, count: 0, alunos: [] };
+                            fonteSemCorrecao[fkey].count++;
+                            fonteSemCorrecao[fkey].alunos.push(a.aluno?.nome || a.userId);
+                        }
+                    }
+                }
+            });
+        }
+        const fontesKeys = Object.keys(fonteSemCorrecao);
+        const totalFonteSemCorrecao = fontesKeys.reduce((s, k) => s + fonteSemCorrecao[k].count, 0);
+
         let pendenciasHtml = '';
         if (atvsSemCorrecao.length > 0) {
             pendenciasHtml = `
@@ -1416,6 +1438,38 @@ elBtnFecharNota.addEventListener('click', async () => {
                 <div class="cl-fechar-correcao-ok">
                     <span class="cl-fechar-correcao-ok-icon">✅</span>
                     <span>Nenhuma entrega pendente de correção</span>
+                </div>`;
+        }
+
+        if (fontesKeys.length > 0) {
+            const baseIdx = atvsSemCorrecao.length;
+            pendenciasHtml += `
+                <div class="cl-fechar-pendencias cl-fechar-pendencias--fonte">
+                    <div class="cl-fechar-pendencias-header">
+                        <span style="flex-shrink:0;font-size:14px">📥</span>
+                        <strong>${totalFonteSemCorrecao} entrega(s) sem corrigir no grupo de origem (fontes externas)</strong>
+                    </div>
+                    <div class="cl-fechar-pendencias-list">
+                        ${fontesKeys.map((fkey, i) => {
+                            const idx = baseIdx + i;
+                            const { fonteNome, titulo, count, alunos } = fonteSemCorrecao[fkey];
+                            const alunosHtml = alunos.sort((a, b) => a.localeCompare(b)).map(n =>
+                                `<div class="cl-fechar-sc-aluno">${esc(n)}</div>`
+                            ).join('');
+                            return `<div class="cl-fechar-pendencias-item">
+                                <div class="cl-fechar-sc-row">
+                                    <span class="cl-fechar-pendencias-icon">📥</span>
+                                    <span class="cl-fechar-pendencias-nome cl-fechar-pendencias-nome--fonte">${esc(fonteNome)} → ${esc(titulo)}</span>
+                                    <span class="cl-fechar-pendencias-qty">${count} sem nota</span>
+                                    <span class="cl-fechar-sc-toggle" data-idx="${idx}">▼</span>
+                                </div>
+                                <div class="cl-fechar-sc-alunos" id="clFecharScAlunos${idx}" style="display:none">
+                                    ${alunosHtml}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <div class="cl-fechar-pendencias-dica">Corrija essas atividades no grupo de origem antes de fechar, para que as notas sejam contabilizadas.</div>
                 </div>`;
         }
 
@@ -1483,9 +1537,10 @@ elBtnFecharNota.addEventListener('click', async () => {
                 </div>
             </div>`;
 
+        const temPendencias = atvsSemCorrecao.length > 0 || fontesKeys.length > 0;
         const confirmarPromise = confirmar(resumoHtml, {
             titulo: 'Fechar notas',
-            confirmLabel: atvsSemCorrecao.length > 0 ? 'Fechar mesmo assim' : 'Sim, fechar agora',
+            confirmLabel: temPendencias ? 'Fechar mesmo assim' : 'Sim, fechar agora',
             tipo: 'danger',
             icone: '🔒',
             html: true,
