@@ -1574,6 +1574,23 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 .cl-resumo-num { font-size: 1rem; }
 .cl-resumo-den { font-size: .72rem; color: var(--text-muted); }
+.cl-resumo-soma--dupla {
+    display: flex; flex-direction: column; gap: 1px;
+}
+.cl-resumo-soma-linha {
+    font-weight: 700; white-space: nowrap;
+}
+.cl-resumo-soma-total {
+    font-size: .72rem; white-space: nowrap; opacity: .85;
+    display: flex; align-items: center; gap: 3px; justify-content: flex-end;
+}
+.cl-resumo-total-icon { font-size: .65rem; }
+.cl-resumo-fonte-add {
+    font-size: .65rem; color: #10b981; font-weight: 600;
+}
+.cl-detalhe-soma--total {
+    font-size: .78rem; opacity: .85; margin-top: 1px;
+}
 
 /* ══════════════════════════════════════════════════════════════
    DETALHE DO ALUNO NO GRUPO

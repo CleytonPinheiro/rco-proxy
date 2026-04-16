@@ -1701,10 +1701,12 @@ async function carregarResumoGrupo(grupo) {
             });
         }
 
+        const hasFontes = (resumo.fontes || []).length > 0;
         const alunosResumo = resumo.alunos.map(a => ({
             ...a,
             aluno:     alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
             soma:      ((a.mediaIndice ?? 0) / 100) * meta,
+            somaInterna: ((a.mediaIndiceInterno ?? a.mediaIndice ?? 0) / 100) * meta,
             temEntrou: Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
             recData:   recMap[a.userId] ?? null,
         })).sort((a, b) => {
@@ -2130,16 +2132,34 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
 
     const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
 
+    const somaInt    = a.somaInterna ?? soma;
+    const hasFontes  = fontes.length > 0;
+    const pctInt     = meta > 0 ? Math.min(100, (somaInt / meta) * 100) : 0;
+    const somaIntCor = pctInt >= 100 ? '#10b981' : pctInt >= 60 ? '#4285F4' : '#f59e0b';
+    const fonteDiff  = hasFontes ? soma - somaInt : 0;
+
     /* Células indexadas por chave */
     const cells = {
         aluno: `<div class="cl-resumo-info">
             <div class="cl-nota-nome" title="${esc(al.email)}">${numBadge}${esc(al.nome || '—')}</div>
             <div class="cl-passos-barra">${stepsHtml || '<span class="cl-passos-vazia">—</span>'}</div>
         </div>`,
-        soma: `<div class="cl-resumo-soma">
-            <span class="cl-resumo-num" style="color:${somaCor}">${rco(soma)}</span>
-            <span class="cl-resumo-den">/${rco(meta)}</span>
-        </div>`,
+        soma: hasFontes
+            ? `<div class="cl-resumo-soma cl-resumo-soma--dupla">
+                <div class="cl-resumo-soma-linha">
+                    <span class="cl-resumo-num" style="color:${somaIntCor}">${rco(somaInt)}</span>
+                    <span class="cl-resumo-den">/${rco(meta)}</span>
+                </div>
+                <div class="cl-resumo-soma-total" title="Soma total (grupo + fontes externas)">
+                    <span class="cl-resumo-total-icon">📥</span>
+                    <span style="color:${somaCor}">${rco(soma)}</span>
+                    ${fonteDiff > 0 ? `<span class="cl-resumo-fonte-add">+${rco(fonteDiff)}</span>` : ''}
+                </div>
+            </div>`
+            : `<div class="cl-resumo-soma">
+                <span class="cl-resumo-num" style="color:${somaCor}">${rco(soma)}</span>
+                <span class="cl-resumo-den">/${rco(meta)}</span>
+            </div>`,
         rec: hasRec
             ? (a.recData
                 ? `<div style="text-align:center"><span class="cl-rec-nota-badge" title="Nota da recuperação">🔄 ${rco(a.recData.soma)}</span></div>`
@@ -2378,8 +2398,11 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
     const soma     = alunoData.soma ?? 0;
+    const somaInt  = alunoData.somaInterna ?? soma;
     const pct      = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
+    const pctInt   = meta > 0 ? Math.min(100, (somaInt / meta) * 100) : 0;
     const barCor   = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
+    const somaIntCor = pctInt >= 100 ? '#10b981' : pctInt >= 60 ? '#4285F4' : '#f59e0b';
 
     // Preparar linhas de atividade
     const rows = atividades.map(atv => {
@@ -2554,10 +2577,20 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
                 <div class="cl-nota-avatar cl-nota-avatar--lg">${fotoHtml}</div>
                 <div>
                     <div class="cl-nota-nome">${esc(al.nome || '—')}</div>
-                    <div class="cl-detalhe-soma" style="color:${barCor}">
-                        ${rco(soma)} / ${rco(meta)} pts
-                        <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
-                    </div>
+                    ${fontes.length > 0
+                        ? `<div class="cl-detalhe-soma" style="color:${somaIntCor}">
+                            Grupo: ${rco(somaInt)} / ${rco(meta)} pts
+                            <span class="cl-detalhe-pct">(${pctInt.toFixed(0)}%)</span>
+                        </div>
+                        <div class="cl-detalhe-soma cl-detalhe-soma--total" style="color:${barCor}">
+                            📥 Total: ${rco(soma)} / ${rco(meta)} pts
+                            <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
+                        </div>`
+                        : `<div class="cl-detalhe-soma" style="color:${barCor}">
+                            ${rco(soma)} / ${rco(meta)} pts
+                            <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
+                        </div>`
+                    }
                 </div>
             </div>
         </div>

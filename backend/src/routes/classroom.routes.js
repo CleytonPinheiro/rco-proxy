@@ -1156,6 +1156,10 @@ export function createClassroomRouter(deps = {}) {
             let fontesInfo = [];
             let totalPossivelComFontes = totalPossivel;
 
+            for (const uid of Object.keys(alunoMap)) {
+                alunoMap[uid].totalGanhoInterno = alunoMap[uid].totalGanho;
+            }
+
             if (fontesConfig.length > 0) {
                 let emailMap = {};
                 try {
@@ -1167,7 +1171,9 @@ export function createClassroomRouter(deps = {}) {
                         }
                         pageToken = resp.data.nextPageToken;
                     } while (pageToken);
-                } catch (_) {}
+                } catch (eList) {
+                    console.error(`[FONTES] Erro ao listar alunos do curso ${courseId}:`, eList.message);
+                }
 
                 for (const fc of fontesConfig) {
                     try {
@@ -1183,16 +1189,24 @@ export function createClassroomRouter(deps = {}) {
                         const pesoFrac = (fc.peso || 100) / 100;
 
                         let fonteEmailMap = {};
-                        try {
-                            let pt2;
-                            do {
-                                const resp2 = await classroom.courses.students.list({ courseId: fc.fonte_curso_id, pageSize: 100, pageToken: pt2 });
-                                for (const st of (resp2.data.students || [])) {
-                                    fonteEmailMap[st.userId] = st.profile?.emailAddress?.toLowerCase();
-                                }
-                                pt2 = resp2.data.nextPageToken;
-                            } while (pt2);
-                        } catch (_) {}
+                        if (fc.fonte_curso_id === courseId) {
+                            for (const [email, uid] of Object.entries(emailMap)) {
+                                fonteEmailMap[uid] = email;
+                            }
+                        } else {
+                            try {
+                                let pt2;
+                                do {
+                                    const resp2 = await classroom.courses.students.list({ courseId: fc.fonte_curso_id, pageSize: 100, pageToken: pt2 });
+                                    for (const st of (resp2.data.students || [])) {
+                                        fonteEmailMap[st.userId] = st.profile?.emailAddress?.toLowerCase();
+                                    }
+                                    pt2 = resp2.data.nextPageToken;
+                                } while (pt2);
+                            } catch (eMap) {
+                                console.error(`[FONTES] Erro ao listar alunos do curso fonte ${fc.fonte_curso_id}:`, eMap.message);
+                            }
+                        }
 
                         const fonteScores = {};
                         const fonteAtvSubs = {};
@@ -1232,15 +1246,20 @@ export function createClassroomRouter(deps = {}) {
                             }
                         }
 
+                        let matchCount = 0, missCount = 0;
                         for (const [email, atvMap] of Object.entries(fonteAtvSubs)) {
                             const localUserId = emailMap[email];
                             if (localUserId && alunoMap[localUserId]) {
+                                matchCount++;
                                 if (!alunoMap[localUserId].fontesAtividades) alunoMap[localUserId].fontesAtividades = {};
                                 for (const [atvId, sub] of Object.entries(atvMap)) {
                                     alunoMap[localUserId].fontesAtividades[`f_${fc.fonte_grupo_id}_${atvId}`] = sub;
                                 }
+                            } else {
+                                missCount++;
                             }
                         }
+                        console.log(`[FONTES] fonte_grupo=${fc.fonte_grupo_id} emailMap=${Object.keys(emailMap).length} fonteEmailMap=${Object.keys(fonteEmailMap).length} fonteAtvSubs=${Object.keys(fonteAtvSubs).length} matched=${matchCount} missed=${missCount}`);
 
                         totalPossivelComFontes += fontePontosMax * pesoFrac;
 
@@ -1266,13 +1285,17 @@ export function createClassroomRouter(deps = {}) {
 
             const totalFinal = fontesConfig.length > 0 ? totalPossivelComFontes : totalPossivel;
 
-            let alunos = Object.values(alunoMap).map(a => ({
-                userId:      a.userId,
-                mediaIndice: totalFinal > 0 ? (a.totalGanho / totalFinal) * 100 : 0,
-                pendentes:   a.pendentes,
-                atividades:  a.atividades,
-                fontesAtividades: a.fontesAtividades || {},
-            }));
+            let alunos = Object.values(alunoMap).map(a => {
+                const ganhoInterno = a.totalGanhoInterno ?? a.totalGanho;
+                return {
+                    userId:      a.userId,
+                    mediaIndice: totalFinal > 0 ? (a.totalGanho / totalFinal) * 100 : 0,
+                    mediaIndiceInterno: totalPossivel > 0 ? (ganhoInterno / totalPossivel) * 100 : 0,
+                    pendentes:   a.pendentes,
+                    atividades:  a.atividades,
+                    fontesAtividades: a.fontesAtividades || {},
+                };
+            });
 
             /* ─── Filtro de recuperação por data ───────────────────────────────────
                Para grupos de recuperação com data_inicio definida:
