@@ -1140,6 +1140,24 @@ export function createClassroomRouter(deps = {}) {
                 } while (rosterToken);
             } catch (_) {}
 
+            const allAtvIds = results.map(r => r.atividade.atividade_id);
+            for (const uid of Object.keys(alunoMap)) {
+                for (const atvId of allAtvIds) {
+                    if (!alunoMap[uid].atividades[atvId]) {
+                        alunoMap[uid].atividades[atvId] = {
+                            nota: null, notaRascunho: null, estado: 'NEW',
+                            entregue: false, atrasado: false, updateTime: null,
+                            eDeRecuperacao: false, eTardia: false,
+                        };
+                        const atv = results.find(r => r.atividade.atividade_id === atvId);
+                        const pm = atv ? resolverPontosMax(atv.atividade) : null;
+                        if (pm !== null) {
+                            alunoMap[uid].pendentes++;
+                        }
+                    }
+                }
+            }
+
             /* ─── Fontes de nota externas ─────────────────────────────────
                Se o grupo tem fontes configuradas, busca o resumo de cada fonte
                e combina a nota (média ponderada) no totalGanho de cada aluno.
