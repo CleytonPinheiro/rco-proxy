@@ -1161,20 +1161,6 @@ export function createClassroomRouter(deps = {}) {
             }
 
             if (fontesConfig.length > 0) {
-                let emailMap = {};
-                try {
-                    let pageToken;
-                    do {
-                        const resp = await classroom.courses.students.list({ courseId, pageSize: 100, pageToken });
-                        for (const st of (resp.data.students || [])) {
-                            emailMap[st.profile?.emailAddress?.toLowerCase()] = st.userId;
-                        }
-                        pageToken = resp.data.nextPageToken;
-                    } while (pageToken);
-                } catch (eList) {
-                    console.error(`[FONTES] Erro ao listar alunos do curso ${courseId}:`, eList.message);
-                }
-
                 for (const fc of fontesConfig) {
                     try {
                         const { rows: fonteAtivs } = await pool.query(
@@ -1187,26 +1173,6 @@ export function createClassroomRouter(deps = {}) {
                         if (fontePontosMax <= 0) continue;
 
                         const pesoFrac = (fc.peso || 100) / 100;
-
-                        let fonteEmailMap = {};
-                        if (fc.fonte_curso_id === courseId) {
-                            for (const [email, uid] of Object.entries(emailMap)) {
-                                fonteEmailMap[uid] = email;
-                            }
-                        } else {
-                            try {
-                                let pt2;
-                                do {
-                                    const resp2 = await classroom.courses.students.list({ courseId: fc.fonte_curso_id, pageSize: 100, pageToken: pt2 });
-                                    for (const st of (resp2.data.students || [])) {
-                                        fonteEmailMap[st.userId] = st.profile?.emailAddress?.toLowerCase();
-                                    }
-                                    pt2 = resp2.data.nextPageToken;
-                                } while (pt2);
-                            } catch (eMap) {
-                                console.error(`[FONTES] Erro ao listar alunos do curso fonte ${fc.fonte_curso_id}:`, eMap.message);
-                            }
-                        }
 
                         const fonteScores = {};
                         const fonteAtvSubs = {};
@@ -1221,45 +1187,41 @@ export function createClassroomRouter(deps = {}) {
                                     });
                                     for (const s of (resp3.data.studentSubmissions || [])) {
                                         const grade = s.assignedGrade ?? s.draftGrade ?? null;
-                                        const email = fonteEmailMap[s.userId];
-                                        if (!email) continue;
                                         const entregue = ['TURNED_IN','RETURNED','RECLAIMED_BY_STUDENT'].includes(s.state);
-                                        if (!fonteAtvSubs[email]) fonteAtvSubs[email] = {};
-                                        fonteAtvSubs[email][fa.atividade_id] = {
+                                        if (!fonteAtvSubs[s.userId]) fonteAtvSubs[s.userId] = {};
+                                        fonteAtvSubs[s.userId][fa.atividade_id] = {
                                             nota: grade !== null ? Math.min(grade, pm) : null,
                                             entregue,
                                             estado: s.state || null,
                                         };
                                         if (grade !== null) {
-                                            fonteScores[email] = (fonteScores[email] || 0) + Math.min(grade, pm);
+                                            fonteScores[s.userId] = (fonteScores[s.userId] || 0) + Math.min(grade, pm);
                                         }
                                     }
                                     pt3 = resp3.data.nextPageToken;
                                 } while (pt3);
-                            } catch (_) {}
-                        }
-
-                        for (const [email, score] of Object.entries(fonteScores)) {
-                            const localUserId = emailMap[email];
-                            if (localUserId && alunoMap[localUserId]) {
-                                alunoMap[localUserId].totalGanho += score * pesoFrac;
+                            } catch (eSub) {
+                                console.error(`[FONTES] Erro subs atv ${fa.atividade_id} courseId=${fc.fonte_curso_id}:`, eSub.message);
                             }
                         }
 
                         let matchCount = 0, missCount = 0;
-                        for (const [email, atvMap] of Object.entries(fonteAtvSubs)) {
-                            const localUserId = emailMap[email];
-                            if (localUserId && alunoMap[localUserId]) {
+                        for (const [uid, score] of Object.entries(fonteScores)) {
+                            if (alunoMap[uid]) {
                                 matchCount++;
-                                if (!alunoMap[localUserId].fontesAtividades) alunoMap[localUserId].fontesAtividades = {};
+                                alunoMap[uid].totalGanho += score * pesoFrac;
+                            } else { missCount++; }
+                        }
+
+                        for (const [uid, atvMap] of Object.entries(fonteAtvSubs)) {
+                            if (alunoMap[uid]) {
+                                if (!alunoMap[uid].fontesAtividades) alunoMap[uid].fontesAtividades = {};
                                 for (const [atvId, sub] of Object.entries(atvMap)) {
-                                    alunoMap[localUserId].fontesAtividades[`f_${fc.fonte_grupo_id}_${atvId}`] = sub;
+                                    alunoMap[uid].fontesAtividades[`f_${fc.fonte_grupo_id}_${atvId}`] = sub;
                                 }
-                            } else {
-                                missCount++;
                             }
                         }
-                        console.log(`[FONTES] fonte_grupo=${fc.fonte_grupo_id} emailMap=${Object.keys(emailMap).length} fonteEmailMap=${Object.keys(fonteEmailMap).length} fonteAtvSubs=${Object.keys(fonteAtvSubs).length} matched=${matchCount} missed=${missCount}`);
+                        console.log(`[FONTES] fonte_grupo=${fc.fonte_grupo_id} fonteAtvSubs=${Object.keys(fonteAtvSubs).length} matched=${matchCount} missed=${missCount}`);
 
                         totalPossivelComFontes += fontePontosMax * pesoFrac;
 
