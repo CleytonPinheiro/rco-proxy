@@ -2926,8 +2926,17 @@ async function carregarTodosGrupos() {
 
 function _getFontesGruposAptos() {
     const cursoAtualId = cursoAtivo?.id;
+    const cursoAtual = _cursosCache?.find(c => c.id === cursoAtualId);
+    const turmaAtual = cursoAtual ? extrairTurma(cursoAtual.nome) : null;
     return (_allGroupsCache || [])
-        .filter(g => String(g.id) !== String(elGrupoId.value) && g.cursoId !== cursoAtualId);
+        .filter(g => {
+            if (String(g.id) === String(elGrupoId.value)) return false;
+            if (g.cursoId === cursoAtualId) return false;
+            if (!turmaAtual) return true;
+            const curso = _cursosCache?.find(c => c.id === g.cursoId);
+            if (!curso) return false;
+            return extrairTurma(curso.nome) === turmaAtual;
+        });
 }
 
 function _buildFontesAgrupados() {
@@ -2955,7 +2964,7 @@ function abrirFontesSelecaoModal(editIdx) {
     const jaUsados = new Set(_fontesModalData.filter((_, i) => i !== editIdx).map(f => String(f.fonteGrupoId)));
 
     elFontesModalList.innerHTML = cursosAgrupados.length === 0
-        ? '<div class="cl-fontes-empty">Nenhum grupo disponível em outras disciplinas</div>'
+        ? '<div class="cl-fontes-empty">Nenhum grupo disponível em outras disciplinas desta turma</div>'
         : cursosAgrupados.map(c => {
             const items = c.grupos
                 .filter(g => !jaUsados.has(String(g.id)))
