@@ -431,10 +431,15 @@ export function createAlunosPortalRouter() {
                         .filter(Boolean)
                         .sort(sortPrazo);
 
-                    /* ── Atividades zeradas (RETURNED + assignedGrade=0) ─ */
-                    const returnedSubs = subsZerResp.data.studentSubmissions || [];
+                    /* ── Atividades zeradas (RETURNED OU TURNED_IN com nota=0) ─
+                       Equivale ao "Entrou (0 pts)" da visão do professor:
+                       nota === 0 && (state === 'TURNED_IN' || state === 'RETURNED'). */
+                    const returnedSubs = [
+                        ...(subsZerResp.data.studentSubmissions    || []),
+                        ...(subsAguardResp.data.studentSubmissions || []),
+                    ];
                     const zeradas = returnedSubs
-                        .filter(sub => (sub.assignedGrade ?? null) === 0)
+                        .filter(sub => (sub.assignedGrade ?? sub.draftGrade ?? null) === 0)
                         .map(sub => {
                             const cw = cwMap[sub.courseWorkId];
                             if (!cw) return null;
