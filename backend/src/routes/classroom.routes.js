@@ -1730,36 +1730,51 @@ export function createClassroomRouter(deps = {}) {
 
     /* ─── Solicitações de reabertura ──────────────────────────────── */
 
-    /* Helper: lista os IDs de cursos do professor logado (em que ele é teacher) */
+    /* Helper: lista os IDs de cursos do professor logado (em que ele é teacher).
+       Retorna null se não houver auth do Classroom (ex.: admin que ainda não conectou). */
     async function getCursosIdsDoProfessor(req) {
-        const auth = await getAuthenticatedClient(req);
-        if (!auth) return null;
-        const classroom = google.classroom({ version: 'v1', auth });
-        const ids = [];
-        let pageToken;
-        do {
-            const resp = await classroom.courses.list({
-                teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken,
-            });
-            (resp.data.courses || []).forEach(c => ids.push(String(c.id)));
-            pageToken = resp.data.nextPageToken;
-        } while (pageToken);
-        return ids;
+        try {
+            const auth = await getAuthenticatedClient(req);
+            if (!auth) return null;
+            const classroom = google.classroom({ version: 'v1', auth });
+            const ids = [];
+            let pageToken;
+            do {
+                const resp = await classroom.courses.list({
+                    teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken,
+                });
+                (resp.data.courses || []).forEach(c => ids.push(String(c.id)));
+                pageToken = resp.data.nextPageToken;
+            } while (pageToken);
+            return ids;
+        } catch (e) {
+            console.warn('[CLASSROOM] getCursosIdsDoProfessor falhou:', e.message);
+            return null;
+        }
     }
 
     /* GET /api/classroom/solicitacoes/badge — contagem de pendentes */
     router.get('/classroom/solicitacoes/badge', async (req, res) => {
         try {
+            const isAdmin   = req.userSession?.perfil === 'admin';
             const cursosIds = await getCursosIdsDoProfessor(req);
-            if (!cursosIds) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
-            if (!cursosIds.length) return res.json({ total: 0 });
-            const { rows } = await pool.query(
-                `SELECT COUNT(*)::int AS total
-                   FROM reabertura_solicitacoes
-                  WHERE status = 'pendente'
-                    AND curso_id = ANY($1::text[])`,
-                [cursosIds]
-            );
+
+            let q, params;
+            if (isAdmin || !cursosIds) {
+                /* admin vê tudo; usuário sem auth do Classroom também não é filtrado
+                   (caso contrário a tela ficaria "vazia" sem motivo aparente) */
+                q = `SELECT COUNT(*)::int AS total FROM reabertura_solicitacoes WHERE status = 'pendente'`;
+                params = [];
+            } else if (!cursosIds.length) {
+                return res.json({ total: 0 });
+            } else {
+                q = `SELECT COUNT(*)::int AS total
+                       FROM reabertura_solicitacoes
+                      WHERE status = 'pendente'
+                        AND curso_id = ANY($1::text[])`;
+                params = [cursosIds];
+            }
+            const { rows } = await pool.query(q, params);
             res.json({ total: rows[0]?.total ?? 0 });
         } catch (e) {
             res.status(500).json({ erro: e.message });
@@ -1770,15 +1785,22 @@ export function createClassroomRouter(deps = {}) {
     router.get('/classroom/solicitacoes', async (req, res) => {
         const { status, cursoId } = req.query;
         try {
+            const isAdmin   = req.userSession?.perfil === 'admin';
             const cursosIds = await getCursosIdsDoProfessor(req);
-            if (!cursosIds) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
-            if (!cursosIds.length) return res.json({ solicitacoes: [] });
 
-            const params = [cursosIds];
-            let q = `SELECT * FROM reabertura_solicitacoes WHERE curso_id = ANY($1::text[])`;
+            let q = `SELECT * FROM reabertura_solicitacoes WHERE 1=1`;
+            const params = [];
+
+            if (!isAdmin && cursosIds) {
+                if (!cursosIds.length) return res.json({ solicitacoes: [] });
+                params.push(cursosIds);
+                q += ` AND curso_id = ANY($${params.length}::text[])`;
+            }
             if (status && status !== 'todas') { params.push(status); q += ` AND status = $${params.length}`; }
             if (cursoId) {
-                if (!cursosIds.includes(String(cursoId))) return res.json({ solicitacoes: [] });
+                if (!isAdmin && cursosIds && !cursosIds.includes(String(cursoId))) {
+                    return res.json({ solicitacoes: [] });
+                }
                 params.push(cursoId); q += ` AND curso_id = $${params.length}`;
             }
             q += ` ORDER BY criado_em DESC`;
