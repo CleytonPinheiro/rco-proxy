@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Mapa de Sala</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
-    <link rel="stylesheet" href="./mapa-sala.css?v=20260423b">
+    <link rel="stylesheet" href="./mapa-sala.css?v=20260423c">
 </head>
 <body>
     <header class="header">
@@ -145,7 +145,21 @@
                         <span class="ms-mesa-prof-label">Mesa do Professor</span>
                     </div>
                 </div>
-                <div class="ms-grade" id="grade"></div>
+                <div class="ms-sala-area">
+                    <!-- Porta da sala (vista aérea) — em frente ao aluno #1, no canto superior esquerdo -->
+                    <div class="ms-porta" aria-label="Porta da sala">
+                        <svg viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <!-- Vão da porta na parede -->
+                            <rect x="0" y="40" width="6" height="50" fill="currentColor" opacity=".55"/>
+                            <!-- Folha da porta aberta (pivotando do batente inferior) -->
+                            <rect x="3" y="0" width="4" height="44" rx="1" fill="currentColor" transform="rotate(-18 5 44)"/>
+                            <!-- Arco de abertura -->
+                            <path d="M 6 44 A 44 44 0 0 1 48 4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".45"/>
+                        </svg>
+                        <span class="ms-porta-label">PORTA</span>
+                    </div>
+                    <div class="ms-grade" id="grade"></div>
+                </div>
                 <div class="ms-vazio-msg" id="vazioMsg">
                     Selecione uma turma para montar o mapa
                 </div>
@@ -280,6 +294,6 @@
         });
     })();
     </script>
-    <script src="./mapa-sala.js?v=20260423b"></script>
+    <script src="./mapa-sala.js?v=20260423c"></script>
 </body>
 </html>

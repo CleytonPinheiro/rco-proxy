@@ -630,3 +630,65 @@
     background: #ea580c; color: #fff;
 }
 .ms-modal-btn--warning:hover { background: #c2410c; }
+
+/* ── Sala (área que envolve a grade + paredes/porta) ────────── */
+.ms-sala-area {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+.ms-sala-area .ms-grade {
+    width: 100%;
+}
+
+/* ── Porta (vista aérea) ─────────────────────────────────────
+   Posicionada à esquerda da grade, alinhada com a primeira fila
+   de carteiras — em frente ao aluno #1 (canto superior esquerdo). */
+.ms-porta {
+    position: absolute;
+    left: -54px;
+    top: 0;
+    width: 46px;
+    height: var(--ms-desk-h, 76px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    color: #7c5c2e;
+    pointer-events: none;
+    user-select: none;
+}
+[data-theme="dark"] .ms-porta { color: #c4954a; }
+.ms-porta svg {
+    width: 38px;
+    height: auto;
+}
+.ms-porta-label {
+    font-size: .58rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Em telas estreitas a porta vira um marcador acima da grade */
+@media (max-width: 720px) {
+    .ms-porta {
+        position: static;
+        flex-direction: row;
+        gap: 6px;
+        width: auto;
+        height: auto;
+        margin: 0 auto 6px;
+        align-self: flex-start;
+    }
+    .ms-porta svg { width: 28px; height: 28px; }
+    .ms-porta-label { margin-top: 0; }
+}
+
+/* Impressão: mostra a porta em preto sutil */
+@media print {
+    .ms-porta { color: #5a3e1b !important; }
+    .ms-porta-label { color: #333 !important; }
+}
