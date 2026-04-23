@@ -512,7 +512,7 @@ export function createAlunosPortalRouter() {
                                     `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome, g.data_fechamento
                                      FROM classroom_grupo_atividades ga
                                      JOIN classroom_grupos g ON g.id = ga.grupo_id
-                                     WHERE ga.atividade_id = ANY($1::bigint[])
+                                     WHERE ga.atividade_id = ANY($1::text[])
                                        AND g.curso_id = $2
                                        AND g.tipo = 'normal'`,
                                     [todosIds, String(curso.id)]
