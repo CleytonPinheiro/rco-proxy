@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Mapa de Sala</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
-    <link rel="stylesheet" href="./mapa-sala.css?v=20260423f">
+    <link rel="stylesheet" href="./mapa-sala.css?v=20260423g">
 </head>
 <body>
     <header class="header">
@@ -77,15 +77,15 @@
                 </select>
             </div>
             <div class="ms-config-group">
-                <label class="ms-config-label">Colunas <span id="lblColunas">6</span>
-                    <span class="ms-config-hint">(carteiras lado a lado)</span>
+                <label class="ms-config-label">Filas <span id="lblColunas">6</span>
+                    <span class="ms-config-hint">(da lousa ao fundo)</span>
                 </label>
                 <input type="range" id="inpColunas" class="ms-range" min="1" max="10" value="6"
                     oninput="document.getElementById('lblColunas').textContent=this.value; reconstruirGrade()">
             </div>
             <div class="ms-config-group">
-                <label class="ms-config-label">Filas <span id="lblFilas">7</span>
-                    <span class="ms-config-hint">(carteiras da lousa ao fundo)</span>
+                <label class="ms-config-label">Colunas <span id="lblFilas">7</span>
+                    <span class="ms-config-hint">(lado a lado, paralelas à lousa)</span>
                 </label>
                 <input type="range" id="inpFilas" class="ms-range" min="1" max="10" value="7"
                     oninput="document.getElementById('lblFilas').textContent=this.value; reconstruirGrade()">
@@ -293,6 +293,6 @@
         });
     })();
     </script>
-    <script src="./mapa-sala.js?v=20260423f"></script>
+    <script src="./mapa-sala.js?v=20260423g"></script>
 </body>
 </html>
