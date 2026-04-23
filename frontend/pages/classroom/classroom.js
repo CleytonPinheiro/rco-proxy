@@ -2315,6 +2315,16 @@ function imprimirRelatorioGrupo() {
     const grupo    = grupoAtivo?.nome || '—';
     const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 
+    /* ── Nome do arquivo ao salvar em PDF: "Turma | Disciplina — Grupo" ───
+       O navegador usa <title> do documento como nome padrão no diálogo de
+       impressão / "Salvar como PDF". */
+    const turmaPdf      = (cursoAtivo?.nome ? extrairTurma(cursoAtivo.nome) : null) || '';
+    const disciplinaPdf = (cursoAtivo?.nome || '')
+        .replace(/\s*[-–—]\s*\d+[ºo°]\s*Ano\s+[A-Z].*$/i, '') /* remove turma e tudo após */
+        .trim();
+    const tituloPdf = [turmaPdf, disciplinaPdf].filter(Boolean).join(' | ')
+        + (grupo && grupo !== '—' ? ` — ${grupo}` : '');
+
     // Aplicar filtros ativos (pode ser múltiplos)
     const faixaNomeMap = { todos: 'Todos', meta: 'Meta atingida', prog: 'Em progresso', abaixo: 'Abaixo da meta' };
     const isTodos    = filtrosGrupoAtivos.has('todos');
@@ -2373,7 +2383,7 @@ function imprimirRelatorioGrupo() {
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head>
     <meta charset="UTF-8">
-    <title>Relatório — ${grupo}</title>
+    <title>${esc(tituloPdf || 'Relatório — ' + grupo)}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
