@@ -1730,11 +1730,35 @@ export function createClassroomRouter(deps = {}) {
 
     /* ─── Solicitações de reabertura ──────────────────────────────── */
 
+    /* Helper: lista os IDs de cursos do professor logado (em que ele é teacher) */
+    async function getCursosIdsDoProfessor(req) {
+        const auth = await getAuthenticatedClient(req);
+        if (!auth) return null;
+        const classroom = google.classroom({ version: 'v1', auth });
+        const ids = [];
+        let pageToken;
+        do {
+            const resp = await classroom.courses.list({
+                teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken,
+            });
+            (resp.data.courses || []).forEach(c => ids.push(String(c.id)));
+            pageToken = resp.data.nextPageToken;
+        } while (pageToken);
+        return ids;
+    }
+
     /* GET /api/classroom/solicitacoes/badge — contagem de pendentes */
     router.get('/classroom/solicitacoes/badge', async (req, res) => {
         try {
+            const cursosIds = await getCursosIdsDoProfessor(req);
+            if (!cursosIds) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
+            if (!cursosIds.length) return res.json({ total: 0 });
             const { rows } = await pool.query(
-                `SELECT COUNT(*)::int AS total FROM reabertura_solicitacoes WHERE status = 'pendente'`
+                `SELECT COUNT(*)::int AS total
+                   FROM reabertura_solicitacoes
+                  WHERE status = 'pendente'
+                    AND curso_id = ANY($1::text[])`,
+                [cursosIds]
             );
             res.json({ total: rows[0]?.total ?? 0 });
         } catch (e) {
@@ -1746,10 +1770,17 @@ export function createClassroomRouter(deps = {}) {
     router.get('/classroom/solicitacoes', async (req, res) => {
         const { status, cursoId } = req.query;
         try {
-            let q = `SELECT * FROM reabertura_solicitacoes WHERE 1=1`;
-            const params = [];
+            const cursosIds = await getCursosIdsDoProfessor(req);
+            if (!cursosIds) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
+            if (!cursosIds.length) return res.json({ solicitacoes: [] });
+
+            const params = [cursosIds];
+            let q = `SELECT * FROM reabertura_solicitacoes WHERE curso_id = ANY($1::text[])`;
             if (status && status !== 'todas') { params.push(status); q += ` AND status = $${params.length}`; }
-            if (cursoId) { params.push(cursoId); q += ` AND curso_id = $${params.length}`; }
+            if (cursoId) {
+                if (!cursosIds.includes(String(cursoId))) return res.json({ solicitacoes: [] });
+                params.push(cursoId); q += ` AND curso_id = $${params.length}`;
+            }
             q += ` ORDER BY criado_em DESC`;
             const { rows } = await pool.query(q, params);
             res.json({ solicitacoes: rows });
