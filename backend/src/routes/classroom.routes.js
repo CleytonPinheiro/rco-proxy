@@ -1911,6 +1911,83 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
+    /* POST /api/classroom/solicitacoes/bulk-responder
+       Aprova ou nega várias solicitações de uma vez.
+       Body: { ids: number[], acao: 'aprovar'|'negar', resposta?: string } */
+    router.post('/classroom/solicitacoes/bulk-responder', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+        const { ids, acao, resposta } = req.body;
+        if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ erro: 'IDs inválidos.' });
+        if (!['aprovar', 'negar'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });
+
+        const novoStatus = acao === 'aprovar' ? 'aprovada' : 'negada';
+        try {
+            const { rows } = await pool.query(
+                `UPDATE reabertura_solicitacoes
+                 SET status = $1, resposta = $2, respondido_em = NOW(), respondido_por = 'professor'
+                 WHERE id = ANY($3::int[])
+                 RETURNING *`,
+                [novoStatus, resposta || null, ids]
+            );
+
+            const resultados = [];
+            const auth = acao === 'aprovar' ? await getAuthenticatedClient(req) : null;
+            const cl   = auth ? google.classroom({ version: 'v1', auth }) : null;
+
+            for (const sol of rows) {
+                let classroomReaberto = false;
+                if (acao === 'aprovar' && cl) {
+                    try {
+                        let targetSub = null;
+                        try {
+                            const subsResp = await cl.courses.courseWork.studentSubmissions.list({
+                                courseId: sol.curso_id, courseWorkId: sol.coursework_id,
+                                userId: sol.aluno_email, pageSize: 5,
+                            });
+                            const subs = subsResp.data.studentSubmissions || [];
+                            if (subs.length) targetSub = subs[0];
+                        } catch (_) {}
+
+                        if (targetSub && targetSub.state === 'TURNED_IN') {
+                            await cl.courses.courseWork.studentSubmissions.return({
+                                courseId: sol.curso_id, courseWorkId: sol.coursework_id,
+                                id: targetSub.id, requestBody: {},
+                            });
+                            classroomReaberto = true;
+                        } else if (targetSub && targetSub.state === 'RETURNED') {
+                            classroomReaberto = true;
+                        }
+                    } catch (clErr) {
+                        console.error('[CLASSROOM] Bulk reabrir erro:', clErr.message);
+                    }
+                }
+
+                /* Notificação ao aluno */
+                const tipo    = acao === 'aprovar' ? 'reabertura_aprovada' : 'reabertura_negada';
+                const titulo  = acao === 'aprovar' ? '✅ Reabertura aprovada!' : '❌ Reabertura negada';
+                const msgBase = acao === 'aprovar'
+                    ? `Sua solicitação para "${sol.coursework_titulo}" foi aprovada. Acesse a atividade e complete-a agora!`
+                    : `Sua solicitação para "${sol.coursework_titulo}" foi negada.${resposta ? ` Motivo: ${resposta}` : ''}`;
+                pool.query(
+                    `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                     SELECT $1, $2, $3, $4, $5, $6::jsonb
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM notificacoes_aluno
+                         WHERE aluno_email=$1 AND tipo=$2 AND referencia=$3 AND lida=false
+                     )`,
+                    [sol.aluno_email, tipo, sol.coursework_id, titulo, msgBase,
+                     JSON.stringify({ coursework_id: sol.coursework_id, curso_nome: sol.curso_nome })]
+                ).catch(() => {});
+
+                resultados.push({ id: sol.id, solicitacao: sol, classroomReaberto });
+            }
+
+            res.json({ ok: true, total: resultados.length, resultados });
+        } catch (e) {
+            console.error('[CLASSROOM] Bulk responder erro:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ════════════════════════════════════════════════════════════
        ACESSO PEDAGOGO — professor concede/revoga acesso
     ════════════════════════════════════════════════════════════ */

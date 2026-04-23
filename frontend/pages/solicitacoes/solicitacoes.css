@@ -427,3 +427,55 @@
 }
 .sol-toast--ok   { background: #16a34a; }
 .sol-toast--erro { background: #dc2626; }
+
+/* ── Multi-seleção e barra de ações em lote ─────────────────────── */
+.sol-check {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    cursor: pointer;
+    accent-color: #6366f1;
+    vertical-align: middle;
+}
+.sol-sel-turma {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .75rem;
+    font-weight: 500;
+    color: #cbd5e1;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, .12);
+}
+.sol-sel-turma input { accent-color: #6366f1; cursor: pointer; }
+.sol-sel-turma:hover { background: rgba(99, 102, 241, .22); }
+
+.sol-bulk-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    border: 1px solid rgba(99, 102, 241, .4);
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+    z-index: 9998;
+    animation: solBulkUp .25s ease;
+}
+.sol-bulk-count {
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    margin-right: 4px;
+}
+@keyframes solBulkUp {
+    from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+    to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}

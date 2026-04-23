@@ -8,6 +8,7 @@ const elCntN   = document.getElementById('solCountNegada');
 
 let allData = [];
 const collapsedTurmas = new Set();
+const selecionados    = new Set();
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -23,6 +24,7 @@ function toast(msg, tipo, dur) {
 async function carregar() {
     elLista.innerHTML = '<div class="sol-empty">Carregando…</div>';
     elInfo.style.display = 'none';
+    selecionados.clear();
 
     try {
         const res = await fetch('/api/classroom/solicitacoes', { credentials: 'include' });
@@ -63,6 +65,61 @@ function agruparPorTurma(lista) {
     return result;
 }
 
+const fmtHora = iso => iso ? new Date(iso).toLocaleString('pt-BR', {
+    hour: '2-digit', minute: '2-digit'
+}) : '';
+const fmtFull = iso => iso ? new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+}) : '—';
+const fmtData = iso => iso ? new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit'
+}) : '';
+
+const STATUS_ICON  = { pendente: '⏳', aprovada: '✅', negada: '❌' };
+const STATUS_LABEL = { pendente: 'Pendente', aprovada: 'Aprovada', negada: 'Negada' };
+
+function cardHtml(s) {
+    const cls  = s.status;
+    const icon = STATUS_ICON[s.status] || '•';
+    const isPend = s.status === 'pendente';
+    const checked = selecionados.has(s.id) ? 'checked' : '';
+    const checkboxHtml = isPend
+        ? `<input type="checkbox" class="sol-check" data-id="${s.id}" ${checked} title="Selecionar para ação em lote">`
+        : '';
+    return `
+        <div class="sol-tl-item" data-id="${s.id}">
+            <div class="sol-tl-dot sol-tl-dot--${cls}">${icon}</div>
+            <div class="sol-card sol-card--${cls}">
+                <div class="sol-card-header">
+                    <div class="sol-aluno">
+                        ${checkboxHtml}
+                        <span class="sol-nome">${esc(s.aluno_nome || s.aluno_email)}</span>
+                        <span class="sol-email">${esc(s.aluno_email)}</span>
+                    </div>
+                    <span class="sol-status sol-status--${cls}">${STATUS_LABEL[s.status] || s.status}</span>
+                </div>
+                <div class="sol-ativ">
+                    <span class="sol-disciplina">${esc(s.coursework_titulo || '—')}</span>
+                    ${s.submission_link ? `<a href="${esc(s.submission_link)}" target="_blank" class="sol-link" title="Ver no Classroom">↗</a>` : ''}
+                </div>
+                ${s.justificativa ? `<div class="sol-justi">"${esc(s.justificativa)}"</div>` : ''}
+                ${s.resposta ? `<div class="sol-resposta">💬 ${esc(s.resposta)}</div>` : ''}
+                <div class="sol-footer">
+                    <span class="sol-time"><span class="sol-time-icon">🕐</span> ${fmtData(s.criado_em)} ${fmtHora(s.criado_em)}</span>
+                    ${s.respondido_em ? `<span class="sol-time"><span class="sol-time-icon">✔</span> Respondido ${fmtFull(s.respondido_em)}</span>` : ''}
+                    ${isPend ? `
+                    <div class="sol-acoes">
+                        <button class="sol-btn sol-btn--sm sol-btn--primary" onclick="responder(${s.id},'aprovar')">✅ Aprovar</button>
+                        <button class="sol-btn sol-btn--sm sol-btn--danger" onclick="responder(${s.id},'negar')">❌ Negar</button>
+                    </div>` : ''}
+                    ${s.status === 'aprovada' && s.submission_link ? `
+                    <a href="${esc(s.submission_link)}" target="_blank" class="sol-btn sol-btn--sm sol-btn--outline sol-btn--classroom">📎 Abrir no Classroom</a>` : ''}
+                </div>
+            </div>
+        </div>`;
+}
+
 function renderizar() {
     const statusFiltro = elStatus.value;
     const q = (elBusca.value || '').toLowerCase().trim();
@@ -79,6 +136,7 @@ function renderizar() {
     if (!filtrada.length) {
         elLista.innerHTML = '<div class="sol-empty">Nenhuma solicitação encontrada.</div>';
         elInfo.style.display = 'none';
+        atualizarBarraSelecao();
         return;
     }
 
@@ -86,64 +144,24 @@ function renderizar() {
     elInfo.style.display = '';
 
     const grupos = agruparPorTurma(filtrada);
-    const statusIcon = { pendente: '⏳', aprovada: '✅', negada: '❌' };
-    const statusLabel = { pendente: 'Pendente', aprovada: 'Aprovada', negada: 'Negada' };
-    const statusCls   = { pendente: 'pendente', aprovada: 'aprovada', negada: 'negada' };
-
-    const fmtHora = iso => iso ? new Date(iso).toLocaleString('pt-BR', {
-        hour: '2-digit', minute: '2-digit'
-    }) : '';
-    const fmtFull = iso => iso ? new Date(iso).toLocaleString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: '2-digit',
-        hour: '2-digit', minute: '2-digit'
-    }) : '—';
-    const fmtData = iso => iso ? new Date(iso).toLocaleDateString('pt-BR', {
-        day: '2-digit', month: '2-digit'
-    }) : '';
 
     let html = '';
     for (const { turma, items } of grupos) {
         const pendentes = items.filter(i => i.status === 'pendente').length;
+        const idsPendTurma = items.filter(i => i.status === 'pendente').map(i => i.id);
+        const todasMarcadas = idsPendTurma.length > 0 && idsPendTurma.every(id => selecionados.has(id));
         const badgeCount = pendentes > 0 ? `<span class="sol-turma-count">${pendentes} pendente${pendentes > 1 ? 's' : ''}</span>` : '';
         const collapsed = collapsedTurmas.has(turma);
         const chevron = collapsed ? '▶' : '▼';
+        const selAllHtml = pendentes > 0
+            ? `<label class="sol-sel-turma" title="Selecionar todas pendentes desta turma" onclick="event.stopPropagation()">
+                 <input type="checkbox" class="sol-check-turma" data-turma="${esc(turma)}" ${todasMarcadas ? 'checked' : ''}>
+                 <span>Selecionar tudo</span>
+               </label>` : '';
         html += `<div class="sol-day-group${collapsed ? ' sol-group--collapsed' : ''}">`;
-        html += `<div class="sol-day-label sol-day-label--toggle" data-turma="${esc(turma)}"><span class="sol-chevron">${chevron}</span> 📚 ${esc(turma)} ${badgeCount}</div>`;
+        html += `<div class="sol-day-label sol-day-label--toggle" data-turma="${esc(turma)}"><span class="sol-chevron">${chevron}</span> 📚 ${esc(turma)} ${badgeCount} ${selAllHtml}</div>`;
         html += `<div class="sol-group-items"${collapsed ? ' style="display:none"' : ''}>`;
-        items.forEach(s => {
-            const cls = statusCls[s.status] || '';
-            const icon = statusIcon[s.status] || '•';
-            html += `
-            <div class="sol-tl-item" data-id="${s.id}">
-                <div class="sol-tl-dot sol-tl-dot--${cls}">${icon}</div>
-                <div class="sol-card sol-card--${cls}">
-                    <div class="sol-card-header">
-                        <div class="sol-aluno">
-                            <span class="sol-nome">${esc(s.aluno_nome || s.aluno_email)}</span>
-                            <span class="sol-email">${esc(s.aluno_email)}</span>
-                        </div>
-                        <span class="sol-status sol-status--${cls}">${statusLabel[s.status] || s.status}</span>
-                    </div>
-                    <div class="sol-ativ">
-                        <span class="sol-disciplina">${esc(s.coursework_titulo || '—')}</span>
-                        ${s.submission_link ? `<a href="${esc(s.submission_link)}" target="_blank" class="sol-link" title="Ver no Classroom">↗</a>` : ''}
-                    </div>
-                    ${s.justificativa ? `<div class="sol-justi">"${esc(s.justificativa)}"</div>` : ''}
-                    ${s.resposta ? `<div class="sol-resposta">💬 ${esc(s.resposta)}</div>` : ''}
-                    <div class="sol-footer">
-                        <span class="sol-time"><span class="sol-time-icon">🕐</span> ${fmtData(s.criado_em)} ${fmtHora(s.criado_em)}</span>
-                        ${s.respondido_em ? `<span class="sol-time"><span class="sol-time-icon">✔</span> Respondido ${fmtFull(s.respondido_em)}</span>` : ''}
-                        ${s.status === 'pendente' ? `
-                        <div class="sol-acoes">
-                            <button class="sol-btn sol-btn--sm sol-btn--primary" onclick="responder(${s.id},'aprovar')">✅ Aprovar</button>
-                            <button class="sol-btn sol-btn--sm sol-btn--danger" onclick="responder(${s.id},'negar')">❌ Negar</button>
-                        </div>` : ''}
-                        ${s.status === 'aprovada' && s.submission_link ? `
-                        <a href="${esc(s.submission_link)}" target="_blank" class="sol-btn sol-btn--sm sol-btn--outline sol-btn--classroom">📎 Abrir no Classroom</a>` : ''}
-                    </div>
-                </div>
-            </div>`;
-        });
+        items.forEach(s => { html += cardHtml(s); });
         html += `</div></div>`;
     }
 
@@ -157,6 +175,119 @@ function renderizar() {
             renderizar();
         });
     });
+
+    elLista.querySelectorAll('.sol-check').forEach(cb => {
+        cb.addEventListener('click', e => e.stopPropagation());
+        cb.addEventListener('change', () => {
+            const id = Number(cb.dataset.id);
+            if (cb.checked) selecionados.add(id);
+            else selecionados.delete(id);
+            atualizarBarraSelecao();
+            atualizarSelTurmaCheckboxes();
+        });
+    });
+
+    elLista.querySelectorAll('.sol-check-turma').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const turma = cb.dataset.turma;
+            const idsPend = allData
+                .filter(s => (s.curso_nome || 'Sem turma') === turma && s.status === 'pendente')
+                .map(s => s.id);
+            if (cb.checked) idsPend.forEach(id => selecionados.add(id));
+            else            idsPend.forEach(id => selecionados.delete(id));
+            renderizar();
+            atualizarBarraSelecao();
+        });
+    });
+
+    atualizarBarraSelecao();
+}
+
+function atualizarSelTurmaCheckboxes() {
+    elLista.querySelectorAll('.sol-check-turma').forEach(cb => {
+        const turma = cb.dataset.turma;
+        const idsPend = allData
+            .filter(s => (s.curso_nome || 'Sem turma') === turma && s.status === 'pendente')
+            .map(s => s.id);
+        cb.checked = idsPend.length > 0 && idsPend.every(id => selecionados.has(id));
+    });
+}
+
+/* ── Barra flutuante de ações em lote ─────────────────────────── */
+function atualizarBarraSelecao() {
+    let bar = document.getElementById('solBulkBar');
+    const n = selecionados.size;
+    if (n === 0) {
+        if (bar) bar.remove();
+        return;
+    }
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'solBulkBar';
+        bar.className = 'sol-bulk-bar';
+        document.body.appendChild(bar);
+    }
+    bar.innerHTML = `
+        <span class="sol-bulk-count">${n} selecionada${n > 1 ? 's' : ''}</span>
+        <button class="sol-btn sol-btn--sm sol-btn--primary" id="solBulkAprovar">✅ Aprovar todas</button>
+        <button class="sol-btn sol-btn--sm sol-btn--danger"  id="solBulkNegar">❌ Negar todas</button>
+        <button class="sol-btn sol-btn--sm sol-btn--outline" id="solBulkLimpar">Limpar</button>
+    `;
+    document.getElementById('solBulkAprovar').onclick = () => bulkResponder('aprovar');
+    document.getElementById('solBulkNegar').onclick   = () => bulkResponder('negar');
+    document.getElementById('solBulkLimpar').onclick  = () => { selecionados.clear(); renderizar(); };
+}
+
+async function bulkResponder(acao) {
+    const ids = [...selecionados];
+    if (!ids.length) return;
+    let resposta = null;
+    if (acao === 'negar') {
+        resposta = prompt(`Motivo da negação para ${ids.length} solicitação(ões) (opcional):`, '');
+        if (resposta === null) return;
+        resposta = resposta.trim() || null;
+    } else {
+        if (!confirm(`Aprovar ${ids.length} solicitação(ões) selecionada(s)?`)) return;
+    }
+
+    /* Marca cards com opacidade reduzida */
+    ids.forEach(id => {
+        const card = elLista.querySelector(`[data-id="${id}"] .sol-card`);
+        if (card) card.style.opacity = '.5';
+    });
+
+    try {
+        const res = await fetch('/api/classroom/solicitacoes/bulk-responder', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, acao, resposta }),
+        });
+        if (!res.ok) throw new Error(`Erro ${res.status}`);
+        const data = await res.json();
+
+        /* Atualiza in-place cada item afetado, sem recarregar */
+        (data.resultados || []).forEach(r => {
+            const idx = allData.findIndex(s => s.id === r.id);
+            if (idx >= 0) allData[idx] = r.solicitacao;
+        });
+        selecionados.clear();
+        atualizarStats();
+        renderizar();
+
+        const aprovadasCR = (data.resultados || []).filter(r => r.classroomReaberto).length;
+        if (acao === 'aprovar') {
+            toast(`✅ ${data.total} aprovada(s)${aprovadasCR ? ` — ${aprovadasCR} reaberta(s) no Classroom` : ''}.`, 'ok', 4500);
+        } else {
+            toast(`❌ ${data.total} solicitação(ões) negada(s).`, 'ok');
+        }
+    } catch (e) {
+        ids.forEach(id => {
+            const card = elLista.querySelector(`[data-id="${id}"] .sol-card`);
+            if (card) card.style.opacity = '';
+        });
+        toast('Erro: ' + e.message, 'erro', 8000);
+    }
 }
 
 const elNegarOverlay = document.getElementById('solNegarOverlay');
@@ -190,6 +321,52 @@ function abrirModalNegar(id) {
     document.addEventListener('keydown', onKey);
 }
 
+/* ── Atualiza apenas o card afetado, sem recarregar a lista inteira ── */
+function atualizarItem(novaSol) {
+    const idx = allData.findIndex(s => s.id === novaSol.id);
+    if (idx < 0) return;
+    allData[idx] = novaSol;
+    selecionados.delete(novaSol.id);
+    atualizarStats();
+
+    const wrapper = elLista.querySelector(`.sol-tl-item[data-id="${novaSol.id}"]`);
+    if (wrapper) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = cardHtml(novaSol).trim();
+        const novo = tmp.firstElementChild;
+        wrapper.replaceWith(novo);
+
+        /* Re-anexa listeners no checkbox novo (se houver) */
+        const cb = novo.querySelector('.sol-check');
+        if (cb) {
+            cb.addEventListener('click', e => e.stopPropagation());
+            cb.addEventListener('change', () => {
+                const id = Number(cb.dataset.id);
+                if (cb.checked) selecionados.add(id);
+                else selecionados.delete(id);
+                atualizarBarraSelecao();
+                atualizarSelTurmaCheckboxes();
+            });
+        }
+
+        /* Atualiza badge da turma (contagem de pendentes) */
+        const turma = novaSol.curso_nome || 'Sem turma';
+        const label = elLista.querySelector(`.sol-day-label[data-turma="${CSS.escape(turma)}"]`);
+        if (label) {
+            const pendentes = allData.filter(s => (s.curso_nome || 'Sem turma') === turma && s.status === 'pendente').length;
+            const cnt = label.querySelector('.sol-turma-count');
+            if (cnt) {
+                if (pendentes > 0) cnt.textContent = `${pendentes} pendente${pendentes > 1 ? 's' : ''}`;
+                else cnt.remove();
+            }
+        }
+    } else {
+        renderizar();
+    }
+    atualizarBarraSelecao();
+    atualizarSelTurmaCheckboxes();
+}
+
 async function executarResposta(id, acao, resposta) {
     const card = elLista.querySelector(`[data-id="${id}"] .sol-card`);
     if (card) card.style.opacity = '.5';
@@ -213,7 +390,8 @@ async function executarResposta(id, acao, resposta) {
             toast('❌ Solicitação negada.', 'ok');
         }
 
-        carregar();
+        if (data.solicitacao) atualizarItem(data.solicitacao);
+        else carregar();
     } catch (e) {
         if (card) card.style.opacity = '';
         toast('Erro: ' + e.message, 'erro', 8000);
