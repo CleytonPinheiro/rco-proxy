@@ -308,6 +308,7 @@
     flex-direction: column;
     gap: 10px;
     align-items: center;
+    position: relative;
 }
 .ms-lousa {
     width: 100%;
@@ -631,27 +632,14 @@
 }
 .ms-modal-btn--warning:hover { background: #c2410c; }
 
-/* ── Sala (área que envolve a grade + paredes/porta) ────────── */
-.ms-sala-area {
-    position: relative;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-.ms-sala-area .ms-grade {
-    width: 100%;
-}
-
 /* ── Porta (vista aérea) ─────────────────────────────────────
-   Posicionada à direita da grade, alinhada com a primeira fila
-   de carteiras — em frente à carteira mais próxima da porta
-   (canto superior direito), que sempre recebe a chamada 1. */
+   Sempre rente à lousa (no topo da sala), posicionada na parede
+   direita — em frente à carteira que recebe a chamada 1. */
 .ms-porta {
     position: absolute;
-    right: -110px;
-    top: -4px;
-    width: 96px;
-    height: var(--ms-desk-h, 76px);
+    right: -210px;
+    top: 0;
+    width: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -659,24 +647,24 @@
     color: #b97d2b;
     pointer-events: none;
     user-select: none;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .25));
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .28));
 }
 [data-theme="dark"] .ms-porta { color: #e0a85c; }
 .ms-porta svg {
-    width: 86px;
+    width: 180px;
     height: auto;
 }
 .ms-porta-label {
-    font-size: .82rem;
+    font-size: 1.05rem;
     font-weight: 800;
-    letter-spacing: .18em;
+    letter-spacing: .22em;
     color: var(--text);
-    margin-top: 4px;
+    margin-top: 8px;
     background: var(--bg-card);
-    padding: 2px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    padding: 5px 18px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    box-shadow: 0 2px 6px rgba(0,0,0,.22);
 }
 
 /* Em telas estreitas a porta vira um marcador acima da grade */

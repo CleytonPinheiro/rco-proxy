@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Mapa de Sala</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
-    <link rel="stylesheet" href="./mapa-sala.css?v=20260423e">
+    <link rel="stylesheet" href="./mapa-sala.css?v=20260423f">
 </head>
 <body>
     <header class="header">
@@ -77,17 +77,17 @@
                 </select>
             </div>
             <div class="ms-config-group">
-                <label class="ms-config-label">Filas <span id="lblColunas">5</span>
+                <label class="ms-config-label">Colunas <span id="lblColunas">6</span>
                     <span class="ms-config-hint">(carteiras lado a lado)</span>
                 </label>
-                <input type="range" id="inpColunas" class="ms-range" min="1" max="10" value="5"
+                <input type="range" id="inpColunas" class="ms-range" min="1" max="10" value="6"
                     oninput="document.getElementById('lblColunas').textContent=this.value; reconstruirGrade()">
             </div>
             <div class="ms-config-group">
-                <label class="ms-config-label">Colunas <span id="lblFilas">6</span>
+                <label class="ms-config-label">Filas <span id="lblFilas">7</span>
                     <span class="ms-config-hint">(carteiras da lousa ao fundo)</span>
                 </label>
-                <input type="range" id="inpFilas" class="ms-range" min="1" max="10" value="6"
+                <input type="range" id="inpFilas" class="ms-range" min="1" max="10" value="7"
                     oninput="document.getElementById('lblFilas').textContent=this.value; reconstruirGrade()">
             </div>
             <div class="ms-config-group ms-config-acoes">
@@ -127,6 +127,15 @@
 
             <!-- Grade de carteiras -->
             <div class="ms-grade-wrap">
+                <!-- Porta da sala (vista aérea) — sempre rente à lousa, no canto superior direito -->
+                <div class="ms-porta" aria-label="Porta da sala">
+                    <svg viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="54" y="40" width="6" height="50" fill="currentColor" opacity=".55"/>
+                        <rect x="53" y="0" width="4" height="44" rx="1" fill="currentColor" transform="rotate(18 55 44)"/>
+                        <path d="M 54 44 A 44 44 0 0 0 12 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 4" opacity=".5"/>
+                    </svg>
+                    <span class="ms-porta-label">PORTA</span>
+                </div>
                 <div class="ms-lousa">
                     <span>◼ LOUSA / QUADRO BRANCO</span>
                 </div>
@@ -149,21 +158,7 @@
                         <span class="ms-mesa-prof-label">Mesa do Professor</span>
                     </div>
                 </div>
-                <div class="ms-sala-area">
-                    <!-- Porta da sala (vista aérea) — em frente à carteira #5, no canto superior direito -->
-                    <div class="ms-porta" aria-label="Porta da sala">
-                        <svg viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <!-- Vão da porta na parede (lado direito) -->
-                            <rect x="54" y="40" width="6" height="50" fill="currentColor" opacity=".55"/>
-                            <!-- Folha da porta aberta (pivotando do batente inferior, abre para dentro) -->
-                            <rect x="53" y="0" width="4" height="44" rx="1" fill="currentColor" transform="rotate(18 55 44)"/>
-                            <!-- Arco de abertura -->
-                            <path d="M 54 44 A 44 44 0 0 0 12 4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".45"/>
-                        </svg>
-                        <span class="ms-porta-label">PORTA</span>
-                    </div>
-                    <div class="ms-grade" id="grade"></div>
-                </div>
+                <div class="ms-grade" id="grade"></div>
                 <div class="ms-vazio-msg" id="vazioMsg">
                     Selecione uma turma para montar o mapa
                 </div>
@@ -298,6 +293,6 @@
         });
     })();
     </script>
-    <script src="./mapa-sala.js?v=20260423e"></script>
+    <script src="./mapa-sala.js?v=20260423f"></script>
 </body>
 </html>
