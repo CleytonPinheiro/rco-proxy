@@ -693,8 +693,43 @@
     text-transform: none;
 }
 
-/* Impressão: mostra a porta em preto sutil */
+/* Impressão: porta visível, posicionada à direita rente à lousa ─── */
 @media print {
-    .ms-porta { color: #5a3e1b !important; }
-    .ms-porta-label { color: #333 !important; }
+    .ms-porta {
+        display: flex !important;
+        position: absolute !important;
+        right: 2mm !important;
+        top: 0 !important;
+        width: 26mm !important;
+        height: auto !important;
+        margin: 0 !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        z-index: 5;
+        color: #5a3e1b !important;
+        filter: none !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .ms-porta svg {
+        width: 22mm !important;
+        height: auto !important;
+        color: #5a3e1b !important;
+    }
+    .ms-porta-label {
+        color: #000 !important;
+        background: #fff !important;
+        border: 1.2px solid #000 !important;
+        box-shadow: none !important;
+        font-size: 8.5pt !important;
+        font-weight: 800 !important;
+        padding: 1px 6px !important;
+        margin-top: 2px !important;
+        letter-spacing: .15em !important;
+    }
+
+    /* Reserva espaço à direita da barra da lousa para a porta não sobrepor o texto */
+    .ms-grade-wrap::after {
+        padding-right: 30mm !important;
+    }
 }
