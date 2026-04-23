@@ -542,3 +542,91 @@
     .ms-carteira-vazia-icon svg { width: 28px; height: 38px; }
     .ms-vazio-msg { display: none; }
 }
+
+/* ── Modal de confirmação ───────────────────────────────────── */
+.ms-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, .55);
+    backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity .18s ease;
+}
+.ms-modal-overlay--visivel { opacity: 1; }
+
+.ms-modal {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    width: min(460px, calc(100vw - 32px));
+    max-height: 90vh;
+    overflow: auto;
+    transform: translateY(8px) scale(.98);
+    transition: transform .18s ease;
+}
+.ms-modal-overlay--visivel .ms-modal { transform: translateY(0) scale(1); }
+
+.ms-modal-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 22px 12px;
+    border-bottom: 1px solid var(--border);
+}
+.ms-modal-icone {
+    font-size: 1.6rem;
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+}
+.ms-modal--danger  .ms-modal-icone { background: rgba(220, 38, 38, .15); color: #dc2626; }
+.ms-modal--info    .ms-modal-icone { background: rgba(59, 130, 246, .15); color: #2563eb; }
+.ms-modal--warning .ms-modal-icone { background: rgba(234, 179, 8, .15);  color: #b45309; }
+
+.ms-modal-titulo {
+    margin: 0;
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+.ms-modal-body {
+    padding: 16px 22px;
+    font-size: .92rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+.ms-modal-body b { color: var(--text); }
+
+.ms-modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 12px 22px 18px;
+}
+.ms-modal-btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter .15s, background .15s, transform .05s;
+}
+.ms-modal-btn:active { transform: translateY(1px); }
+.ms-modal-btn--ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
+}
+.ms-modal-btn--ghost:hover { background: var(--bg-hover); color: var(--text); }
+.ms-modal-btn--danger {
+    background: #dc2626; color: #fff;
+}
+.ms-modal-btn--danger:hover { background: #b91c1c; }
+.ms-modal-btn--info {
+    background: var(--primary, #4285F4); color: #fff;
+}
+.ms-modal-btn--info:hover { filter: brightness(1.08); }
+.ms-modal-btn--warning {
+    background: #ea580c; color: #fff;
+}
+.ms-modal-btn--warning:hover { background: #c2410c; }

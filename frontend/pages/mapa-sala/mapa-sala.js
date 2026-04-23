@@ -24,10 +24,21 @@ async function carregarTurmas() {
         const r = await fetch(`${API}/alunos/turmas/lista`);
         const turmas = await r.json();
         const sel = document.getElementById('selTurma');
+
+        /* Dedupe por turma física (mesma série/letra/período).
+           Várias disciplinas podem compartilhar a mesma turma — só queremos
+           uma entrada por turma, já que o mapa de sala é o mesmo. */
+        const vistos = new Map();   /* chave: turma curta · valor: { codturma, turma, label } */
         (Array.isArray(turmas) ? turmas : []).forEach(t => {
+            const label = abreviarNomeTurma(t.turma);
+            if (!vistos.has(label)) vistos.set(label, { codturma: t.codturma, turma: t.turma, label });
+        });
+
+        const ordenadas = [...vistos.values()].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+        ordenadas.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.codturma;
-            opt.textContent = abreviarNomeTurma(t.turma);
+            opt.textContent = t.label;
             opt.dataset.turma = t.turma;
             sel.appendChild(opt);
         });
@@ -340,16 +351,21 @@ function atualizarBancoFora() {
 }
 
 // ── Resetar mapa ─────────────────────────────────────────────
-function resetarMapa() {
+async function resetarMapa() {
     if (!turmaAtual || !grade.length) return;
     const totalOcupadas = grade.filter(c => c.aluno).length;
     if (!totalOcupadas) { mostrarToast('O mapa já está vazio.', ''); return; }
-    const ok = confirm(
-        `Resetar o mapa da turma "${turmaAtual.turma}"?\n\n` +
-        `Todos os ${totalOcupadas} aluno${totalOcupadas !== 1 ? 's' : ''} posicionado${totalOcupadas !== 1 ? 's' : ''} voltarão para a lista de disponíveis.\n\n` +
-        `Esta ação pode ser desfeita salvando o mapa em branco ou recarregando a página sem salvar.`
-    );
+
+    const ok = await abrirConfirm({
+        titulo: 'Resetar mapa da turma',
+        icone: '🔄',
+        mensagem: `Todos os <b>${totalOcupadas} aluno${totalOcupadas !== 1 ? 's' : ''}</b> posicionado${totalOcupadas !== 1 ? 's' : ''} na turma <b>${escHtml(abreviarNomeTurma(turmaAtual.turma))}</b> voltarão para a lista de disponíveis.<br><br><span style="opacity:.75">Esta ação pode ser desfeita recarregando a página sem salvar, ou salvando manualmente o mapa atual antes.</span>`,
+        confirmLabel: '🔄 Resetar mapa',
+        cancelLabel: 'Cancelar',
+        tipo: 'danger',
+    });
     if (!ok) return;
+
     grade.forEach(c => { c.aluno = null; });
     const excluidos = new Set(alunosExcluidos.map(a => a.codmatrizaluno));
     alunosFora = todosAlunos.filter(a => !excluidos.has(a.codmatrizaluno));
@@ -361,39 +377,88 @@ function resetarMapa() {
 }
 
 // ── Distribuir automaticamente ────────────────────────────────
+/* Ordem de preenchimento: coluna por coluna, começando da coluna mais à
+   ESQUERDA do PROFESSOR (que está virado para a turma).
+   Como o professor fica de costas para a lousa olhando para os alunos,
+   sua esquerda corresponde à coluna mais à DIREITA na tela.
+   Dentro da coluna, vai da fila mais próxima do professor (topo da tela)
+   até a mais distante (rodapé). */
 function distribuirAutomaticamente() {
     if (!turmaAtual || !grade.length) return;
     if (!alunosFora.length) { mostrarToast('Não há alunos disponíveis para distribuir.', ''); return; }
 
+    const colunas = parseInt(document.getElementById('inpColunas').value);
+    const filas   = parseInt(document.getElementById('inpFilas').value);
     const disponiveis = [...alunosFora].sort((a, b) => (a.numchamada || 999) - (b.numchamada || 999));
+
+    /* Sequência de posições, na ordem em que devem receber chamada 1, 2, 3, ... */
+    const ordemPos = [];
+    for (let col = colunas - 1; col >= 0; col--) {
+        for (let row = 0; row < filas; row++) {
+            ordemPos.push(row * colunas + col);
+        }
+    }
+
     const alocados = new Set();
-
-    // Tentativa 1: posiciona cada aluno na carteira cujo número = numchamada
-    disponiveis.forEach(aluno => {
-        const pos = (aluno.numchamada || 0) - 1;
-        if (pos >= 0 && pos < grade.length && !grade[pos].aluno) {
-            grade[pos].aluno = aluno;
-            alocados.add(aluno.codmatrizaluno);
-        }
-    });
-
-    // Tentativa 2: alunos que não encontraram a carteira exata → próxima vazia em ordem
-    const sobras     = disponiveis.filter(a => !alocados.has(a.codmatrizaluno));
-    const carteiras  = grade.filter(c => !c.aluno);
     let idx = 0;
-    sobras.forEach(aluno => {
-        if (idx < carteiras.length) {
-            carteiras[idx].aluno = aluno;
-            alocados.add(aluno.codmatrizaluno);
-            idx++;
-        }
-    });
+    for (const pos of ordemPos) {
+        if (idx >= disponiveis.length) break;
+        const carteira = grade[pos];
+        if (!carteira || carteira.aluno) continue;
+        carteira.aluno = disponiveis[idx];
+        alocados.add(disponiveis[idx].codmatrizaluno);
+        idx++;
+    }
 
     alunosFora = alunosFora.filter(a => !alocados.has(a.codmatrizaluno));
-    renderGrade(parseInt(document.getElementById('inpColunas').value));
+    renderGrade(colunas);
     renderBanco();
     marcarModificado();
-    mostrarToast(`${alocados.size} aluno${alocados.size !== 1 ? 's' : ''} distribuído${alocados.size !== 1 ? 's' : ''} pela ordem de chamada.`, 'ok');
+    mostrarToast(`${alocados.size} aluno${alocados.size !== 1 ? 's' : ''} distribuído${alocados.size !== 1 ? 's' : ''} por chamada.`, 'ok');
+}
+
+// ── Modal de confirmação harmonizado ─────────────────────────
+function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function abrirConfirm({ titulo, mensagem, icone = '❓', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tipo = 'info' }) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'ms-modal-overlay';
+        overlay.innerHTML = `
+            <div class="ms-modal ms-modal--${tipo}" role="dialog" aria-modal="true" aria-labelledby="msModalTit">
+                <div class="ms-modal-header">
+                    <span class="ms-modal-icone">${icone}</span>
+                    <h3 class="ms-modal-titulo" id="msModalTit">${escHtml(titulo)}</h3>
+                </div>
+                <div class="ms-modal-body">${mensagem}</div>
+                <div class="ms-modal-footer">
+                    <button type="button" class="ms-modal-btn ms-modal-btn--ghost" data-act="cancel">${escHtml(cancelLabel)}</button>
+                    <button type="button" class="ms-modal-btn ms-modal-btn--${tipo}" data-act="ok">${escHtml(confirmLabel)}</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('ms-modal-overlay--visivel'));
+
+        function fechar(valor) {
+            overlay.classList.remove('ms-modal-overlay--visivel');
+            document.removeEventListener('keydown', onKey);
+            setTimeout(() => overlay.remove(), 180);
+            resolve(valor);
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') fechar(false);
+            if (e.key === 'Enter')  fechar(true);
+        }
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) fechar(false);
+            const btn = e.target.closest('[data-act]');
+            if (!btn) return;
+            fechar(btn.dataset.act === 'ok');
+        });
+        document.addEventListener('keydown', onKey);
+        setTimeout(() => overlay.querySelector('[data-act="ok"]')?.focus(), 60);
+    });
 }
 
 // ── Excluir aluno (transferido) ───────────────────────────────
@@ -497,12 +562,15 @@ function primeiroNomePrimUlt(nome) {
 
 function abreviarNomeTurma(nome) {
     if (!nome) return nome;
-    const partes = nome.split(' - ');
-    const serieIdx = partes.findIndex(p => /\d+[ªoaº°]?\s*(s[eé]rie|ano)/i.test(p));
-    if (serieIdx === -1) return nome;
-    const serie = partes[serieIdx].replace(/série/i, 'série').trim();
-    const resto = partes.filter((_, i) => i !== serieIdx).join(' · ');
-    return `${serie} · ${resto}`;
+    /* Reduz "ENS FUND 6/9 ANO-SERIE - 8ºAno - Manhã - A" → "8ºAno · A · Manhã".
+       O mapa de sala identifica a turma física (série + letra + período);
+       a parte de currículo/disciplina é descartada. */
+    const partes = nome.split(/\s*[·\-]\s*/).map(p => p.trim()).filter(Boolean);
+    const serie   = partes.find(p => /\d+[ªoaº°]?\s*(s[eé]rie|ano)/i.test(p));
+    const periodo = partes.find(p => /^(manh[ãa]|tarde|noite|integral|vespertino|matutino)$/i.test(p));
+    const letra   = partes.find(p => /^[A-Z]$/.test(p));
+    const fragmentos = [serie, letra, periodo].filter(Boolean);
+    return fragmentos.length ? fragmentos.join(' · ') : nome;
 }
 
 function mostrarToast(msg, tipo) {
