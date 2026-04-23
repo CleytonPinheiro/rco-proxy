@@ -377,11 +377,14 @@ async function resetarMapa() {
 }
 
 // ── Distribuir automaticamente ────────────────────────────────
-/* Ordem de preenchimento: começa pela carteira mais perto da PORTA
-   (canto superior direito) e desce por aquela coluna até o fundo da sala.
-   Em seguida vai para a próxima coluna à esquerda, novamente do topo ao
-   fundo, até preencher todas as carteiras vazias.
-   Assim: chamada 1 fica em frente à porta; chamada 2 atrás dela; etc. */
+/* Ordem de preenchimento: percorre cada FILA inteira antes de descer
+   para a próxima. Começa pela carteira mais próxima da PORTA (canto
+   superior direito), avança lateralmente para a esquerda preenchendo
+   toda a primeira fila e, ao terminar, vai para a fila de trás
+   (uma linha abaixo) — novamente começando do lado da porta — e segue
+   o mesmo padrão até o fundo da sala.
+   Assim: chamada 1 fica em frente à porta; chamadas 2..N preenchem a
+   primeira fila lado a lado; a chamada N+1 senta atrás da chamada 1; etc. */
 function distribuirAutomaticamente() {
     if (!turmaAtual || !grade.length) return;
     if (!alunosFora.length) { mostrarToast('Não há alunos disponíveis para distribuir.', ''); return; }
@@ -392,8 +395,8 @@ function distribuirAutomaticamente() {
 
     /* Sequência de posições, na ordem em que devem receber chamada 1, 2, 3, ... */
     const ordemPos = [];
-    for (let col = colunas - 1; col >= 0; col--) {
-        for (let row = 0; row < filas; row++) {
+    for (let row = 0; row < filas; row++) {
+        for (let col = colunas - 1; col >= 0; col--) {
             ordemPos.push(row * colunas + col);
         }
     }
