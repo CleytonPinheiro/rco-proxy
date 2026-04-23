@@ -643,11 +643,11 @@
 }
 
 /* ── Porta (vista aérea) ─────────────────────────────────────
-   Posicionada à esquerda da grade, alinhada com a primeira fila
-   de carteiras — em frente ao aluno #1 (canto superior esquerdo). */
+   Posicionada à direita da grade, alinhada com a primeira fila
+   de carteiras — em frente à carteira #5 (canto superior direito). */
 .ms-porta {
     position: absolute;
-    left: -54px;
+    right: -54px;
     top: 0;
     width: 46px;
     height: var(--ms-desk-h, 76px);
@@ -680,11 +680,22 @@
         gap: 6px;
         width: auto;
         height: auto;
-        margin: 0 auto 6px;
-        align-self: flex-start;
+        margin: 0 0 6px auto;     /* alinhado à direita, lado da carteira #5 */
+        align-self: flex-end;
     }
     .ms-porta svg { width: 28px; height: 28px; }
     .ms-porta-label { margin-top: 0; }
+}
+
+/* Dica explicativa nos sliders de Filas/Colunas */
+.ms-config-hint {
+    display: block;
+    font-size: .68rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 1px;
+    letter-spacing: 0;
+    text-transform: none;
 }
 
 /* Impressão: mostra a porta em preto sutil */
