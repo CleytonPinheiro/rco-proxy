@@ -377,12 +377,13 @@ async function resetarMapa() {
 }
 
 // ── Distribuir automaticamente ────────────────────────────────
-/* Ordem de preenchimento: coluna por coluna, começando da coluna mais à
-   ESQUERDA do PROFESSOR (que está virado para a turma).
-   Como o professor fica de costas para a lousa olhando para os alunos,
-   sua esquerda corresponde à coluna mais à DIREITA na tela.
-   Dentro da coluna, vai da fila mais próxima do professor (topo da tela)
-   até a mais distante (rodapé). */
+/* Ordem de preenchimento: coluna por coluna, começando pela coluna mais à
+   ESQUERDA na tela (que corresponde ao lado esquerdo do professor quando se
+   olha o mapa de cima). Dentro da coluna, vai do topo (mais perto da mesa
+   do professor) até o rodapé.
+   Resultado: chamada 1 fica no canto superior esquerdo, vai descendo pela
+   coluna; ao terminar, vai para a próxima coluna à direita. A última coluna
+   (canto direito da tela) recebe as chamadas mais altas. */
 function distribuirAutomaticamente() {
     if (!turmaAtual || !grade.length) return;
     if (!alunosFora.length) { mostrarToast('Não há alunos disponíveis para distribuir.', ''); return; }
@@ -393,7 +394,7 @@ function distribuirAutomaticamente() {
 
     /* Sequência de posições, na ordem em que devem receber chamada 1, 2, 3, ... */
     const ordemPos = [];
-    for (let col = colunas - 1; col >= 0; col--) {
+    for (let col = 0; col < colunas; col++) {
         for (let row = 0; row < filas; row++) {
             ordemPos.push(row * colunas + col);
         }
