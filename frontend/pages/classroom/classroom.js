@@ -87,6 +87,7 @@ try {
 } catch (_) {}
 let acessosCache    = null;   // cache do /api/acessos para o seletor RCO
 let grupoResumoData  = null;   // { atividades, alunosResumo, meta } do grupo aberto
+let alunoDetalheAberto = null; // userId do aluno cujo detalhe está aberto (para refresh após edição do grupo)
 let filtrosGrupoAtivos = new Set(['todos']); // filtros de faixa de cor ativos (múltiplos)
 let quizizzCache     = {};    // quizId → dados retornados pela API do Quizizz
 let solicitacoesCache = [];
@@ -2459,6 +2460,7 @@ function imprimirRelatorioGrupo() {
    DETALHE DO ALUNO NO GRUPO
 ══════════════════════════════════════════════════════════════ */
 function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
+    alunoDetalheAberto = alunoData.userId;
     const al      = alunoData.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
@@ -2699,8 +2701,23 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
 
     // Voltar
     document.getElementById('clDetalheVoltar').addEventListener('click', () => {
+        alunoDetalheAberto = null;
         if (grupoAtivo) selecionarGrupo(grupoAtivo, document.querySelector('.cl-grupo-item--ativo'));
     });
+}
+
+/* Re-renderiza o detalhe do aluno aberto usando os dados frescos do grupoResumoData.
+   Usado após editar o grupo (adicionar/remover atividade) sem precisar voltar para a lista. */
+function refrescarDetalheAlunoAberto() {
+    if (!alunoDetalheAberto || !grupoResumoData?.alunosResumo) return;
+    const novo = grupoResumoData.alunosResumo.find(a => a.userId === alunoDetalheAberto);
+    if (!novo) {
+        /* Aluno sumiu do resumo (improvável) → volta para a lista */
+        alunoDetalheAberto = null;
+        renderListaFiltrada();
+        return;
+    }
+    mostrarDetalheAluno(novo, grupoResumoData.atividades, grupoResumoData.meta, grupoResumoData.fontes || []);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3297,7 +3314,12 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
         }
         if (grupoAtivo && String(grupoAtivo.id) === String(grupoId)) {
             grupoAtivo = gruposCache.find(g => String(g.id) === String(grupoId)) || null;
-            if (grupoAtivo) await carregarResumoGrupo(grupoAtivo);
+            if (grupoAtivo) {
+                await carregarResumoGrupo(grupoAtivo);
+                /* Se o detalhe de um aluno estava aberto, re-renderiza com a nova lista
+                   de atividades do grupo (atividades removidas somem, notas recalculadas). */
+                refrescarDetalheAlunoAberto();
+            }
         }
     } catch (e) {
         toast('Erro ao salvar: ' + e.message, 'erro');
