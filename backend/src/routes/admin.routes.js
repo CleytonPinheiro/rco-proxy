@@ -1167,5 +1167,85 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Comunicados de Suspensão ── */
+
+    /* POST /api/admin/comunicados-suspensao — salvar registro ao gerar PDF */
+    router.post('/admin/comunicados-suspensao', async (req, res) => {
+        const { aluno_id, nome_aluno, turma, registro, responsavel, data_inicio, data_fim, motivo } = req.body;
+
+        if (!nome_aluno || !responsavel || !data_inicio || !data_fim) {
+            return res.status(400).json({ erro: 'Campos obrigatórios: nome_aluno, responsavel, data_inicio, data_fim.' });
+        }
+
+        try {
+            const { rows } = await pool.query(
+                `INSERT INTO edusync_comunicados_suspensao
+                    (aluno_id, nome_aluno, turma, registro, responsavel, data_inicio, data_fim, motivo, gerado_por_id, gerado_por_nome)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 RETURNING *`,
+                [
+                    aluno_id   || null,
+                    nome_aluno,
+                    turma      || null,
+                    registro   || null,
+                    responsavel,
+                    data_inicio,
+                    data_fim,
+                    motivo     || null,
+                    req.userSession.userId,
+                    req.userSession.nome,
+                ],
+            );
+            res.status(201).json(rows[0]);
+        } catch (e) {
+            console.error('[ADMIN] Erro ao salvar comunicado de suspensão:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao salvar comunicado.' });
+        }
+    });
+
+    /* GET /api/admin/comunicados-suspensao — listar histórico */
+    router.get('/admin/comunicados-suspensao', async (req, res) => {
+        const limite  = Math.min(parseInt(req.query.limite) || 50, 200);
+        const offset  = parseInt(req.query.offset) || 0;
+        const alunoId = req.query.aluno_id ? parseInt(req.query.aluno_id) : null;
+        const busca   = req.query.busca?.trim() || '';
+
+        const params  = [];
+        const filtros = [];
+
+        if (alunoId) {
+            params.push(alunoId);
+            filtros.push(`aluno_id = $${params.length}`);
+        }
+        if (busca) {
+            params.push(`%${busca}%`);
+            filtros.push(`nome_aluno ILIKE $${params.length}`);
+        }
+
+        const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
+
+        params.push(limite, offset);
+
+        try {
+            const [{ rows }, { rows: total }] = await Promise.all([
+                pool.query(
+                    `SELECT * FROM edusync_comunicados_suspensao
+                     ${where}
+                     ORDER BY emitido_em DESC
+                     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+                    params,
+                ),
+                pool.query(
+                    `SELECT COUNT(*) AS total FROM edusync_comunicados_suspensao ${where}`,
+                    params.slice(0, params.length - 2),
+                ),
+            ]);
+            res.json({ comunicados: rows, total: parseInt(total[0]?.total || 0) });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao buscar comunicados de suspensão:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar comunicados.' });
+        }
+    });
+
     return router;
 }

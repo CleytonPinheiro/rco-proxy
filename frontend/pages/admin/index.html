@@ -109,6 +109,22 @@
                 <div id="tabelaAlunosWrap">
                     <p style="color:var(--text-muted);font-size:.875rem">Selecione uma turma e clique em Buscar para listar os alunos.</p>
                 </div>
+
+                <!-- Histórico de Comunicados de Suspensão -->
+                <div style="margin-top:28px;border-top:1.5px solid var(--border);padding-top:20px">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+                        <h4 style="margin:0;font-size:.95rem;font-weight:700">Histórico de Comunicados de Suspensão</h4>
+                        <div style="display:flex;gap:6px;flex:1;min-width:200px">
+                            <input type="text" id="buscaComunicados" placeholder="Buscar por nome do aluno…"
+                                style="flex:1;padding:5px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;background:var(--bg-input);color:var(--text-primary)">
+                            <button id="btnBuscarComunicados"
+                                style="padding:5px 13px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:.82rem;cursor:pointer">Buscar</button>
+                        </div>
+                    </div>
+                    <div id="historicoComunicadosWrap">
+                        <p style="color:var(--text-muted);font-size:.875rem">Clique em "Buscar" para carregar o histórico.</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Painel Configurações -->

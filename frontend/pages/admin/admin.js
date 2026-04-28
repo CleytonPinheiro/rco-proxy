@@ -1641,9 +1641,105 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     /* ── DOWNLOAD ── */
     const nomeArq = `comunicado-suspensao-${nomeAluno.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${dataInicio}.pdf`;
     doc.save(nomeArq);
+
+    /* ── SALVAR HISTÓRICO ── */
+    try {
+        const histRes = await api('/admin/comunicados-suspensao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                aluno_id:   aluno.id   || aluno.cod_matriz_aluno || null,
+                nome_aluno: nomeAluno,
+                turma:      turmaAluno,
+                registro:   aluno.registro || null,
+                responsavel,
+                data_inicio: dataInicio,
+                data_fim:    dataFim,
+                motivo:      motivo || null,
+            }),
+        });
+        if (!histRes.ok) {
+            const errData = await histRes.json().catch(() => ({}));
+            console.warn('[EduSync] Servidor recusou o registro do histórico:', histRes.status, errData?.erro || '');
+        }
+    } catch (e) {
+        console.warn('[EduSync] Falha ao salvar histórico do comunicado:', e.message);
+    }
 }
 
 document.getElementById('btnBuscarAlunos').addEventListener('click', buscarAlunos);
+
+/* ════════════════════════════════════════════════════════════
+   HISTÓRICO DE COMUNICADOS DE SUSPENSÃO
+════════════════════════════════════════════════════════════ */
+
+async function carregarHistoricoComunicados() {
+    const busca = document.getElementById('buscaComunicados').value.trim();
+    const wrap  = document.getElementById('historicoComunicadosWrap');
+    wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem">Carregando...</p>';
+
+    try {
+        const params = new URLSearchParams({ limite: 100 });
+        if (busca) params.set('busca', busca);
+
+        const res  = await api(`/admin/comunicados-suspensao?${params}`);
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.erro || 'Erro ao carregar histórico.');
+
+        if (!data.comunicados || !data.comunicados.length) {
+            wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem">Nenhum comunicado encontrado.</p>';
+            return;
+        }
+
+        renderHistoricoComunicados(data.comunicados, data.total);
+    } catch (e) {
+        wrap.innerHTML = `<p style="color:#dc2626;font-size:.875rem">Erro: ${esc(e.message)}</p>`;
+    }
+}
+
+function renderHistoricoComunicados(lista, total) {
+    const wrap = document.getElementById('historicoComunicadosWrap');
+
+    const linhas = lista.map(c => {
+        const emitido = c.emitido_em
+            ? new Date(c.emitido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+            : '—';
+        const periodo = `${formatarDataPtBr(c.data_inicio)} a ${formatarDataPtBr(c.data_fim)}`;
+        return `
+        <tr>
+            <td>${esc(c.nome_aluno)}</td>
+            <td style="font-size:.82rem">${esc(c.turma || '—')}</td>
+            <td style="font-size:.82rem">${esc(periodo)}</td>
+            <td style="font-size:.82rem">${esc(c.responsavel)}</td>
+            <td style="font-size:.82rem;color:var(--text-muted)">${esc(c.gerado_por_nome || '—')}</td>
+            <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap">${emitido}</td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+    <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px">Total: ${total} comunicado(s)</p>
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Aluno</th>
+                <th>Turma</th>
+                <th>Período</th>
+                <th>Responsável</th>
+                <th>Gerado por</th>
+                <th>Emitido em</th>
+            </tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+    </table>
+    </div>`;
+}
+
+document.getElementById('btnBuscarComunicados').addEventListener('click', carregarHistoricoComunicados);
+document.getElementById('buscaComunicados').addEventListener('keydown', e => {
+    if (e.key === 'Enter') carregarHistoricoComunicados();
+});
 
 /* ── Init ── */
 carregarUsuarios();
