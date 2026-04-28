@@ -1459,10 +1459,18 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     y += 10;
 
     /* ── DADOS DO ALUNO ── */
+    /* Calcula linhas do nome e da turma para dimensionar o box dinamicamente */
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    const nomeLinhas  = doc.splitTextToSize(nomeAluno,  84);
+    const turmaLinhas = doc.splitTextToSize(turmaAluno, 82);
+    const maxLinhas   = Math.max(nomeLinhas.length, turmaLinhas.length);
+    const altDados    = maxLinhas * 5.5 + 14;
+
     doc.setFillColor(248, 248, 248);
     doc.setDrawColor(220, 220, 220);
     doc.setLineWidth(0.3);
-    doc.roundedRect(margL, y, largura, 22, 2, 2, 'FD');
+    doc.roundedRect(margL, y, largura, altDados, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
@@ -1471,29 +1479,28 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.text('TURMA', margL + 100, y + 7);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(20, 20, 20);
-    const nomeLinhas = doc.splitTextToSize(nomeAluno, 88);
-    doc.text(nomeLinhas[0], margL + 4, y + 15);
-    doc.text(turmaAluno, margL + 100, y + 15);
-    y += 30;
+    doc.text(nomeLinhas,  margL + 4,   y + 13);
+    doc.text(turmaLinhas, margL + 100, y + 13);
+    y += altDados + 6;
 
     /* ── PERÍODO DE SUSPENSÃO ── */
     doc.setFillColor(255, 241, 241);
     doc.setDrawColor(220, 38, 38);
     doc.setLineWidth(0.4);
-    doc.roundedRect(margL, y, largura, 22, 2, 2, 'FD');
+    doc.roundedRect(margL, y, largura, 20, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(180, 30, 30);
-    doc.text('PERÍODO DE SUSPENSÃO', margL + 4, y + 7);
+    doc.text('PERIODO DE SUSPENSAO', margL + 4, y + 6);  /* sem acento: seguro em todas as fontes */
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(20, 20, 20);
-    doc.text(`${dataInicioFmt}  →  ${dataFimFmt}`, 105, y + 15, { align: 'center' });
-    y += 30;
+    doc.text(`${dataInicioFmt}  a  ${dataFimFmt}`, 105, y + 14, { align: 'center' });
+    y += 26;
 
     /* ── TEXTO FORMAL ── */
     doc.setFont('helvetica', 'normal');
@@ -1503,7 +1510,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const textoFormal = `Comunicamos ao(à) responsável que o(a) aluno(a) ${nomeAluno}, matriculado(a) na turma ${turmaAluno}, encontra-se SUSPENSO(A) das atividades presenciais no período de ${dataInicioFmt} a ${dataFimFmt}.`;
     const linhasFormais = doc.splitTextToSize(textoFormal, largura);
     doc.text(linhasFormais, margL, y);
-    y += linhasFormais.length * 5.5 + 4;
+    y += linhasFormais.length * 5.2 + 3;
 
     if (motivo) {
         doc.setFont('helvetica', 'bold');
@@ -1513,7 +1520,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
         doc.setFont('helvetica', 'normal');
         const linhasMotivo = doc.splitTextToSize(motivo, largura - 20);
         doc.text(linhasMotivo, margL + 18, y);
-        y += linhasMotivo.length * 5 + 6;
+        y += linhasMotivo.length * 5 + 4;
     }
 
     /* ── RESPONSABILIDADE PELO CONTEÚDO DO CADERNO ── */
@@ -1525,7 +1532,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
         ` buscar os conteúdos com os colegas de turma e transcrever, em seu próprio caderno, todos os registros` +
         ` das aulas ocorridas no período de ausência.`;
     const linhasCaderno = doc.splitTextToSize(textoCaderno, largura - 8);
-    const altCaderno = linhasCaderno.length * 4.8 + 18;
+    const altCaderno = linhasCaderno.length * 4.5 + 16;
 
     doc.setFillColor(255, 251, 235);
     doc.setDrawColor(202, 138, 4);
@@ -1535,74 +1542,81 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     doc.setTextColor(133, 77, 14);
-    doc.text('📓 Responsabilidade pelo Conteúdo do Caderno', margL + 4, y + 8);
+    doc.text('Responsabilidade pelo Conteudo do Caderno', margL + 4, y + 8);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 30, 30);
-    doc.text(linhasCaderno, margL + 4, y + 15);
-    y += altCaderno + 6;
+    doc.text(linhasCaderno, margL + 4, y + 14);
+    y += altCaderno + 5;
 
     /* ── ORIENTAÇÃO PORTAL DO ALUNO ── */
     doc.setFillColor(239, 246, 255);
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
-    const altPortal = 50;
+    const altPortal = 42;
     doc.roundedRect(margL, y, largura, altPortal, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     doc.setTextColor(29, 78, 216);
-    doc.text('📱 Acesse o Portal do Aluno', margL + 4, y + 9);
+    doc.text('Acesse o Portal do Aluno', margL + 4, y + 9);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 30, 30);
     const textoPortal = 'Durante o período de suspensão, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code com a câmera do celular:';
     const linhasPortal = doc.splitTextToSize(textoPortal, largura - 40);
-    doc.text(linhasPortal, margL + 4, y + 17);
+    doc.text(linhasPortal, margL + 4, y + 16);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(29, 78, 216);
-    doc.text(portalUrl, margL + 4, y + 17 + linhasPortal.length * 4.5 + 3);
+    const portalUrlLinhas = doc.splitTextToSize(portalUrl, largura - 44);
+    doc.text(portalUrlLinhas, margL + 4, y + 16 + linhasPortal.length * 4.2 + 3);
     const qrY = y;
-    const qrSize = altPortal - 6;
+    const qrSize = altPortal - 4;
     const qrX = margR - qrSize - 2;
-    y += altPortal + 8;
+    y += altPortal + 5;
 
     /* ── INSTRUÇÕES MOBILE ── */
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(80, 80, 80);
-    const instrucoes = '1. Abra a câmera do celular  2. Aponte para o QR Code  3. Toque no link que aparecer na tela  4. Entre com o e-mail institucional do(a) aluno(a)';
-    const linhasInst = doc.splitTextToSize(instrucoes, largura);
-    doc.text(linhasInst, margL, y);
-    y += linhasInst.length * 4.5 + 12;
+    const linhasInst = [
+        '1. Abra a camera do celular',
+        '2. Aponte para o QR Code',
+        '3. Toque no link que aparecer na tela',
+        '4. Entre com o e-mail institucional do(a) aluno(a)',
+    ];
+    doc.text(linhasInst, margL, y, { lineHeightFactor: 1.3 });
+    y += linhasInst.length * 4.2 + 6;
 
-    /* ── ASSINATURAS ── */
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.3);
-    doc.line(margL, y, margL + 80, y);
-    doc.line(margR - 70, y, margR, y);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    doc.text('Responsável pelo aluno', margL, y + 5);
-    doc.setFont('helvetica', 'bold');
-    doc.text(responsavel, margL, y + 10);
-
-    doc.setFont('helvetica', 'normal');
-    doc.text('Ciente: Coordenador(a)/Diretor(a)', margR - 70, y + 5);
-    y += 22;
-
+    /* ── LOCAL E DATA (acima das assinaturas) ── */
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(120, 120, 120);
     const dataLocalStr = `${escolaNome}, ${dataEmissao}`;
-    const linhasLocal = doc.splitTextToSize(dataLocalStr, largura);
+    const linhasLocal  = doc.splitTextToSize(dataLocalStr, largura);
     doc.text(linhasLocal, 105, y, { align: 'center' });
+    y += linhasLocal.length * 4 + 4;
+
+    /* ── ASSINATURAS ── */
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.3);
+    doc.line(margL, y, margL + 78, y);
+    doc.line(margR - 68, y, margR, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    doc.text('Responsavel pelo aluno', margL, y + 5);
+    doc.setFont('helvetica', 'bold');
+    const respLinhas = doc.splitTextToSize(responsavel, 78);
+    doc.text(respLinhas[0], margL, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ciente: Coordenador(a)/Diretor(a)', margR - 68, y + 5);
 
     /* ── RODAPÉ ── */
     doc.setFillColor(245, 245, 245);
@@ -1610,7 +1624,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(140, 140, 140);
-    doc.text('Documento gerado automaticamente pelo EduSync — Sistema de Gestão Escolar', 105, 279, { align: 'center' });
+    doc.text('Documento gerado automaticamente pelo EduSync - Sistema de Gestao Escolar', 105, 279, { align: 'center' });
     doc.text(portalUrl, 105, 283, { align: 'center' });
 
     /* ── QR CODE (gerado por último para não bloquear o layout) ── */
