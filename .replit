@@ -48,3 +48,7 @@ SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX
 GOOGLE_CLIENT_ID = "385928107144-hedq25urhis4udid4uj6khgfn7as0ftm.apps.googleusercontent.com"
 GOOGLE_REDIRECT_URI = "https://12466c21-e938-4201-9f91-cf01c0df736c-00-192svrpirrfkj.janeway.replit.dev/api/classroom/callback"
 GOOGLE_CLIENT_SECRET = "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"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
