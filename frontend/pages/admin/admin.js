@@ -4,6 +4,18 @@
 const esc  = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api  = (path, opts = {}) => fetch(`/api${path}`, { credentials: 'include', ...opts });
 
+function showToast(msg, tipo = 'success') {
+    const old = document.getElementById('_adminToast');
+    if (old) old.remove();
+    const t = document.createElement('div');
+    t.id = '_adminToast';
+    const bg = tipo === 'error' ? '#dc2626' : tipo === 'warning' ? '#d97706' : '#16a34a';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 3500);
+}
+
 /* ── Estado ── */
 let usuarios    = [];
 let perfisDisp  = [];
@@ -1397,52 +1409,52 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setDrawColor(200, 200, 200);
     doc.rect(12, 12, 186, 273, 'S');
 
-    /* ── CABEÇALHO ── */
-    doc.setFillColor(220, 38, 38);
+    /* ── CABEÇALHO ── fundo vermelho institucional */
+    doc.setFillColor(185, 28, 28);
     doc.rect(10, 10, 190, cabecalhoAltura, 'F');
 
-    /* Logo no canto esquerdo do cabeçalho */
+    /* Logo da escola (destaque, lado esquerdo) */
+    const logoSize = cabecalhoAltura - 4;
+    const logoX    = margL;
+    const logoY    = 10 + 2;
     if (logoDataUrl) {
-        const mimeMatch = logoDataUrl.match(/^data:image\/(\w+);/);
-        const imgFormat = mimeMatch ? mimeMatch[1].toUpperCase() : 'PNG';
-        const jsPdfFormat = (imgFormat === 'JPG' || imgFormat === 'JPEG') ? 'JPEG' : 'PNG';
+        const mimeMatch  = logoDataUrl.match(/^data:image\/(\w+);/);
+        const imgFormat  = mimeMatch ? mimeMatch[1].toUpperCase() : 'PNG';
+        const jsPdfFmt   = (imgFormat === 'JPG' || imgFormat === 'JPEG') ? 'JPEG' : 'PNG';
         try {
-            doc.addImage(logoDataUrl, jsPdfFormat, margL, 11.5, 10, 10);
-        } catch { /* ignorar se o formato não for suportado pelo jsPDF */ }
+            /* Fundo branco arredondado atrás da logo para contraste */
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 2, 2, 'F');
+            doc.addImage(logoDataUrl, jsPdfFmt, logoX, logoY, logoSize, logoSize);
+        } catch { /* ignora se formato não suportado */ }
     }
 
-    const textStartX = logoDataUrl ? margL + 12 : margL;
+    /* Nome da escola — destaque central/direito do cabeçalho */
+    const nomeX = logoDataUrl ? logoX + logoSize + 5 : margL;
+    const nomeMaxW = margR - nomeX;
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(11);
     doc.setTextColor(255, 255, 255);
-    doc.text('EduSync', textStartX, 19);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text('Sistema de Gestão Escolar', textStartX, 24);
-
-    /* Lado direito: nome da escola, endereço e data de emissão */
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 220, 220);
-    const escolaTruncada = escolaNome.length > 50 ? escolaNome.slice(0, 50) + '...' : escolaNome;
-    doc.text(escolaTruncada, margR, 17, { align: 'right' });
+    const nomeEscolaLinhas = doc.splitTextToSize(escolaNome.toUpperCase(), nomeMaxW);
+    const nomeEscolaY = escolaEndereco
+        ? 10 + (cabecalhoAltura / 2) - 2
+        : 10 + (cabecalhoAltura / 2) + 2;
+    doc.text(nomeEscolaLinhas[0], nomeX, nomeEscolaY);
 
     if (escolaEndereco) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(255, 200, 200);
-        const endTrunc = escolaEndereco.length > 60 ? escolaEndereco.slice(0, 60) + '...' : escolaEndereco;
-        doc.text(endTrunc, margR, 22, { align: 'right' });
         doc.setFontSize(7.5);
-        doc.setTextColor(255, 220, 220);
-        doc.text('Emissão: ' + dataEmissao, margR, 28, { align: 'right' });
-    } else {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(255, 220, 220);
-        doc.text('Emissão: ' + dataEmissao, margR, 24, { align: 'right' });
+        doc.setTextColor(255, 210, 210);
+        const endTrunc = doc.splitTextToSize(escolaEndereco, nomeMaxW)[0];
+        doc.text(endTrunc, nomeX, nomeEscolaY + 5.5);
     }
+
+    /* Data de emissão — canto direito */
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(255, 200, 200);
+    doc.text('Emissão: ' + dataEmissao, margR, 10 + cabecalhoAltura - 3, { align: 'right' });
 
     y = escolaEndereco ? 47 : 42;
 
@@ -1618,14 +1630,17 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'normal');
     doc.text('Ciente: Coordenador(a)/Diretor(a)', margR - 68, y + 5);
 
-    /* ── RODAPÉ ── */
-    doc.setFillColor(245, 245, 245);
+    /* ── RODAPÉ ── EduSync discreto */
+    doc.setFillColor(240, 240, 240);
     doc.rect(10, 272, 190, 15, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(10, 272, 200, 272);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(140, 140, 140);
-    doc.text('Documento gerado automaticamente pelo EduSync - Sistema de Gestao Escolar', 105, 279, { align: 'center' });
-    doc.text(portalUrl, 105, 283, { align: 'center' });
+    doc.setFontSize(6.5);
+    doc.setTextColor(160, 160, 160);
+    doc.text('Gerado pelo EduSync | Sistema de Gestao Escolar  •  ' + portalUrl.replace('https://', ''), 105, 279, { align: 'center' });
+    doc.text(`${escolaNome}  •  ${dataEmissao}`, 105, 283.5, { align: 'center' });
 
     /* ── QR CODE (gerado por último para não bloquear o layout) ── */
     try {
