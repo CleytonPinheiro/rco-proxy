@@ -145,6 +145,13 @@ export async function initializeDatabase() {
             INSERT INTO edusync_config (chave, valor, obs) VALUES ('portal_modo_demo', 'false', 'Permite login nos portais com qualquer email Google (sem restrição de domínio)')
             ON CONFLICT (chave) DO NOTHING
         `);
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('escola_nome_oficial', '', 'Nome oficial da escola para o cabeçalho do PDF'),
+                ('escola_endereco',     '', 'Endereço da escola para o cabeçalho do PDF'),
+                ('escola_logo_base64',  '', 'Logo da escola em Base64 para o cabeçalho do PDF')
+            ON CONFLICT (chave) DO NOTHING
+        `);
 
         await client.query(`
             CREATE TABLE IF NOT EXISTS edusync_plano_historico (

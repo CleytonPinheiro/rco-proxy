@@ -116,6 +116,43 @@
                 <div class="admin-section-header">
                     <h3>Configurações do sistema</h3>
                 </div>
+
+                <!-- Dados da Escola -->
+                <div style="margin-bottom:20px;padding:16px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-hover)">
+                    <div style="font-weight:700;font-size:.95rem;margin-bottom:4px">Dados da Escola (Cabeçalho do PDF)</div>
+                    <div style="font-size:.82rem;color:var(--text-secondary);margin-bottom:14px">Nome oficial, endereço e logo institucionais usados no comunicado de suspensão em PDF.</div>
+
+                    <div style="margin-bottom:10px">
+                        <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:4px">Nome oficial da escola</label>
+                        <input type="text" id="escolaNomeOficial" placeholder="Ex.: Colégio Estadual Exemplo"
+                               style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg-input);color:var(--text-primary)" />
+                    </div>
+
+                    <div style="margin-bottom:10px">
+                        <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:4px">Endereço da escola</label>
+                        <input type="text" id="escolaEndereco" placeholder="Ex.: Rua das Flores, 123 – Centro – Cidade/PR"
+                               style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg-input);color:var(--text-primary)" />
+                    </div>
+
+                    <div style="margin-bottom:14px">
+                        <label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:4px">Logo da escola</label>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <img id="escolaLogoPreview" src="" alt="Logo"
+                                 style="width:56px;height:56px;object-fit:contain;border:1.5px solid var(--border);border-radius:8px;background:#f9fafb;display:none" />
+                            <div>
+                                <label for="escolaLogoInput" style="display:inline-block;padding:7px 14px;background:var(--accent,#2563eb);color:#fff;border-radius:6px;font-size:.82rem;font-weight:700;cursor:pointer">
+                                    Escolher imagem
+                                </label>
+                                <input type="file" id="escolaLogoInput" accept="image/*" style="display:none" onchange="onEscolaLogoChange(this)" />
+                                <button onclick="removerLogoEscola()" id="btnRemoverLogo" style="display:none;margin-left:8px;padding:7px 12px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:.82rem;font-weight:700;cursor:pointer">Remover</button>
+                                <div style="font-size:.76rem;color:var(--text-secondary);margin-top:4px">PNG, JPG ou SVG – recomendado até 200×200 px</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="salvarDadosEscola()" style="padding:8px 20px;background:var(--accent,#2563eb);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:.84rem;cursor:pointer">Salvar dados da escola</button>
+                </div>
+
                 <div id="configContainer" style="margin-top:12px">Carregando...</div>
 
                 <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--border,#e5e7eb)">

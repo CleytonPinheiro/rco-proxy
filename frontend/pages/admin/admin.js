@@ -19,7 +19,7 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         if (btn.dataset.tab === 'audit')   carregarAuditLog();
         if (btn.dataset.tab === 'escolas') carregarEscolas();
         if (btn.dataset.tab === 'suporte') carregarSuporte();
-        if (btn.dataset.tab === 'config')  carregarConfig();
+        if (btn.dataset.tab === 'config')  { carregarConfig(); carregarDadosEscola(); }
         if (btn.dataset.tab === 'alunos')  carregarTurmasAlunos();
     });
 });
@@ -900,12 +900,15 @@ async function carregarConfig() {
     try {
         const res = await api('/admin/config');
         const configs = await res.json();
-        if (!configs.length) {
+
+        const ESCOLA_CHAVES = ['escola_nome_oficial', 'escola_endereco', 'escola_logo_base64'];
+        const configsFiltradas = configs.filter(c => !ESCOLA_CHAVES.includes(c.chave));
+        if (!configsFiltradas.length) {
             el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhuma configuração disponível.</div>';
             return;
         }
 
-        el.innerHTML = configs.map(c => {
+        el.innerHTML = configsFiltradas.map(c => {
             const meta = CONFIG_LABELS[c.chave] || { nome: c.chave, desc: c.obs || '', tipo: 'text' };
             const isToggle = meta.tipo === 'toggle';
             const isOn = c.valor === 'true';
@@ -970,6 +973,117 @@ window.salvarConfig = async function (chave) {
         carregarConfig();
     } catch (e) {
         alert('Erro: ' + e.message);
+    }
+};
+
+/* ════════════════════════════════════════════════════════════════
+   DADOS DA ESCOLA (CABEÇALHO DO PDF)
+══════════════════════════════════════════════════════════════ */
+
+let _escolaLogoBase64Pendente = null;
+
+async function carregarDadosEscola() {
+    try {
+        const res = await api('/admin/config');
+        const configs = await res.json();
+        const get = chave => (configs.find(c => c.chave === chave) || {}).valor || '';
+
+        const nome = get('escola_nome_oficial');
+        const end  = get('escola_endereco');
+        const logo = get('escola_logo_base64');
+
+        const elNome = document.getElementById('escolaNomeOficial');
+        const elEnd  = document.getElementById('escolaEndereco');
+        if (elNome) elNome.value = nome;
+        if (elEnd)  elEnd.value  = end;
+
+        _escolaLogoBase64Pendente = null;
+        atualizarPreviewLogo(logo);
+    } catch { /* silencia */ }
+}
+
+function atualizarPreviewLogo(base64) {
+    const preview = document.getElementById('escolaLogoPreview');
+    const btnRemover = document.getElementById('btnRemoverLogo');
+    if (!preview) return;
+    if (base64) {
+        preview.src = base64;
+        preview.style.display = 'block';
+        if (btnRemover) btnRemover.style.display = 'inline-block';
+    } else {
+        preview.src = '';
+        preview.style.display = 'none';
+        if (btnRemover) btnRemover.style.display = 'none';
+    }
+}
+
+window.onEscolaLogoChange = function (input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const TIPOS_SUPORTADOS = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!TIPOS_SUPORTADOS.includes(file.type)) {
+        showToast('Formato não suportado. Use PNG, JPG, GIF, WebP ou SVG.', 'error');
+        input.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const dataUrl = e.target.result;
+        const img = new Image();
+        img.onload = function () {
+            const MAX = 200;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width  = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            _escolaLogoBase64Pendente = canvas.toDataURL('image/png');
+            atualizarPreviewLogo(_escolaLogoBase64Pendente);
+        };
+        img.onerror = function () {
+            showToast('Não foi possível carregar a imagem. Tente outro arquivo.', 'error');
+            input.value = '';
+        };
+        img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+};
+
+window.removerLogoEscola = function () {
+    _escolaLogoBase64Pendente = '';
+    atualizarPreviewLogo('');
+    const input = document.getElementById('escolaLogoInput');
+    if (input) input.value = '';
+};
+
+window.salvarDadosEscola = async function () {
+    const nome = (document.getElementById('escolaNomeOficial')?.value || '').trim();
+    const end  = (document.getElementById('escolaEndereco')?.value || '').trim();
+
+    const salvar = async (chave, valor) => {
+        const r = await api(`/admin/config/${chave}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ valor }),
+        });
+        if (!r.ok) throw new Error((await r.json()).erro || 'Erro');
+    };
+
+    try {
+        await salvar('escola_nome_oficial', nome);
+        await salvar('escola_endereco', end);
+        if (_escolaLogoBase64Pendente !== null) {
+            await salvar('escola_logo_base64', _escolaLogoBase64Pendente);
+            _escolaLogoBase64Pendente = null;
+        }
+        showToast('Dados da escola salvos com sucesso!', 'success');
+    } catch (e) {
+        showToast('Erro ao salvar: ' + e.message, 'error');
     }
 };
 
@@ -1245,11 +1359,24 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    const portalUrl   = window.location.origin + '/alunos/';
-    const escolaNome  = localStorage.getItem('edusync_escola') || 'Estabelecimento de Ensino';
-    const nomeAluno   = aluno.nome || 'Aluno não identificado';
-    const turmaAluno  = aluno.turma || '—';
-    const dataEmissao = formatarDataPtBr(new Date().toISOString().slice(0, 10));
+    /* ── Busca configs da escola no banco ── */
+    let escolaNomeOficial = '';
+    let escolaEndereco    = '';
+    let escolaLogoBase64  = '';
+    try {
+        const cfgRes = await api('/admin/config');
+        const cfgs   = await cfgRes.json();
+        const get    = chave => (cfgs.find(c => c.chave === chave) || {}).valor || '';
+        escolaNomeOficial = get('escola_nome_oficial');
+        escolaEndereco    = get('escola_endereco');
+        escolaLogoBase64  = get('escola_logo_base64');
+    } catch { /* usa fallbacks abaixo */ }
+
+    const portalUrl  = window.location.origin + '/alunos/';
+    const escolaNome = escolaNomeOficial || localStorage.getItem('edusync_escola') || 'Estabelecimento de Ensino';
+    const nomeAluno  = aluno.nome || 'Aluno não identificado';
+    const turmaAluno = aluno.turma || '—';
+    const dataEmissao   = formatarDataPtBr(new Date().toISOString().slice(0, 10));
     const dataInicioFmt = formatarDataPtBr(dataInicio);
     const dataFimFmt    = formatarDataPtBr(dataFim);
 
@@ -1258,10 +1385,11 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const largura = margR - margL;
     let y = 20;
 
-    /* ── Carrega logo antes de gerar o documento ── */
-    const logoDataUrl = await carregarLogoDataUrl();
+    /* ── Carrega logo: usa base64 do banco se disponível, senão favicon ── */
+    const logoDataUrl = escolaLogoBase64 || await carregarLogoDataUrl();
 
     /* ── BORDA DECORATIVA ── */
+    const cabecalhoAltura = escolaEndereco ? 27 : 22;
     doc.setDrawColor(220, 38, 38);
     doc.setLineWidth(1.2);
     doc.rect(10, 10, 190, 277, 'S');
@@ -1271,33 +1399,52 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
 
     /* ── CABEÇALHO ── */
     doc.setFillColor(220, 38, 38);
-    doc.rect(10, 10, 190, 22, 'F');
+    doc.rect(10, 10, 190, cabecalhoAltura, 'F');
 
     /* Logo no canto esquerdo do cabeçalho */
     if (logoDataUrl) {
-        doc.addImage(logoDataUrl, 'PNG', margL, 11.5, 9, 9);
+        const mimeMatch = logoDataUrl.match(/^data:image\/(\w+);/);
+        const imgFormat = mimeMatch ? mimeMatch[1].toUpperCase() : 'PNG';
+        const jsPdfFormat = (imgFormat === 'JPG' || imgFormat === 'JPEG') ? 'JPEG' : 'PNG';
+        try {
+            doc.addImage(logoDataUrl, jsPdfFormat, margL, 11.5, 10, 10);
+        } catch { /* ignorar se o formato não for suportado pelo jsPDF */ }
     }
 
-    const textStartX = logoDataUrl ? margL + 11 : margL;
+    const textStartX = logoDataUrl ? margL + 12 : margL;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
     doc.text('EduSync', textStartX, 19);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text('Sistema de Gestão Escolar', textStartX, 25);
+    doc.setFontSize(7.5);
+    doc.text('Sistema de Gestão Escolar', textStartX, 24);
 
+    /* Lado direito: nome da escola, endereço e data de emissão */
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(255, 220, 220);
     const escolaTruncada = escolaNome.length > 50 ? escolaNome.slice(0, 50) + '...' : escolaNome;
-    doc.text(escolaTruncada, margR, 19, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text('Emissão: ' + dataEmissao, margR, 25, { align: 'right' });
+    doc.text(escolaTruncada, margR, 17, { align: 'right' });
 
-    y = 42;
+    if (escolaEndereco) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(255, 200, 200);
+        const endTrunc = escolaEndereco.length > 60 ? escolaEndereco.slice(0, 60) + '...' : escolaEndereco;
+        doc.text(endTrunc, margR, 22, { align: 'right' });
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 220, 220);
+        doc.text('Emissão: ' + dataEmissao, margR, 28, { align: 'right' });
+    } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 220, 220);
+        doc.text('Emissão: ' + dataEmissao, margR, 24, { align: 'right' });
+    }
+
+    y = escolaEndereco ? 47 : 42;
 
     /* ── TÍTULO DO DOCUMENTO ── */
     doc.setFont('helvetica', 'bold');

@@ -507,7 +507,9 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         if (valor === undefined) return res.status(400).json({ erro: 'valor obrigatório.' });
         try {
             const { rows } = await pool.query(
-                `UPDATE edusync_config SET valor = $1 WHERE chave = $2 RETURNING *`,
+                `INSERT INTO edusync_config (chave, valor) VALUES ($2, $1)
+                 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor
+                 RETURNING *`,
                 [String(valor), chave],
             );
             if (!rows.length) return res.status(404).json({ erro: 'Configuração não encontrada.' });
