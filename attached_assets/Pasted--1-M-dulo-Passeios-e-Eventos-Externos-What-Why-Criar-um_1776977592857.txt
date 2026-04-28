@@ -1,0 +1,38 @@
+#1 - Módulo Passeios e Eventos Externos
+What & Why
+Criar um módulo completo de gestão de passeios e atividades extraclasse dentro da EduSync. O objetivo é eliminar o retrabalho manual de: controlar pagamentos dos responsáveis, confirmar recebimento de PIX, montar a lista de cada ônibus, imprimir identificação dos alunos e controlar embarque/desembarque no local do evento.
+
+Done looks like
+Professor/coordenador consegue criar um evento com nome, data, destino, valor por aluno, prazo de pagamento e turmas participantes
+Cada aluno inscrito recebe um link/QR de pagamento PIX individual com identificação automática (txid)
+Painel financeiro mostra em tempo real: quem pagou, quem está pendente, total arrecadado
+Responsáveis pendentes recebem lembrete automático via WhatsApp
+Sistema distribui os alunos automaticamente entre os ônibus (com configuração de capacidade)
+Pulseiras de identificação são geradas em PDF (folha A4, 24 por página) com foto, nome, turma, ônibus e QR Code individual
+Página pública acessível pelo QR exibe foto, nome, turma, ônibus, telefone do professor e responsável, restrições médicas
+Monitor/motorista usa tela de scanner (câmera do celular) para confirmar embarque e desembarque de cada aluno
+Painel administrativo mostra em tempo real quantos alunos embarcaram por ônibus, com alerta para ausentes no retorno
+Notificações em massa disparam automaticamente para responsáveis nos momentos-chave (ônibus saiu, chegou, retornando)
+Out of scope
+Integração com sistemas de pagamento por cartão/boleto (apenas PIX nesta versão)
+Localização em tempo real do ônibus (GPS ao vivo)
+Galeria de fotos do passeio
+Assinatura digital do termo de autorização (próxima fase)
+Reembolso automatizado
+Steps
+Modelo de dados do evento — Criar tabelas: eventos, evento_inscricoes (aluno, status pagamento, txid PIX, ônibus atribuído), evento_onibus (número, capacidade, monitor responsável)
+Cadastro de evento — Tela no painel para criar/editar evento: nome, data, destino, valor, prazo de pagamento, turmas participantes, configuração de ônibus (quantos e capacidade de cada)
+Inscrição de alunos — Ao selecionar turmas participantes, o sistema carrega os alunos e cria os registros de inscrição; professor pode excluir individualmente ou adicionar alunos avulsos
+Geração de cobrança PIX por aluno — Integrar lib pix-utils para gerar QR Code e copia-e-cola PIX com txid único por aluno; exibir no painel e enviar via WhatsApp ao responsável
+Conciliação de pagamento manual — Enquanto não há API bancária: botão "Marcar como pago" com upload opcional de comprovante; filtros de status (Pendente / Pago / Confirmado)
+Lembretes de pagamento via WhatsApp — Ação em massa para enviar lembrete aos responsáveis ainda pendentes, usando o canal WhatsApp já existente no EduSync
+Distribuição por ônibus — Algoritmo que divide os alunos confirmados (pagos) entre os ônibus respeitando a capacidade; professor pode ajustar manualmente drag-and-drop
+Geração de pulseiras em PDF — Endpoint que monta PDF A4 com 24 pulseiras por página: foto do aluno, nome completo, turma, número/nome do ônibus, QR Code e cor de fundo por ônibus
+Página pública do aluno — Rota pública /p/:eventoId/:alunoToken sem autenticação: exibe dados do aluno, ônibus, contatos de emergência e restrições médicas; botão "Aluno encontrado" notifica o professor
+Scanner de embarque/desembarque — Tela PWA (funciona offline) para o monitor: usa câmera para ler QR das pulseiras, confirma embarque com feedback sonoro/visual, sincroniza quando voltar online
+Painel ao vivo do evento — Dashboard para coordenação: contagem por ônibus (X/Y embarcados), lista de ausentes no retorno, botão de alerta em massa
+Relevant files
+backend/src/routes/alunos.routes.js
+backend/src/routes/alunos-portal.routes.js
+backend/index.js
+frontend/pages/mapa-sala/mapa-sala.js
