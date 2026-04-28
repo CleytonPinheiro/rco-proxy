@@ -20,6 +20,7 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         if (btn.dataset.tab === 'escolas') carregarEscolas();
         if (btn.dataset.tab === 'suporte') carregarSuporte();
         if (btn.dataset.tab === 'config')  carregarConfig();
+        if (btn.dataset.tab === 'alunos')  carregarTurmasAlunos();
     });
 });
 
@@ -1037,6 +1038,424 @@ window.importarConfig = function () {
     };
     input.click();
 };
+
+/* ════════════════════════════════════════════════════════════
+   ALUNOS — listagem e comunicado de suspensão
+════════════════════════════════════════════════════════════ */
+let _alunoSuspensaoAtual = null;
+let _alunosListaCache    = [];
+
+async function carregarTurmasAlunos() {
+    const sel = document.getElementById('filtroAlunosTurma');
+    if (!sel || sel.options.length > 1) return;
+    try {
+        const res = await api('/alunos/turmas/lista');
+        const turmas = await res.json();
+        turmas.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value       = t.codturma;
+            opt.textContent = t.turma;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Erro ao carregar turmas:', e);
+    }
+}
+
+async function buscarAlunos() {
+    const codturma = document.getElementById('filtroAlunosTurma').value;
+    const wrap     = document.getElementById('tabelaAlunosWrap');
+    if (!codturma) {
+        wrap.innerHTML = '<p style="color:#d97706;font-size:.875rem">Selecione uma turma para buscar os alunos.</p>';
+        return;
+    }
+    wrap.innerHTML = '<p style="color:var(--text-muted)">Carregando...</p>';
+    try {
+        const res   = await api(`/alunos?codturma=${encodeURIComponent(codturma)}`);
+        const lista = await res.json();
+        if (!lista.length) {
+            wrap.innerHTML = '<p style="color:var(--text-muted)">Nenhum aluno encontrado nesta turma.</p>';
+            return;
+        }
+        renderTabelaAlunos(lista);
+    } catch (e) {
+        wrap.innerHTML = `<p style="color:#dc2626">Erro: ${esc(e.message)}</p>`;
+    }
+}
+
+function renderTabelaAlunos(lista) {
+    _alunosListaCache = lista;
+    const wrap = document.getElementById('tabelaAlunosWrap');
+    wrap.innerHTML = `
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Nome</th>
+                <th>Turma</th>
+                <th>Registro</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            ${lista.map((a, i) => `
+            <tr>
+                <td style="color:var(--text-muted);font-size:.8rem">${a.numchamada ?? '—'}</td>
+                <td>${esc(a.nome)}</td>
+                <td style="font-size:.85rem">${esc(a.turma || '—')}</td>
+                <td style="font-family:monospace;font-size:.8rem;color:var(--text-muted)">${esc(a.registro || '—')}</td>
+                <td>
+                    <button class="btn-acao" style="background:#dc2626;color:#fff;border:none"
+                        onclick="abrirModalSuspensao(${i})">
+                        📄 Comunicado de Suspensão
+                    </button>
+                </td>
+            </tr>`).join('')}
+        </tbody>
+    </table>`;
+}
+
+window.abrirModalSuspensao = function (idx) {
+    const aluno = _alunosListaCache[idx];
+    if (!aluno) return;
+    _alunoSuspensaoAtual = aluno;
+    document.getElementById('suspensaoNomeAluno').textContent  = aluno.nome || '—';
+    document.getElementById('suspensaoTurmaAluno').textContent = aluno.turma ? `· ${aluno.turma}` : '';
+    document.getElementById('suspensaoResponsavel').value = '';
+    document.getElementById('suspensaoDataInicio').value  = '';
+    document.getElementById('suspensaoDataFim').value     = '';
+    document.getElementById('suspensaoMotivo').value      = '';
+    const msg = document.getElementById('suspensaoMsg');
+    msg.style.display = 'none';
+    document.getElementById('modalSuspensao').classList.add('modal-overlay--ativo');
+};
+
+document.getElementById('btnCancelarSuspensao').addEventListener('click', fecharModalSuspensao);
+document.getElementById('modalSuspensao').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalSuspensao')) fecharModalSuspensao();
+});
+
+function fecharModalSuspensao() {
+    document.getElementById('modalSuspensao').classList.remove('modal-overlay--ativo');
+    _alunoSuspensaoAtual = null;
+}
+
+document.getElementById('formSuspensao').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const responsavel  = document.getElementById('suspensaoResponsavel').value.trim();
+    const dataInicio   = document.getElementById('suspensaoDataInicio').value;
+    const dataFim      = document.getElementById('suspensaoDataFim').value;
+    const motivo       = document.getElementById('suspensaoMotivo').value.trim();
+    const msg          = document.getElementById('suspensaoMsg');
+    const btn          = document.getElementById('btnGerarComunicado');
+
+    if (!responsavel || !dataInicio || !dataFim) {
+        msg.textContent   = 'Preencha os campos obrigatórios: responsável, data de início e data de fim.';
+        msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:.85rem;margin-top:8px';
+        return;
+    }
+    if (dataFim < dataInicio) {
+        msg.textContent   = 'A data de fim não pode ser anterior à data de início.';
+        msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:.85rem;margin-top:8px';
+        return;
+    }
+
+    msg.style.display = 'none';
+    btn.disabled      = true;
+    btn.textContent   = 'Gerando PDF...';
+
+    try {
+        await gerarComunicadoSuspensaoPDF({
+            aluno:       _alunoSuspensaoAtual,
+            responsavel,
+            dataInicio,
+            dataFim,
+            motivo,
+        });
+        fecharModalSuspensao();
+    } catch (err) {
+        msg.textContent   = 'Erro ao gerar PDF: ' + err.message;
+        msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:.85rem;margin-top:8px';
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '📄 Gerar PDF';
+    }
+});
+
+function formatarDataPtBr(isoDate) {
+    if (!isoDate) return '—';
+    const [y, m, d] = isoDate.split('-');
+    return `${d}/${m}/${y}`;
+}
+
+async function gerarQrCodeDataUrl(url) {
+    return new Promise((resolve, reject) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:128px;height:128px';
+        document.body.appendChild(div);
+        try {
+            new QRCode(div, {
+                text:          url,
+                width:         128,
+                height:        128,
+                colorDark:     '#000000',
+                colorLight:    '#ffffff',
+                correctLevel:  QRCode.CorrectLevel.M,
+            });
+            setTimeout(() => {
+                const canvas = div.querySelector('canvas');
+                const img    = div.querySelector('img');
+                let dataUrl  = null;
+                if (canvas) {
+                    dataUrl = canvas.toDataURL('image/png');
+                } else if (img) {
+                    dataUrl = img.src;
+                }
+                document.body.removeChild(div);
+                if (dataUrl) resolve(dataUrl);
+                else reject(new Error('QR Code canvas não encontrado'));
+            }, 200);
+        } catch (err) {
+            document.body.removeChild(div);
+            reject(err);
+        }
+    });
+}
+
+async function carregarLogoDataUrl() {
+    return new Promise(resolve => {
+        try {
+            const img   = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width  = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 64, 64);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = () => resolve(null);
+            img.src = '/shared/assets/favicon.svg';
+        } catch { resolve(null); }
+    });
+}
+
+async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dataFim, motivo }) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const portalUrl   = window.location.origin + '/alunos/';
+    const escolaNome  = localStorage.getItem('edusync_escola') || 'Estabelecimento de Ensino';
+    const nomeAluno   = aluno.nome || 'Aluno não identificado';
+    const turmaAluno  = aluno.turma || '—';
+    const dataEmissao = formatarDataPtBr(new Date().toISOString().slice(0, 10));
+    const dataInicioFmt = formatarDataPtBr(dataInicio);
+    const dataFimFmt    = formatarDataPtBr(dataFim);
+
+    const margL  = 20;
+    const margR  = 190;
+    const largura = margR - margL;
+    let y = 20;
+
+    /* ── Carrega logo antes de gerar o documento ── */
+    const logoDataUrl = await carregarLogoDataUrl();
+
+    /* ── BORDA DECORATIVA ── */
+    doc.setDrawColor(220, 38, 38);
+    doc.setLineWidth(1.2);
+    doc.rect(10, 10, 190, 277, 'S');
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(12, 12, 186, 273, 'S');
+
+    /* ── CABEÇALHO ── */
+    doc.setFillColor(220, 38, 38);
+    doc.rect(10, 10, 190, 22, 'F');
+
+    /* Logo no canto esquerdo do cabeçalho */
+    if (logoDataUrl) {
+        doc.addImage(logoDataUrl, 'PNG', margL, 11.5, 9, 9);
+    }
+
+    const textStartX = logoDataUrl ? margL + 11 : margL;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text('EduSync', textStartX, 19);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('Sistema de Gestão Escolar', textStartX, 25);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 220, 220);
+    const escolaTruncada = escolaNome.length > 50 ? escolaNome.slice(0, 50) + '...' : escolaNome;
+    doc.text(escolaTruncada, margR, 19, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text('Emissão: ' + dataEmissao, margR, 25, { align: 'right' });
+
+    y = 42;
+
+    /* ── TÍTULO DO DOCUMENTO ── */
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(30, 30, 30);
+    doc.text('COMUNICADO DE SUSPENSÃO ESCOLAR', 105, y, { align: 'center' });
+    y += 4;
+
+    doc.setDrawColor(220, 38, 38);
+    doc.setLineWidth(0.7);
+    doc.line(margL, y, margR, y);
+    y += 10;
+
+    /* ── DADOS DO ALUNO ── */
+    doc.setFillColor(248, 248, 248);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margL, y, largura, 22, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('ALUNO', margL + 4, y + 7);
+    doc.text('TURMA', margL + 100, y + 7);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(20, 20, 20);
+    const nomeLinhas = doc.splitTextToSize(nomeAluno, 88);
+    doc.text(nomeLinhas[0], margL + 4, y + 15);
+    doc.text(turmaAluno, margL + 100, y + 15);
+    y += 30;
+
+    /* ── PERÍODO DE SUSPENSÃO ── */
+    doc.setFillColor(255, 241, 241);
+    doc.setDrawColor(220, 38, 38);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(margL, y, largura, 22, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(180, 30, 30);
+    doc.text('PERÍODO DE SUSPENSÃO', margL + 4, y + 7);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(20, 20, 20);
+    doc.text(`${dataInicioFmt}  →  ${dataFimFmt}`, 105, y + 15, { align: 'center' });
+    y += 30;
+
+    /* ── TEXTO FORMAL ── */
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 30, 30);
+
+    const textoFormal = `Comunicamos ao(à) responsável que o(a) aluno(a) ${nomeAluno}, matriculado(a) na turma ${turmaAluno}, encontra-se SUSPENSO(A) das atividades presenciais no período de ${dataInicioFmt} a ${dataFimFmt}.`;
+    const linhasFormais = doc.splitTextToSize(textoFormal, largura);
+    doc.text(linhasFormais, margL, y);
+    y += linhasFormais.length * 5.5 + 4;
+
+    if (motivo) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(60, 60, 60);
+        doc.text('Motivo:', margL, y);
+        doc.setFont('helvetica', 'normal');
+        const linhasMotivo = doc.splitTextToSize(motivo, largura - 20);
+        doc.text(linhasMotivo, margL + 18, y);
+        y += linhasMotivo.length * 5 + 6;
+    }
+
+    /* ── ORIENTAÇÃO PORTAL DO ALUNO ── */
+    doc.setFillColor(239, 246, 255);
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.4);
+    const altPortal = 50;
+    doc.roundedRect(margL, y, largura, altPortal, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(29, 78, 216);
+    doc.text('📱 Acesse o Portal do Aluno', margL + 4, y + 9);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 30, 30);
+    const textoPortal = 'Durante o período de suspensão, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code com a câmera do celular:';
+    const linhasPortal = doc.splitTextToSize(textoPortal, largura - 40);
+    doc.text(linhasPortal, margL + 4, y + 17);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(29, 78, 216);
+    doc.text(portalUrl, margL + 4, y + 17 + linhasPortal.length * 4.5 + 3);
+    const qrY = y;
+    const qrSize = altPortal - 6;
+    const qrX = margR - qrSize - 2;
+    y += altPortal + 8;
+
+    /* ── INSTRUÇÕES MOBILE ── */
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    const instrucoes = '1. Abra a câmera do celular  2. Aponte para o QR Code  3. Toque no link que aparecer na tela  4. Entre com o e-mail institucional do(a) aluno(a)';
+    const linhasInst = doc.splitTextToSize(instrucoes, largura);
+    doc.text(linhasInst, margL, y);
+    y += linhasInst.length * 4.5 + 12;
+
+    /* ── ASSINATURAS ── */
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.3);
+    doc.line(margL, y, margL + 80, y);
+    doc.line(margR - 70, y, margR, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    doc.text('Responsável pelo aluno', margL, y + 5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(responsavel, margL, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ciente: Coordenador(a)/Diretor(a)', margR - 70, y + 5);
+    y += 22;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 120, 120);
+    const dataLocalStr = `${escolaNome}, ${dataEmissao}`;
+    const linhasLocal = doc.splitTextToSize(dataLocalStr, largura);
+    doc.text(linhasLocal, 105, y, { align: 'center' });
+
+    /* ── RODAPÉ ── */
+    doc.setFillColor(245, 245, 245);
+    doc.rect(10, 272, 190, 15, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(140, 140, 140);
+    doc.text('Documento gerado automaticamente pelo EduSync — Sistema de Gestão Escolar', 105, 279, { align: 'center' });
+    doc.text(portalUrl, 105, 283, { align: 'center' });
+
+    /* ── QR CODE (gerado por último para não bloquear o layout) ── */
+    try {
+        const qrDataUrl = await gerarQrCodeDataUrl(portalUrl);
+        doc.addImage(qrDataUrl, 'PNG', qrX, qrY + 3, qrSize, qrSize);
+    } catch {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 100);
+        doc.text('[QR Code indisponível]', qrX + qrSize / 2, qrY + qrSize / 2, { align: 'center' });
+    }
+
+    /* ── DOWNLOAD ── */
+    const nomeArq = `comunicado-suspensao-${nomeAluno.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${dataInicio}.pdf`;
+    doc.save(nomeArq);
+}
+
+document.getElementById('btnBuscarAlunos').addEventListener('click', buscarAlunos);
 
 /* ── Init ── */
 carregarUsuarios();
