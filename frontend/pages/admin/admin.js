@@ -1417,69 +1417,77 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const dataInicioFmt = formatarDataPtBr(dataInicio);
     const dataFimFmt    = formatarDataPtBr(dataFim);
 
-    const margL  = 20;
-    const margR  = 190;
+    /* ── Paleta de cor do documento ── */
+    const COR_ACCENT   = [30, 58, 138];   /* navy-800 — discreto e elegante */
+    const COR_ACCENT_L = [219, 234, 254]; /* blue-100 — fundo suave dos boxes */
+
+    const margL  = 13;
+    const margR  = 197;
     const largura = margR - margL;
     let y = 20;
+
+    /* Ponto de divisão ALUNO | TURMA — 55% para aluno, 45% para turma */
+    const splitX   = margL + Math.round(largura * 0.55);
+    const nomeColW = splitX - margL - 6;
+    const turmaColX = splitX + 4;
+    const turmaColW = margR - turmaColX - 2;
 
     /* ── Carrega logo: usa base64 do banco se disponível, senão favicon ── */
     const logoDataUrl = escolaLogoBase64 || await carregarLogoDataUrl();
 
     /* ── BORDA DECORATIVA ── */
     const cabecalhoAltura = escolaEndereco ? 27 : 22;
-    doc.setDrawColor(220, 38, 38);
-    doc.setLineWidth(1.2);
+    doc.setDrawColor(...COR_ACCENT);
+    doc.setLineWidth(0.8);
+    doc.rect(8, 8, 194, 281, 'S');
+    doc.setLineWidth(0.25);
+    doc.setDrawColor(200, 210, 230);
     doc.rect(10, 10, 190, 277, 'S');
-    doc.setLineWidth(0.3);
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(12, 12, 186, 273, 'S');
 
-    /* ── CABEÇALHO ── fundo vermelho institucional */
-    doc.setFillColor(185, 28, 28);
-    doc.rect(10, 10, 190, cabecalhoAltura, 'F');
+    /* ── CABEÇALHO ── fundo navy discreto */
+    doc.setFillColor(...COR_ACCENT);
+    doc.rect(8, 8, 194, cabecalhoAltura, 'F');
 
     /* Logo da escola (destaque, lado esquerdo) */
     const logoSize = cabecalhoAltura - 4;
     const logoX    = margL;
-    const logoY    = 10 + 2;
+    const logoY    = 8 + 2;
     if (logoDataUrl) {
         const mimeMatch  = logoDataUrl.match(/^data:image\/(\w+);/);
         const imgFormat  = mimeMatch ? mimeMatch[1].toUpperCase() : 'PNG';
         const jsPdfFmt   = (imgFormat === 'JPG' || imgFormat === 'JPEG') ? 'JPEG' : 'PNG';
         try {
-            /* Fundo branco arredondado atrás da logo para contraste */
             doc.setFillColor(255, 255, 255);
             doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 2, 2, 'F');
             doc.addImage(logoDataUrl, jsPdfFmt, logoX, logoY, logoSize, logoSize);
         } catch { /* ignora se formato não suportado */ }
     }
 
-    /* Nome da escola — destaque central/direito do cabeçalho */
-    const nomeX = logoDataUrl ? logoX + logoSize + 5 : margL;
-    const nomeMaxW = margR - nomeX;
+    /* Nome da escola — ao lado da logo */
+    const nomeX    = logoDataUrl ? logoX + logoSize + 5 : margL;
+    const nomeMaxW = margR - nomeX - 2;
+    const cabMeio  = 8 + cabecalhoAltura / 2;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(255, 255, 255);
     const nomeEscolaLinhas = doc.splitTextToSize(escolaNome.toUpperCase(), nomeMaxW);
-    const nomeEscolaY = escolaEndereco
-        ? 10 + (cabecalhoAltura / 2) - 2
-        : 10 + (cabecalhoAltura / 2) + 2;
+    const nomeEscolaY = escolaEndereco ? cabMeio - 2 : cabMeio + 2;
     doc.text(nomeEscolaLinhas[0], nomeX, nomeEscolaY);
 
     if (escolaEndereco) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.5);
-        doc.setTextColor(255, 210, 210);
+        doc.setTextColor(180, 210, 255);
         const endTrunc = doc.splitTextToSize(escolaEndereco, nomeMaxW)[0];
         doc.text(endTrunc, nomeX, nomeEscolaY + 5.5);
     }
 
-    /* Data de emissão — canto direito */
+    /* Data de emissão — canto inferior direito do cabeçalho */
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.setTextColor(255, 200, 200);
-    doc.text('Emissão: ' + dataEmissao, margR, 10 + cabecalhoAltura - 3, { align: 'right' });
+    doc.setTextColor(180, 210, 255);
+    doc.text('Emissão: ' + dataEmissao, margR, 8 + cabecalhoAltura - 3, { align: 'right' });
 
     y = escolaEndereco ? 47 : 42;
 
@@ -1490,53 +1498,57 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.text('COMUNICADO DE SUSPENSÃO ESCOLAR', 105, y, { align: 'center' });
     y += 4;
 
-    doc.setDrawColor(220, 38, 38);
-    doc.setLineWidth(0.7);
+    doc.setDrawColor(...COR_ACCENT);
+    doc.setLineWidth(0.6);
     doc.line(margL, y, margR, y);
     y += 10;
 
     /* ── DADOS DO ALUNO ── */
-    /* Calcula linhas do nome e da turma para dimensionar o box dinamicamente */
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    const nomeLinhas  = doc.splitTextToSize(nomeAluno,  84);
-    const turmaLinhas = doc.splitTextToSize(turmaAluno, 82);
+    const nomeLinhas  = doc.splitTextToSize(nomeAluno,  nomeColW);
+    const turmaLinhas = doc.splitTextToSize(turmaAluno, turmaColW);
     const maxLinhas   = Math.max(nomeLinhas.length, turmaLinhas.length);
     const altDados    = maxLinhas * 5.5 + 14;
 
-    doc.setFillColor(248, 248, 248);
-    doc.setDrawColor(220, 220, 220);
+    doc.setFillColor(248, 250, 255);
+    doc.setDrawColor(200, 215, 240);
     doc.setLineWidth(0.3);
     doc.roundedRect(margL, y, largura, altDados, 2, 2, 'FD');
 
+    /* Linha divisória vertical entre colunas */
+    doc.setDrawColor(220, 225, 240);
+    doc.setLineWidth(0.25);
+    doc.line(splitX, y + 2, splitX, y + altDados - 2);
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text('ALUNO', margL + 4, y + 7);
-    doc.text('TURMA', margL + 100, y + 7);
+    doc.setFontSize(7.5);
+    doc.setTextColor(80, 100, 150);
+    doc.text('ALUNO', margL + 4, y + 6);
+    doc.text('TURMA', turmaColX, y + 6);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(20, 20, 20);
-    doc.text(nomeLinhas,  margL + 4,   y + 13);
-    doc.text(turmaLinhas, margL + 100, y + 13);
+    doc.text(nomeLinhas,  margL + 4,  y + 12);
+    doc.text(turmaLinhas, turmaColX,  y + 12);
     y += altDados + 6;
 
     /* ── PERÍODO DE SUSPENSÃO ── */
-    doc.setFillColor(255, 241, 241);
-    doc.setDrawColor(220, 38, 38);
+    doc.setFillColor(...COR_ACCENT_L);
+    doc.setDrawColor(...COR_ACCENT);
     doc.setLineWidth(0.4);
     doc.roundedRect(margL, y, largura, 20, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(180, 30, 30);
-    doc.text('PERIODO DE SUSPENSAO', margL + 4, y + 6);  /* sem acento: seguro em todas as fontes */
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COR_ACCENT);
+    doc.text('PERIODO DE SUSPENSAO', margL + 4, y + 6);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(20, 20, 20);
-    doc.text(`${dataInicioFmt}  a  ${dataFimFmt}`, 105, y + 14, { align: 'center' });
+    doc.text(`${dataInicioFmt}  a  ${dataFimFmt}`, (margL + margR) / 2, y + 14, { align: 'center' });
     y += 26;
 
     /* ── TEXTO FORMAL ── */
@@ -1546,8 +1558,8 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
 
     const textoFormal = `Comunicamos ao(à) responsável que o(a) aluno(a) ${nomeAluno}, matriculado(a) na turma ${turmaAluno}, encontra-se SUSPENSO(A) das atividades presenciais no período de ${dataInicioFmt} a ${dataFimFmt}.`;
     const linhasFormais = doc.splitTextToSize(textoFormal, largura);
-    doc.text(linhasFormais, margL, y);
-    y += linhasFormais.length * 5.2 + 3;
+    doc.text(linhasFormais, margL, y, { lineHeightFactor: 1.6 });
+    y += linhasFormais.length * 6.2 + 3;
 
     if (motivo) {
         doc.setFont('helvetica', 'bold');
@@ -1572,45 +1584,53 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const altCaderno = linhasCaderno.length * 4.5 + 16;
 
     doc.setFillColor(255, 251, 235);
-    doc.setDrawColor(202, 138, 4);
+    doc.setDrawColor(180, 120, 0);
     doc.setLineWidth(0.4);
     doc.roundedRect(margL, y, largura, altCaderno, 2, 2, 'FD');
 
+    /* Barra lateral de destaque */
+    doc.setFillColor(202, 138, 4);
+    doc.rect(margL, y, 3, altCaderno, 'F');
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(133, 77, 14);
-    doc.text('Responsabilidade pelo Conteudo do Caderno', margL + 4, y + 8);
+    doc.setFontSize(9);
+    doc.setTextColor(120, 70, 0);
+    doc.text('Responsabilidade pelo Conteudo do Caderno', margL + 7, y + 8);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 30, 30);
-    doc.text(linhasCaderno, margL + 4, y + 14);
+    doc.text(linhasCaderno, margL + 7, y + 14);
     y += altCaderno + 5;
 
     /* ── ORIENTAÇÃO PORTAL DO ALUNO ── */
-    doc.setFillColor(239, 246, 255);
-    doc.setDrawColor(59, 130, 246);
+    doc.setFillColor(...COR_ACCENT_L);
+    doc.setDrawColor(...COR_ACCENT);
     doc.setLineWidth(0.4);
     const altPortal = 42;
     doc.roundedRect(margL, y, largura, altPortal, 2, 2, 'FD');
 
+    /* Barra lateral de destaque */
+    doc.setFillColor(...COR_ACCENT);
+    doc.rect(margL, y, 3, altPortal, 'F');
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
-    doc.setTextColor(29, 78, 216);
-    doc.text('Acesse o Portal do Aluno', margL + 4, y + 9);
+    doc.setTextColor(...COR_ACCENT);
+    doc.text('Acesse o Portal do Aluno', margL + 7, y + 9);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 30, 30);
     const textoPortal = 'Durante o período de suspensão, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code com a câmera do celular:';
-    const linhasPortal = doc.splitTextToSize(textoPortal, largura - 40);
-    doc.text(linhasPortal, margL + 4, y + 16);
+    const linhasPortal = doc.splitTextToSize(textoPortal, largura - 44);
+    doc.text(linhasPortal, margL + 7, y + 16);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(29, 78, 216);
+    doc.setTextColor(...COR_ACCENT);
     const portalUrlLinhas = doc.splitTextToSize(portalUrl, largura - 44);
-    doc.text(portalUrlLinhas, margL + 4, y + 16 + linhasPortal.length * 4.2 + 3);
+    doc.text(portalUrlLinhas, margL + 7, y + 16 + linhasPortal.length * 4.2 + 3);
     const qrY = y;
     const qrSize = altPortal - 4;
     const qrX = margR - qrSize - 2;
@@ -1639,10 +1659,10 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     y += linhasLocal.length * 4 + 4;
 
     /* ── ASSINATURAS ── */
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.3);
-    doc.line(margL, y, margL + 78, y);
-    doc.line(margR - 68, y, margR, y);
+    doc.setDrawColor(...COR_ACCENT);
+    doc.setLineWidth(0.35);
+    doc.line(margL, y, margL + 82, y);
+    doc.line(margR - 72, y, margR, y);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
@@ -1656,16 +1676,17 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.text('Ciente: Coordenador(a)/Diretor(a)', margR - 68, y + 5);
 
     /* ── RODAPÉ ── EduSync discreto */
-    doc.setFillColor(240, 240, 240);
-    doc.rect(10, 272, 190, 15, 'F');
-    doc.setDrawColor(200, 200, 200);
+    doc.setFillColor(240, 244, 252);
+    doc.rect(8, 275, 194, 14, 'F');
+    doc.setDrawColor(...COR_ACCENT);
     doc.setLineWidth(0.3);
-    doc.line(10, 272, 200, 272);
+    doc.line(8, 275, 202, 275);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.setTextColor(160, 160, 160);
-    doc.text('Gerado pelo EduSync | Sistema de Gestao Escolar  •  ' + portalUrl.replace('https://', ''), 105, 279, { align: 'center' });
-    doc.text(`${escolaNome}  •  ${dataEmissao}`, 105, 283.5, { align: 'center' });
+    doc.setTextColor(100, 120, 170);
+    doc.text('EduSync - Sistema de Gestao Escolar  |  ' + portalUrl.replace('https://', ''), 105, 281, { align: 'center' });
+    doc.setTextColor(140, 150, 170);
+    doc.text(`${escolaNome}  •  ${dataEmissao}`, 105, 285.5, { align: 'center' });
 
     /* ── QR CODE (gerado por último para não bloquear o layout) ── */
     try {
