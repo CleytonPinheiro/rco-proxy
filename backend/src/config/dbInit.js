@@ -229,6 +229,27 @@ export async function initializeDatabase() {
             CREATE INDEX IF NOT EXISTS idx_csa_pedag  ON classroom_solicitacao_acesso(pedagogo_email);
         `);
 
+        /* ── Comunicados de Suspensão ──────────────────────────────────── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_comunicados_suspensao (
+                id              SERIAL PRIMARY KEY,
+                aluno_id        BIGINT,
+                nome_aluno      TEXT    NOT NULL,
+                turma           TEXT,
+                registro        TEXT,
+                responsavel     TEXT    NOT NULL,
+                data_inicio     DATE    NOT NULL,
+                data_fim        DATE    NOT NULL,
+                motivo          TEXT,
+                gerado_por_id   BIGINT,
+                gerado_por_nome TEXT,
+                emitido_em      TIMESTAMPTZ DEFAULT now()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_aluno_id ON edusync_comunicados_suspensao(aluno_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_emitido  ON edusync_comunicados_suspensao(emitido_em DESC)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_nome     ON edusync_comunicados_suspensao(nome_aluno)`);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();
