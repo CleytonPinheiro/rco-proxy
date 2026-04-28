@@ -1699,6 +1699,289 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
         doc.text('[QR Code indisponível]', qrX + qrSize / 2, qrY + qrSize / 2, { align: 'center' });
     }
 
+    /* ══════════════════════════════════════════════════════════════
+       PÁGINAS EXTRAS — ATIVIDADES DO PORTAL DO ALUNO
+       ══════════════════════════════════════════════════════════════ */
+
+    /* Timestamp completo para o snapshot */
+    const agora     = new Date();
+    const snapHora  = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const snapData  = agora.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const snapLabel = `Snapshot gerado em ${snapData} as ${snapHora}`;
+
+    /* Helpers de página ─────────────────────────────────── */
+    function pdfCabecalhoSecundario(titulo) {
+        const altCab = 18;
+        doc.setFillColor(...COR_ACCENT);
+        doc.rect(8, 8, 194, altCab, 'F');
+
+        /* Logo mínima */
+        if (logoDataUrl) {
+            try {
+                const mimeM  = logoDataUrl.match(/^data:image\/(\w+);/);
+                const fmtL   = mimeM && (mimeM[1].toUpperCase() === 'JPG' || mimeM[1].toUpperCase() === 'JPEG') ? 'JPEG' : 'PNG';
+                doc.setFillColor(255, 255, 255);
+                doc.roundedRect(margL - 1, 8 + 2, 13, 13, 1.5, 1.5, 'F');
+                doc.addImage(logoDataUrl, fmtL, margL, 8 + 3, 11, 11);
+            } catch { /* ok */ }
+        }
+        const txtX = logoDataUrl ? margL + 16 : margL;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        doc.text(titulo.toUpperCase(), txtX, 8 + 11);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(180, 210, 255);
+        doc.text(snapLabel + '  |  ' + escolaNome, margR, 8 + 14.5, { align: 'right' });
+    }
+
+    function pdfRodapeSecundario() {
+        doc.setFillColor(240, 244, 252);
+        doc.rect(8, 275, 194, 14, 'F');
+        doc.setDrawColor(...COR_ACCENT);
+        doc.setLineWidth(0.3);
+        doc.line(8, 275, 202, 275);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 120, 170);
+        doc.text('EduSync - Sistema de Gestao Escolar  |  Portal: ' + portalUrl.replace('https://', ''), 105, 281, { align: 'center' });
+        doc.setTextColor(140, 150, 170);
+        doc.text(`${nomeAluno}  •  Turma: ${turmaAluno}  •  Gerado em ${snapData}`, 105, 285.5, { align: 'center' });
+    }
+
+    function pdfBordaSecundaria() {
+        doc.setDrawColor(...COR_ACCENT);
+        doc.setLineWidth(0.8);
+        doc.rect(8, 8, 194, 281, 'S');
+        doc.setLineWidth(0.25);
+        doc.setDrawColor(200, 210, 230);
+        doc.rect(10, 10, 190, 277, 'S');
+    }
+
+    /* Verifica espaço e faz nova página se necessário */
+    function pdfChecarPagina(yAtual, alturaNeeded, tituloHeader) {
+        if (yAtual + alturaNeeded > 272) {
+            doc.addPage();
+            pdfBordaSecundaria();
+            pdfCabecalhoSecundario(tituloHeader);
+            pdfRodapeSecundario();
+            return 30;
+        }
+        return yAtual;
+    }
+
+    /* Tenta buscar atividades via portal ─────────────────── */
+    let portalData = null;
+    const emailAluno = aluno.email || '';
+    if (emailAluno) {
+        try {
+            const pRes  = await api(`/admin/portal-aluno/preview?email=${encodeURIComponent(emailAluno)}`);
+            if (pRes.ok) portalData = await pRes.json();
+        } catch { /* falhou silenciosamente */ }
+    }
+
+    const cursos        = portalData?.cursos || [];
+    const totalPend     = portalData?.totalPendentes  || 0;
+    const totalZer      = portalData?.totalZeradas    || 0;
+    const totalAguard   = portalData?.totalAguardando || 0;
+
+    const TIPO_LABEL_PDF = {
+        ASSIGNMENT:               'Tarefa',
+        SHORT_ANSWER_QUESTION:    'Pergunta',
+        MULTIPLE_CHOICE_QUESTION: 'Multipla escolha',
+        MATERIAL:                 'Material',
+        QUIZ:                     'Questionario',
+    };
+
+    /* ── Função para renderizar uma lista de cursos/atividades ── */
+    function renderizarSecaoAtividades(doc, cursosFiltr, chave, titulo, corFundo, corBorda, corTexto, yInicio, tituloPag) {
+        let y2 = yInicio;
+        if (!cursosFiltr.length) return y2;
+
+        /* Título da seção */
+        y2 = pdfChecarPagina(y2, 14, tituloPag);
+        doc.setFillColor(...corFundo);
+        doc.setDrawColor(...corBorda);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margL, y2, largura, 10, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...corTexto);
+        doc.text(titulo, margL + 4, y2 + 6.5);
+        y2 += 12;
+
+        cursosFiltr.forEach(curso => {
+            const ativs = curso[chave] || [];
+            if (!ativs.length) return;
+
+            /* Header do curso */
+            y2 = pdfChecarPagina(y2, 12, tituloPag);
+            doc.setFillColor(245, 247, 255);
+            doc.setDrawColor(200, 215, 240);
+            doc.setLineWidth(0.25);
+            doc.roundedRect(margL, y2, largura, 9, 1, 1, 'FD');
+            doc.setFillColor(...COR_ACCENT);
+            doc.rect(margL, y2, 2.5, 9, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(20, 40, 100);
+            const nomeC = doc.splitTextToSize(curso.nome || '—', largura - 12);
+            doc.text(nomeC[0], margL + 6, y2 + 6);
+            const badgeTxt = `${ativs.length} ${ativs.length === 1 ? 'atividade' : 'atividades'}`;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            doc.setTextColor(100, 120, 170);
+            doc.text(badgeTxt, margR - 2, y2 + 6, { align: 'right' });
+            y2 += 10;
+
+            /* Itens */
+            ativs.forEach((at, idx) => {
+                const altItem = 11;
+                y2 = pdfChecarPagina(y2, altItem, tituloPag);
+
+                /* Zebra */
+                if (idx % 2 === 0) {
+                    doc.setFillColor(250, 252, 255);
+                    doc.rect(margL, y2, largura, altItem, 'F');
+                }
+
+                /* Linha separadora leve */
+                doc.setDrawColor(230, 235, 245);
+                doc.setLineWidth(0.15);
+                doc.line(margL + 2, y2, margR - 2, y2);
+
+                /* Título da atividade */
+                const tipoLabel = TIPO_LABEL_PDF[at.tipo] || at.tipo || '';
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8);
+                doc.setTextColor(20, 20, 20);
+                const tituloAt  = doc.splitTextToSize(at.titulo || '—', 110);
+                doc.text(tituloAt[0], margL + 4, y2 + 4.5);
+
+                /* Badge tipo */
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.5);
+                doc.setTextColor(60, 80, 140);
+                doc.text(tipoLabel, margL + 4, y2 + 9);
+
+                /* Prazo */
+                if (at.prazo) {
+                    doc.setTextColor(at.vencida ? 180 : 80, at.vencida ? 30 : 100, at.vencida ? 30 : 80);
+                    doc.text('Prazo: ' + at.prazo, 130, y2 + 4.5);
+                }
+
+                /* Pontos */
+                if (at.pontos != null) {
+                    doc.setTextColor(30, 80, 30);
+                    doc.text(String(at.pontos) + ' pts', 175, y2 + 4.5);
+                }
+
+                y2 += altItem;
+            });
+
+            y2 += 3; /* respiro entre cursos */
+        });
+
+        return y2;
+    }
+
+    /* ── PÁGINA(S) DE ATIVIDADES ── */
+    const cursosComPend   = cursos.filter(c => (c.atividades   || []).length > 0);
+    const cursosComZer    = cursos.filter(c => (c.zeradas      || []).length > 0);
+    const cursosComAguard = cursos.filter(c => (c.aguardando   || []).length > 0);
+    const temQualquer     = cursosComPend.length || cursosComZer.length || cursosComAguard.length;
+
+    doc.addPage();
+    pdfBordaSecundaria();
+    pdfCabecalhoSecundario('Atividades do Portal do Aluno');
+    pdfRodapeSecundario();
+
+    let yAts = 30;
+
+    /* Resumo topo */
+    doc.setFillColor(...COR_ACCENT_L);
+    doc.setDrawColor(...COR_ACCENT);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margL, yAts, largura, 16, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...COR_ACCENT);
+    doc.text('Resumo das Atividades', margL + 4, yAts + 7);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(30, 30, 30);
+    const resumoTxt = temQualquer
+        ? `Pendentes: ${totalPend}   |   Zeradas (0 pts): ${totalZer}   |   Aguardando correcao: ${totalAguard}`
+        : 'Nenhuma atividade encontrada no Portal do Aluno para este aluno.';
+    doc.text(resumoTxt, margL + 4, yAts + 13);
+    yAts += 19;
+
+    if (!emailAluno) {
+        /* Aluno sem email no cadastro — aviso */
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 100, 100);
+        const avisoLinhas = doc.splitTextToSize(
+            'O cadastro deste aluno nao possui e-mail vinculado ao Google Classroom. Para exibir as atividades do portal neste PDF, vincule o e-mail do aluno no cadastro do sistema.',
+            largura);
+        doc.text(avisoLinhas, margL, yAts, { lineHeightFactor: 1.5 });
+        yAts += avisoLinhas.length * 5.5 + 4;
+    } else if (temQualquer) {
+        /* Pendentes */
+        yAts = renderizarSecaoAtividades(
+            doc, cursosComPend, 'atividades',
+            `Atividades Pendentes (${totalPend})`,
+            [255, 251, 235], [180, 120, 0], [120, 70, 0],
+            yAts, 'Atividades do Portal do Aluno');
+
+        /* Zeradas */
+        yAts = renderizarSecaoAtividades(
+            doc, cursosComZer, 'zeradas',
+            `Entradas com Zero — Prazo Encerrado (${totalZer})`,
+            [255, 241, 242], [200, 50, 50], [160, 30, 30],
+            yAts, 'Atividades do Portal do Aluno');
+
+        /* Aguardando */
+        yAts = renderizarSecaoAtividades(
+            doc, cursosComAguard, 'aguardando',
+            `Aguardando Correcao do Professor (${totalAguard})`,
+            [240, 253, 244], [22, 120, 60], [15, 80, 40],
+            yAts, 'Atividades do Portal do Aluno');
+    }
+
+    /* ── NOTA SOBRE ATIVIDADES FUTURAS (sempre presente) ── */
+    yAts = pdfChecarPagina(yAts + 6, 38, 'Atividades do Portal do Aluno');
+
+    doc.setFillColor(...COR_ACCENT_L);
+    doc.setDrawColor(...COR_ACCENT);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margL, yAts, largura, 38, 2, 2, 'FD');
+
+    /* Barra lateral de destaque */
+    doc.setFillColor(...COR_ACCENT);
+    doc.rect(margL, yAts, 3.5, 38, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...COR_ACCENT);
+    doc.text('Sobre atividades futuras', margL + 7, yAts + 9);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(20, 20, 20);
+    const futuroTxt = 'Novas atividades publicadas pelo professor durante e apos o periodo de suspensao aparecerão automaticamente no Portal do Aluno e no Google Classroom. O(a) aluno(a) e o(a) responsavel sao encorajados a acessar o portal regularmente para acompanhar as tarefas e prazos.';
+    const futuroLinhas = doc.splitTextToSize(futuroTxt, largura - 12);
+    doc.text(futuroLinhas, margL + 7, yAts + 16, { lineHeightFactor: 1.5 });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_ACCENT);
+    doc.text('Portal do Aluno: ' + portalUrl, margL + 7, yAts + 32);
+
     /* ── DOWNLOAD ── */
     const nomeArq = `comunicado-suspensao-${nomeAluno.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${dataInicio}.pdf`;
     doc.save(nomeArq);
