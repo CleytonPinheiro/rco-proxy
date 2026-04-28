@@ -1369,6 +1369,33 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
         y += linhasMotivo.length * 5 + 6;
     }
 
+    /* ── RESPONSABILIDADE PELO CONTEÚDO DO CADERNO ── */
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    const textoCaderno =
+        `Os conteúdos ministrados em sala de aula durante o período de suspensão NÃO serão` +
+        ` repassados pelo(a) professor(a). É de inteira responsabilidade do(a) aluno(a) ${nomeAluno}` +
+        ` buscar os conteúdos com os colegas de turma e transcrever, em seu próprio caderno, todos os registros` +
+        ` das aulas ocorridas no período de ausência.`;
+    const linhasCaderno = doc.splitTextToSize(textoCaderno, largura - 8);
+    const altCaderno = linhasCaderno.length * 4.8 + 18;
+
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(202, 138, 4);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(margL, y, largura, altCaderno, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(133, 77, 14);
+    doc.text('📓 Responsabilidade pelo Conteúdo do Caderno', margL + 4, y + 8);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 30, 30);
+    doc.text(linhasCaderno, margL + 4, y + 15);
+    y += altCaderno + 6;
+
     /* ── ORIENTAÇÃO PORTAL DO ALUNO ── */
     doc.setFillColor(239, 246, 255);
     doc.setDrawColor(59, 130, 246);
