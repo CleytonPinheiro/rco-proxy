@@ -1040,6 +1040,13 @@ window.onEscolaLogoChange = function (input) {
         return;
     }
 
+    const WARN_SIZE_BYTES = 500 * 1024;
+    const MAX_B64_CHARS   = 50 * 1024 * (4 / 3);
+
+    if (file.size > WARN_SIZE_BYTES) {
+        showToast('Imagem grande detectada. Ela será reduzida automaticamente antes de salvar.', 'warning');
+    }
+
     const reader = new FileReader();
     reader.onload = function (e) {
         const dataUrl = e.target.result;
@@ -1054,7 +1061,25 @@ window.onEscolaLogoChange = function (input) {
             canvas.height = h;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, w, h);
-            _escolaLogoBase64Pendente = canvas.toDataURL('image/png');
+
+            let result = canvas.toDataURL('image/png');
+
+            if (result.length > MAX_B64_CHARS) {
+                const qualities = [0.85, 0.70, 0.55, 0.40];
+                for (const q of qualities) {
+                    const candidate = canvas.toDataURL('image/jpeg', q);
+                    result = candidate;
+                    if (candidate.length <= MAX_B64_CHARS) break;
+                }
+            }
+
+            if (result.length > MAX_B64_CHARS) {
+                showToast('Imagem muito grande mesmo após compressão. Use uma imagem menor ou mais simples.', 'error');
+                input.value = '';
+                return;
+            }
+
+            _escolaLogoBase64Pendente = result;
             atualizarPreviewLogo(_escolaLogoBase64Pendente);
         };
         img.onerror = function () {
