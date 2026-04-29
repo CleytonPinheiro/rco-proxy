@@ -1017,6 +1017,7 @@ async function carregarDadosEscola() {
 function atualizarPreviewLogo(base64) {
     const preview = document.getElementById('escolaLogoPreview');
     const btnRemover = document.getElementById('btnRemoverLogo');
+    const resizeNote = document.getElementById('escolaLogoResizeNote');
     if (!preview) return;
     if (base64) {
         preview.src = base64;
@@ -1026,6 +1027,7 @@ function atualizarPreviewLogo(base64) {
         preview.src = '';
         preview.style.display = 'none';
         if (btnRemover) btnRemover.style.display = 'none';
+        if (resizeNote) resizeNote.style.display = 'none';
     }
 }
 
@@ -1040,11 +1042,17 @@ window.onEscolaLogoChange = function (input) {
         return;
     }
 
-    const WARN_SIZE_BYTES = 500 * 1024;
-    const MAX_B64_CHARS   = 50 * 1024 * (4 / 3);
+    const MAX_B64_CHARS = 50 * 1024 * (4 / 3);
 
-    if (file.size > WARN_SIZE_BYTES) {
-        showToast('Imagem grande detectada. Ela será reduzida automaticamente antes de salvar.', 'warning');
+    // Show an instant preview using an object URL before any processing
+    const preview = document.getElementById('escolaLogoPreview');
+    const btnRemover = document.getElementById('btnRemoverLogo');
+    const resizeNote = document.getElementById('escolaLogoResizeNote');
+    let objectUrl = URL.createObjectURL(file);
+    if (preview) {
+        preview.src = objectUrl;
+        preview.style.display = 'block';
+        if (btnRemover) btnRemover.style.display = 'inline-block';
     }
 
     const reader = new FileReader();
@@ -1052,7 +1060,18 @@ window.onEscolaLogoChange = function (input) {
         const dataUrl = e.target.result;
         const img = new Image();
         img.onload = function () {
+            URL.revokeObjectURL(objectUrl);
             const MAX = 200;
+            const willResize = img.width > MAX || img.height > MAX;
+            if (willResize && resizeNote) {
+                resizeNote.style.display = 'block';
+            } else if (resizeNote) {
+                resizeNote.style.display = 'none';
+            }
+            if (willResize) {
+                showToast('Imagem grande detectada. Ela será reduzida automaticamente antes de salvar.', 'warning');
+            }
+
             const scale = Math.min(1, MAX / Math.max(img.width, img.height));
             const w = Math.round(img.width * scale);
             const h = Math.round(img.height * scale);
@@ -1076,6 +1095,7 @@ window.onEscolaLogoChange = function (input) {
             if (result.length > MAX_B64_CHARS) {
                 showToast('Imagem muito grande mesmo após compressão. Use uma imagem menor ou mais simples.', 'error');
                 input.value = '';
+                atualizarPreviewLogo('');
                 return;
             }
 
@@ -1083,10 +1103,18 @@ window.onEscolaLogoChange = function (input) {
             atualizarPreviewLogo(_escolaLogoBase64Pendente);
         };
         img.onerror = function () {
+            URL.revokeObjectURL(objectUrl);
             showToast('Não foi possível carregar a imagem. Tente outro arquivo.', 'error');
             input.value = '';
+            atualizarPreviewLogo('');
         };
         img.src = dataUrl;
+    };
+    reader.onerror = reader.onabort = function () {
+        URL.revokeObjectURL(objectUrl);
+        showToast('Não foi possível ler o arquivo. Tente novamente.', 'error');
+        input.value = '';
+        atualizarPreviewLogo('');
     };
     reader.readAsDataURL(file);
 };
