@@ -1010,7 +1010,19 @@ async function carregarDadosEscola() {
         if (elEnd)  elEnd.value  = end;
 
         _escolaLogoBase64Pendente = null;
-        atualizarPreviewLogo(logo);
+        const pending = sessionStorage.getItem('escolaLogoPendente');
+        if (pending !== null) {
+            _escolaLogoBase64Pendente = pending;
+            atualizarPreviewLogo(pending);
+            if (pending) {
+                const resizeNote = document.getElementById('escolaLogoResizeNote');
+                if (resizeNote && sessionStorage.getItem('escolaLogoResizeNote') === '1') {
+                    resizeNote.style.display = 'block';
+                }
+            }
+        } else {
+            atualizarPreviewLogo(logo);
+        }
     } catch { /* silencia */ }
 }
 
@@ -1095,17 +1107,23 @@ window.onEscolaLogoChange = function (input) {
             if (result.length > MAX_B64_CHARS) {
                 showToast('Imagem muito grande mesmo após compressão. Use uma imagem menor ou mais simples.', 'error');
                 input.value = '';
+                sessionStorage.removeItem('escolaLogoPendente');
+                sessionStorage.removeItem('escolaLogoResizeNote');
                 atualizarPreviewLogo('');
                 return;
             }
 
             _escolaLogoBase64Pendente = result;
+            sessionStorage.setItem('escolaLogoPendente', result);
+            sessionStorage.setItem('escolaLogoResizeNote', willResize ? '1' : '0');
             atualizarPreviewLogo(_escolaLogoBase64Pendente);
         };
         img.onerror = function () {
             URL.revokeObjectURL(objectUrl);
             showToast('Não foi possível carregar a imagem. Tente outro arquivo.', 'error');
             input.value = '';
+            sessionStorage.removeItem('escolaLogoPendente');
+            sessionStorage.removeItem('escolaLogoResizeNote');
             atualizarPreviewLogo('');
         };
         img.src = dataUrl;
@@ -1114,6 +1132,8 @@ window.onEscolaLogoChange = function (input) {
         URL.revokeObjectURL(objectUrl);
         showToast('Não foi possível ler o arquivo. Tente novamente.', 'error');
         input.value = '';
+        sessionStorage.removeItem('escolaLogoPendente');
+        sessionStorage.removeItem('escolaLogoResizeNote');
         atualizarPreviewLogo('');
     };
     reader.readAsDataURL(file);
@@ -1121,6 +1141,8 @@ window.onEscolaLogoChange = function (input) {
 
 window.removerLogoEscola = function () {
     _escolaLogoBase64Pendente = '';
+    sessionStorage.setItem('escolaLogoPendente', '');
+    sessionStorage.removeItem('escolaLogoResizeNote');
     atualizarPreviewLogo('');
     const input = document.getElementById('escolaLogoInput');
     if (input) input.value = '';
@@ -1146,6 +1168,8 @@ window.salvarDadosEscola = async function () {
             await salvar('escola_logo_base64', _escolaLogoBase64Pendente);
             _escolaLogoBase64Pendente = null;
         }
+        sessionStorage.removeItem('escolaLogoPendente');
+        sessionStorage.removeItem('escolaLogoResizeNote');
         showToast('Dados da escola salvos com sucesso!', 'success');
     } catch (e) {
         showToast('Erro ao salvar: ' + e.message, 'error');
