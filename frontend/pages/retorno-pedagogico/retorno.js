@@ -18,13 +18,17 @@ const ENCAM_LABELS = {
 
 /* ── Estado ──────────────────────────────────────────────────────── */
 let todosRegistros = [];
-let tipoFiltro   = 'todos';
+let tipoFiltro    = 'todos';
+let alunoFiltro   = '';
+let cargaToken    = 0;
+const nomeParaCod = new Map(); // canonicaliza nome → cod_matriz_aluno
 
 /* ── Elementos ───────────────────────────────────────────────────── */
 const elGrid    = document.getElementById('retGrid');
 const elLoading = document.getElementById('retLoading');
 const elVazio   = document.getElementById('retVazio');
 const selTurma  = document.getElementById('filtroTurma');
+const selAluno  = document.getElementById('filtroAluno');
 const selStatus = document.getElementById('filtroStatus');
 const selPeriodo = document.getElementById('filtroPeriodo');
 
@@ -77,6 +81,7 @@ function buildParams() {
 
 /* ── Buscar dados do backend ──────────────────────────────────────── */
 async function carregarDados() {
+    const meuToken = ++cargaToken;
     elLoading.style.display = 'block';
     elVazio.style.display   = 'none';
     elGrid.style.display    = 'none';
@@ -85,13 +90,81 @@ async function carregarDados() {
         const params = buildParams();
         const res = await fetch('/api/pedagogico/retorno?' + params);
         if (!res.ok) throw new Error();
-        todosRegistros = await res.json();
+        const data = await res.json();
+        if (meuToken !== cargaToken) return; // ignora resposta obsoleta
+        todosRegistros = data;
     } catch {
+        if (meuToken !== cargaToken) return;
         todosRegistros = [];
     }
 
+    indexarAlunos();
+    popularFiltroAluno();
     renderStats();
     renderGrid();
+}
+
+/* ── Identificação canônica do aluno ──────────────────────────────── */
+function indexarAlunos() {
+    nomeParaCod.clear();
+    todosRegistros.forEach(o => {
+        if (!o.nome_aluno || !o.cod_matriz_aluno) return;
+        const nome = o.nome_aluno.trim().toLowerCase();
+        if (!nomeParaCod.has(nome)) nomeParaCod.set(nome, o.cod_matriz_aluno);
+    });
+}
+function chaveAluno(o) {
+    if (o.cod_matriz_aluno) return `cod:${o.cod_matriz_aluno}`;
+    const nome = (o.nome_aluno || '').trim().toLowerCase();
+    const cod  = nomeParaCod.get(nome);
+    return cod ? `cod:${cod}` : `nome:${nome}`;
+}
+
+/* ── Popula o filtro de aluno conforme turma selecionada ─────────── */
+function popularFiltroAluno() {
+    const codTurmaSel = selTurma.value;
+
+    if (!codTurmaSel) {
+        selAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+        selAluno.disabled = true;
+        alunoFiltro = '';
+        return;
+    }
+
+    const mapa = new Map();
+    todosRegistros.forEach(o => {
+        if (!o.nome_aluno) return;
+        const chave = chaveAluno(o);
+        if (!mapa.has(chave)) {
+            mapa.set(chave, { chave, nome: o.nome_aluno, num: o.num_chamada || null });
+        }
+    });
+
+    const alunos = Array.from(mapa.values()).sort((a, b) => {
+        if (a.num && b.num) return Number(a.num) - Number(b.num);
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+    selAluno.disabled = false;
+    selAluno.innerHTML = '<option value="">Todos os alunos</option>';
+    alunos.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.chave;
+        opt.textContent = a.num ? `${String(a.num).padStart(2, '0')} — ${a.nome}` : a.nome;
+        selAluno.appendChild(opt);
+    });
+
+    if (alunoFiltro && mapa.has(alunoFiltro)) {
+        selAluno.value = alunoFiltro;
+    } else {
+        alunoFiltro = '';
+        selAluno.value = '';
+    }
+}
+
+function filtrarPorAluno(lista) {
+    if (!alunoFiltro) return lista;
+    return lista.filter(o => chaveAluno(o) === alunoFiltro);
 }
 
 /* ── Stats ────────────────────────────────────────────────────────── */
@@ -138,7 +211,7 @@ function ordenar(lista) {
 /* ── Render grid ──────────────────────────────────────────────────── */
 function renderGrid() {
     elLoading.style.display = 'none';
-    const lista = ordenar(filtrarPorStatus(todosRegistros));
+    const lista = ordenar(filtrarPorStatus(filtrarPorAluno(todosRegistros)));
 
     if (lista.length === 0) {
         elVazio.style.display = 'block';
@@ -316,7 +389,15 @@ document.querySelectorAll('.ret-tipo-btn').forEach(b => {
     });
 });
 
-selTurma.addEventListener('change',  carregarDados);
+selTurma.addEventListener('change', () => {
+    alunoFiltro = '';
+    selAluno.value = '';
+    carregarDados();
+});
+selAluno.addEventListener('change', () => {
+    alunoFiltro = selAluno.value;
+    renderGrid();
+});
 selStatus.addEventListener('change', () => renderGrid());
 selPeriodo.addEventListener('change', carregarDados);
 
