@@ -1445,9 +1445,9 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const dataInicioFmt = formatarDataPtBr(dataInicio);
     const dataFimFmt    = formatarDataPtBr(dataFim);
 
-    /* ── Paleta de cor do documento ── */
-    const COR_ACCENT   = [30, 58, 138];   /* navy-800 — discreto e elegante */
-    const COR_ACCENT_L = [219, 234, 254]; /* blue-100 — fundo suave dos boxes */
+    /* ── Paleta de cor do documento ── cinza neutro, econômico de tinta */
+    const COR_ACCENT   = [70, 70, 70];    /* cinza-escuro para bordas e linhas */
+    const COR_ACCENT_L = [242, 242, 242]; /* cinza-claríssimo para fundos suaves */
 
     const margL  = 13;
     const margR  = 197;
@@ -1466,17 +1466,19 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     /* ── BORDA DECORATIVA ── */
     const cabecalhoAltura = escolaEndereco ? 27 : 22;
     doc.setDrawColor(...COR_ACCENT);
-    doc.setLineWidth(0.8);
+    doc.setLineWidth(0.6);
     doc.rect(8, 8, 194, 281, 'S');
-    doc.setLineWidth(0.25);
-    doc.setDrawColor(200, 210, 230);
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(200, 200, 200);
     doc.rect(10, 10, 190, 277, 'S');
 
-    /* ── CABEÇALHO ── fundo navy discreto */
-    doc.setFillColor(...COR_ACCENT);
-    doc.rect(8, 8, 194, cabecalhoAltura, 'F');
+    /* ── CABEÇALHO ── fundo branco (sem tinta colorida) */
+    /* Linha separadora inferior do cabeçalho */
+    doc.setDrawColor(...COR_ACCENT);
+    doc.setLineWidth(0.5);
+    doc.line(8, 8 + cabecalhoAltura, 202, 8 + cabecalhoAltura);
 
-    /* Logo da escola (destaque, lado esquerdo) */
+    /* Logo da escola */
     const logoSize = cabecalhoAltura - 4;
     const logoX    = margL;
     const logoY    = 8 + 2;
@@ -1485,20 +1487,18 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
         const imgFormat  = mimeMatch ? mimeMatch[1].toUpperCase() : 'PNG';
         const jsPdfFmt   = (imgFormat === 'JPG' || imgFormat === 'JPEG') ? 'JPEG' : 'PNG';
         try {
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 2, 2, 'F');
             doc.addImage(logoDataUrl, jsPdfFmt, logoX, logoY, logoSize, logoSize);
         } catch { /* ignora se formato não suportado */ }
     }
 
     /* Nome da escola — ao lado da logo */
     const nomeX    = logoDataUrl ? logoX + logoSize + 5 : margL;
-    const nomeMaxW = margR - nomeX - 2;
+    const nomeMaxW = margR - nomeX - 30;
     const cabMeio  = 8 + cabecalhoAltura / 2;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(30, 30, 30);
     const nomeEscolaLinhas = doc.splitTextToSize(escolaNome.toUpperCase(), nomeMaxW);
     const nomeEscolaY = escolaEndereco ? cabMeio - 2 : cabMeio + 2;
     doc.text(nomeEscolaLinhas[0], nomeX, nomeEscolaY);
@@ -1506,15 +1506,15 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     if (escolaEndereco) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.5);
-        doc.setTextColor(180, 210, 255);
+        doc.setTextColor(100, 100, 100);
         const endTrunc = doc.splitTextToSize(escolaEndereco, nomeMaxW)[0];
         doc.text(endTrunc, nomeX, nomeEscolaY + 5.5);
     }
 
-    /* Data de emissão — canto inferior direito do cabeçalho */
+    /* Data de emissão — canto superior direito */
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.setTextColor(180, 210, 255);
+    doc.setTextColor(110, 110, 110);
     doc.text('Emissão: ' + dataEmissao, margR, 8 + cabecalhoAltura - 3, { align: 'right' });
 
     y = escolaEndereco ? 47 : 42;
@@ -1539,19 +1539,19 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     const maxLinhas   = Math.max(nomeLinhas.length, turmaLinhas.length);
     const altDados    = maxLinhas * 5.5 + 14;
 
-    doc.setFillColor(248, 250, 255);
-    doc.setDrawColor(200, 215, 240);
+    doc.setFillColor(248, 248, 248);
+    doc.setDrawColor(210, 210, 210);
     doc.setLineWidth(0.3);
     doc.roundedRect(margL, y, largura, altDados, 2, 2, 'FD');
 
     /* Linha divisória vertical entre colunas */
-    doc.setDrawColor(220, 225, 240);
+    doc.setDrawColor(210, 210, 210);
     doc.setLineWidth(0.25);
     doc.line(splitX, y + 2, splitX, y + altDados - 2);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(80, 100, 150);
+    doc.setTextColor(90, 90, 90);
     doc.text('ALUNO', margL + 4, y + 6);
     doc.text('TURMA', turmaColX, y + 6);
 
@@ -1708,16 +1708,16 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.text('Ciente: Coordenador(a)/Diretor(a)', margR - 68, y + 5);
 
     /* ── RODAPÉ ── EduSync discreto */
-    doc.setFillColor(240, 244, 252);
+    doc.setFillColor(245, 245, 245);
     doc.rect(8, 275, 194, 14, 'F');
     doc.setDrawColor(...COR_ACCENT);
     doc.setLineWidth(0.3);
     doc.line(8, 275, 202, 275);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.setTextColor(100, 120, 170);
+    doc.setTextColor(90, 90, 90);
     doc.text('EduSync - Sistema de Gestao Escolar  |  ' + portalUrl.replace('https://', ''), 105, 281, { align: 'center' });
-    doc.setTextColor(140, 150, 170);
+    doc.setTextColor(120, 120, 120);
     doc.text(`${escolaNome}  •  ${dataEmissao}`, 105, 285.5, { align: 'center' });
 
     /* ── QR CODE (gerado por último para não bloquear o layout) ── */
@@ -1744,51 +1744,52 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     /* Helpers de página ─────────────────────────────────── */
     function pdfCabecalhoSecundario(titulo) {
         const altCab = 18;
-        doc.setFillColor(...COR_ACCENT);
-        doc.rect(8, 8, 194, altCab, 'F');
+
+        /* Sem fundo colorido — linha separadora inferior */
+        doc.setDrawColor(...COR_ACCENT);
+        doc.setLineWidth(0.5);
+        doc.line(8, 8 + altCab, 202, 8 + altCab);
 
         /* Logo mínima */
         if (logoDataUrl) {
             try {
-                const mimeM  = logoDataUrl.match(/^data:image\/(\w+);/);
-                const fmtL   = mimeM && (mimeM[1].toUpperCase() === 'JPG' || mimeM[1].toUpperCase() === 'JPEG') ? 'JPEG' : 'PNG';
-                doc.setFillColor(255, 255, 255);
-                doc.roundedRect(margL - 1, 8 + 2, 13, 13, 1.5, 1.5, 'F');
+                const mimeM = logoDataUrl.match(/^data:image\/(\w+);/);
+                const fmtL  = mimeM && (mimeM[1].toUpperCase() === 'JPG' || mimeM[1].toUpperCase() === 'JPEG') ? 'JPEG' : 'PNG';
                 doc.addImage(logoDataUrl, fmtL, margL, 8 + 3, 11, 11);
             } catch { /* ok */ }
         }
-        const txtX = logoDataUrl ? margL + 16 : margL;
+        const txtX = logoDataUrl ? margL + 15 : margL;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(30, 30, 30);
         doc.text(titulo.toUpperCase(), txtX, 8 + 11);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        doc.setTextColor(180, 210, 255);
+        doc.setTextColor(110, 110, 110);
         doc.text(snapLabel + '  |  ' + escolaNome, margR, 8 + 14.5, { align: 'right' });
     }
 
     function pdfRodapeSecundario() {
-        doc.setFillColor(240, 244, 252);
+        doc.setFillColor(245, 245, 245);
         doc.rect(8, 275, 194, 14, 'F');
         doc.setDrawColor(...COR_ACCENT);
         doc.setLineWidth(0.3);
         doc.line(8, 275, 202, 275);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.5);
-        doc.setTextColor(100, 120, 170);
+        doc.setTextColor(90, 90, 90);
         doc.text('EduSync - Sistema de Gestao Escolar  |  Portal: ' + portalUrl.replace('https://', ''), 105, 281, { align: 'center' });
-        doc.setTextColor(140, 150, 170);
+        doc.setTextColor(120, 120, 120);
         doc.text(`${nomeAluno}  •  Turma: ${turmaAluno}  •  Gerado em ${snapData}`, 105, 285.5, { align: 'center' });
     }
 
     function pdfBordaSecundaria() {
         doc.setDrawColor(...COR_ACCENT);
-        doc.setLineWidth(0.8);
+        doc.setLineWidth(0.6);
         doc.rect(8, 8, 194, 281, 'S');
-        doc.setLineWidth(0.25);
-        doc.setDrawColor(200, 210, 230);
+        doc.setLineWidth(0.2);
+        doc.setDrawColor(200, 200, 200);
         doc.rect(10, 10, 190, 277, 'S');
     }
 
