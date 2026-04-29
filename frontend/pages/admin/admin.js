@@ -1614,7 +1614,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(30, 30, 30);
-    doc.text('COMUNICADO DE SUSPENSÃO ESCOLAR', (margL + margR) / 2, y, { align: 'center' });
+    doc.text('COMUNICADO DE AFASTAMENTO ESCOLAR', (margL + margR) / 2, y, { align: 'center' });
     y += 4;
 
     doc.setDrawColor(...COR_ACCENT);
@@ -1690,7 +1690,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...COR_ACCENT);
-    doc.text('PERIODO DE SUSPENSAO', margL + 4, y + 6);
+    doc.text('PERIODO DE AFASTAMENTO', margL + 4, y + 6);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
@@ -1703,7 +1703,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFontSize(10);
     doc.setTextColor(30, 30, 30);
 
-    const textoFormal = `Comunicamos ao(à) responsável que o(a) aluno(a) ${nomeAluno}, matriculado(a) na turma ${turmaAluno}, encontra-se SUSPENSO(A) das atividades presenciais no período de ${dataInicioFmt} a ${dataFimFmt}.`;
+    const textoFormal = `Comunicamos ao(à) responsável que o(a) aluno(a) ${nomeAluno}, matriculado(a) na turma ${turmaAluno}, encontra-se AFASTADO(A) das atividades presenciais no período de ${dataInicioFmt} a ${dataFimFmt}.`;
     const linhasFormais = doc.splitTextToSize(textoFormal, largura);
     doc.text(linhasFormais, margL, y, { lineHeightFactor: 1.6 });
     y += linhasFormais.length * 6.2 + 3;
@@ -1723,7 +1723,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     const textoCaderno =
-        `Os conteúdos ministrados em sala de aula durante o período de suspensão NÃO serão` +
+        `Os conteúdos ministrados em sala de aula durante o período de afastamento NÃO serão` +
         ` repassados pelo(a) professor(a). É de inteira responsabilidade do(a) aluno(a) ${nomeAluno}` +
         ` buscar os conteúdos com os colegas de turma e transcrever, em seu próprio caderno, todos os registros` +
         ` das aulas ocorridas no período de ausência.`;
@@ -1776,7 +1776,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 30, 30);
-    const textoPortal = 'Durante o período de suspensão, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code:';
+    const textoPortal = 'Durante o período de afastamento, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code:';
     const linhasPortal = doc.splitTextToSize(textoPortal, textPortalMaxW);
     doc.text(linhasPortal, margL + 7, y + 16);
 
@@ -2110,7 +2110,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(20, 20, 20);
-    const futuroTxt = 'Novas atividades publicadas pelo professor durante e apos o periodo de suspensao aparecerão automaticamente no Portal do Aluno e no Google Classroom. O(a) aluno(a) e o(a) responsavel sao encorajados a acessar o portal regularmente para acompanhar as tarefas e prazos.';
+    const futuroTxt = 'Novas atividades publicadas pelo professor durante e apos o periodo de afastamento aparecerão automaticamente no Portal do Aluno e no Google Classroom. O(a) aluno(a) e o(a) responsavel sao encorajados a acessar o portal regularmente para acompanhar as tarefas e prazos.';
     const futuroLinhas = doc.splitTextToSize(futuroTxt, largura - 12);
     doc.text(futuroLinhas, margL + 7, yAts + 16, { lineHeightFactor: 1.5 });
 
@@ -2120,7 +2120,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.text('Portal do Aluno: ' + portalUrl, margL + 7, yAts + 32);
 
     /* ── DOWNLOAD ── */
-    const nomeArq = `comunicado-suspensao-${nomeAluno.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${dataInicio}.pdf`;
+    const nomeArq = `comunicado-afastamento-${nomeAluno.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${dataInicio}.pdf`;
     doc.save(nomeArq);
 
     /* ── SALVAR HISTÓRICO ── */
@@ -2151,7 +2151,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
 document.getElementById('btnBuscarAlunos').addEventListener('click', buscarAlunos);
 
 /* ════════════════════════════════════════════════════════════
-   HISTÓRICO DE COMUNICADOS DE SUSPENSÃO
+   HISTÓRICO DE COMUNICADOS DE AFASTAMENTO
 ════════════════════════════════════════════════════════════ */
 
 async function carregarHistoricoComunicados() {
