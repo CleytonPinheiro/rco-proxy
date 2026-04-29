@@ -505,6 +505,12 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         const { chave } = req.params;
         const { valor } = req.body;
         if (valor === undefined) return res.status(400).json({ erro: 'valor obrigatório.' });
+        if (chave === 'escola_logo_base64') {
+            const MAX_LOGO_B64_CHARS = Math.ceil(50 * 1024 * (4 / 3));
+            if (String(valor).length > MAX_LOGO_B64_CHARS) {
+                return res.status(400).json({ erro: `Logo demasiado grande. Máximo ${Math.round(50)}KB após compressão.` });
+            }
+        }
         try {
             const { rows } = await pool.query(
                 `INSERT INTO edusync_config (chave, valor) VALUES ($2, $1)
