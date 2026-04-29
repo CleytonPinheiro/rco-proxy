@@ -115,16 +115,35 @@ async function getTeacherAuth(req) {
     const id  = process.env.GOOGLE_CLIENT_ID;
     const sec = process.env.GOOGLE_CLIENT_SECRET;
     if (!id || !sec) return null;
-    const token = loadTeacherToken();
-    if (!token) return null;
-    /* Usa a mesma redirect URI do classroom.routes.js para o refresh funcionar */
     const uri = `${req.protocol}://${req.get('host')}/api/classroom/callback`;
+
+    /* 1. Tenta banco de dados (token mais recente de qualquer professor conectado) */
+    let token    = null;
+    let cpfFromDb = null;
+    try {
+        const { rows } = await pool.query(
+            `SELECT cpf, tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+        );
+        if (rows[0]) { token = rows[0].tokens; cpfFromDb = rows[0].cpf; }
+    } catch (_) {}
+
+    /* 2. Fallback: arquivo legado */
+    if (!token) token = loadTeacherToken();
+    if (!token) return null;
+
     const client = new google.auth.OAuth2(id, sec, uri);
     client.setCredentials(token);
     if (token.expiry_date && token.expiry_date < Date.now()) {
         try {
             const { credentials } = await client.refreshAccessToken();
-            saveTeacherToken(credentials);
+            if (cpfFromDb) {
+                await pool.query(
+                    `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW() WHERE cpf = $2`,
+                    [JSON.stringify(credentials), cpfFromDb]
+                );
+            } else {
+                saveTeacherToken(credentials);
+            }
             client.setCredentials(credentials);
         } catch (e) {
             console.error('[ALUNOS-PORTAL] Erro ao renovar token do professor:', e.message);
