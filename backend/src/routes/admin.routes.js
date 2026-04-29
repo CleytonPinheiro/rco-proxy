@@ -1045,6 +1045,74 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* GET /api/admin/portal-aluno/buscar-userId-por-nome?nome=xxx
+       Procura o userId do Classroom pelo nome completo do aluno.
+       Varre todos os cursos ativos do professor em paralelo. */
+    router.get('/admin/portal-aluno/buscar-userId-por-nome', async (req, res) => {
+        const nome = (req.query.nome || '').trim();
+        if (!nome) return res.status(400).json({ erro: 'nome é obrigatório.' });
+
+        const auth = getTeacherAuth();
+        if (!auth) return res.status(503).json({ erro: 'Google Classroom não conectado.' });
+
+        /* Normaliza string para comparação: minúsculo, sem acento, sem espaço duplo */
+        const norm = s => String(s || '').toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ').trim();
+        const nomeProcurado = norm(nome);
+
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            /* Lista cursos do professor */
+            const cursos = [];
+            let pt;
+            do {
+                const r = await classroom.courses.list({ teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken: pt });
+                cursos.push(...(r.data.courses || []));
+                pt = r.data.nextPageToken;
+            } while (pt);
+
+            /* Varre alunos de cada curso em paralelo */
+            const resultados = await Promise.all(cursos.map(async curso => {
+                try {
+                    const alunos = [];
+                    let pt2;
+                    do {
+                        const r = await classroom.courses.students.list({ courseId: curso.id, pageSize: 200, pageToken: pt2 });
+                        for (const s of (r.data.students || [])) {
+                            alunos.push({
+                                userId: s.userId,
+                                nome:   s.profile?.name?.fullName || '',
+                                email:  s.profile?.emailAddress   || '',
+                            });
+                        }
+                        pt2 = r.data.nextPageToken;
+                    } while (pt2);
+                    return alunos;
+                } catch { return []; }
+            }));
+
+            /* Achata e deduplicar por userId */
+            const vistos  = new Set();
+            const todos   = resultados.flat().filter(a => {
+                if (vistos.has(a.userId)) return false;
+                vistos.add(a.userId);
+                return true;
+            });
+
+            /* Tenta match exato primeiro, depois parcial */
+            let match = todos.find(a => norm(a.nome) === nomeProcurado);
+            if (!match) match = todos.find(a => norm(a.nome).includes(nomeProcurado) || nomeProcurado.includes(norm(a.nome)));
+
+            if (!match) return res.status(404).json({ erro: 'Aluno não encontrado no Google Classroom.' });
+
+            res.json({ userId: match.userId, email: match.email, nome: match.nome });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* GET /api/admin/portal-aluno/disciplina?cursoId=xxx — todos alunos pendentes numa disciplina */
     router.get('/admin/portal-aluno/disciplina', async (req, res) => {
         const { cursoId } = req.query;

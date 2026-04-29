@@ -1619,21 +1619,25 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setTextColor(...COR_ACCENT);
     doc.text('Acesse o Portal do Aluno', margL + 7, y + 9);
 
+    /* Calcula posição e tamanho do QR ANTES de escrever o texto
+       para garantir que o texto nunca ultrapasse a área do QR */
+    const qrSize = altPortal - 6;
+    const qrX    = margR - qrSize - 2;
+    const qrY    = y;
+    const textPortalMaxW = qrX - (margL + 7) - 4;   /* gap de 4 mm antes do QR */
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(30, 30, 30);
-    const textoPortal = 'Durante o período de suspensão, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code com a câmera do celular:';
-    const linhasPortal = doc.splitTextToSize(textoPortal, largura - 44);
+    const textoPortal = 'Durante o período de suspensão, o(a) aluno(a) poderá acompanhar suas atividades escolares pelo Portal do Aluno. Acesse pelo link abaixo ou escaneie o QR Code:';
+    const linhasPortal = doc.splitTextToSize(textoPortal, textPortalMaxW);
     doc.text(linhasPortal, margL + 7, y + 16);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...COR_ACCENT);
-    const portalUrlLinhas = doc.splitTextToSize(portalUrl, largura - 44);
-    doc.text(portalUrlLinhas, margL + 7, y + 16 + linhasPortal.length * 4.2 + 3);
-    const qrY = y;
-    const qrSize = altPortal - 4;
-    const qrX = margR - qrSize - 2;
+    const portalUrlLinhas = doc.splitTextToSize(portalUrl, textPortalMaxW);
+    doc.text(portalUrlLinhas, margL + 7, y + 16 + linhasPortal.length * 4.5 + 3);
     y += altPortal + 5;
 
     /* ── INSTRUÇÕES MOBILE ── */
@@ -1773,19 +1777,39 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     }
 
     /* Tenta buscar atividades via portal ─────────────────── */
-    let portalData = null;
-    const emailAluno = aluno.email || '';
-    if (emailAluno) {
+    let portalData   = null;
+    let portalEmail  = aluno.email || '';   /* e-mail que veio do Supabase (pode estar vazio) */
+    let portalUserId = '';
+    let portalVinculado = false;            /* true se conseguimos dados do Classroom */
+
+    /* 1. Tenta direto pelo email do cadastro */
+    if (portalEmail) {
         try {
-            const pRes  = await api(`/admin/portal-aluno/preview?email=${encodeURIComponent(emailAluno)}`);
-            if (pRes.ok) portalData = await pRes.json();
-        } catch { /* falhou silenciosamente */ }
+            const pRes = await api(`/admin/portal-aluno/preview?email=${encodeURIComponent(portalEmail)}`);
+            if (pRes.ok) { portalData = await pRes.json(); portalVinculado = true; }
+        } catch { /* ok */ }
     }
 
-    const cursos        = portalData?.cursos || [];
-    const totalPend     = portalData?.totalPendentes  || 0;
-    const totalZer      = portalData?.totalZeradas    || 0;
-    const totalAguard   = portalData?.totalAguardando || 0;
+    /* 2. Se não tem email ou não achou, tenta encontrar userId pelo nome do aluno */
+    if (!portalVinculado) {
+        try {
+            const buscarRes = await api(`/admin/portal-aluno/buscar-userId-por-nome?nome=${encodeURIComponent(nomeAluno)}`);
+            if (buscarRes.ok) {
+                const buscarData = await buscarRes.json();
+                portalUserId = buscarData.userId || '';
+                if (!portalEmail) portalEmail = buscarData.email || '';
+                if (portalUserId) {
+                    const pRes2 = await api(`/admin/portal-aluno/preview?userId=${encodeURIComponent(portalUserId)}`);
+                    if (pRes2.ok) { portalData = await pRes2.json(); portalVinculado = true; }
+                }
+            }
+        } catch { /* ok */ }
+    }
+
+    const cursos      = portalData?.cursos || [];
+    const totalPend   = portalData?.totalPendentes  || 0;
+    const totalZer    = portalData?.totalZeradas    || 0;
+    const totalAguard = portalData?.totalAguardando || 0;
 
     const TIPO_LABEL_PDF = {
         ASSIGNMENT:               'Tarefa',
@@ -1920,14 +1944,15 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.text(resumoTxt, margL + 4, yAts + 13);
     yAts += 19;
 
-    if (!emailAluno) {
-        /* Aluno sem email no cadastro — aviso */
+    if (!portalVinculado) {
+        /* Não conseguiu encontrar o aluno no Classroom */
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(100, 100, 100);
-        const avisoLinhas = doc.splitTextToSize(
-            'O cadastro deste aluno nao possui e-mail vinculado ao Google Classroom. Para exibir as atividades do portal neste PDF, vincule o e-mail do aluno no cadastro do sistema.',
-            largura);
+        const motivo = portalEmail
+            ? 'Nao foi possivel localizar atividades via Google Classroom para este aluno. Verifique se ele esta matriculado em alguma disciplina do professor e se o Classroom esta conectado.'
+            : 'O aluno nao foi encontrado no Google Classroom. Certifique-se de que o Classroom esta conectado e de que o aluno esta matriculado em alguma disciplina do professor.';
+        const avisoLinhas = doc.splitTextToSize(motivo, largura);
         doc.text(avisoLinhas, margL, yAts, { lineHeightFactor: 1.5 });
         yAts += avisoLinhas.length * 5.5 + 4;
     } else if (temQualquer) {
