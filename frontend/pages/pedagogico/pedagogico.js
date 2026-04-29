@@ -20,14 +20,18 @@ const TIPO_LABELS = {
 /* ── Estado ─────────────────────────────────────────────────────── */
 let todasOcorrencias = [];   // regular (aluno_ocorrencias)
 let todasObsRco      = [];   // observações RCO
-let tipoFiltro  = 'todos';
+let tipoFiltro   = 'todos';
 let statusFiltro = 'todos';
+let alunoFiltro  = '';       // identificador do aluno selecionado (cod_matriz_aluno ou nome)
+let cargaToken   = 0;        // guarda contra corrida quando o usuário troca filtros rapidamente
+const nomeParaCod = new Map(); // mapeia nome normalizado → cod_matriz_aluno (canonicaliza identidade)
 
 /* ── Elementos ──────────────────────────────────────────────────── */
 const elGrid      = document.getElementById('pedGrid');
 const elLoading   = document.getElementById('pedLoading');
 const elVazio     = document.getElementById('pedVazio');
 const selTurma    = document.getElementById('filtroTurma');
+const selAluno    = document.getElementById('filtroAluno');
 const selStatus   = document.getElementById('filtroStatus');
 const selPeriodo  = document.getElementById('filtroPeriodo');
 
@@ -109,14 +113,98 @@ async function carregarObsRco() {
 
 /* ── Buscar tudo em paralelo ─────────────────────────────────────── */
 async function carregarTudo() {
+    const meuToken = ++cargaToken;
     elLoading.style.display  = 'block';
     elVazio.style.display    = 'none';
     elGrid.style.display     = 'none';
 
     await Promise.all([carregarOcorrencias(), carregarObsRco()]);
 
+    // Se o usuário trocou filtros enquanto carregava, ignora este resultado
+    if (meuToken !== cargaToken) return;
+
+    indexarAlunos();
+    popularFiltroAluno();
     renderStats();
     renderGrid();
+}
+
+/* ── Indexa nome→cod a partir de ambas as fontes (canonicalização) ─ */
+function indexarAlunos() {
+    nomeParaCod.clear();
+    [...todasOcorrencias, ...todasObsRco].forEach(o => {
+        if (!o.nome_aluno || !o.cod_matriz_aluno) return;
+        const nome = o.nome_aluno.trim().toLowerCase();
+        if (!nomeParaCod.has(nome)) nomeParaCod.set(nome, o.cod_matriz_aluno);
+    });
+}
+
+/* ── Identificador único do aluno (cod_matriz_aluno preferencial) ─
+   Se o registro vier sem cod mas o mesmo nome aparecer com cod em
+   outra fonte, usamos o cod canônico — assim os registros do mesmo
+   aluno em fontes diferentes (regular vs RCO) ficam unificados. */
+function chaveAluno(o) {
+    if (o.cod_matriz_aluno) return `cod:${o.cod_matriz_aluno}`;
+    const nome = (o.nome_aluno || '').trim().toLowerCase();
+    const cod  = nomeParaCod.get(nome);
+    return cod ? `cod:${cod}` : `nome:${nome}`;
+}
+
+/* ── Popula o filtro de aluno conforme turma selecionada ─────────  */
+function popularFiltroAluno() {
+    const codTurmaSel = selTurma.value;
+
+    // Sem turma selecionada → desabilita o filtro de aluno
+    if (!codTurmaSel) {
+        selAluno.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+        selAluno.disabled = true;
+        alunoFiltro = '';
+        return;
+    }
+
+    // Coleta alunos únicos a partir das ocorrências carregadas
+    // (a API já devolveu apenas registros da turma escolhida)
+    const mapa = new Map();
+    [...todasOcorrencias, ...todasObsRco].forEach(o => {
+        if (!o.nome_aluno) return;
+        const chave = chaveAluno(o);
+        if (!mapa.has(chave)) {
+            mapa.set(chave, {
+                chave,
+                nome: o.nome_aluno,
+                num: o.num_chamada || null,
+            });
+        }
+    });
+
+    const alunos = Array.from(mapa.values()).sort((a, b) => {
+        // Ordena por número de chamada quando disponível, senão por nome
+        if (a.num && b.num) return Number(a.num) - Number(b.num);
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+    selAluno.disabled = false;
+    selAluno.innerHTML = '<option value="">Todos os alunos</option>';
+    alunos.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.chave;
+        opt.textContent = a.num ? `${String(a.num).padStart(2, '0')} — ${a.nome}` : a.nome;
+        selAluno.appendChild(opt);
+    });
+
+    // Mantém seleção anterior se ainda existir; caso contrário, reseta
+    if (alunoFiltro && mapa.has(alunoFiltro)) {
+        selAluno.value = alunoFiltro;
+    } else {
+        alunoFiltro = '';
+        selAluno.value = '';
+    }
+}
+
+/* ── Filtrar por aluno (quando aplicável) ─────────────────────────  */
+function filtrarPorAluno(lista) {
+    if (!alunoFiltro) return lista;
+    return lista.filter(o => chaveAluno(o) === alunoFiltro);
 }
 
 /* ── Mescla ativa segundo tipo filtro ────────────────────────────── */
@@ -166,7 +254,7 @@ function ordenarPorData(lista) {
 /* ── Render grid ─────────────────────────────────────────────────── */
 function renderGrid() {
     elLoading.style.display = 'none';
-    const lista = ordenarPorData(filtrarPorStatus(listaFiltradaPorTipo()));
+    const lista = ordenarPorData(filtrarPorStatus(filtrarPorAluno(listaFiltradaPorTipo())));
 
     if (lista.length === 0) {
         elVazio.style.display = 'block';
@@ -404,7 +492,16 @@ document.querySelectorAll('.ped-tipo-btn').forEach(btn => {
     });
 });
 
-selTurma.addEventListener('change', carregarTudo);
+selTurma.addEventListener('change', () => {
+    // Trocou de turma → reseta filtro de aluno e recarrega
+    alunoFiltro = '';
+    selAluno.value = '';
+    carregarTudo();
+});
+selAluno.addEventListener('change', () => {
+    alunoFiltro = selAluno.value;
+    renderGrid();
+});
 selPeriodo.addEventListener('change', carregarTudo);
 selStatus.addEventListener('change', () => {
     statusFiltro = selStatus.value;
