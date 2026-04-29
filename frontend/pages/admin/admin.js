@@ -1467,81 +1467,125 @@ async function carregarLogoDataUrl() {
     });
 }
 
+/* Recorta imagem em círculo — retorna PNG data URL */
+async function circularizarImagem(dataUrl) {
+    return new Promise(resolve => {
+        if (!dataUrl) return resolve(null);
+        const img = new Image();
+        img.onload = () => {
+            const s      = Math.min(img.width, img.height);
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = s;
+            const ctx = canvas.getContext('2d');
+            ctx.beginPath();
+            ctx.arc(s / 2, s / 2, s / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(img, -(img.width - s) / 2, -(img.height - s) / 2, img.width, img.height);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+}
+
 async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dataFim, motivo }) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    /* ── Busca configs da escola no banco ── */
+    const nomeAluno  = aluno.nome || 'Aluno não identificado';
+    const turmaAluno = aluno.turma || '—';
+    const portalUrl  = window.location.origin + '/alunos/';
+
+    /* ── Busca configs + atividades do portal em paralelo ── */
     let escolaNomeOficial = '';
     let escolaEndereco    = '';
     let escolaLogoBase64  = '';
-    try {
-        const cfgRes = await api('/admin/config');
-        const cfgs   = await cfgRes.json();
-        const get    = chave => (cfgs.find(c => c.chave === chave) || {}).valor || '';
-        escolaNomeOficial = get('escola_nome_oficial');
-        escolaEndereco    = get('escola_endereco');
-        escolaLogoBase64  = get('escola_logo_base64');
-    } catch { /* usa fallbacks abaixo */ }
+    let portalData        = null;
+    let portalVinculado   = false;
+    let portalEmail       = aluno.email || '';
+    let portalUserId      = '';
 
-    const portalUrl  = window.location.origin + '/alunos/';
-    const escolaNome = escolaNomeOficial || localStorage.getItem('edusync_escola') || 'Estabelecimento de Ensino';
-    const nomeAluno  = aluno.nome || 'Aluno não identificado';
-    const turmaAluno = aluno.turma || '—';
+    const [cfgResult] = await Promise.all([
+        api('/admin/config').then(r => r.json()).catch(() => []),
+    ]);
+    const get = chave => ((Array.isArray(cfgResult) ? cfgResult : []).find(c => c.chave === chave) || {}).valor || '';
+    escolaNomeOficial = get('escola_nome_oficial');
+    escolaEndereco    = get('escola_endereco');
+    escolaLogoBase64  = get('escola_logo_base64');
+
+    /* Busca portal por email e/ou nome */
+    if (portalEmail) {
+        try {
+            const r = await api(`/admin/portal-aluno/preview?email=${encodeURIComponent(portalEmail)}`);
+            if (r.ok) { portalData = await r.json(); portalVinculado = true; }
+        } catch { /* ok */ }
+    }
+    if (!portalVinculado) {
+        try {
+            const rb = await api(`/admin/portal-aluno/buscar-userId-por-nome?nome=${encodeURIComponent(nomeAluno)}`);
+            if (rb.ok) {
+                const bd = await rb.json();
+                portalUserId = bd.userId || '';
+                if (!portalEmail) portalEmail = bd.email || '';
+                if (portalUserId) {
+                    const r2 = await api(`/admin/portal-aluno/preview?userId=${encodeURIComponent(portalUserId)}`);
+                    if (r2.ok) { portalData = await r2.json(); portalVinculado = true; }
+                }
+            }
+        } catch { /* ok */ }
+    }
+
+    const escolaNome    = escolaNomeOficial || localStorage.getItem('edusync_escola') || 'Estabelecimento de Ensino';
     const dataEmissao   = formatarDataPtBr(new Date().toISOString().slice(0, 10));
     const dataInicioFmt = formatarDataPtBr(dataInicio);
     const dataFimFmt    = formatarDataPtBr(dataFim);
+
+    /* Disciplinas do aluno — extraídas do Classroom */
+    const disciplinas = (portalData?.cursos || []).map(c => c.nome || '').filter(Boolean);
 
     /* ── Paleta de cor do documento ── cinza neutro, econômico de tinta */
     const COR_ACCENT   = [70, 70, 70];    /* cinza-escuro para bordas e linhas */
     const COR_ACCENT_L = [242, 242, 242]; /* cinza-claríssimo para fundos suaves */
 
-    const margL  = 13;
-    const margR  = 197;
+    /* ── Margens estreitas ── */
+    const margL   = 8;
+    const margR   = 202;
     const largura = margR - margL;
-    let y = 20;
+    let y = 15;
 
     /* Ponto de divisão ALUNO | TURMA — 55% para aluno, 45% para turma */
-    const splitX   = margL + Math.round(largura * 0.55);
-    const nomeColW = splitX - margL - 6;
+    const splitX    = margL + Math.round(largura * 0.55);
+    const nomeColW  = splitX - margL - 6;
     const turmaColX = splitX + 4;
     const turmaColW = margR - turmaColX - 2;
 
-    /* ── Carrega logo: usa base64 do banco se disponível, senão favicon ── */
-    const logoDataUrl = escolaLogoBase64 || await carregarLogoDataUrl();
+    /* ── Carrega logo circular ── */
+    const logoRaw     = escolaLogoBase64 || await carregarLogoDataUrl();
+    const logoDataUrl = await circularizarImagem(logoRaw);
 
-    /* ── BORDA DECORATIVA ── */
+    /* ── CABEÇALHO ── fundo branco — sem borda externa */
     const cabecalhoAltura = escolaEndereco ? 27 : 22;
-    doc.setDrawColor(...COR_ACCENT);
-    doc.setLineWidth(0.6);
-    doc.rect(8, 8, 194, 281, 'S');
-    doc.setLineWidth(0.2);
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(10, 10, 190, 277, 'S');
 
-    /* ── CABEÇALHO ── fundo branco (sem tinta colorida) */
-    /* Linha separadora inferior do cabeçalho */
+    /* Apenas linha separadora inferior */
     doc.setDrawColor(...COR_ACCENT);
-    doc.setLineWidth(0.5);
-    doc.line(8, 8 + cabecalhoAltura, 202, 8 + cabecalhoAltura);
+    doc.setLineWidth(0.4);
+    doc.line(margL, 5 + cabecalhoAltura, margR, 5 + cabecalhoAltura);
 
-    /* Logo da escola */
+    /* Logo circular */
     const logoSize = cabecalhoAltura - 4;
     const logoX    = margL;
-    const logoY    = 8 + 2;
+    const logoY    = 5 + 2;
     if (logoDataUrl) {
-        const mimeMatch  = logoDataUrl.match(/^data:image\/(\w+);/);
-        const imgFormat  = mimeMatch ? mimeMatch[1].toUpperCase() : 'PNG';
-        const jsPdfFmt   = (imgFormat === 'JPG' || imgFormat === 'JPEG') ? 'JPEG' : 'PNG';
         try {
-            doc.addImage(logoDataUrl, jsPdfFmt, logoX, logoY, logoSize, logoSize);
+            doc.addImage(logoDataUrl, 'PNG', logoX, logoY, logoSize, logoSize);
         } catch { /* ignora se formato não suportado */ }
     }
 
     /* Nome da escola — ao lado da logo */
     const nomeX    = logoDataUrl ? logoX + logoSize + 5 : margL;
     const nomeMaxW = margR - nomeX - 30;
-    const cabMeio  = 8 + cabecalhoAltura / 2;
+    const cabMeio  = 5 + cabecalhoAltura / 2;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -1562,39 +1606,48 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(110, 110, 110);
-    doc.text('Emissão: ' + dataEmissao, margR, 8 + cabecalhoAltura - 3, { align: 'right' });
+    doc.text('Emissão: ' + dataEmissao, margR, 5 + cabecalhoAltura - 3, { align: 'right' });
 
-    y = escolaEndereco ? 47 : 42;
+    y = 5 + cabecalhoAltura + (escolaEndereco ? 12 : 10);
 
     /* ── TÍTULO DO DOCUMENTO ── */
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
+    doc.setFontSize(14);
     doc.setTextColor(30, 30, 30);
-    doc.text('COMUNICADO DE SUSPENSÃO ESCOLAR', 105, y, { align: 'center' });
+    doc.text('COMUNICADO DE SUSPENSÃO ESCOLAR', (margL + margR) / 2, y, { align: 'center' });
     y += 4;
 
     doc.setDrawColor(...COR_ACCENT);
-    doc.setLineWidth(0.6);
+    doc.setLineWidth(0.5);
     doc.line(margL, y, margR, y);
-    y += 10;
+    y += 8;
 
-    /* ── DADOS DO ALUNO ── */
+    /* ── DADOS DO ALUNO + DISCIPLINAS ── */
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     const nomeLinhas  = doc.splitTextToSize(nomeAluno,  nomeColW);
     const turmaLinhas = doc.splitTextToSize(turmaAluno, turmaColW);
     const maxLinhas   = Math.max(nomeLinhas.length, turmaLinhas.length);
-    const altDados    = maxLinhas * 5.5 + 14;
+
+    /* Seção de disciplinas — ocupa a largura total abaixo de ALUNO/TURMA */
+    const discTexto = disciplinas.length > 0
+        ? disciplinas.map(d => d.replace(/ - [\d]º Ano.*$/i, '').replace(/ - .*$/i, '').trim()).join('  •  ')
+        : '';
+    const discLinhas = discTexto ? doc.splitTextToSize(discTexto, largura - 8) : [];
+
+    const altLinhasSuperiores = maxLinhas * 5.5 + 14;
+    const altDisc = discLinhas.length > 0 ? discLinhas.length * 4.5 + 12 : 0;
+    const altDados = altLinhasSuperiores + altDisc;
 
     doc.setFillColor(248, 248, 248);
     doc.setDrawColor(210, 210, 210);
     doc.setLineWidth(0.3);
     doc.roundedRect(margL, y, largura, altDados, 2, 2, 'FD');
 
-    /* Linha divisória vertical entre colunas */
+    /* Linha divisória vertical entre colunas (só na parte superior) */
     doc.setDrawColor(210, 210, 210);
     doc.setLineWidth(0.25);
-    doc.line(splitX, y + 2, splitX, y + altDados - 2);
+    doc.line(splitX, y + 2, splitX, y + altLinhasSuperiores - 2);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
@@ -1607,7 +1660,26 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     doc.setTextColor(20, 20, 20);
     doc.text(nomeLinhas,  margL + 4,  y + 12);
     doc.text(turmaLinhas, turmaColX,  y + 12);
-    y += altDados + 6;
+
+    /* Seção DISCIPLINAS */
+    if (discLinhas.length > 0) {
+        const discY = y + altLinhasSuperiores;
+        doc.setDrawColor(210, 210, 210);
+        doc.setLineWidth(0.2);
+        doc.line(margL + 3, discY, margR - 3, discY);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(90, 90, 90);
+        doc.text('DISCIPLINAS', margL + 4, discY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(30, 30, 30);
+        doc.text(discLinhas, margL + 4, discY + 11, { lineHeightFactor: 1.4 });
+    }
+
+    y += altDados + 5;
 
     /* ── PERÍODO DE SUSPENSÃO ── */
     doc.setFillColor(...COR_ACCENT_L);
@@ -1794,27 +1866,25 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
 
         /* Sem fundo colorido — linha separadora inferior */
         doc.setDrawColor(...COR_ACCENT);
-        doc.setLineWidth(0.5);
-        doc.line(8, 8 + altCab, 202, 8 + altCab);
+        doc.setLineWidth(0.4);
+        doc.line(margL, 5 + altCab, margR, 5 + altCab);
 
-        /* Logo mínima */
+        /* Logo circular mínima */
         if (logoDataUrl) {
             try {
-                const mimeM = logoDataUrl.match(/^data:image\/(\w+);/);
-                const fmtL  = mimeM && (mimeM[1].toUpperCase() === 'JPG' || mimeM[1].toUpperCase() === 'JPEG') ? 'JPEG' : 'PNG';
-                doc.addImage(logoDataUrl, fmtL, margL, 8 + 3, 11, 11);
+                doc.addImage(logoDataUrl, 'PNG', margL, 5 + 3, 11, 11);
             } catch { /* ok */ }
         }
         const txtX = logoDataUrl ? margL + 15 : margL;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(30, 30, 30);
-        doc.text(titulo.toUpperCase(), txtX, 8 + 11);
+        doc.text(titulo.toUpperCase(), txtX, 5 + 11);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         doc.setTextColor(110, 110, 110);
-        doc.text(snapLabel + '  |  ' + escolaNome, margR, 8 + 14.5, { align: 'right' });
+        doc.text(snapLabel + '  |  ' + escolaNome, margR, 5 + 14.5, { align: 'right' });
     }
 
     function pdfRodapeSecundario() {
@@ -1832,12 +1902,7 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
     }
 
     function pdfBordaSecundaria() {
-        doc.setDrawColor(...COR_ACCENT);
-        doc.setLineWidth(0.6);
-        doc.rect(8, 8, 194, 281, 'S');
-        doc.setLineWidth(0.2);
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(10, 10, 190, 277, 'S');
+        /* Sem borda externa — sem tinta nas margens */
     }
 
     /* Verifica espaço e faz nova página se necessário */
@@ -1847,41 +1912,12 @@ async function gerarComunicadoSuspensaoPDF({ aluno, responsavel, dataInicio, dat
             pdfBordaSecundaria();
             pdfCabecalhoSecundario(tituloHeader);
             pdfRodapeSecundario();
-            return 30;
+            return 28;
         }
         return yAtual;
     }
 
-    /* Tenta buscar atividades via portal ─────────────────── */
-    let portalData   = null;
-    let portalEmail  = aluno.email || '';   /* e-mail que veio do Supabase (pode estar vazio) */
-    let portalUserId = '';
-    let portalVinculado = false;            /* true se conseguimos dados do Classroom */
-
-    /* 1. Tenta direto pelo email do cadastro */
-    if (portalEmail) {
-        try {
-            const pRes = await api(`/admin/portal-aluno/preview?email=${encodeURIComponent(portalEmail)}`);
-            if (pRes.ok) { portalData = await pRes.json(); portalVinculado = true; }
-        } catch { /* ok */ }
-    }
-
-    /* 2. Se não tem email ou não achou, tenta encontrar userId pelo nome do aluno */
-    if (!portalVinculado) {
-        try {
-            const buscarRes = await api(`/admin/portal-aluno/buscar-userId-por-nome?nome=${encodeURIComponent(nomeAluno)}`);
-            if (buscarRes.ok) {
-                const buscarData = await buscarRes.json();
-                portalUserId = buscarData.userId || '';
-                if (!portalEmail) portalEmail = buscarData.email || '';
-                if (portalUserId) {
-                    const pRes2 = await api(`/admin/portal-aluno/preview?userId=${encodeURIComponent(portalUserId)}`);
-                    if (pRes2.ok) { portalData = await pRes2.json(); portalVinculado = true; }
-                }
-            }
-        } catch { /* ok */ }
-    }
-
+    /* portalData já foi buscado no início da função */
     const cursos      = portalData?.cursos || [];
     const totalPend   = portalData?.totalPendentes  || 0;
     const totalZer    = portalData?.totalZeradas    || 0;
