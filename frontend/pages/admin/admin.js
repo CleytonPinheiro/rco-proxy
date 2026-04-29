@@ -994,6 +994,8 @@ window.salvarConfig = async function (chave) {
 
 let _escolaLogoBase64Pendente = null;
 
+let _escolaCamposListenersOk = false;
+
 async function carregarDadosEscola() {
     try {
         const res = await api('/admin/config');
@@ -1006,8 +1008,27 @@ async function carregarDadosEscola() {
 
         const elNome = document.getElementById('escolaNomeOficial');
         const elEnd  = document.getElementById('escolaEndereco');
-        if (elNome) elNome.value = nome;
-        if (elEnd)  elEnd.value  = end;
+
+        const pendingNome = sessionStorage.getItem('escolaNomePendente');
+        const pendingEnd  = sessionStorage.getItem('escolaEnderecoPendente');
+
+        if (elNome) {
+            elNome.value = pendingNome !== null ? pendingNome : nome;
+            if (!_escolaCamposListenersOk) {
+                elNome.addEventListener('input', () => {
+                    sessionStorage.setItem('escolaNomePendente', elNome.value);
+                });
+            }
+        }
+        if (elEnd) {
+            elEnd.value = pendingEnd !== null ? pendingEnd : end;
+            if (!_escolaCamposListenersOk) {
+                elEnd.addEventListener('input', () => {
+                    sessionStorage.setItem('escolaEnderecoPendente', elEnd.value);
+                });
+            }
+        }
+        _escolaCamposListenersOk = true;
 
         _escolaLogoBase64Pendente = null;
         const pending = sessionStorage.getItem('escolaLogoPendente');
@@ -1170,6 +1191,8 @@ window.salvarDadosEscola = async function () {
         }
         sessionStorage.removeItem('escolaLogoPendente');
         sessionStorage.removeItem('escolaLogoResizeNote');
+        sessionStorage.removeItem('escolaNomePendente');
+        sessionStorage.removeItem('escolaEnderecoPendente');
         showToast('Dados da escola salvos com sucesso!', 'success');
     } catch (e) {
         showToast('Erro ao salvar: ' + e.message, 'error');
