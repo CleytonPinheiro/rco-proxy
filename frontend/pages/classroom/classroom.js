@@ -3078,10 +3078,37 @@ function abrirModalGrupo(grupo = null) {
     const pontosNoGrupo = {};
     (grupo?.atividades || []).forEach(a => { pontosNoGrupo[a.atividade_id] = a.pontos_max; });
 
+    /* Atividades vinculadas em OUTROS grupos (qualquer trimestre/ano) — devem
+       ficar fora da lista, pois o usuário só pode adicionar órfãs ou manter
+       as que já pertencem a este grupo. */
+    const ativsEmOutrosGrupos = new Map(); // id → nome do grupo dono
+    gruposCache.forEach(g => {
+        if (grupo && g.id === grupo.id) return;
+        (g.atividades || []).forEach(ga => {
+            if (!ativsEmOutrosGrupos.has(ga.atividade_id)) {
+                ativsEmOutrosGrupos.set(ga.atividade_id, `${g.nome} (${g.trimestre}º/${g.ano})`);
+            }
+        });
+    });
+
+    const ativsVisiveis = atividadesCache.filter(a =>
+        ativsNoGrupo.has(a.id) || !ativsEmOutrosGrupos.has(a.id)
+    );
+    const nOcultas = atividadesCache.length - ativsVisiveis.length;
+
     if (!atividadesCache.length) {
         elModalAtivs.innerHTML = '<div class="cl-empty-state" style="padding:12px">Selecione uma disciplina primeiro.</div>';
+    } else if (!ativsVisiveis.length) {
+        elModalAtivs.innerHTML = `
+            <div class="cl-empty-state" style="padding:14px">
+                <p style="margin:0 0 6px"><strong>Nenhuma atividade disponível.</strong></p>
+                <p style="margin:0;font-size:.78rem">Todas as ${atividadesCache.length} atividades deste curso já estão em outros grupos.</p>
+            </div>`;
     } else {
-        elModalAtivs.innerHTML = atividadesCache.map(a => {
+        const avisoOcultas = nOcultas > 0
+            ? `<div class="cl-modal-ativ-info">ℹ ${nOcultas} atividade${nOcultas !== 1 ? 's' : ''} oculta${nOcultas !== 1 ? 's' : ''} — já ${nOcultas !== 1 ? 'pertencem' : 'pertence'} a outro grupo.</div>`
+            : '';
+        elModalAtivs.innerHTML = avisoOcultas + ativsVisiveis.map(a => {
             // Para atividades já no grupo: usa pontos_max do banco (editável pelo professor)
             // Se pontos_max do banco for null, cai para maxPoints do Classroom como fallback
             // Para atividades novas (não vinculadas): usa maxPoints da API do Classroom
