@@ -1025,16 +1025,17 @@ export function createClassroomRouter(deps = {}) {
                 const novoOrigemId = g.grupo_origem_id ? mapaIdOrigemDestino[g.grupo_origem_id] : null;
                 if (!novoOrigemId) continue;
                 /* Rec do novo período: cadeado FECHADO (data_fechamento herdada da rec
-                   do período anterior). data_inicio fica NULL — será preenchida
-                   automaticamente quando o novo grupo principal for fechado pelo professor. */
+                   do período anterior). data_inicio também recebe a data herdada (placeholder
+                   visível). Será sobrescrita automaticamente quando o novo grupo principal
+                   for fechado pelo professor (com a real data de corte do trimestre novo). */
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, data_fechamento, trimestre, ano)
-                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8,$9) RETURNING id`,
-                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, dataHerdada, tDest, aDest]
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, data_inicio, data_fechamento, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8,$9,$10) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, dataHerdada, dataHerdada, tDest, aDest]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id, dataFechamento: dataHerdada });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id, dataInicio: dataHerdada, dataFechamento: dataHerdada });
             }
 
             /* Replica fontes mapeando IDs antigos → novos quando possível.
@@ -1711,14 +1712,14 @@ export function createClassroomRouter(deps = {}) {
             );
 
             /* Propaga para a recuperação vinculada: define data_inicio = data_fechamento
-               do grupo principal SOMENTE se a recuperação ainda não tiver data_inicio
-               (não sobrescreve uma data definida manualmente pelo professor). */
+               do grupo principal. Sobrescreve qualquer valor anterior (placeholder do clone
+               ou data antiga) — fechar o grupo principal é a ação que oficialmente define
+               quando a recuperação começa a contar. */
             const { rowCount: recAtualizadas } = await pool.query(
                 `UPDATE classroom_grupos
                     SET data_inicio = $1
                   WHERE grupo_origem_id = $2
-                    AND tipo = 'recuperacao'
-                    AND data_inicio IS NULL`,
+                    AND tipo = 'recuperacao'`,
                 [dt.toISOString(), req.params.id]
             );
             if (recAtualizadas > 0) {
