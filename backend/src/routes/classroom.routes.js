@@ -774,7 +774,9 @@ export function createClassroomRouter(deps = {}) {
         const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
-        const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
+        /* data_inicio é permitida para AMBOS os tipos: na rec marca quando começa a contar
+           para recuperação; no normal marca o início do período (herdado do clone). */
+        const dataInicioVal = dataInicio || null;
         const trimestreVal = Number(trimestre) >= 1 && Number(trimestre) <= 3 ? Number(trimestre) : 1;
         const anoVal       = Number(ano) > 2000 ? Number(ano) : new Date().getFullYear();
         try {
@@ -797,7 +799,7 @@ export function createClassroomRouter(deps = {}) {
         const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
-        const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
+        const dataInicioVal = dataInicio || null;
         const trimestreVal = Number(trimestre) >= 1 && Number(trimestre) <= 3 ? Number(trimestre) : 1;
         const anoVal       = Number(ano) > 2000 ? Number(ano) : new Date().getFullYear();
         try {
@@ -979,16 +981,18 @@ export function createClassroomRouter(deps = {}) {
             const normaisOrig = origemRows.filter(g => g.tipo === 'normal');
             const recsOrig    = origemRows.filter(g => g.tipo === 'recuperacao');
 
-            /* Data herdada: maior data_fechamento entre os grupos do período de origem.
-               Será aplicada como data_fechamento dos NOVOS grupos normais (planejamento
-               do fechamento do período) — e, em consequência, como data_inicio das novas
-               recuperações (a recuperação começa quando o grupo principal fecha).
-               Se nenhum grupo do período tiver fechamento, fica NULL. */
+            /* Data de corte herdada: maior data_fechamento das RECUPERAÇÕES do período
+               de origem (representa "quando o trimestre anterior efetivamente terminou").
+               Esta data:
+                 • vira data_inicio dos NOVOS grupos normais (cadeado aberto, mostra
+                   visualmente desde quando o trimestre começa a contar);
+                 • vira data_fechamento das NOVAS recuperações (cadeado fechado — a
+                   recuperação herda o ritmo da anterior, professor reabre quando precisar). */
             const { rows: corteRows } = await client.query(
                 `SELECT MAX(data_fechamento) AS corte
                    FROM classroom_grupos
                   WHERE curso_id=$1 AND trimestre=$2 AND ano=$3
-                    AND tipo IN ('normal','recuperacao')`,
+                    AND tipo='recuperacao'`,
                 [courseId, tOrig, aOrig]
             );
             const dataHerdada = corteRows[0]?.corte || null;
@@ -1001,20 +1005,17 @@ export function createClassroomRouter(deps = {}) {
             const mapaIdOrigemDestino = {};
             const novosGrupos = [];
 
-            /* Mapa id_origem_normal → data_fechamento do novo normal (para encadear a rec). */
-            const fechamentoPorNormalNovo = {};
-
-            /* 1) Clona grupos normais (recebem data_fechamento herdada do período anterior) */
+            /* 1) Clona grupos normais — cadeado ABERTO (sem data_fechamento),
+                  data_inicio herdada do fechamento da rec do período anterior. */
             for (const g of normaisOrig) {
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, data_fechamento, trimestre, ano)
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, data_inicio, trimestre, ano)
                      VALUES ($1,$2,$3,$4,'normal',$5,$6,$7,$8) RETURNING id`,
                     [courseId, g.nome, g.pontos_meta, g.cor, g.cod_classe_rco, dataHerdada, tDest, aDest]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                fechamentoPorNormalNovo[g.id] = dataHerdada;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id, dataFechamento: dataHerdada });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id, dataInicio: dataHerdada });
             }
 
             /* 2) Clona grupos de recuperação vinculando ao novo grupo normal correspondente.
@@ -1023,16 +1024,17 @@ export function createClassroomRouter(deps = {}) {
             for (const g of recsOrig) {
                 const novoOrigemId = g.grupo_origem_id ? mapaIdOrigemDestino[g.grupo_origem_id] : null;
                 if (!novoOrigemId) continue;
-                /* data_inicio da rec NÃO é preenchida no clone — será definida
-                   automaticamente quando o grupo principal vinculado for fechado. */
+                /* Rec do novo período: cadeado FECHADO (data_fechamento herdada da rec
+                   do período anterior). data_inicio fica NULL — será preenchida
+                   automaticamente quando o novo grupo principal for fechado pelo professor. */
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, trimestre, ano)
-                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8) RETURNING id`,
-                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, tDest, aDest]
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, data_fechamento, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8,$9) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, dataHerdada, tDest, aDest]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id, dataFechamento: dataHerdada });
             }
 
             /* Replica fontes mapeando IDs antigos → novos quando possível.

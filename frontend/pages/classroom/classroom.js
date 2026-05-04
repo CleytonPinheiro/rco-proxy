@@ -1233,7 +1233,7 @@ function renderGrupos() {
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
-                    ${g.tipo === 'recuperacao' && dataInicioStr ? `&bull; <span class="cl-grupo-data-rec">📅 a partir de ${dataInicioStr}</span>` : ''}
+                    ${dataInicioStr ? `&bull; <span class="cl-grupo-data-rec">📅 a partir de ${dataInicioStr}</span>` : ''}
                 </div>
             </div>
             <div class="cl-grupo-acoes">
