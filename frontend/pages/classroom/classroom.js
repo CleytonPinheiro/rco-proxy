@@ -3205,8 +3205,13 @@ function atualizarClonePreview() {
         elClonePreview.innerHTML = `<span style="color:#dc2626">⚠ Já existem grupos no ${tDest}º Trimestre/${aDest}. Exclua-os antes ou escolha outro destino.</span>`;
         elCloneConfirmar.disabled = true;
     } else {
-        const n = gruposCache.filter(g => g.trimestre === tOrig && g.ano === aOrig && g.tipo === 'normal').length;
-        elClonePreview.innerHTML = `Serão criados <strong>${n}</strong> grupo(s) vazios no <strong>${tDest}º Trimestre/${aDest}</strong>.`;
+        const grupsOrig = gruposCache.filter(g => g.trimestre === tOrig && g.ano === aOrig);
+        const nNormais = grupsOrig.filter(g => g.tipo === 'normal').length;
+        const nRecs    = grupsOrig.filter(g => g.tipo === 'recuperacao').length;
+        const detalheRec = nRecs > 0
+            ? ` + <strong>${nRecs}</strong> de recuperação (estrutura, sem atividades)`
+            : '';
+        elClonePreview.innerHTML = `Serão criados <strong>${nNormais}</strong> grupo(s) normais${detalheRec} no <strong>${tDest}º Trimestre/${aDest}</strong>, todos vazios.`;
         elCloneConfirmar.disabled = false;
     }
 }

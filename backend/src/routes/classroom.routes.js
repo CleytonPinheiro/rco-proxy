@@ -963,23 +963,32 @@ export function createClassroomRouter(deps = {}) {
                 });
             }
 
-            /* Origem: somente grupos NORMAIS (a recuperação será criada conforme demanda) */
+            /* Origem: clona grupos NORMAIS primeiro e, em seguida, os de RECUPERAÇÃO
+               vinculados a eles (estrutura vazia — sem atividades — mas mantendo
+               nome, cor, meta, RCO e o vínculo com o novo grupo normal correspondente).
+               Datas (data_inicio / data_fechamento) NÃO são copiadas: pertencem ao
+               período de origem e devem ser definidas pelo professor no novo período. */
             const { rows: origemRows } = await client.query(
-                `SELECT id, nome, pontos_meta, cor, cod_classe_rco
+                `SELECT id, nome, pontos_meta, cor, cod_classe_rco, tipo, grupo_origem_id
                    FROM classroom_grupos
-                  WHERE curso_id=$1 AND trimestre=$2 AND ano=$3 AND tipo='normal'
-                  ORDER BY id`,
+                  WHERE curso_id=$1 AND trimestre=$2 AND ano=$3 AND tipo IN ('normal','recuperacao')
+                  ORDER BY (tipo='normal') DESC, id`,
                 [courseId, tOrig, aOrig]
             );
 
-            if (!origemRows.length) {
+            const normaisOrig = origemRows.filter(g => g.tipo === 'normal');
+            const recsOrig    = origemRows.filter(g => g.tipo === 'recuperacao');
+
+            if (!normaisOrig.length) {
                 await client.query('ROLLBACK');
                 return res.status(404).json({ erro: 'Nenhum grupo normal encontrado no trimestre de origem.' });
             }
 
             const mapaIdOrigemDestino = {};
             const novosGrupos = [];
-            for (const g of origemRows) {
+
+            /* 1) Clona grupos normais */
+            for (const g of normaisOrig) {
                 const { rows: ins } = await client.query(
                     `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, trimestre, ano)
                      VALUES ($1,$2,$3,$4,'normal',$5,$6,$7) RETURNING id`,
@@ -987,7 +996,23 @@ export function createClassroomRouter(deps = {}) {
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, origemId: g.id });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id });
+            }
+
+            /* 2) Clona grupos de recuperação vinculando ao novo grupo normal correspondente.
+                  Se a recuperação apontava para um normal que não foi clonado (caso atípico),
+                  pula — não há onde ancorar. */
+            for (const g of recsOrig) {
+                const novoOrigemId = g.grupo_origem_id ? mapaIdOrigemDestino[g.grupo_origem_id] : null;
+                if (!novoOrigemId) continue;
+                const { rows: ins } = await client.query(
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, tDest, aDest]
+                );
+                const novoId = ins[0].id;
+                mapaIdOrigemDestino[g.id] = novoId;
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id });
             }
 
             /* Replica fontes mapeando IDs antigos → novos quando possível.
