@@ -979,6 +979,18 @@ export function createClassroomRouter(deps = {}) {
             const normaisOrig = origemRows.filter(g => g.tipo === 'normal');
             const recsOrig    = origemRows.filter(g => g.tipo === 'recuperacao');
 
+            /* Data de corte sugerida para as novas recuperações: a maior data_fechamento
+               registrada entre os grupos do período de origem (normal ou recuperação).
+               Se nenhum grupo do período tiver fechamento, fica NULL e o professor define depois. */
+            const { rows: corteRows } = await client.query(
+                `SELECT MAX(data_fechamento) AS corte
+                   FROM classroom_grupos
+                  WHERE curso_id=$1 AND trimestre=$2 AND ano=$3
+                    AND tipo IN ('normal','recuperacao')`,
+                [courseId, tOrig, aOrig]
+            );
+            const dataInicioRec = corteRows[0]?.corte || null;
+
             if (!normaisOrig.length) {
                 await client.query('ROLLBACK');
                 return res.status(404).json({ erro: 'Nenhum grupo normal encontrado no trimestre de origem.' });
@@ -1006,13 +1018,13 @@ export function createClassroomRouter(deps = {}) {
                 const novoOrigemId = g.grupo_origem_id ? mapaIdOrigemDestino[g.grupo_origem_id] : null;
                 if (!novoOrigemId) continue;
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, trimestre, ano)
-                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8) RETURNING id`,
-                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, tDest, aDest]
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8,$9) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, dataInicioRec, g.cod_classe_rco, tDest, aDest]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id, dataInicio: dataInicioRec });
             }
 
             /* Replica fontes mapeando IDs antigos → novos quando possível.
