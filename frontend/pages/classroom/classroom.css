@@ -3640,3 +3640,43 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 .cl-pedagogo-toggle:hover { background: var(--border,#e5e7eb); }
 
+
+/* ── Aba "Sem grupo" ── */
+.cl-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 4px;
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 9px;
+    font-size: .7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.cl-sem-grupo-lista {
+    display: flex;
+    flex-direction: column;
+}
+
+.cl-sem-grupo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background .12s;
+}
+.cl-sem-grupo-item:hover { background: #f8fafc; }
+.cl-sem-grupo-item input[type=checkbox] { flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+.cl-sem-grupo-info { flex: 1; min-width: 0; }
+.cl-sem-grupo-nome { font-size: .88rem; color: #1e293b; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-sem-grupo-meta { font-size: .76rem; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+
+.cl-icon-btn--clonar-tri { color: #6366f1; }
+.cl-icon-btn--clonar-tri:hover { background: #eef2ff; }

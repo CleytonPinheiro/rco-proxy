@@ -507,6 +507,14 @@
                                                                 🔄
                                                         </button>
                                                         <button
+                                                                class="cl-icon-btn cl-icon-btn--clonar-tri"
+                                                                id="clBtnClonarTrimestre"
+                                                                style="display: none"
+                                                                title="Clonar todos os grupos de um trimestre para outro (estrutura, sem atividades)"
+                                                        >
+                                                                📋
+                                                        </button>
+                                                        <button
                                                                 class="cl-icon-btn cl-icon-btn--gaveta"
                                                                 id="clBtnGaveta"
                                                                 onclick="toggleGaveta()"
@@ -532,6 +540,10 @@
                                                 <button class="cl-tab cl-tab--ativo" id="clTabAtiv">
                                                         Atividades
                                                 </button>
+                                                <button class="cl-tab" id="clTabSemGrupo" title="Atividades que não estão em nenhum grupo">
+                                                        ⚪ Sem grupo
+                                                        <span id="clSemGrupoBadge" class="cl-tab-badge" style="display:none">0</span>
+                                                </button>
                                                 <button class="cl-tab" id="clTabGrupos">Grupos</button>
                                                 <button class="cl-tab" id="clTabAudit">
                                                         <svg
@@ -555,6 +567,13 @@
                                         <div class="cl-lista" id="clAtivLista">
                                                 <div class="cl-empty-state">
                                                         <p>← Selecione uma disciplina para ver as atividades</p>
+                                                </div>
+                                        </div>
+
+                                        <!-- Lista de atividades órfãs (sem grupo) -->
+                                        <div class="cl-lista" id="clSemGrupoLista" style="display: none">
+                                                <div class="cl-empty-state">
+                                                        <p>Selecione uma disciplina para ver atividades sem grupo.</p>
                                                 </div>
                                         </div>
 
@@ -956,6 +975,18 @@
                                                 </p>
                                         </div>
 
+                                        <label class="cl-label" style="margin-top: 12px">Período letivo</label>
+                                        <div class="cl-trimestre-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                                                <select class="cl-select" id="clGrupoTrimestre" style="max-width:160px">
+                                                        <option value="1">1º Trimestre</option>
+                                                        <option value="2">2º Trimestre</option>
+                                                        <option value="3">3º Trimestre</option>
+                                                </select>
+                                                <input type="number" class="cl-input" id="clGrupoAno"
+                                                        placeholder="Ano" min="2024" max="2099" step="1"
+                                                        style="max-width:110px"/>
+                                        </div>
+
                                         <label class="cl-label" style="margin-top: 12px"
                                                 >Nome do grupo</label
                                         >
@@ -1044,6 +1075,44 @@
                                         <button class="cl-btn cl-btn--primary" id="clGrupoModalSalvar">
                                                 Salvar grupo
                                         </button>
+                                </div>
+                        </div>
+                </div>
+
+                <!-- ─── Modal Clonar Trimestre ─── -->
+                <div class="cl-modal-overlay" id="clCloneTrimestreModal">
+                        <div class="cl-modal" style="max-width:480px">
+                                <div class="cl-modal-head">
+                                        <h3>📋 Clonar trimestre</h3>
+                                        <button class="cl-modal-close" id="clCloneModalFechar">✕</button>
+                                </div>
+                                <div class="cl-modal-body">
+                                        <p style="font-size:.88rem;color:var(--cl-text-soft,#64748b);margin:0 0 14px;line-height:1.5">
+                                                Cria cópias de todos os grupos <strong>normais</strong> do trimestre escolhido — preservando
+                                                nome, cor, meta de pontos, código RCO e fontes — sem incluir as atividades.
+                                                As atividades novas (órfãs) ficam disponíveis na aba <strong>"Sem grupo"</strong>
+                                                para você distribuir nos novos grupos.
+                                        </p>
+
+                                        <label class="cl-label">Origem (clonar A PARTIR de)</label>
+                                        <select class="cl-select" id="clCloneOrigem"></select>
+
+                                        <label class="cl-label" style="margin-top:14px">Destino (criar PARA)</label>
+                                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                                                <select class="cl-select" id="clCloneDestinoTri" style="max-width:170px">
+                                                        <option value="1">1º Trimestre</option>
+                                                        <option value="2">2º Trimestre</option>
+                                                        <option value="3">3º Trimestre</option>
+                                                </select>
+                                                <input type="number" class="cl-input" id="clCloneDestinoAno"
+                                                        min="2024" max="2099" step="1" style="max-width:110px"/>
+                                        </div>
+
+                                        <div id="clClonePreview" style="margin-top:14px;font-size:.85rem;color:var(--cl-text-soft,#64748b)"></div>
+                                </div>
+                                <div class="cl-modal-foot">
+                                        <button class="cl-btn cl-btn--outline" id="clCloneCancelar">Cancelar</button>
+                                        <button class="cl-btn cl-btn--primary" id="clCloneConfirmar">Clonar grupos</button>
                                 </div>
                         </div>
                 </div>

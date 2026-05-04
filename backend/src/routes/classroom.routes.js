@@ -61,6 +61,15 @@ async function migrarTabelas() {
         /* Migração incremental: cod_classe_rco para vincular ao RCO */
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS cod_classe_rco TEXT`);
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS data_fechamento TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS trimestre SMALLINT`);
+        await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS ano        INT`);
+        /* Backfill: grupos sem trimestre/ano → assume trimestre 1 do ano da criação */
+        await pool.query(`
+            UPDATE classroom_grupos
+               SET trimestre = COALESCE(trimestre, 1),
+                   ano       = COALESCE(ano, EXTRACT(YEAR FROM criado_em)::INT)
+             WHERE trimestre IS NULL OR ano IS NULL
+        `);
         await pool.query(`ALTER TABLE classroom_grupo_atividades ADD COLUMN IF NOT EXISTS due_date_original JSONB`);
         await pool.query(`
             CREATE TABLE IF NOT EXISTS classroom_entregas_tardias (
@@ -750,6 +759,8 @@ export function createClassroomRouter(deps = {}) {
                 recuperacaoId:  g.rec_id      ?? null,
                 recuperacaoNome:g.rec_nome    ?? null,
                 codClasseRco:   g.cod_classe_rco_efetivo || null,
+                trimestre:      g.trimestre ?? 1,
+                ano:            g.ano ?? new Date().getFullYear(),
                 fontes:         fontesMap[g.id] || [],
             })));
         } catch (e) {
@@ -760,16 +771,19 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Criar grupo ── */
     router.post('/classroom/groups', requireFuncionalidade('classroom-escrita'), async (req, res) => {
-        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento } = req.body;
+        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
+        const trimestreVal = Number(trimestre) >= 1 && Number(trimestre) <= 3 ? Number(trimestre) : 1;
+        const anoVal       = Number(ano) > 2000 ? Number(ano) : new Date().getFullYear();
         try {
             const { rows } = await pool.query(
-                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, data_fechamento)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, data_fechamento, trimestre, ano)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
                 [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4',
-                 tipoVal, grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null]
+                 tipoVal, grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null,
+                 trimestreVal, anoVal]
             );
             res.json({ id: rows[0].id });
         } catch (e) {
@@ -780,20 +794,235 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Atualizar grupo ── */
     router.put('/classroom/groups/:id', requireFuncionalidade('classroom-escrita'), async (req, res) => {
-        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento } = req.body;
+        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = tipoVal === 'recuperacao' && dataInicio ? dataInicio : null;
+        const trimestreVal = Number(trimestre) >= 1 && Number(trimestre) <= 3 ? Number(trimestre) : 1;
+        const anoVal       = Number(ano) > 2000 ? Number(ano) : new Date().getFullYear();
         try {
             await pool.query(
-                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6, cod_classe_rco=$7, data_fechamento=$8 WHERE id=$9`,
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6, cod_classe_rco=$7, data_fechamento=$8, trimestre=$9, ano=$10 WHERE id=$11`,
                 [nome.trim(), pontosMeta || 40, cor || '#4285F4', tipoVal,
-                 grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null, req.params.id]
+                 grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null,
+                 trimestreVal, anoVal, req.params.id]
             );
             res.json({ ok: true });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao atualizar grupo:', e.message);
             res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Atividades órfãs (sem grupo em nenhum período) de um curso ── */
+    router.get('/classroom/orphan-activities', async (req, res) => {
+        const { courseId } = req.query;
+        if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
+        const auth = await getAuthenticatedClient(req);
+        if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const classroom = google.classroom({ version: 'v1', auth });
+            /* Pagina TODAS as atividades do curso (não basta a primeira página) */
+            const ativs = [];
+            let pageToken = undefined;
+            do {
+                const { data } = await classroom.courses.courseWork.list({
+                    courseId, pageSize: 200, orderBy: 'updateTime desc', pageToken,
+                });
+                if (data.courseWork) ativs.push(...data.courseWork);
+                pageToken = data.nextPageToken || undefined;
+            } while (pageToken);
+
+            const { rows } = await pool.query(
+                `SELECT DISTINCT ga.atividade_id
+                   FROM classroom_grupo_atividades ga
+                   JOIN classroom_grupos g ON g.id = ga.grupo_id
+                  WHERE g.curso_id = $1`,
+                [courseId]
+            );
+            const vinculadas = new Set(rows.map(r => r.atividade_id));
+
+            const orfas = ativs
+                .filter(a => !vinculadas.has(a.id))
+                .map(a => ({
+                    id:        a.id,
+                    titulo:    a.title || 'Sem título',
+                    pontos:    a.maxPoints ?? null,
+                    state:     a.state,
+                    dueDate:   a.dueDate || null,
+                    creationTime: a.creationTime || null,
+                    updateTime:   a.updateTime   || null,
+                    link:      a.alternateLink || null,
+                }));
+            res.json({ total: orfas.length, atividades: orfas });
+        } catch (e) {
+            console.error('[CLASSROOM] Erro ao listar atividades órfãs:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Adicionar uma ou mais atividades a um grupo (sem remover existentes) ──
+       Mantém a invariante: cada atividade pode estar em no máximo UM grupo
+       dentro do mesmo curso. Atividades já vinculadas em outros grupos do
+       mesmo curso são reportadas como conflito e ignoradas. */
+    router.post('/classroom/groups/:id/activities', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+        const { atividades } = req.body;
+        if (!Array.isArray(atividades) || !atividades.length) {
+            return res.status(400).json({ erro: 'atividades (array) obrigatório.' });
+        }
+        const grupoId = req.params.id;
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            /* 1) Valida o grupo destino e descobre o curso dele */
+            const { rows: gRows } = await client.query(
+                `SELECT curso_id FROM classroom_grupos WHERE id=$1 FOR UPDATE`,
+                [grupoId]
+            );
+            if (!gRows.length) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ erro: 'Grupo não encontrado.' });
+            }
+            const cursoId = gRows[0].curso_id;
+
+            /* 2) Atividades JÁ vinculadas em qualquer grupo desse mesmo curso */
+            const ids = atividades.map(a => a?.atividade_id).filter(Boolean);
+            const { rows: jaRows } = await client.query(
+                `SELECT ga.atividade_id, g.id AS grupo_id, g.nome AS grupo_nome
+                   FROM classroom_grupo_atividades ga
+                   JOIN classroom_grupos g ON g.id = ga.grupo_id
+                  WHERE g.curso_id = $1 AND ga.atividade_id = ANY($2::text[])`,
+                [cursoId, ids]
+            );
+            const conflitos = {};
+            jaRows.forEach(r => { conflitos[r.atividade_id] = { grupoId: r.grupo_id, grupoNome: r.grupo_nome }; });
+
+            let inseridas = 0;
+            const ignoradas = [];
+            for (const a of atividades) {
+                if (!a?.atividade_id) continue;
+                if (conflitos[a.atividade_id]) {
+                    ignoradas.push({ atividade_id: a.atividade_id, conflito: conflitos[a.atividade_id] });
+                    continue;
+                }
+                const r = await client.query(
+                    `INSERT INTO classroom_grupo_atividades (grupo_id, atividade_id, atividade_titulo, pontos_max)
+                     VALUES ($1,$2,$3,$4) ON CONFLICT (grupo_id, atividade_id) DO NOTHING`,
+                    [grupoId, a.atividade_id, a.atividade_titulo || '', a.pontos_max ?? null]
+                );
+                inseridas += r.rowCount;
+            }
+            await client.query('COMMIT');
+            res.json({ ok: true, inseridas, ignoradas });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            console.error('[CLASSROOM] Erro ao adicionar atividades ao grupo:', e.message);
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    /* ── Clonar trimestre inteiro: cria grupos vazios espelhando a estrutura ── */
+    router.post('/classroom/groups/clone-trimester', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+        const { courseId, trimestreOrigem, anoOrigem, trimestreDestino, anoDestino } = req.body;
+        if (!courseId)         return res.status(400).json({ erro: 'courseId obrigatório.' });
+        if (!trimestreOrigem)  return res.status(400).json({ erro: 'trimestreOrigem obrigatório.' });
+        if (!trimestreDestino) return res.status(400).json({ erro: 'trimestreDestino obrigatório.' });
+
+        const tOrig = Number(trimestreOrigem);
+        const aOrig = Number(anoOrigem) || new Date().getFullYear();
+        const tDest = Number(trimestreDestino);
+        const aDest = Number(anoDestino) || new Date().getFullYear();
+
+        if (tOrig === tDest && aOrig === aDest) {
+            return res.status(400).json({ erro: 'Trimestre de origem e destino são iguais.' });
+        }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            /* Lock cooperativo por (curso, destino) — evita corrida com outros clones */
+            const { rows: lockRows } = await client.query(
+                `SELECT hashtext($1::text || '|' || $2::int || '|' || $3::int) AS k`,
+                [String(courseId), tDest, aDest]
+            );
+            await client.query(`SELECT pg_advisory_xact_lock($1::bigint)`, [lockRows[0].k]);
+
+            /* Verifica se já existem grupos nesse trimestre destino para o curso */
+            const { rows: existentes } = await client.query(
+                `SELECT COUNT(*)::INT AS n FROM classroom_grupos
+                  WHERE curso_id=$1 AND trimestre=$2 AND ano=$3`,
+                [courseId, tDest, aDest]
+            );
+            if (existentes[0].n > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    erro: `Já existem ${existentes[0].n} grupo(s) no ${tDest}º trimestre/${aDest}. Exclua antes ou escolha outro destino.`,
+                });
+            }
+
+            /* Origem: somente grupos NORMAIS (a recuperação será criada conforme demanda) */
+            const { rows: origemRows } = await client.query(
+                `SELECT id, nome, pontos_meta, cor, cod_classe_rco
+                   FROM classroom_grupos
+                  WHERE curso_id=$1 AND trimestre=$2 AND ano=$3 AND tipo='normal'
+                  ORDER BY id`,
+                [courseId, tOrig, aOrig]
+            );
+
+            if (!origemRows.length) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ erro: 'Nenhum grupo normal encontrado no trimestre de origem.' });
+            }
+
+            const mapaIdOrigemDestino = {};
+            const novosGrupos = [];
+            for (const g of origemRows) {
+                const { rows: ins } = await client.query(
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'normal',$5,$6,$7) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, g.cod_classe_rco, tDest, aDest]
+                );
+                const novoId = ins[0].id;
+                mapaIdOrigemDestino[g.id] = novoId;
+                novosGrupos.push({ id: novoId, nome: g.nome, origemId: g.id });
+            }
+
+            /* Replica fontes mapeando IDs antigos → novos quando possível.
+               Fontes que apontam para grupos fora desse trimestre são preservadas como estão. */
+            const idsOrigem = origemRows.map(g => g.id);
+            const { rows: fontesRows } = await client.query(
+                `SELECT grupo_id, fonte_grupo_id, peso
+                   FROM classroom_grupo_fontes
+                  WHERE grupo_id = ANY($1::int[])`,
+                [idsOrigem]
+            );
+            for (const f of fontesRows) {
+                const novoGrupoId = mapaIdOrigemDestino[f.grupo_id];
+                const novaFonteId = mapaIdOrigemDestino[f.fonte_grupo_id] || f.fonte_grupo_id;
+                if (!novoGrupoId || novoGrupoId === novaFonteId) continue;
+                await client.query(
+                    `INSERT INTO classroom_grupo_fontes (grupo_id, fonte_grupo_id, peso)
+                     VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+                    [novoGrupoId, novaFonteId, f.peso]
+                );
+            }
+
+            await client.query('COMMIT');
+            res.json({
+                ok: true,
+                grupos: novosGrupos,
+                trimestreDestino: tDest,
+                anoDestino: aDest,
+            });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            console.error('[CLASSROOM] Erro ao clonar trimestre:', e.message);
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
         }
     });
 

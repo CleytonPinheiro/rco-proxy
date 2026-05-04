@@ -59,7 +59,9 @@ let cursoAtivo      = null;   // { id, nome, link }
 let ativAtiva       = null;   // { id, titulo, pontos }
 let grupoAtivo      = null;   // { id, nome, pontosMeta, cor, atividades }
 let _grupoAnterior  = null;   // salva grupo ao navegar para atividade individual (botão voltar)
-let viewMode        = 'atividades'; // 'atividades' | 'grupos' | 'auditoria'
+let viewMode        = 'atividades'; // 'atividades' | 'sem-grupo' | 'grupos' | 'auditoria'
+let semGrupoCache   = [];            // atividades órfãs do curso atual
+const semGrupoSel   = new Set();     // ids selecionados na aba "Sem grupo"
 let alunos          = {};     // { [userId]: { nome, email, foto } }
 let submissions     = [];     // entregas da atividade individual
 let todasNotas      = [];     // cache filtrado da atividade individual
@@ -146,8 +148,14 @@ const elFiltroStatus   = document.getElementById('clFiltroStatus');
 const elToast          = document.getElementById('clToast');
 const elTabs           = document.getElementById('clTabs');
 const elTabAtiv        = document.getElementById('clTabAtiv');
+const elTabSemGrupo    = document.getElementById('clTabSemGrupo');
+const elSemGrupoBadge  = document.getElementById('clSemGrupoBadge');
+const elSemGrupoLista  = document.getElementById('clSemGrupoLista');
 const elTabGrupos      = document.getElementById('clTabGrupos');
 const elTabAudit       = document.getElementById('clTabAudit');
+const elBtnClonarTri   = document.getElementById('clBtnClonarTrimestre');
+const elGrupoTrimestre = document.getElementById('clGrupoTrimestre');
+const elGrupoAno       = document.getElementById('clGrupoAno');
 const elSideNavSolitaBadge = document.getElementById('sideNavSolitaBadge');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
@@ -336,14 +344,29 @@ document.getElementById('clBtnRefresh').addEventListener('click', () => {
 
 function resetColuna2() {
     elAtivLista.innerHTML     = '<div class="cl-empty-state"><p>← Selecione uma disciplina</p></div>';
+    elSemGrupoLista.innerHTML = '<div class="cl-empty-state"><p>Selecione uma disciplina para ver atividades sem grupo.</p></div>';
     elGrupoLista.innerHTML    = '<div class="cl-empty-state"><p>Nenhum grupo criado.<br>Clique em <strong>+</strong> para criar.</p></div>';
     elAtivCount.textContent   = 'Selecione uma disciplina';
     elColAtivTitulo.textContent = 'Atividades';
     elTabs.style.display      = 'none';
     elBtnNovoGrupo.style.display = 'none';
+    elBtnClonarTri.style.display = 'none';
     elAtivLink.style.display  = 'none';
     elAuditResults.style.display = 'none';
+    semGrupoCache = [];
+    semGrupoSel.clear();
+    atualizarBadgeSemGrupo();
     setTab('atividades');
+}
+
+function atualizarBadgeSemGrupo() {
+    if (!elSemGrupoBadge) return;
+    if (semGrupoCache.length > 0) {
+        elSemGrupoBadge.textContent = String(semGrupoCache.length);
+        elSemGrupoBadge.style.display = '';
+    } else {
+        elSemGrupoBadge.style.display = 'none';
+    }
 }
 
 function resetColuna3() {
@@ -615,21 +638,31 @@ async function selecionarCurso(curso, itemEl, cor) {
 function setTab(tab) {
     viewMode = tab;
     elTabAtiv.classList.toggle('cl-tab--ativo', tab === 'atividades');
+    elTabSemGrupo.classList.toggle('cl-tab--ativo', tab === 'sem-grupo');
     elTabGrupos.classList.toggle('cl-tab--ativo', tab === 'grupos');
     elTabAudit.classList.toggle('cl-tab--ativo', tab === 'auditoria');
 
     elAtivLista.style.display        = tab === 'atividades' ? '' : 'none';
+    elSemGrupoLista.style.display    = tab === 'sem-grupo' ? '' : 'none';
     elGrupoLista.style.display       = tab === 'grupos' ? '' : 'none';
     elAuditPanel.style.display       = tab === 'auditoria' ? '' : 'none';
     elAtivLink.style.display         = tab === 'atividades' && cursoAtivo?.link ? 'flex' : 'none';
     elBtnNovoGrupo.style.display     = tab === 'grupos' && cursoAtivo ? 'flex' : 'none';
+    elBtnClonarTri.style.display     = tab === 'grupos' && cursoAtivo && gruposCache.length ? 'flex' : 'none';
     elBtnCriarRec.style.display      = tab === 'grupos' && grupoAtivo?.tipo === 'normal' && !grupoAtivo?.recuperacaoId ? 'flex' : 'none';
-    elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos' : tab === 'auditoria' ? 'Auditoria' : 'Atividades';
+    elColAtivTitulo.textContent      = tab === 'grupos' ? 'Grupos'
+                                     : tab === 'auditoria' ? 'Auditoria'
+                                     : tab === 'sem-grupo' ? 'Sem grupo'
+                                     : 'Atividades';
 
     if (tab === 'atividades') {
         elAtivCount.textContent = atividadesCache.length
             ? `${atividadesCache.length} atividade${atividadesCache.length !== 1 ? 's' : ''}`
             : 'Selecione uma disciplina';
+    } else if (tab === 'sem-grupo') {
+        elAtivCount.textContent = semGrupoCache.length
+            ? `${semGrupoCache.length} sem grupo`
+            : 'Tudo organizado!';
     } else if (tab === 'grupos') {
         elAtivCount.textContent = gruposCache.length
             ? `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`
@@ -645,10 +678,16 @@ function setTab(tab) {
         auditAtivAtiva = null;
         resetColuna3();
     }
-    if (tab === 'grupos' && (ativAtiva || auditAtivAtiva)) {
+    if ((tab === 'grupos' || tab === 'sem-grupo') && (ativAtiva || auditAtivAtiva)) {
         ativAtiva      = null;
         auditAtivAtiva = null;
+        if (tab === 'sem-grupo') grupoAtivo = null;
         resetColuna3();
+    }
+    if (tab === 'sem-grupo') {
+        elNotasBreadcrumb.style.display = 'none';
+        elNotasBreadcrumb.textContent   = '';
+        if (cursoAtivo) renderSemGrupo();
     }
     if (tab === 'auditoria') {
         ativAtiva  = null;
@@ -663,6 +702,7 @@ function setTab(tab) {
 }
 
 elTabAtiv.addEventListener('click', () => setTab('atividades'));
+elTabSemGrupo.addEventListener('click', () => setTab('sem-grupo'));
 elTabGrupos.addEventListener('click', () => setTab('grupos'));
 elTabAudit.addEventListener('click', () => setTab('auditoria'));
 
@@ -1003,11 +1043,127 @@ elBtnExportar.addEventListener('click', () => {
 /* ══════════════════════════════════════════════════════════════
    GRUPOS
 ══════════════════════════════════════════════════════════════ */
+async function carregarSemGrupo() {
+    if (!cursoAtivo) { semGrupoCache = []; atualizarBadgeSemGrupo(); return; }
+    try {
+        const r = await api(`/orphan-activities?courseId=${cursoAtivo.id}`);
+        semGrupoCache = r.atividades || [];
+    } catch (e) {
+        console.error('[CLASSROOM] Erro ao carregar atividades sem grupo:', e.message);
+        semGrupoCache = [];
+    }
+    /* Limpa seleções que sumiram */
+    const ids = new Set(semGrupoCache.map(a => a.id));
+    [...semGrupoSel].forEach(id => { if (!ids.has(id)) semGrupoSel.delete(id); });
+    atualizarBadgeSemGrupo();
+    if (viewMode === 'sem-grupo') {
+        renderSemGrupo();
+        elAtivCount.textContent = semGrupoCache.length
+            ? `${semGrupoCache.length} sem grupo`
+            : 'Tudo organizado!';
+    }
+}
+
+function renderSemGrupo() {
+    if (!cursoAtivo) {
+        elSemGrupoLista.innerHTML = '<div class="cl-empty-state"><p>Selecione uma disciplina.</p></div>';
+        return;
+    }
+    if (!semGrupoCache.length) {
+        elSemGrupoLista.innerHTML = `
+            <div class="cl-empty-state" style="padding:24px 16px">
+                <p style="font-size:1.6rem;margin:0 0 8px">✅</p>
+                <p><strong>Tudo organizado!</strong><br>Todas as atividades deste curso já estão em algum grupo.</p>
+            </div>`;
+        return;
+    }
+
+    const opcoes = gruposCache
+        .filter(g => !g.dataFechamento)
+        .map(g => `<option value="${g.id}">${esc(g.nome)} — ${g.trimestre}º/${g.ano}</option>`)
+        .join('');
+
+    const itensHtml = semGrupoCache.map(a => {
+        const checked = semGrupoSel.has(a.id) ? 'checked' : '';
+        const pts = a.pontos != null ? `<span class="cl-ativ-pontos">${rco(a.pontos)} pts</span>` : '';
+        const due = a.dueDate ? ` &middot; entrega ${a.dueDate.day}/${a.dueDate.month}/${a.dueDate.year}` : '';
+        return `
+        <label class="cl-sem-grupo-item" data-id="${esc(a.id)}">
+            <input type="checkbox" class="cl-sem-grupo-cb" value="${esc(a.id)}" ${checked}/>
+            <div class="cl-sem-grupo-info">
+                <div class="cl-sem-grupo-nome">${esc(a.titulo)}</div>
+                <div class="cl-sem-grupo-meta">${pts}${due}</div>
+            </div>
+        </label>`;
+    }).join('');
+
+    elSemGrupoLista.innerHTML = `
+        <div class="cl-sem-grupo-toolbar" style="position:sticky;top:0;background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;z-index:5">
+            <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:#475569;cursor:pointer">
+                <input type="checkbox" id="clSemGrupoSelAll"/> Selecionar todas
+            </label>
+            <span id="clSemGrupoSelCount" style="font-size:.78rem;color:#64748b;margin-left:4px">${semGrupoSel.size} selecionada${semGrupoSel.size === 1 ? '' : 's'}</span>
+            <div style="flex:1"></div>
+            <select id="clSemGrupoDest" class="cl-select" style="max-width:240px;font-size:.82rem">
+                <option value="">— escolha um grupo —</option>
+                ${opcoes || '<option disabled>Nenhum grupo aberto disponível</option>'}
+            </select>
+            <button class="cl-btn cl-btn--sm cl-btn--primary" id="clSemGrupoAdd">Adicionar</button>
+        </div>
+        <div class="cl-sem-grupo-lista">${itensHtml}</div>`;
+
+    const cbAll  = elSemGrupoLista.querySelector('#clSemGrupoSelAll');
+    const cnt    = elSemGrupoLista.querySelector('#clSemGrupoSelCount');
+    const destEl = elSemGrupoLista.querySelector('#clSemGrupoDest');
+    const btnAdd = elSemGrupoLista.querySelector('#clSemGrupoAdd');
+    cbAll.checked = semGrupoSel.size === semGrupoCache.length && semGrupoCache.length > 0;
+
+    elSemGrupoLista.querySelectorAll('.cl-sem-grupo-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (cb.checked) semGrupoSel.add(cb.value);
+            else semGrupoSel.delete(cb.value);
+            cnt.textContent = `${semGrupoSel.size} selecionada${semGrupoSel.size === 1 ? '' : 's'}`;
+            cbAll.checked = semGrupoSel.size === semGrupoCache.length;
+        });
+    });
+    cbAll.addEventListener('change', () => {
+        if (cbAll.checked) semGrupoCache.forEach(a => semGrupoSel.add(a.id));
+        else semGrupoSel.clear();
+        elSemGrupoLista.querySelectorAll('.cl-sem-grupo-cb').forEach(cb => { cb.checked = cbAll.checked; });
+        cnt.textContent = `${semGrupoSel.size} selecionada${semGrupoSel.size === 1 ? '' : 's'}`;
+    });
+    btnAdd.addEventListener('click', async () => {
+        const grupoId = destEl.value;
+        if (!grupoId) { toast('Selecione um grupo de destino.', 'erro'); return; }
+        if (semGrupoSel.size === 0) { toast('Selecione ao menos uma atividade.', 'erro'); return; }
+        const ativs = semGrupoCache
+            .filter(a => semGrupoSel.has(a.id))
+            .map(a => ({ atividade_id: a.id, atividade_titulo: a.titulo, pontos_max: a.pontos ?? null }));
+        btnAdd.disabled = true; btnAdd.textContent = 'Adicionando...';
+        try {
+            const r = await api(`/groups/${grupoId}/activities`, { method: 'POST', body: { atividades: ativs } });
+            const nIgn = (r.ignoradas || []).length;
+            if (nIgn > 0) {
+                toast(`${r.inseridas} adicionada(s); ${nIgn} ignorada(s) — já estavam em outro grupo.`, nIgn === ativs.length ? 'erro' : 'ok', 5000);
+            } else {
+                toast(`${r.inseridas} atividade(s) adicionada(s) ao grupo.`, 'ok');
+            }
+            semGrupoSel.clear();
+            await Promise.all([carregarSemGrupo(), carregarGrupos()]);
+        } catch (e) {
+            toast('Erro ao adicionar: ' + e.message, 'erro');
+        } finally {
+            btnAdd.disabled = false; btnAdd.textContent = 'Adicionar';
+        }
+    });
+}
+
 async function carregarGrupos() {
     if (!cursoAtivo) return;
     try {
         gruposCache = await api(`/groups?courseId=${cursoAtivo.id}`);
         renderGrupos();
+        carregarSemGrupo();
         if (viewMode === 'grupos') {
             elAtivCount.textContent = `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`;
         }
@@ -1019,10 +1175,30 @@ async function carregarGrupos() {
 function renderGrupos() {
     if (!gruposCache.length) {
         elGrupoLista.innerHTML = '<div class="cl-empty-state"><p>Nenhum grupo criado.<br>Clique em <strong>+</strong> para criar.</p></div>';
+        elBtnClonarTri.style.display = 'none';
         return;
     }
+    if (viewMode === 'grupos' && cursoAtivo) elBtnClonarTri.style.display = 'flex';
+
+    /* Ordena: ano DESC, trimestre DESC, id DESC (mais recente no topo) */
+    gruposCache.sort((a, b) => {
+        if ((b.ano || 0) !== (a.ano || 0)) return (b.ano || 0) - (a.ano || 0);
+        if ((b.trimestre || 0) !== (a.trimestre || 0)) return (b.trimestre || 0) - (a.trimestre || 0);
+        return (b.id || 0) - (a.id || 0);
+    });
+
     elGrupoLista.innerHTML = '';
+    let chaveAtual = null;
     gruposCache.forEach(g => {
+        const chave = `${g.ano || '?'}|${g.trimestre || '?'}`;
+        if (chave !== chaveAtual) {
+            chaveAtual = chave;
+            const header = document.createElement('div');
+            header.className = 'cl-grupo-trimestre-header';
+            header.style.cssText = 'padding:10px 12px 6px;font-size:.78rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;border-top:1px solid #e2e8f0;background:#f8fafc';
+            header.textContent = `${g.trimestre || '?'}º Trimestre — ${g.ano || '?'}`;
+            elGrupoLista.appendChild(header);
+        }
         const item      = document.createElement('div');
         item.className  = 'cl-grupo-item';
         item.dataset.id = g.id;
@@ -2854,12 +3030,23 @@ function abrirModalGrupo(grupo = null) {
     if (grupo?.grupoOrigemId) elRecOrigemSel.value = grupo.grupoOrigemId;
     elRecDataInicio.value = toDatetimeLocal(grupo?.dataInicio);
 
+    /* Trimestre/ano: edição usa do grupo; novo usa o mais recente entre os grupos do curso (ou ano atual / T1) */
+    const anoAtual = new Date().getFullYear();
+    let trimDefault = 1, anoDefault = anoAtual;
+    if (gruposCache.length) {
+        const top = gruposCache[0]; // já ordenado por mais recente
+        trimDefault = top.trimestre || 1;
+        anoDefault  = top.ano || anoAtual;
+    }
+
     if (grupo) {
         elModalTitulo.textContent    = 'Editar Grupo';
         elGrupoId.value              = grupo.id;
         elGrupoNome.value            = grupo.nome;
         elGrupoPontos.value          = (grupo.pontosMeta / 10).toFixed(1);
         elGrupoCodClasseRco.value    = grupo.codClasseRco || '';
+        elGrupoTrimestre.value       = String(grupo.trimestre || trimDefault);
+        elGrupoAno.value             = String(grupo.ano || anoDefault);
         corSelecionada               = grupo.cor;
         elClasseRcoInfo.style.display = 'none';
     } else {
@@ -2868,6 +3055,8 @@ function abrirModalGrupo(grupo = null) {
         elGrupoNome.value            = '';
         elGrupoPontos.value          = 4;
         elGrupoCodClasseRco.value    = '';
+        elGrupoTrimestre.value       = String(trimDefault);
+        elGrupoAno.value             = String(anoDefault);
         elClasseRcoInfo.style.display = 'none';
         corSelecionada               = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
@@ -2931,6 +3120,99 @@ function fecharModal() {
 }
 
 elBtnNovoGrupo.addEventListener('click', () => abrirModalGrupo(null));
+
+/* ── Modal: Clonar trimestre inteiro ── */
+const elCloneModal     = document.getElementById('clCloneTrimestreModal');
+const elCloneOrigem    = document.getElementById('clCloneOrigem');
+const elCloneDestTri   = document.getElementById('clCloneDestinoTri');
+const elCloneDestAno   = document.getElementById('clCloneDestinoAno');
+const elClonePreview   = document.getElementById('clClonePreview');
+const elCloneConfirmar = document.getElementById('clCloneConfirmar');
+
+function fecharCloneModal() { elCloneModal.classList.remove('cl-modal-overlay--visivel'); }
+
+function abrirCloneTrimestreModal() {
+    if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }
+    if (!gruposCache.length) { toast('Não há grupos para clonar.', 'erro'); return; }
+
+    /* Origens disponíveis: períodos únicos com pelo menos 1 grupo NORMAL */
+    const periodos = {};
+    gruposCache.forEach(g => {
+        if (g.tipo !== 'normal') return;
+        const k = `${g.ano}|${g.trimestre}`;
+        if (!periodos[k]) periodos[k] = { ano: g.ano, trimestre: g.trimestre, n: 0 };
+        periodos[k].n++;
+    });
+    const lista = Object.values(periodos).sort((a, b) =>
+        b.ano !== a.ano ? b.ano - a.ano : b.trimestre - a.trimestre);
+
+    if (!lista.length) { toast('Não há grupos normais para clonar.', 'erro'); return; }
+
+    elCloneOrigem.innerHTML = lista.map(p =>
+        `<option value="${p.trimestre}|${p.ano}">${p.trimestre}º Trimestre — ${p.ano} (${p.n} grupo${p.n !== 1 ? 's' : ''})</option>`
+    ).join('');
+
+    /* Sugere destino: próximo trimestre */
+    const top = lista[0];
+    let destTri = top.trimestre + 1;
+    let destAno = top.ano;
+    if (destTri > 3) { destTri = 1; destAno += 1; }
+    elCloneDestTri.value = String(destTri);
+    elCloneDestAno.value = String(destAno);
+
+    atualizarClonePreview();
+    elCloneModal.classList.add('cl-modal-overlay--visivel');
+}
+
+function atualizarClonePreview() {
+    const [tOrig, aOrig] = (elCloneOrigem.value || '|').split('|').map(Number);
+    const tDest = Number(elCloneDestTri.value);
+    const aDest = Number(elCloneDestAno.value);
+    const conflito = gruposCache.some(g => g.trimestre === tDest && g.ano === aDest);
+    if (tOrig === tDest && aOrig === aDest) {
+        elClonePreview.innerHTML = '<span style="color:#dc2626">⚠ Origem e destino não podem ser iguais.</span>';
+        elCloneConfirmar.disabled = true;
+    } else if (conflito) {
+        elClonePreview.innerHTML = `<span style="color:#dc2626">⚠ Já existem grupos no ${tDest}º Trimestre/${aDest}. Exclua-os antes ou escolha outro destino.</span>`;
+        elCloneConfirmar.disabled = true;
+    } else {
+        const n = gruposCache.filter(g => g.trimestre === tOrig && g.ano === aOrig && g.tipo === 'normal').length;
+        elClonePreview.innerHTML = `Serão criados <strong>${n}</strong> grupo(s) vazios no <strong>${tDest}º Trimestre/${aDest}</strong>.`;
+        elCloneConfirmar.disabled = false;
+    }
+}
+
+elBtnClonarTri.addEventListener('click', abrirCloneTrimestreModal);
+document.getElementById('clCloneModalFechar').addEventListener('click', fecharCloneModal);
+document.getElementById('clCloneCancelar').addEventListener('click', fecharCloneModal);
+elCloneModal.addEventListener('click', e => { if (e.target === elCloneModal) fecharCloneModal(); });
+elCloneOrigem.addEventListener('change', atualizarClonePreview);
+elCloneDestTri.addEventListener('change', atualizarClonePreview);
+elCloneDestAno.addEventListener('input',  atualizarClonePreview);
+
+elCloneConfirmar.addEventListener('click', async () => {
+    const [tOrig, aOrig] = (elCloneOrigem.value || '|').split('|').map(Number);
+    const tDest = Number(elCloneDestTri.value);
+    const aDest = Number(elCloneDestAno.value);
+    if (!tOrig || !aOrig || !tDest || !aDest) { toast('Preencha origem e destino.', 'erro'); return; }
+    elCloneConfirmar.disabled = true;
+    elCloneConfirmar.textContent = 'Clonando...';
+    try {
+        const r = await api('/groups/clone-trimester', {
+            method: 'POST',
+            body: { courseId: cursoAtivo.id, trimestreOrigem: tOrig, anoOrigem: aOrig, trimestreDestino: tDest, anoDestino: aDest },
+        });
+        toast(`${r.grupos.length} grupo(s) clonado(s) para o ${tDest}º Trimestre/${aDest}.`, 'ok');
+        fecharCloneModal();
+        _allGroupsCache = null;
+        await carregarGrupos();
+    } catch (e) {
+        toast('Erro ao clonar: ' + e.message, 'erro');
+    } finally {
+        elCloneConfirmar.disabled = false;
+        elCloneConfirmar.textContent = 'Clonar grupos';
+    }
+});
 document.getElementById('clGrupoModalFechar').addEventListener('click', fecharModal);
 document.getElementById('clGrupoModalCancelar').addEventListener('click', fecharModal);
 elModal.addEventListener('click', e => { if (e.target === elModal) fecharModal(); });
@@ -3291,13 +3573,15 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     btn.textContent = 'Salvando...';
 
     const codClasseRco = elGrupoCodClasseRco.value.trim() || null;
+    const trimestre    = Number(elGrupoTrimestre.value) || 1;
+    const ano          = Number(elGrupoAno.value) || new Date().getFullYear();
 
     try {
         let grupoId = id;
         if (id) {
-            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco } });
+            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco, trimestre, ano } });
         } else {
-            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco } });
+            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco, trimestre, ano } });
             grupoId = r.id;
         }
         await api(`/groups/${grupoId}/activities`, { method: 'PUT', body: { atividades } });
