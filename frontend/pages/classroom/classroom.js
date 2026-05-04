@@ -3027,6 +3027,8 @@ function tipoModalAtivo() {
    - Exclui o próprio grupo
    - Exclui grupos que já são subgrupos (preserva profundidade 1)
    - Se este grupo já tem subgrupos, oculta tudo (não pode virar subgrupo) */
+let grupoModalAtual = null;
+
 function popularGrupoPaiSelect(grupoAtual = null) {
     if (!elGrupoPaiSel) return;
     const trim = Number(elGrupoTrimestre.value) || (grupoAtual?.trimestre || 1);
@@ -3056,17 +3058,42 @@ function popularGrupoPaiSelect(grupoAtual = null) {
         && (!grupoAtual || g.id !== grupoAtual.id)      // não pode ser pai de si mesmo
     );
 
-    elegiveis.forEach(g => {
+    if (!elegiveis.length) {
         const opt = document.createElement('option');
-        opt.value = g.id;
-        opt.textContent = g.nome + ` (${rco(g.pontosMeta)} pts)`;
+        opt.value = ''; opt.disabled = true;
+        opt.textContent = `Nenhum grupo principal disponível em ${trim}º Trimestre · ${ano}`;
         elGrupoPaiSel.appendChild(opt);
-    });
+    } else {
+        elegiveis.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = g.nome + ` (${rco(g.pontosMeta)} pts)`;
+            elGrupoPaiSel.appendChild(opt);
+        });
+    }
 
     if (grupoAtual?.grupoPaiId) {
+        /* Se o pai atual está num período diferente (raro — só por dado legado),
+           injeta opção avulsa para que o usuário enxergue o vínculo atual. */
+        if (!elegiveis.some(g => Number(g.id) === Number(grupoAtual.grupoPaiId))) {
+            const pai = gruposCache.find(g => Number(g.id) === Number(grupoAtual.grupoPaiId));
+            if (pai) {
+                const opt = document.createElement('option');
+                opt.value = pai.id;
+                opt.textContent = `${pai.nome} (${pai.trimestre}º/${pai.ano} — vínculo atual)`;
+                elGrupoPaiSel.appendChild(opt);
+            }
+        }
         elGrupoPaiSel.value = String(grupoAtual.grupoPaiId);
     }
 }
+
+/* Repopula o select de subgrupo quando trimestre/ano mudam dentro do modal,
+   pois os elegíveis são filtrados pelo período atualmente selecionado. */
+['change', 'input'].forEach(ev => {
+    elGrupoTrimestre?.addEventListener(ev, () => popularGrupoPaiSelect(grupoModalAtual));
+    elGrupoAno?.addEventListener(ev,       () => popularGrupoPaiSelect(grupoModalAtual));
+});
 
 function popularRecOrigem(grupoIdAtual = null) {
     elRecOrigemSel.innerHTML = '<option value="">— selecione o grupo de origem —</option>';
@@ -3116,7 +3143,6 @@ function abrirModalGrupo(grupo = null) {
     elGrupoPaiWrap.style.display  = tipo === 'recuperacao' ? 'none' : '';
     if (grupo?.grupoOrigemId) elRecOrigemSel.value = grupo.grupoOrigemId;
     elRecDataInicio.value = toDatetimeLocal(grupo?.dataInicio);
-    popularGrupoPaiSelect(grupo);
 
     /* Trimestre/ano: edição usa do grupo; novo usa o mais recente entre os grupos do curso (ou ano atual / T1) */
     const anoAtual = new Date().getFullYear();
@@ -3148,6 +3174,12 @@ function abrirModalGrupo(grupo = null) {
         elClasseRcoInfo.style.display = 'none';
         corSelecionada               = GRUPO_CORES[gruposCache.length % GRUPO_CORES.length];
     }
+
+    /* Popula o select de subgrupo APÓS trimestre/ano estarem definidos
+       (o filtro depende desses valores). Guarda referência para repopular
+       quando o usuário trocar trimestre/ano dentro do modal. */
+    popularGrupoPaiSelect(grupo);
+    grupoModalAtual = grupo;
 
     /* Configura campo de código RCO conforme tipo (herda e bloqueia se for recuperação) */
     configurarCampoCodClasse(tipo === 'recuperacao', grupo?.grupoOrigemId ?? null);
