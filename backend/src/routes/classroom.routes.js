@@ -979,9 +979,11 @@ export function createClassroomRouter(deps = {}) {
             const normaisOrig = origemRows.filter(g => g.tipo === 'normal');
             const recsOrig    = origemRows.filter(g => g.tipo === 'recuperacao');
 
-            /* Data de corte sugerida para as novas recuperações: a maior data_fechamento
-               registrada entre os grupos do período de origem (normal ou recuperação).
-               Se nenhum grupo do período tiver fechamento, fica NULL e o professor define depois. */
+            /* Data herdada: maior data_fechamento entre os grupos do período de origem.
+               Será aplicada como data_fechamento dos NOVOS grupos normais (planejamento
+               do fechamento do período) — e, em consequência, como data_inicio das novas
+               recuperações (a recuperação começa quando o grupo principal fecha).
+               Se nenhum grupo do período tiver fechamento, fica NULL. */
             const { rows: corteRows } = await client.query(
                 `SELECT MAX(data_fechamento) AS corte
                    FROM classroom_grupos
@@ -989,7 +991,7 @@ export function createClassroomRouter(deps = {}) {
                     AND tipo IN ('normal','recuperacao')`,
                 [courseId, tOrig, aOrig]
             );
-            const dataInicioRec = corteRows[0]?.corte || null;
+            const dataHerdada = corteRows[0]?.corte || null;
 
             if (!normaisOrig.length) {
                 await client.query('ROLLBACK');
@@ -999,16 +1001,20 @@ export function createClassroomRouter(deps = {}) {
             const mapaIdOrigemDestino = {};
             const novosGrupos = [];
 
-            /* 1) Clona grupos normais */
+            /* Mapa id_origem_normal → data_fechamento do novo normal (para encadear a rec). */
+            const fechamentoPorNormalNovo = {};
+
+            /* 1) Clona grupos normais (recebem data_fechamento herdada do período anterior) */
             for (const g of normaisOrig) {
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, trimestre, ano)
-                     VALUES ($1,$2,$3,$4,'normal',$5,$6,$7) RETURNING id`,
-                    [courseId, g.nome, g.pontos_meta, g.cor, g.cod_classe_rco, tDest, aDest]
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, data_fechamento, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'normal',$5,$6,$7,$8) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, g.cod_classe_rco, dataHerdada, tDest, aDest]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id });
+                fechamentoPorNormalNovo[g.id] = dataHerdada;
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id, dataFechamento: dataHerdada });
             }
 
             /* 2) Clona grupos de recuperação vinculando ao novo grupo normal correspondente.
@@ -1017,6 +1023,8 @@ export function createClassroomRouter(deps = {}) {
             for (const g of recsOrig) {
                 const novoOrigemId = g.grupo_origem_id ? mapaIdOrigemDestino[g.grupo_origem_id] : null;
                 if (!novoOrigemId) continue;
+                /* data_inicio da rec = data_fechamento do novo normal vinculado */
+                const dataInicioRec = fechamentoPorNormalNovo[g.grupo_origem_id] || null;
                 const { rows: ins } = await client.query(
                     `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, trimestre, ano)
                      VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8,$9) RETURNING id`,
