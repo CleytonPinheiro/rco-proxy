@@ -3795,20 +3795,36 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 
 /* Lista de opções (dropdown nativo): força fundo/texto coerentes com o tema.
-   Navegadores modernos respeitam color/background nas <option> dos <select>. */
+   Navegadores modernos respeitam color/background nas <option> dos <select>.
+   O projeto alterna tema via [data-theme="dark"] OU prefers-color-scheme. */
 .cl-select option {
     background-color: var(--bg-card, #fff);
     color: var(--text-primary, #1e293b);
     padding: 6px 10px;
     font-size: .85rem;
 }
-.dark .cl-select option {
-    background-color: #1e293b;
-    color: #e2e8f0;
-}
 .cl-select option:disabled {
     color: var(--text-soft, #94a3b8);
     font-style: italic;
+    background-color: var(--bg-alt, var(--bg-card, #f8fafc));
+}
+[data-theme="dark"] .cl-select option {
+    background-color: #1e293b;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .cl-select option:disabled {
+    background-color: #0f172a;
+    color: #64748b;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .cl-select option {
+        background-color: #1e293b;
+        color: #e2e8f0;
+    }
+    :root:not([data-theme="light"]) .cl-select option:disabled {
+        background-color: #0f172a;
+        color: #64748b;
+    }
 }
 
 /* Aviso "X atividades ocultas" no topo da lista do modal */
