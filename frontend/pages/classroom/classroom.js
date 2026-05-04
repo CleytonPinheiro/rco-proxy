@@ -1080,7 +1080,7 @@ function renderSemGrupo() {
 
     const opcoes = gruposCache
         .filter(g => !g.dataFechamento)
-        .map(g => `<option value="${g.id}">${esc(g.nome)} — ${g.trimestre}º/${g.ano}</option>`)
+        .map(g => `<option value="${g.id}">${esc(g.nome)} · ${g.trimestre}º Trimestre · ${g.ano}</option>`)
         .join('');
 
     const itensHtml = semGrupoCache.map(a => {
