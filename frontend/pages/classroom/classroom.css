@@ -3649,7 +3649,7 @@ body.cl-popout .logo-icon { font-size: 15px; }
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
-    margin-left: 4px;
+    margin-left: 6px;
     background: #f59e0b;
     color: #fff;
     border-radius: 9px;
@@ -3658,6 +3658,85 @@ body.cl-popout .logo-icon { font-size: 15px; }
     line-height: 1;
 }
 
+/* Toolbar fixa no topo da lista */
+.cl-sem-grupo-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-card, #fff);
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.cl-sem-grupo-selall {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .82rem;
+    color: var(--text-primary, #475569);
+    cursor: pointer;
+    user-select: none;
+}
+.cl-sem-grupo-selall input[type=checkbox] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #4285F4;
+}
+
+.cl-sem-grupo-count {
+    font-size: .76rem;
+    color: var(--text-soft, #64748b);
+    font-variant-numeric: tabular-nums;
+}
+
+.cl-sem-grupo-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 260px;
+    justify-content: flex-end;
+}
+
+/* Variante compacta do select para inline com botão (chevron custom) */
+.cl-select.cl-select--compact {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 260px;
+    margin-top: 0;
+    padding: 7px 30px 7px 11px;
+    font-size: .82rem;
+    line-height: 1.2;
+    background-color: var(--bg-card, #fff);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.cl-select.cl-select--compact:hover {
+    border-color: #cbd5e1;
+}
+.cl-select.cl-select--compact:focus {
+    border-color: #4285F4;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, .15);
+}
+
+/* Lista de atividades órfãs */
 .cl-sem-grupo-lista {
     display: flex;
     flex-direction: column;
@@ -3673,10 +3752,44 @@ body.cl-popout .logo-icon { font-size: 15px; }
     transition: background .12s;
 }
 .cl-sem-grupo-item:hover { background: #f8fafc; }
-.cl-sem-grupo-item input[type=checkbox] { flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+.cl-sem-grupo-item input[type=checkbox] {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #4285F4;
+}
 .cl-sem-grupo-info { flex: 1; min-width: 0; }
-.cl-sem-grupo-nome { font-size: .88rem; color: #1e293b; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cl-sem-grupo-meta { font-size: .76rem; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.cl-sem-grupo-nome {
+    font-size: .88rem;
+    color: var(--text-primary, #1e293b);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cl-sem-grupo-meta {
+    font-size: .76rem;
+    color: var(--text-soft, #64748b);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 
 .cl-icon-btn--clonar-tri { color: #6366f1; }
 .cl-icon-btn--clonar-tri:hover { background: #eef2ff; }
+
+/* Aplica chevron custom em todos os selects do projeto para harmonia,
+   mas preserva quem já tem largura fixa via inline style */
+.cl-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    padding-right: 32px;
+    cursor: pointer;
+}

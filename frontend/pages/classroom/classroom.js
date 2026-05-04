@@ -1098,17 +1098,19 @@ function renderSemGrupo() {
     }).join('');
 
     elSemGrupoLista.innerHTML = `
-        <div class="cl-sem-grupo-toolbar" style="position:sticky;top:0;background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;z-index:5">
-            <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:#475569;cursor:pointer">
-                <input type="checkbox" id="clSemGrupoSelAll"/> Selecionar todas
+        <div class="cl-sem-grupo-toolbar">
+            <label class="cl-sem-grupo-selall">
+                <input type="checkbox" id="clSemGrupoSelAll"/>
+                <span>Selecionar todas</span>
             </label>
-            <span id="clSemGrupoSelCount" style="font-size:.78rem;color:#64748b;margin-left:4px">${semGrupoSel.size} selecionada${semGrupoSel.size === 1 ? '' : 's'}</span>
-            <div style="flex:1"></div>
-            <select id="clSemGrupoDest" class="cl-select" style="max-width:240px;font-size:.82rem">
-                <option value="">— escolha um grupo —</option>
-                ${opcoes || '<option disabled>Nenhum grupo aberto disponível</option>'}
-            </select>
-            <button class="cl-btn cl-btn--sm cl-btn--primary" id="clSemGrupoAdd">Adicionar</button>
+            <span id="clSemGrupoSelCount" class="cl-sem-grupo-count">${semGrupoSel.size} selecionada${semGrupoSel.size === 1 ? '' : 's'}</span>
+            <div class="cl-sem-grupo-actions">
+                <select id="clSemGrupoDest" class="cl-select cl-select--compact">
+                    <option value="">— escolha um grupo —</option>
+                    ${opcoes || '<option disabled>Nenhum grupo aberto disponível</option>'}
+                </select>
+                <button class="cl-btn cl-btn--sm cl-btn--primary" id="clSemGrupoAdd">Adicionar</button>
+            </div>
         </div>
         <div class="cl-sem-grupo-lista">${itensHtml}</div>`;
 
