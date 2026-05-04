@@ -1023,16 +1023,16 @@ export function createClassroomRouter(deps = {}) {
             for (const g of recsOrig) {
                 const novoOrigemId = g.grupo_origem_id ? mapaIdOrigemDestino[g.grupo_origem_id] : null;
                 if (!novoOrigemId) continue;
-                /* data_inicio da rec = data_fechamento do novo normal vinculado */
-                const dataInicioRec = fechamentoPorNormalNovo[g.grupo_origem_id] || null;
+                /* data_inicio da rec NÃO é preenchida no clone — será definida
+                   automaticamente quando o grupo principal vinculado for fechado. */
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, trimestre, ano)
-                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8,$9) RETURNING id`,
-                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, dataInicioRec, g.cod_classe_rco, tDest, aDest]
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, cod_classe_rco, trimestre, ano)
+                     VALUES ($1,$2,$3,$4,'recuperacao',$5,$6,$7,$8) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, novoOrigemId, g.cod_classe_rco, tDest, aDest]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id, dataInicio: dataInicioRec });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'recuperacao', origemId: g.id });
             }
 
             /* Replica fontes mapeando IDs antigos → novos quando possível.
@@ -1707,6 +1707,21 @@ export function createClassroomRouter(deps = {}) {
                 `UPDATE classroom_grupos SET data_fechamento = $1 WHERE id = $2`,
                 [dt.toISOString(), req.params.id]
             );
+
+            /* Propaga para a recuperação vinculada: define data_inicio = data_fechamento
+               do grupo principal SOMENTE se a recuperação ainda não tiver data_inicio
+               (não sobrescreve uma data definida manualmente pelo professor). */
+            const { rowCount: recAtualizadas } = await pool.query(
+                `UPDATE classroom_grupos
+                    SET data_inicio = $1
+                  WHERE grupo_origem_id = $2
+                    AND tipo = 'recuperacao'
+                    AND data_inicio IS NULL`,
+                [dt.toISOString(), req.params.id]
+            );
+            if (recAtualizadas > 0) {
+                console.log(`[CLASSROOM] Propagada data_inicio para ${recAtualizadas} grupo(s) de recuperação vinculado(s) ao grupo ${req.params.id}.`);
+            }
 
             let classroomSync = { tentou: false, sucessos: 0, erros: [] };
             if (syncClassroom !== false) {
