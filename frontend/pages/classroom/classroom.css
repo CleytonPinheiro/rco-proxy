@@ -3826,3 +3826,63 @@ body.cl-popout .logo-icon { font-size: 15px; }
     background: color-mix(in srgb, #4285F4 14%, #1e293b);
     color: #cbd5e1;
 }
+
+/* ── Subgrupos (relação pai-filho entre grupos normais) ─────────────────
+   Filhos aparecem indentados logo abaixo do pai, com uma "linha-guia"
+   à esquerda (border-left) que torna a hierarquia óbvia visualmente. */
+.cl-grupo-item--subgrupo {
+    margin-left: 22px;
+    position: relative;
+    border-left: 2px dashed #cbd5e1;
+}
+.cl-grupo-item--subgrupo::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 50%;
+    width: 14px;
+    height: 2px;
+    background: #cbd5e1;
+}
+.dark .cl-grupo-item--subgrupo,
+.dark .cl-grupo-item--subgrupo::before {
+    border-left-color: #475569;
+    background-color: #475569;
+}
+.dark .cl-grupo-item--subgrupo {
+    background: transparent;
+}
+.cl-grupo-subgrupo-badge,
+.cl-grupo-pai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px;
+    font-size: .68rem;
+    font-weight: 600;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.cl-grupo-subgrupo-badge {
+    background: color-mix(in srgb, #f59e0b 15%, transparent);
+    color: #b45309;
+    border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+}
+.cl-grupo-pai-badge {
+    background: color-mix(in srgb, #6366f1 15%, transparent);
+    color: #4338ca;
+    border: 1px solid color-mix(in srgb, #6366f1 35%, transparent);
+    cursor: help;
+}
+.dark .cl-grupo-subgrupo-badge {
+    background: color-mix(in srgb, #f59e0b 22%, #1e293b);
+    color: #fbbf24;
+    border-color: color-mix(in srgb, #f59e0b 50%, transparent);
+}
+.dark .cl-grupo-pai-badge {
+    background: color-mix(in srgb, #6366f1 22%, #1e293b);
+    color: #a5b4fc;
+    border-color: color-mix(in srgb, #6366f1 50%, transparent);
+}

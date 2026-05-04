@@ -63,6 +63,10 @@ async function migrarTabelas() {
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS data_fechamento TIMESTAMPTZ`);
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS trimestre SMALLINT`);
         await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS ano        INT`);
+        /* grupo_pai_id: subgrupo de outro grupo NORMAL — soma a nota no pai (depth=1).
+           ON DELETE SET NULL: se o pai for excluído, os filhos viram grupos avulsos
+           em vez de serem excluídos em cascata (preserva trabalho do professor). */
+        await pool.query(`ALTER TABLE classroom_grupos ADD COLUMN IF NOT EXISTS grupo_pai_id INT REFERENCES classroom_grupos(id) ON DELETE SET NULL`);
         /* Backfill: grupos sem trimestre/ano → assume trimestre 1 do ano da criação */
         await pool.query(`
             UPDATE classroom_grupos
@@ -106,6 +110,48 @@ async function migrarTabelas() {
 }
 
 migrarTabelas();
+
+/* ── Validação de relação pai-filho entre grupos ──
+   Regras:
+   - Apenas grupos tipo='normal' podem ter pai (e o pai também precisa ser normal).
+   - Pai e filho devem estar no mesmo curso, trimestre e ano.
+   - Profundidade máxima = 1: o pai escolhido NÃO pode ser ele mesmo um subgrupo.
+   - Se este grupo (selfId) já tem subgrupos, ele não pode virar subgrupo (preserva depth=1).
+   - Não pode auto-referenciar.
+   Lança Error com mensagem amigável quando inválido. Retorna o id numérico ou null. */
+async function validarGrupoPai({ paiId, courseId, tipo, trimestre, ano, selfId }) {
+    if (!paiId) return null;
+    if (tipo === 'recuperacao') {
+        throw new Error('Grupos de recuperação não podem ter um grupo pai.');
+    }
+    if (selfId && Number(paiId) === Number(selfId)) {
+        throw new Error('Um grupo não pode ser pai de si mesmo.');
+    }
+    const { rows: [pai] } = await pool.query(
+        `SELECT id, curso_id, tipo, trimestre, ano, grupo_pai_id
+           FROM classroom_grupos WHERE id = $1`,
+        [paiId]
+    );
+    if (!pai) throw new Error('Grupo pai não encontrado.');
+    if (pai.curso_id !== courseId) throw new Error('Grupo pai deve ser do mesmo curso.');
+    if (pai.tipo !== 'normal') throw new Error('Apenas grupos normais podem ser pai.');
+    if (pai.trimestre !== Number(trimestre) || pai.ano !== Number(ano)) {
+        throw new Error('Grupo pai deve estar no mesmo trimestre e ano.');
+    }
+    if (pai.grupo_pai_id) {
+        throw new Error('Profundidade máxima é 1: o grupo escolhido como pai já é subgrupo de outro.');
+    }
+    if (selfId) {
+        const { rows: filhos } = await pool.query(
+            `SELECT 1 FROM classroom_grupos WHERE grupo_pai_id = $1 LIMIT 1`,
+            [selfId]
+        );
+        if (filhos.length) {
+            throw new Error('Este grupo já tem subgrupos — não pode virar subgrupo de outro.');
+        }
+    }
+    return Number(paiId);
+}
 
 /* ── Helpers OAuth ── */
 function getOAuth2Client(req) {
@@ -716,7 +762,9 @@ export function createClassroomRouter(deps = {}) {
                     ) FILTER (WHERE ga.id IS NOT NULL), '[]') AS atividades,
                     (SELECT id   FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_id,
                     (SELECT nome FROM classroom_grupos r WHERE r.grupo_origem_id = g.id AND r.tipo = 'recuperacao' AND r.curso_id = $1 LIMIT 1) AS rec_nome,
-                    COALESCE(g.cod_classe_rco, gorigem.cod_classe_rco) AS cod_classe_rco_efetivo
+                    COALESCE(g.cod_classe_rco, gorigem.cod_classe_rco) AS cod_classe_rco_efetivo,
+                    COALESCE((SELECT json_agg(json_build_object('id', s.id, 'nome', s.nome, 'cor', s.cor, 'pontosMeta', s.pontos_meta) ORDER BY s.id)
+                              FROM classroom_grupos s WHERE s.grupo_pai_id = g.id), '[]') AS subgrupos
                 FROM classroom_grupos g
                 LEFT JOIN classroom_grupo_atividades ga ON ga.grupo_id = g.id
                 LEFT JOIN classroom_grupos gorigem ON gorigem.id = g.grupo_origem_id
@@ -754,6 +802,11 @@ export function createClassroomRouter(deps = {}) {
                 lancadoEm:      g.lancado_em ?? null,
                 tipo:           g.tipo || 'normal',
                 grupoOrigemId:  g.grupo_origem_id ?? null,
+                grupoPaiId:     g.grupo_pai_id ?? null,
+                subgrupos:      (g.subgrupos || []).map(s => ({
+                    id: s.id, nome: s.nome, cor: s.cor,
+                    pontosMeta: Number(s.pontosMeta),
+                })),
                 dataInicio:     g.data_inicio ? g.data_inicio.toISOString() : null,
                 dataFechamento: g.data_fechamento ? g.data_fechamento.toISOString() : null,
                 recuperacaoId:  g.rec_id      ?? null,
@@ -771,7 +824,7 @@ export function createClassroomRouter(deps = {}) {
 
     /* ── Criar grupo ── */
     router.post('/classroom/groups', requireFuncionalidade('classroom-escrita'), async (req, res) => {
-        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
+        const { courseId, nome, pontosMeta, cor, tipo, grupoOrigemId, grupoPaiId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
         if (!courseId || !nome) return res.status(400).json({ erro: 'courseId e nome obrigatórios' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         /* data_inicio é permitida para AMBOS os tipos: na rec marca quando começa a contar
@@ -780,39 +833,73 @@ export function createClassroomRouter(deps = {}) {
         const trimestreVal = Number(trimestre) >= 1 && Number(trimestre) <= 3 ? Number(trimestre) : 1;
         const anoVal       = Number(ano) > 2000 ? Number(ano) : new Date().getFullYear();
         try {
+            const grupoPaiVal = await validarGrupoPai({
+                paiId: grupoPaiId, courseId, tipo: tipoVal, trimestre: trimestreVal, ano: anoVal, selfId: null,
+            });
             const { rows } = await pool.query(
-                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, data_inicio, cod_classe_rco, data_fechamento, trimestre, ano)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+                `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, grupo_origem_id, grupo_pai_id, data_inicio, cod_classe_rco, data_fechamento, trimestre, ano)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
                 [courseId, nome.trim(), pontosMeta || 40, cor || '#4285F4',
-                 tipoVal, grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null,
+                 tipoVal, grupoOrigemId || null, grupoPaiVal, dataInicioVal, codClasseRco || null, dataFechamento || null,
                  trimestreVal, anoVal]
             );
             res.json({ id: rows[0].id });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao criar grupo:', e.message);
-            res.status(500).json({ erro: e.message });
+            res.status(400).json({ erro: e.message });
         }
     });
 
     /* ── Atualizar grupo ── */
     router.put('/classroom/groups/:id', requireFuncionalidade('classroom-escrita'), async (req, res) => {
-        const { nome, pontosMeta, cor, tipo, grupoOrigemId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
+        const { nome, pontosMeta, cor, tipo, grupoOrigemId, grupoPaiId, dataInicio, codClasseRco, dataFechamento, trimestre, ano } = req.body;
         if (!nome) return res.status(400).json({ erro: 'nome obrigatório' });
         const tipoVal = tipo === 'recuperacao' ? 'recuperacao' : 'normal';
         const dataInicioVal = dataInicio || null;
         const trimestreVal = Number(trimestre) >= 1 && Number(trimestre) <= 3 ? Number(trimestre) : 1;
         const anoVal       = Number(ano) > 2000 ? Number(ano) : new Date().getFullYear();
         try {
+            /* Precisa do curso_id atual do grupo para validar pai (não vem no body). */
+            const { rows: [atual] } = await pool.query(
+                `SELECT curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
+            );
+            if (!atual) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+            const grupoPaiVal = await validarGrupoPai({
+                paiId: grupoPaiId, courseId: atual.curso_id,
+                tipo: tipoVal, trimestre: trimestreVal, ano: anoVal, selfId: req.params.id,
+            });
+            /* Invariante: se este grupo já tem filhos, não pode mudar para 'recuperacao'
+               nem mudar trimestre/ano para um diferente do dos filhos. Isso preservaria
+               a regra de pai/filhos sempre 'normal' e mesmo trimestre/ano. */
+            const { rows: filhosExistentes } = await pool.query(
+                `SELECT id, trimestre, ano FROM classroom_grupos WHERE grupo_pai_id = $1`,
+                [req.params.id]
+            );
+            if (filhosExistentes.length) {
+                if (tipoVal !== 'normal') {
+                    return res.status(400).json({
+                        erro: `Este grupo tem ${filhosExistentes.length} subgrupo(s) — não pode virar recuperação.`,
+                    });
+                }
+                const conflito = filhosExistentes.find(f =>
+                    f.trimestre !== trimestreVal || f.ano !== anoVal
+                );
+                if (conflito) {
+                    return res.status(400).json({
+                        erro: 'Este grupo tem subgrupos — não é possível mudar trimestre/ano sem mover os filhos primeiro.',
+                    });
+                }
+            }
             await pool.query(
-                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, data_inicio=$6, cod_classe_rco=$7, data_fechamento=$8, trimestre=$9, ano=$10 WHERE id=$11`,
+                `UPDATE classroom_grupos SET nome=$1, pontos_meta=$2, cor=$3, tipo=$4, grupo_origem_id=$5, grupo_pai_id=$6, data_inicio=$7, cod_classe_rco=$8, data_fechamento=$9, trimestre=$10, ano=$11 WHERE id=$12`,
                 [nome.trim(), pontosMeta || 40, cor || '#4285F4', tipoVal,
-                 grupoOrigemId || null, dataInicioVal, codClasseRco || null, dataFechamento || null,
+                 grupoOrigemId || null, grupoPaiVal, dataInicioVal, codClasseRco || null, dataFechamento || null,
                  trimestreVal, anoVal, req.params.id]
             );
             res.json({ ok: true });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao atualizar grupo:', e.message);
-            res.status(500).json({ erro: e.message });
+            res.status(400).json({ erro: e.message });
         }
     });
 
@@ -971,10 +1058,10 @@ export function createClassroomRouter(deps = {}) {
                Datas (data_inicio / data_fechamento) NÃO são copiadas: pertencem ao
                período de origem e devem ser definidas pelo professor no novo período. */
             const { rows: origemRows } = await client.query(
-                `SELECT id, nome, pontos_meta, cor, cod_classe_rco, tipo, grupo_origem_id
+                `SELECT id, nome, pontos_meta, cor, cod_classe_rco, tipo, grupo_origem_id, grupo_pai_id
                    FROM classroom_grupos
                   WHERE curso_id=$1 AND trimestre=$2 AND ano=$3 AND tipo IN ('normal','recuperacao')
-                  ORDER BY (tipo='normal') DESC, id`,
+                  ORDER BY (tipo='normal') DESC, (grupo_pai_id IS NULL) DESC, id`,
                 [courseId, tOrig, aOrig]
             );
 
@@ -1006,16 +1093,19 @@ export function createClassroomRouter(deps = {}) {
             const novosGrupos = [];
 
             /* 1) Clona grupos normais — cadeado ABERTO (sem data_fechamento),
-                  data_inicio herdada do fechamento da rec do período anterior. */
+                  data_inicio herdada do fechamento da rec do período anterior.
+                  Pais são clonados ANTES dos filhos (ordenação por grupo_pai_id IS NULL DESC),
+                  então quando processamos um filho, o pai já está em mapaIdOrigemDestino. */
             for (const g of normaisOrig) {
+                const novoPaiId = g.grupo_pai_id ? (mapaIdOrigemDestino[g.grupo_pai_id] || null) : null;
                 const { rows: ins } = await client.query(
-                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, data_inicio, trimestre, ano)
-                     VALUES ($1,$2,$3,$4,'normal',$5,$6,$7,$8) RETURNING id`,
-                    [courseId, g.nome, g.pontos_meta, g.cor, g.cod_classe_rco, dataHerdada, tDest, aDest]
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, tipo, cod_classe_rco, data_inicio, trimestre, ano, grupo_pai_id)
+                     VALUES ($1,$2,$3,$4,'normal',$5,$6,$7,$8,$9) RETURNING id`,
+                    [courseId, g.nome, g.pontos_meta, g.cor, g.cod_classe_rco, dataHerdada, tDest, aDest, novoPaiId]
                 );
                 const novoId = ins[0].id;
                 mapaIdOrigemDestino[g.id] = novoId;
-                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id, dataInicio: dataHerdada });
+                novosGrupos.push({ id: novoId, nome: g.nome, tipo: 'normal', origemId: g.id, dataInicio: dataHerdada, grupoPaiId: novoPaiId });
             }
 
             /* 2) Clona grupos de recuperação vinculando ao novo grupo normal correspondente.
@@ -1237,7 +1327,23 @@ export function createClassroomRouter(deps = {}) {
                 `SELECT * FROM classroom_grupo_atividades WHERE grupo_id=$1 ORDER BY id`,
                 [req.params.id]
             );
-            if (!ativs.length) return res.json({ atividades: [], alunos: [] });
+            /* Permite seguir mesmo sem atividades próprias SE este grupo for um pai
+               com subgrupos OU a recuperação de um pai com subgrupos — o cálculo
+               continua válido somando apenas as notas dos filhos. */
+            if (!ativs.length) {
+                const idPaiCheck = isRecuperacao
+                    ? (grupoInfo?.grupo_origem_id || null)
+                    : Number(req.params.id);
+                let temFilhos = false;
+                if (idPaiCheck) {
+                    const { rows: chk } = await pool.query(
+                        `SELECT 1 FROM classroom_grupos WHERE grupo_pai_id = $1 LIMIT 1`,
+                        [idPaiCheck]
+                    );
+                    temFilhos = chk.length > 0;
+                }
+                if (!temFilhos) return res.json({ atividades: [], alunos: [] });
+            }
 
             const classroom = google.classroom({ version: 'v1', auth });
 
@@ -1304,7 +1410,7 @@ export function createClassroomRouter(deps = {}) {
 
             // totalPossivel = soma dos pontos_max efetivos de TODAS as atividades do grupo
             // Atividades sem maxPoints em lugar nenhum (ex: atividades sem pontuação) são excluídas
-            const totalPossivel = results.reduce((acc, { atividade }) => {
+            let totalPossivel = results.reduce((acc, { atividade }) => {
                 const pm = resolverPontosMax(atividade);
                 return acc + (pm !== null ? pm : 0);
             }, 0);
@@ -1540,6 +1646,74 @@ export function createClassroomRouter(deps = {}) {
                 }
             }
 
+            /* ─── Subgrupos (grupo_pai_id) ────────────────────────────────────────
+               Regras pedidas pelo professor:
+               - Subgrupo (grupo NORMAL com grupo_pai_id != NULL) soma a nota
+                 do aluno NO PAI por aluno.
+               - Para o GRUPO PAI (este grupo é normal e tem filhos): inclui
+                 atividades dos filhos no totalPossivel e totalGanho.
+               - Para a RECUPERAÇÃO de um pai com filhos: inclui também os filhos —
+                 a recuperação considera (pai + subgrupo) como nota a recuperar e o
+                 subgrupo soma com a nota já existente da recuperação.
+               Profundidade 1: subgrupos NÃO têm filhos próprios (validado no CRUD). */
+            let subgruposInjetados = [];
+            const idPaiParaFilhos = isRecuperacao
+                ? (grupoInfo?.grupo_origem_id || null)  // rec → busca filhos do pai
+                : Number(req.params.id);                // normal → busca seus próprios filhos
+            if (idPaiParaFilhos) {
+                const { rows: filhos } = await pool.query(
+                    `SELECT id, nome FROM classroom_grupos WHERE grupo_pai_id = $1 ORDER BY id`,
+                    [idPaiParaFilhos]
+                );
+                for (const filho of filhos) {
+                    const { rows: filhoAtivs } = await pool.query(
+                        `SELECT atividade_id, atividade_titulo, pontos_max
+                           FROM classroom_grupo_atividades WHERE grupo_id = $1`,
+                        [filho.id]
+                    );
+                    if (!filhoAtivs.length) continue;
+                    let filhoPontosMax = 0;
+                    for (const fa of filhoAtivs) {
+                        const pm = Number(fa.pontos_max) || 0;
+                        if (pm <= 0) continue;
+                        filhoPontosMax += pm;
+                        try {
+                            let pt;
+                            do {
+                                const r = await classroom.courses.courseWork.studentSubmissions.list({
+                                    courseId, courseWorkId: fa.atividade_id, pageSize: 100, pageToken: pt,
+                                });
+                                for (const s of (r.data.studentSubmissions || [])) {
+                                    if (!alunoMap[s.userId]) {
+                                        alunoMap[s.userId] = {
+                                            userId: s.userId, totalGanho: 0, totalGanhoInterno: 0,
+                                            pendentes: 0, atividades: {},
+                                        };
+                                    }
+                                    const grade = s.assignedGrade ?? null;
+                                    if (grade !== null) {
+                                        const valor = Math.min(grade, pm);
+                                        alunoMap[s.userId].totalGanho += valor;
+                                        alunoMap[s.userId].totalGanhoInterno =
+                                            (alunoMap[s.userId].totalGanhoInterno ?? alunoMap[s.userId].totalGanho) + valor;
+                                    }
+                                }
+                                pt = r.data.nextPageToken;
+                            } while (pt);
+                        } catch (eSub) {
+                            console.error(`[SUBGRUPO] Erro subs atv ${fa.atividade_id}:`, eSub.message);
+                        }
+                    }
+                    if (filhoPontosMax > 0) {
+                        totalPossivel += filhoPontosMax;
+                        totalPossivelComFontes += filhoPontosMax;
+                        subgruposInjetados.push({
+                            id: filho.id, nome: filho.nome, pontosMax: filhoPontosMax,
+                        });
+                    }
+                }
+            }
+
             const totalFinal = fontesConfig.length > 0 ? totalPossivelComFontes : totalPossivel;
 
             let alunos = Object.values(alunoMap).map(a => {
@@ -1612,6 +1786,7 @@ export function createClassroomRouter(deps = {}) {
                 dataFechamento:     dataFechamento     ? dataFechamento.toISOString()     : null,
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
                 fontes: fontesInfo,
+                subgruposInjetados,
             });
         } catch (e) {
             console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);

@@ -949,6 +949,23 @@
                                                 </button>
                                         </div>
 
+                                        <!-- Subgrupo: vincular a um grupo principal (só normal) -->
+                                        <div id="clGrupoPaiWrap" style="margin-top: 10px">
+                                                <label class="cl-label">
+                                                        Vincular como subgrupo de
+                                                        <span style="color:#94a3b8;font-weight:400;font-size:.78rem">(opcional)</span>
+                                                </label>
+                                                <select class="cl-select" id="clGrupoPaiSel">
+                                                        <option value="">— este grupo é independente —</option>
+                                                </select>
+                                                <p class="cl-label-hint" style="margin-top: 4px">
+                                                        Quando vinculado, a nota deste grupo
+                                                        <strong>soma</strong> à nota do grupo principal por aluno
+                                                        (limitado ao teto do pai). Disponível apenas no
+                                                        mesmo trimestre/ano e profundidade máxima 1.
+                                                </p>
+                                        </div>
+
                                         <!-- Grupo de origem (só aparece se tipo=recuperacao) -->
                                         <div id="clRecOrigemWrap" style="display: none">
                                                 <label class="cl-label" style="margin-top: 10px"

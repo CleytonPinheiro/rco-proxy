@@ -1189,9 +1189,28 @@ function renderGrupos() {
         return (b.id || 0) - (a.id || 0);
     });
 
+    /* Reordena para que cada filho (subgrupo) apareça LOGO ABAIXO do seu pai.
+       Os filhos são removidos da posição original e injetados após o pai.
+       Pais sem filhos e grupos avulsos mantêm a ordem do sort acima. */
+    const filhosPorPai = {};
+    const orfaos = []; // grupos sem pai (ou cujo pai não está no cache)
+    const idsNoCache = new Set(gruposCache.map(g => g.id));
+    gruposCache.forEach(g => {
+        if (g.grupoPaiId && idsNoCache.has(g.grupoPaiId)) {
+            (filhosPorPai[g.grupoPaiId] = filhosPorPai[g.grupoPaiId] || []).push(g);
+        } else {
+            orfaos.push(g);
+        }
+    });
+    const gruposOrdenados = [];
+    orfaos.forEach(g => {
+        gruposOrdenados.push(g);
+        (filhosPorPai[g.id] || []).forEach(f => gruposOrdenados.push(f));
+    });
+
     elGrupoLista.innerHTML = '';
     let chaveAtual = null;
-    gruposCache.forEach(g => {
+    gruposOrdenados.forEach(g => {
         const chave = `${g.ano || '?'}|${g.trimestre || '?'}`;
         if (chave !== chaveAtual) {
             chaveAtual = chave;
@@ -1207,6 +1226,10 @@ function renderGrupos() {
         const nAtiv     = g.atividades.length;
         if (g.lancadoLivro)           item.classList.add('cl-grupo-item--lancado');
         if (g.tipo === 'recuperacao') item.classList.add('cl-grupo-item--recuperacao');
+        const ehSubgrupo = !!g.grupoPaiId;
+        const temSubgrupos = (g.subgrupos?.length || 0) > 0;
+        if (ehSubgrupo)   item.classList.add('cl-grupo-item--subgrupo');
+        if (temSubgrupos) item.classList.add('cl-grupo-item--pai');
 
         const lancadoHtml = g.lancadoLivro
             ? `<span class="cl-grupo-livro-badge" title="Lançado no livro${g.lancadoEm ? ' em ' + new Date(g.lancadoEm).toLocaleDateString('pt-BR') : ''}">📗 Lançado</span>`
@@ -1224,12 +1247,22 @@ function renderGrupos() {
         const fontesHtml = g.fontes?.length
             ? `<span class="cl-fonte-badge" title="Importa notas de: ${esc(g.fontes.map(f => f.fonteNome).join(', '))}">📥 ${g.fontes.length} fonte${g.fontes.length > 1 ? 's' : ''}</span>`
             : '';
+        /* Chip que mostra a relação pai-filho na própria linha do card. */
+        let subgrupoBadgeHtml = '';
+        if (ehSubgrupo) {
+            const pai = gruposCache.find(p => p.id === g.grupoPaiId);
+            const nomePai = pai ? pai.nome : 'grupo principal';
+            subgrupoBadgeHtml = `<span class="cl-grupo-subgrupo-badge" title="A nota deste grupo soma em '${esc(nomePai)}'">↑ soma em ${esc(nomePai)}</span>`;
+        } else if (temSubgrupos) {
+            const nomesFilhos = g.subgrupos.map(s => s.nome).join(', ');
+            subgrupoBadgeHtml = `<span class="cl-grupo-pai-badge" title="Este grupo recebe a soma de: ${esc(nomesFilhos)}">+${g.subgrupos.length} subgrupo${g.subgrupos.length > 1 ? 's' : ''}</span>`;
+        }
         if (g.dataFechamento) item.classList.add('cl-grupo-item--fechado');
 
         item.innerHTML  = `
             <div class="cl-grupo-cor" style="background:${g.cor}"></div>
             <div class="cl-grupo-info">
-                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}${fechadoHtml}${fontesHtml}</div>
+                <div class="cl-grupo-nome">${esc(g.nome)} ${lancadoHtml}${recBadgeHtml}${temRecHtml}${fechadoHtml}${fontesHtml}${subgrupoBadgeHtml}</div>
                 <div class="cl-grupo-meta">
                     ${nAtiv} atividade${nAtiv !== 1 ? 's' : ''} &bull;
                     <span class="cl-grupo-pts">${rco(g.pontosMeta)} pts</span>
@@ -2913,6 +2946,8 @@ const elModalAtivs       = document.getElementById('clModalAtividades');
 const elTipoGrupo        = document.getElementById('clTipoGrupo');
 const elRecOrigemWrap    = document.getElementById('clRecOrigemWrap');
 const elRecOrigemSel     = document.getElementById('clRecOrigemSel');
+const elGrupoPaiWrap     = document.getElementById('clGrupoPaiWrap');
+const elGrupoPaiSel      = document.getElementById('clGrupoPaiSel');
 const elRecDataInicio    = document.getElementById('clRecDataInicio');
 
 /* ── Campo de código RCO: bloqueia/desbloqueia conforme tipo do grupo ──
@@ -2958,6 +2993,8 @@ elTipoGrupo.addEventListener('click', e => {
     btn.classList.add('cl-tipo-btn--ativo');
     const isRec = btn.dataset.tipo === 'recuperacao';
     elRecOrigemWrap.style.display = isRec ? '' : 'none';
+    /* Subgrupo só faz sentido em grupos normais (rec já tem grupo de origem). */
+    elGrupoPaiWrap.style.display  = isRec ? 'none' : '';
     configurarCampoCodClasse(isRec, elRecOrigemSel.value || null);
 });
 
@@ -2982,6 +3019,53 @@ elRecOrigemSel.addEventListener('change', () => {
 
 function tipoModalAtivo() {
     return elTipoGrupo.querySelector('.cl-tipo-btn--ativo')?.dataset.tipo || 'normal';
+}
+
+/* Popula o select de "grupo pai" (subgrupo). Filtros aplicados:
+   - Mesmo trimestre/ano do grupo sendo editado (ou padrão do modal)
+   - Apenas grupos NORMAIS
+   - Exclui o próprio grupo
+   - Exclui grupos que já são subgrupos (preserva profundidade 1)
+   - Se este grupo já tem subgrupos, oculta tudo (não pode virar subgrupo) */
+function popularGrupoPaiSelect(grupoAtual = null) {
+    if (!elGrupoPaiSel) return;
+    const trim = Number(elGrupoTrimestre.value) || (grupoAtual?.trimestre || 1);
+    const ano  = Number(elGrupoAno.value)       || (grupoAtual?.ano       || new Date().getFullYear());
+    elGrupoPaiSel.innerHTML = '<option value="">— este grupo é independente —</option>';
+
+    /* Bloqueia se este grupo já tem subgrupos (depth=1) */
+    if (grupoAtual) {
+        const temFilhos = gruposCache.some(g => Number(g.grupoPaiId) === Number(grupoAtual.id));
+        if (temFilhos) {
+            const opt = document.createElement('option');
+            opt.value = ''; opt.disabled = true;
+            opt.textContent = 'Este grupo já tem subgrupos — não pode ser subgrupo';
+            elGrupoPaiSel.appendChild(opt);
+            elGrupoPaiSel.value = '';
+            elGrupoPaiSel.disabled = true;
+            return;
+        }
+    }
+    elGrupoPaiSel.disabled = false;
+
+    const elegiveis = gruposCache.filter(g =>
+        g.tipo === 'normal'
+        && (g.trimestre || 1) === trim
+        && (g.ano || new Date().getFullYear()) === ano
+        && !g.grupoPaiId                                // não pode ser pai se já é filho
+        && (!grupoAtual || g.id !== grupoAtual.id)      // não pode ser pai de si mesmo
+    );
+
+    elegiveis.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.nome + ` (${rco(g.pontosMeta)} pts)`;
+        elGrupoPaiSel.appendChild(opt);
+    });
+
+    if (grupoAtual?.grupoPaiId) {
+        elGrupoPaiSel.value = String(grupoAtual.grupoPaiId);
+    }
 }
 
 function popularRecOrigem(grupoIdAtual = null) {
@@ -3029,8 +3113,10 @@ function abrirModalGrupo(grupo = null) {
     });
     popularRecOrigem(grupo?.id);
     elRecOrigemWrap.style.display = tipo === 'recuperacao' ? '' : 'none';
+    elGrupoPaiWrap.style.display  = tipo === 'recuperacao' ? 'none' : '';
     if (grupo?.grupoOrigemId) elRecOrigemSel.value = grupo.grupoOrigemId;
     elRecDataInicio.value = toDatetimeLocal(grupo?.dataInicio);
+    popularGrupoPaiSelect(grupo);
 
     /* Trimestre/ano: edição usa do grupo; novo usa o mais recente entre os grupos do curso (ou ano atual / T1) */
     const anoAtual = new Date().getFullYear();
@@ -3564,6 +3650,7 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     const id            = elGrupoId.value;
     const tipo          = tipoModalAtivo();
     const grupoOrigemId = tipo === 'recuperacao' ? (elRecOrigemSel.value || null) : null;
+    const grupoPaiId    = tipo === 'normal'      ? (elGrupoPaiSel.value  || null) : null;
     /* Converte datetime-local (horário local) para ISO UTC antes de enviar */
     const dataInicio    = tipo === 'recuperacao' && elRecDataInicio.value
         ? new Date(elRecDataInicio.value).toISOString()
@@ -3613,9 +3700,9 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     try {
         let grupoId = id;
         if (id) {
-            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco, trimestre, ano } });
+            await api(`/groups/${id}`, { method: 'PUT', body: { nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, grupoPaiId, dataInicio, codClasseRco, trimestre, ano } });
         } else {
-            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, dataInicio, codClasseRco, trimestre, ano } });
+            const r = await api('/groups', { method: 'POST', body: { courseId: cursoAtivo.id, nome, pontosMeta: pontos, cor: corSelecionada, tipo, grupoOrigemId, grupoPaiId, dataInicio, codClasseRco, trimestre, ano } });
             grupoId = r.id;
         }
         await api(`/groups/${grupoId}/activities`, { method: 'PUT', body: { atividades } });
