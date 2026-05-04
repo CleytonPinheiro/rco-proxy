@@ -121,8 +121,11 @@ migrarTabelas();
    Lança Error com mensagem amigável quando inválido. Retorna o id numérico ou null. */
 async function validarGrupoPai({ paiId, courseId, tipo, trimestre, ano, selfId }) {
     if (!paiId) return null;
+    /* Filhos só podem ser do tipo Normal (uma recuperação não pode virar subgrupo
+       de ninguém — ela já é o "espelho de recuperação" do seu próprio grupo de
+       origem). Pais, por outro lado, podem ser Normal OU Recuperação. */
     if (tipo === 'recuperacao') {
-        throw new Error('Grupos de recuperação não podem ter um grupo pai.');
+        throw new Error('Grupos de recuperação não podem ser subgrupo de outro grupo.');
     }
     if (selfId && Number(paiId) === Number(selfId)) {
         throw new Error('Um grupo não pode ser pai de si mesmo.');
@@ -134,7 +137,6 @@ async function validarGrupoPai({ paiId, courseId, tipo, trimestre, ano, selfId }
     );
     if (!pai) throw new Error('Grupo pai não encontrado.');
     if (pai.curso_id !== courseId) throw new Error('Grupo pai deve ser do mesmo curso.');
-    if (pai.tipo !== 'normal') throw new Error('Apenas grupos normais podem ser pai.');
     if (pai.trimestre !== Number(trimestre) || pai.ano !== Number(ano)) {
         throw new Error('Grupo pai deve estar no mesmo trimestre e ano.');
     }
@@ -876,11 +878,9 @@ export function createClassroomRouter(deps = {}) {
                 [req.params.id]
             );
             if (filhosExistentes.length) {
-                if (tipoVal !== 'normal') {
-                    return res.status(400).json({
-                        erro: `Este grupo tem ${filhosExistentes.length} subgrupo(s) — não pode virar recuperação.`,
-                    });
-                }
+                /* Pai pode ser Normal ou Recuperação — então não validamos tipoVal aqui.
+                   Mas trim/ano precisam permanecer iguais aos dos filhos para preservar
+                   a invariante "pai e filhos no mesmo período". */
                 const conflito = filhosExistentes.find(f =>
                     f.trimestre !== trimestreVal || f.ano !== anoVal
                 );
@@ -1657,13 +1657,23 @@ export function createClassroomRouter(deps = {}) {
                  subgrupo soma com a nota já existente da recuperação.
                Profundidade 1: subgrupos NÃO têm filhos próprios (validado no CRUD). */
             let subgruposInjetados = [];
-            const idPaiParaFilhos = isRecuperacao
-                ? (grupoInfo?.grupo_origem_id || null)  // rec → busca filhos do pai
-                : Number(req.params.id);                // normal → busca seus próprios filhos
-            if (idPaiParaFilhos) {
+            /* Quais "pais" devem contribuir filhos para este grupo?
+               - Normal: ele mesmo (busca seus próprios filhos).
+               - Recuperação: o grupo de origem (herança automática) E ele mesmo
+                 (subgrupos próprios da rec, novo conceito — completam a nota da rec).
+               Usamos um Set para deduplicar caso algum dia haja sobreposição. */
+            const idsPaiParaFilhos = new Set();
+            if (isRecuperacao) {
+                if (grupoInfo?.grupo_origem_id) idsPaiParaFilhos.add(grupoInfo.grupo_origem_id);
+                idsPaiParaFilhos.add(Number(req.params.id));
+            } else {
+                idsPaiParaFilhos.add(Number(req.params.id));
+            }
+            if (idsPaiParaFilhos.size) {
                 const { rows: filhos } = await pool.query(
-                    `SELECT id, nome FROM classroom_grupos WHERE grupo_pai_id = $1 ORDER BY id`,
-                    [idPaiParaFilhos]
+                    `SELECT id, nome FROM classroom_grupos
+                      WHERE grupo_pai_id = ANY($1::int[]) ORDER BY id`,
+                    [Array.from(idsPaiParaFilhos)]
                 );
                 for (const filho of filhos) {
                     const { rows: filhoAtivs } = await pool.query(

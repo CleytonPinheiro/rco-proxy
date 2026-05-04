@@ -3050,40 +3050,41 @@ function popularGrupoPaiSelect(grupoAtual = null) {
     }
     elGrupoPaiSel.disabled = false;
 
-    /* Mesmo período + não-self + não-filho. Tipos diferentes recebem tratamento distinto:
-       Normais → eleg\u00edveis (selecion\u00e1veis).
-       Recupera\u00e7\u00f5es → mostradas desabilitadas com motivo (recupera\u00e7\u00e3o n\u00e3o pode ser pai
-       porque j\u00e1 herda automaticamente as notas do seu grupo de origem + subgrupos). */
-    const mesmoPeriodo = gruposCache.filter(g =>
+    /* Pai pode ser Normal OU Recuperação (a nota do filho completa a nota do pai
+       em ambos os casos). Mesmo período + não-self + não-já-filho. */
+    const elegiveis = gruposCache.filter(g =>
         (g.trimestre || 1) === trim
         && (g.ano || new Date().getFullYear()) === ano
-        && !g.grupoPaiId
-        && (!grupoAtual || g.id !== grupoAtual.id)
+        && !g.grupoPaiId                                // não pode ser pai se já é filho
+        && (!grupoAtual || g.id !== grupoAtual.id)      // não pode ser pai de si mesmo
     );
-    const elegiveis = mesmoPeriodo.filter(g => g.tipo === 'normal');
-    const recsBloqueadas = mesmoPeriodo.filter(g => g.tipo === 'recuperacao');
 
-    if (!elegiveis.length && !recsBloqueadas.length) {
+    if (!elegiveis.length) {
         const opt = document.createElement('option');
         opt.value = ''; opt.disabled = true;
         opt.textContent = `Nenhum grupo disponível em ${trim}º Trimestre · ${ano}`;
         elGrupoPaiSel.appendChild(opt);
     } else {
-        elegiveis.forEach(g => {
+        /* Ordena: Normais primeiro, depois Recuperações (visualmente agrupado). */
+        const normais = elegiveis.filter(g => g.tipo === 'normal');
+        const recs    = elegiveis.filter(g => g.tipo === 'recuperacao');
+        normais.forEach(g => {
             const opt = document.createElement('option');
             opt.value = g.id;
             opt.textContent = g.nome + ` (${rco(g.pontosMeta)} pts)`;
             elGrupoPaiSel.appendChild(opt);
         });
-        if (recsBloqueadas.length) {
-            const sep = document.createElement('option');
-            sep.disabled = true; sep.value = '';
-            sep.textContent = '──── Não elegíveis (recuperação) ────';
-            elGrupoPaiSel.appendChild(sep);
-            recsBloqueadas.forEach(g => {
+        if (recs.length) {
+            if (normais.length) {
+                const sep = document.createElement('option');
+                sep.disabled = true; sep.value = '';
+                sep.textContent = '──── Recuperações ────';
+                elGrupoPaiSel.appendChild(sep);
+            }
+            recs.forEach(g => {
                 const opt = document.createElement('option');
-                opt.disabled = true; opt.value = '';
-                opt.textContent = `🔒 ${g.nome} — recuperação já herda do pai`;
+                opt.value = g.id;
+                opt.textContent = `🔄 ${g.nome} (${rco(g.pontosMeta)} pts)`;
                 elGrupoPaiSel.appendChild(opt);
             });
         }
