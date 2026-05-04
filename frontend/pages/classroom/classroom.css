@@ -3800,8 +3800,10 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-select option {
     background-color: var(--bg-card, #fff);
     color: var(--text-primary, #1e293b);
-    padding: 6px 10px;
+    padding: 8px 12px;
+    margin: 2px 4px;
     font-size: .85rem;
+    border-radius: 6px;
 }
 .cl-select option:disabled {
     color: var(--text-soft, #94a3b8);
@@ -3824,6 +3826,48 @@ body.cl-popout .logo-icon { font-size: 15px; }
     :root:not([data-theme="light"]) .cl-select option:disabled {
         background-color: #0f172a;
         color: #64748b;
+    }
+}
+
+/* ── Dropdown nativo com cantos arredondados (Chromium 125+ via appearance:base-select).
+   Quando suportado, o popover do <select> deixa de usar o controle nativo do SO
+   e passa a respeitar border-radius/box-shadow/padding. Em navegadores sem suporte,
+   o select continua funcionando normalmente com o estilo padrão. */
+@supports (appearance: base-select) {
+    .cl-select,
+    .cl-select.cl-select--compact {
+        appearance: base-select;
+    }
+    .cl-select::picker(select) {
+        appearance: base-select;
+        background-color: var(--bg-card, #fff);
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    [data-theme="dark"] .cl-select::picker(select) {
+        background-color: #1e293b;
+        border-color: #334155;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+    }
+    .cl-select option {
+        border-radius: 6px;
+        margin: 2px 0;
+        padding: 7px 10px;
+    }
+    .cl-select option:hover:not(:disabled) {
+        background-color: color-mix(in srgb, #4285F4 12%, transparent);
+    }
+    .cl-select option:checked {
+        background-color: color-mix(in srgb, #4285F4 18%, transparent);
+        color: var(--text-primary, #1e293b);
+        font-weight: 500;
+    }
+    [data-theme="dark"] .cl-select option:checked {
+        color: #e2e8f0;
     }
 }
 
