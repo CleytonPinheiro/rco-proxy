@@ -2005,7 +2005,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null, fontes: resumo.fontes || [] };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null, fontes: resumo.fontes || [], subgrupos: resumo.subgruposInjetados || [] };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
         renderAvisoCorrecao();
@@ -2213,7 +2213,7 @@ function toggleFiltro(chave) {
 
 function renderListaFiltrada() {
     if (!grupoResumoData) return;
-    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal, dataFechamento, fontes } = grupoResumoData;
+    const { alunosResumo, meta, atividades, isRec, hasRec, dataInicio, dataCorteOriginal, dataFechamento, fontes, subgrupos } = grupoResumoData;
 
     // Contagens por faixa
     const nMeta    = alunosResumo.filter(a => faixaCor(a.soma, meta) === 'meta').length;
@@ -2346,7 +2346,7 @@ function renderListaFiltrada() {
     // Rows → detalhe do aluno
     elNotasLista.querySelectorAll('.cl-resumo-row').forEach((row, i) => {
         row.style.cursor = 'pointer';
-        row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta, fontes));
+        row.addEventListener('click', () => mostrarDetalheAluno(filtrados[i], atividades, meta, fontes, subgrupos));
     });
 
     // Headers → drag-to-reorder + click-to-sort
@@ -2670,7 +2670,7 @@ function imprimirRelatorioGrupo() {
 /* ══════════════════════════════════════════════════════════════
    DETALHE DO ALUNO NO GRUPO
 ══════════════════════════════════════════════════════════════ */
-function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
+function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos = []) {
     alunoDetalheAberto = alunoData.userId;
     const al      = alunoData.aluno;
     const iniciais = (al.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
@@ -2839,11 +2839,71 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
         }
     }
 
-    const totalRealizadas    = realizadas + fonteRealizadas;
-    const totalNaoRealizadas = naoRealizadas + fonteNaoRealizadas;
-    const totalEntrou        = entrarEm + fonteEntrou;
+    /* ── Bloco SUBGRUPOS — atividades dos grupos-filho cujas notas SOMAM neste grupo.
+       Renderizado em uma seção por subgrupo, com cabeçalho mostrando nome, pts máx
+       e a soma das notas do aluno naquele subgrupo. */
+    let subgruposHtml = '';
+    let subRealizadas = 0, subNaoRealizadas = 0, subEntrou = 0, totalSubAtivs = 0;
+    if (subgrupos.length > 0) {
+        for (const sub of subgrupos) {
+            if (!sub.atividades?.length) continue;
+            totalSubAtivs += sub.atividades.length;
+            let subRows = '';
+            let somaSub = 0;
+            for (const satv of sub.atividades) {
+                const key   = `s_${sub.id}_${satv.id}`;
+                const subm  = alunoData.subgruposAtividades?.[key];
+                const nota  = subm?.nota ?? null;
+                const rasc  = subm?.notaRascunho ?? null;
+                const entregue = subm?.entregue ?? false;
+                const notaEf  = nota ?? rasc;
+                const entrou  = notaEf === 0 && entregue;
+                const ptMax   = satv.pontos ?? 0;
+
+                let statusHtml, tipo;
+                if (entrou) {
+                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entrou">↩ Entrou (0 / ${rco(ptMax)} pts)</span>`;
+                    tipo = 'entrou'; subEntrou++;
+                } else if (notaEf !== null) {
+                    const pctAtv = ptMax > 0 ? ((notaEf / ptMax) * 100).toFixed(0) : notaEf;
+                    const rascLabel = nota === null && rasc !== null ? ' <small style="opacity:.6">(rascunho)</small>' : '';
+                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)${rascLabel}</span>`;
+                    tipo = 'realizada'; subRealizadas++;
+                    somaSub += Math.min(notaEf, ptMax);
+                } else if (entregue) {
+                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--aguard">⏳ Realizou — aguardando correção</span>`;
+                    tipo = 'realizada'; subRealizadas++;
+                } else {
+                    statusHtml = `<span class="cl-nota-status-badge" style="background:var(--bg-alt);color:var(--text-muted)">Pendente</span>`;
+                    tipo = 'nao-realizada'; subNaoRealizadas++;
+                }
+
+                subRows += `
+                <div class="cl-detalhe-row cl-detalhe-row--fonte" data-tipo="${tipo}">
+                    <div class="cl-detalhe-row-titulo">${esc(satv.titulo)}</div>
+                    <div class="cl-detalhe-row-status">${statusHtml}</div>
+                </div>`;
+            }
+            const somaCor = somaSub >= sub.pontosMax ? '#10b981' : somaSub > 0 ? '#4285F4' : '#94a3b8';
+            subgruposHtml += `
+            <div class="cl-detalhe-fonte-section">
+                <div class="cl-detalhe-fonte-header">
+                    <span class="cl-detalhe-fonte-ico">↑</span>
+                    <span class="cl-detalhe-fonte-nome">Subgrupo: ${esc(sub.nome)}</span>
+                    <span class="cl-detalhe-fonte-pts" style="color:${somaCor}">
+                        ${rco(somaSub)} / ${rco(sub.pontosMax)} pts
+                    </span>
+                </div>
+                ${subRows}
+            </div>`;
+        }
+    }
+
+    const totalRealizadas    = realizadas + fonteRealizadas + subRealizadas;
+    const totalNaoRealizadas = naoRealizadas + fonteNaoRealizadas + subNaoRealizadas;
+    const totalEntrou        = entrarEm + fonteEntrou + subEntrou;
     const totalFonteAtivs    = fontes.reduce((s, f) => s + (f.atividades?.length || 0), 0);
-    const totalGeral         = totalAtiv + totalFonteAtivs;
+    const totalGeral         = totalAtiv + totalFonteAtivs + totalSubAtivs;
 
     elNotasLista.innerHTML = `
         <div class="cl-detalhe-header">
@@ -2892,6 +2952,7 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = []) {
         <div class="cl-detalhe-lista" id="clDetalheLista">
             ${rowsHtml}
             ${fontesHtml}
+            ${subgruposHtml}
         </div>`;
 
     // Tabs de filtro
@@ -2928,7 +2989,7 @@ function refrescarDetalheAlunoAberto() {
         renderListaFiltrada();
         return;
     }
-    mostrarDetalheAluno(novo, grupoResumoData.atividades, grupoResumoData.meta, grupoResumoData.fontes || []);
+    mostrarDetalheAluno(novo, grupoResumoData.atividades, grupoResumoData.meta, grupoResumoData.fontes || [], grupoResumoData.subgrupos || []);
 }
 
 /* ══════════════════════════════════════════════════════════════

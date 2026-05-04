@@ -1683,10 +1683,18 @@ export function createClassroomRouter(deps = {}) {
                     );
                     if (!filhoAtivs.length) continue;
                     let filhoPontosMax = 0;
+                    /* Lista de atividades deste subgrupo no formato consumido pelo frontend
+                       (mesmo shape de "atividades" e de "fontes[i].atividades"). */
+                    const filhoAtivsDTO = [];
                     for (const fa of filhoAtivs) {
                         const pm = Number(fa.pontos_max) || 0;
                         if (pm <= 0) continue;
                         filhoPontosMax += pm;
+                        filhoAtivsDTO.push({
+                            id: fa.atividade_id,
+                            titulo: fa.atividade_titulo,
+                            pontos: pm,
+                        });
                         try {
                             let pt;
                             do {
@@ -1697,10 +1705,24 @@ export function createClassroomRouter(deps = {}) {
                                     if (!alunoMap[s.userId]) {
                                         alunoMap[s.userId] = {
                                             userId: s.userId, totalGanho: 0, totalGanhoInterno: 0,
-                                            pendentes: 0, atividades: {},
+                                            pendentes: 0, atividades: {}, subgruposAtividades: {},
                                         };
                                     }
-                                    const grade = s.assignedGrade ?? null;
+                                    if (!alunoMap[s.userId].subgruposAtividades) {
+                                        alunoMap[s.userId].subgruposAtividades = {};
+                                    }
+                                    const grade    = s.assignedGrade ?? null;
+                                    const rascGrad = s.draftGrade ?? null;
+                                    const notaEf   = grade ?? rascGrad;
+                                    const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
+                                    /* Chave única por aluno/sub: s_<filhoId>_<atvId>. Permite
+                                       a UI mostrar o vínculo da nota com a atividade do subgrupo
+                                       sem colidir com `atividades` do próprio grupo. */
+                                    const key = `s_${filho.id}_${fa.atividade_id}`;
+                                    alunoMap[s.userId].subgruposAtividades[key] = {
+                                        nota: grade, notaRascunho: rascGrad, entregue,
+                                        estado: s.state,
+                                    };
                                     if (grade !== null) {
                                         const valor = Math.min(grade, pm);
                                         alunoMap[s.userId].totalGanho += valor;
@@ -1719,6 +1741,7 @@ export function createClassroomRouter(deps = {}) {
                         totalPossivelComFontes += filhoPontosMax;
                         subgruposInjetados.push({
                             id: filho.id, nome: filho.nome, pontosMax: filhoPontosMax,
+                            atividades: filhoAtivsDTO,
                         });
                     }
                 }
@@ -1734,7 +1757,8 @@ export function createClassroomRouter(deps = {}) {
                     mediaIndiceInterno: totalPossivel > 0 ? (ganhoInterno / totalPossivel) * 100 : 0,
                     pendentes:   a.pendentes,
                     atividades:  a.atividades,
-                    fontesAtividades: a.fontesAtividades || {},
+                    fontesAtividades:    a.fontesAtividades    || {},
+                    subgruposAtividades: a.subgruposAtividades || {},
                 };
             });
 
