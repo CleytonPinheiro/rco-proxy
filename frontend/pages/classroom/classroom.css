@@ -810,6 +810,35 @@ body.cl-popout .logo-icon { font-size: 15px; }
     text-align: center;
 }
 .cl-nota-status--entregue  { background: #dcfce7; color: #166534; }
+.cl-nota-status--rasc      {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px dashed #f59e0b;
+    font-weight: 500;
+}
+[data-theme="dark"] .cl-nota-status--rasc {
+    background: color-mix(in srgb, #f59e0b 15%, #1e293b);
+    color: #fbbf24;
+    border-color: #b45309;
+}
+.cl-detalhe-soma--rasc {
+    color: #b45309 !important;
+    font-size: .82rem;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+[data-theme="dark"] .cl-detalhe-soma--rasc { color: #fbbf24 !important; }
+.cl-detalhe-rasc-delta {
+    font-size: .72rem;
+    background: color-mix(in srgb, #f59e0b 18%, transparent);
+    color: inherit;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 500;
+}
 .cl-nota-status--atrasado  { background: #fee2e2; color: #991b1b; }
 .cl-nota-status--pendente  { background: #fef9c3; color: #854d0e; }
 .cl-nota-status--devolvido { background: #ede9fe; color: #5b21b6; }

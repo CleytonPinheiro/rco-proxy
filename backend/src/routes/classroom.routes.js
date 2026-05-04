@@ -1484,6 +1484,11 @@ export function createClassroomRouter(deps = {}) {
                         eDeRecuperacao, eTardia,
                     };
 
+                    /* Inicializa contador de "ganho previsto" — soma assignedGrade + draftGrade.
+                       Usado para exibir uma previsão de nota sem alterar o cálculo oficial. */
+                    if (alunoMap[s.userId].totalGanhoPrevisto === undefined) {
+                        alunoMap[s.userId].totalGanhoPrevisto = 0;
+                    }
                     if (pontosMax === null) {
                         /* Atividade sem escala de pontos definida em nenhum lugar:
                            não participa do cálculo de nota (ignorada no numerador e denominador) */
@@ -1494,7 +1499,15 @@ export function createClassroomRouter(deps = {}) {
                         /* Submission entregue após o fechamento da nota DESTE grupo:
                            não entra no cálculo — registrada como entrega tardia separadamente. */
                     } else if (nota !== null) {
-                        alunoMap[s.userId].totalGanho += Math.min(nota, pontosMax);
+                        const v = Math.min(nota, pontosMax);
+                        alunoMap[s.userId].totalGanho         += v;
+                        alunoMap[s.userId].totalGanhoPrevisto += v;
+                    } else if (notaRascunho !== null) {
+                        /* Rascunho: NÃO conta no totalGanho (oficial), mas conta no totalGanhoPrevisto.
+                           Permite ao frontend exibir "previsto: X / Y" sem mudar o cálculo histórico.
+                           Também conta como pendente — o professor precisa devolver. */
+                        alunoMap[s.userId].totalGanhoPrevisto += Math.min(notaRascunho, pontosMax);
+                        alunoMap[s.userId].pendentes++;
                     } else if (entregue) {
                         alunoMap[s.userId].pendentes++;
                     } else {
@@ -1610,7 +1623,14 @@ export function createClassroomRouter(deps = {}) {
                         for (const [uid, score] of Object.entries(fonteScores)) {
                             if (alunoMap[uid]) {
                                 matchCount++;
-                                alunoMap[uid].totalGanho += score * pesoFrac;
+                                const contrib = score * pesoFrac;
+                                alunoMap[uid].totalGanho         += contrib;
+                                /* Espelha em totalGanhoPrevisto: fontes têm apenas notas oficiais
+                                   (rascunho de fonte não é considerado), então oficial == previsto. */
+                                if (alunoMap[uid].totalGanhoPrevisto === undefined) {
+                                    alunoMap[uid].totalGanhoPrevisto = 0;
+                                }
+                                alunoMap[uid].totalGanhoPrevisto += contrib;
                             } else { missCount++; }
                         }
 
@@ -1705,15 +1725,18 @@ export function createClassroomRouter(deps = {}) {
                                     if (!alunoMap[s.userId]) {
                                         alunoMap[s.userId] = {
                                             userId: s.userId, totalGanho: 0, totalGanhoInterno: 0,
+                                            totalGanhoPrevisto: 0,
                                             pendentes: 0, atividades: {}, subgruposAtividades: {},
                                         };
                                     }
                                     if (!alunoMap[s.userId].subgruposAtividades) {
                                         alunoMap[s.userId].subgruposAtividades = {};
                                     }
+                                    if (alunoMap[s.userId].totalGanhoPrevisto === undefined) {
+                                        alunoMap[s.userId].totalGanhoPrevisto = 0;
+                                    }
                                     const grade    = s.assignedGrade ?? null;
                                     const rascGrad = s.draftGrade ?? null;
-                                    const notaEf   = grade ?? rascGrad;
                                     const entregue = s.state === 'TURNED_IN' || s.state === 'RETURNED';
                                     /* Chave única por aluno/sub: s_<filhoId>_<atvId>. Permite
                                        a UI mostrar o vínculo da nota com a atividade do subgrupo
@@ -1728,6 +1751,10 @@ export function createClassroomRouter(deps = {}) {
                                         alunoMap[s.userId].totalGanho += valor;
                                         alunoMap[s.userId].totalGanhoInterno =
                                             (alunoMap[s.userId].totalGanhoInterno ?? alunoMap[s.userId].totalGanho) + valor;
+                                        alunoMap[s.userId].totalGanhoPrevisto += valor;
+                                    } else if (rascGrad !== null) {
+                                        /* Subgrupo: rascunho conta APENAS no previsto (mesma regra do grupo principal). */
+                                        alunoMap[s.userId].totalGanhoPrevisto += Math.min(rascGrad, pm);
                                     }
                                 }
                                 pt = r.data.nextPageToken;
@@ -1750,11 +1777,18 @@ export function createClassroomRouter(deps = {}) {
             const totalFinal = fontesConfig.length > 0 ? totalPossivelComFontes : totalPossivel;
 
             let alunos = Object.values(alunoMap).map(a => {
-                const ganhoInterno = a.totalGanhoInterno ?? a.totalGanho;
+                const ganhoInterno  = a.totalGanhoInterno  ?? a.totalGanho;
+                /* totalGanhoPrevisto agora é mantido coerentemente em todos os pontos de
+                   acúmulo (grupo principal + fontes + subgrupos), incluindo rascunhos.
+                   Por construção: totalGanhoPrevisto >= totalGanho. */
+                const ganhoPrevisto = Math.max(a.totalGanhoPrevisto ?? a.totalGanho, a.totalGanho);
                 return {
                     userId:      a.userId,
-                    mediaIndice: totalFinal > 0 ? (a.totalGanho / totalFinal) * 100 : 0,
-                    mediaIndiceInterno: totalPossivel > 0 ? (ganhoInterno / totalPossivel) * 100 : 0,
+                    mediaIndice:         totalFinal    > 0 ? (a.totalGanho   / totalFinal)    * 100 : 0,
+                    mediaIndiceInterno:  totalPossivel > 0 ? (ganhoInterno   / totalPossivel) * 100 : 0,
+                    /* mediaIndicePrevisto: usa o mesmo denominador do oficial (totalFinal),
+                       então a previsão é diretamente comparável e sempre ≥ oficial. */
+                    mediaIndicePrevisto: totalFinal    > 0 ? (ganhoPrevisto  / totalFinal)    * 100 : 0,
                     pendentes:   a.pendentes,
                     atividades:  a.atividades,
                     fontesAtividades:    a.fontesAtividades    || {},

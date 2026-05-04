@@ -1974,6 +1974,8 @@ async function carregarResumoGrupo(grupo) {
             aluno:     alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
             soma:      ((a.mediaIndice ?? 0) / 100) * meta,
             somaInterna: ((a.mediaIndiceInterno ?? a.mediaIndice ?? 0) / 100) * meta,
+            /* somaPrevista: oficial + rascunhos pendentes de devolução. Sempre >= soma. */
+            somaPrevista: ((a.mediaIndicePrevisto ?? a.mediaIndice ?? 0) / 100) * meta,
             temEntrou: Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
             recData:   recMap[a.userId] ?? null,
         })).sort((a, b) => {
@@ -2677,10 +2679,16 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
     const fotoHtml = al.foto ? `<img src="${esc(al.foto)}" alt="" loading="lazy"/>` : iniciais;
     const soma     = alunoData.soma ?? 0;
     const somaInt  = alunoData.somaInterna ?? soma;
+    const somaPrev = alunoData.somaPrevista ?? soma;
     const pct      = meta > 0 ? Math.min(100, (soma / meta) * 100) : 0;
     const pctInt   = meta > 0 ? Math.min(100, (somaInt / meta) * 100) : 0;
-    const barCor   = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
+    const pctPrev  = meta > 0 ? Math.min(100, (somaPrev / meta) * 100) : 0;
+    const barCor     = pct    >= 100 ? '#10b981' : pct    >= 60 ? '#4285F4' : '#f59e0b';
     const somaIntCor = pctInt >= 100 ? '#10b981' : pctInt >= 60 ? '#4285F4' : '#f59e0b';
+    /* Diferença entre oficial e previsto = soma de rascunhos pendentes de devolução.
+       Tolerância pequena para evitar mostrar "+0,0" por arredondamento de ponto flutuante. */
+    const deltaRascunho = somaPrev - soma;
+    const temRascunho   = deltaRascunho > 0.05;
 
     // Preparar linhas de atividade
     const rows = atividades.map(atv => {
@@ -2702,8 +2710,12 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
         } else if (notaEfetiva !== null) {
             const ptMax  = atv.pontos ?? 100;
             const pctAtv = ptMax > 0 ? ((notaEfetiva / ptMax) * 100).toFixed(0) : notaEfetiva;
-            const rascLabel = nota === null && notaRasc !== null ? ' <small style="opacity:.6">(rascunho)</small>' : '';
-            statusHtml   = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)${rascLabel}</span>`;
+            const ehRasc = nota === null && notaRasc !== null;
+            if (ehRasc) {
+                statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%) — rascunho</span>`;
+            } else {
+                statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
+            }
             tipo = 'realizada';
         } else if (entregue) {
             statusHtml = `<span class="cl-nota-status-badge cl-nota-status--aguard">⏳ Realizou — aguardando correção</span>`;
@@ -2866,10 +2878,16 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
                     tipo = 'entrou'; subEntrou++;
                 } else if (notaEf !== null) {
                     const pctAtv = ptMax > 0 ? ((notaEf / ptMax) * 100).toFixed(0) : notaEf;
-                    const rascLabel = nota === null && rasc !== null ? ' <small style="opacity:.6">(rascunho)</small>' : '';
-                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)${rascLabel}</span>`;
+                    const ehRasc = nota === null && rasc !== null;
+                    if (ehRasc) {
+                        statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%) — rascunho</span>`;
+                    } else {
+                        statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
+                    }
                     tipo = 'realizada'; subRealizadas++;
-                    somaSub += Math.min(notaEf, ptMax);
+                    /* Soma do subgrupo SEMPRE usa nota oficial (nota), nunca rascunho —
+                       coerente com totalGanho do backend. */
+                    if (nota !== null) somaSub += Math.min(nota, ptMax);
                 } else if (entregue) {
                     statusHtml = `<span class="cl-nota-status-badge cl-nota-status--aguard">⏳ Realizou — aguardando correção</span>`;
                     tipo = 'realizada'; subRealizadas++;
@@ -2921,14 +2939,21 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
                             <span class="cl-detalhe-pct">(${pctInt.toFixed(0)}%)</span>
                         </div>
                         <div class="cl-detalhe-soma cl-detalhe-soma--total" style="color:${barCor}">
-                            📥 Total: ${rco(soma)} / ${rco(meta)} pts
+                            📥 Total: ${rco(soma)} / ${rco(meta)} pts (oficial)
                             <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
                         </div>`
                         : `<div class="cl-detalhe-soma" style="color:${barCor}">
-                            ${rco(soma)} / ${rco(meta)} pts
+                            ${rco(soma)} / ${rco(meta)} pts (oficial)
                             <span class="cl-detalhe-pct">(${pct.toFixed(0)}%)</span>
                         </div>`
                     }
+                    ${temRascunho ? `
+                    <div class="cl-detalhe-soma cl-detalhe-soma--rasc"
+                         title="Inclui notas em rascunho que ainda não foram devolvidas no Classroom">
+                        📝 Previsto com rascunhos: ${rco(somaPrev)} / ${rco(meta)} pts
+                        <span class="cl-detalhe-pct">(${pctPrev.toFixed(0)}%)</span>
+                        <span class="cl-detalhe-rasc-delta">+${rco(deltaRascunho)} pendente${deltaRascunho >= 0.95 ? 's' : ''} de devolução</span>
+                    </div>` : ''}
                 </div>
             </div>
         </div>
