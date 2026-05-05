@@ -698,6 +698,98 @@ export function createProvasRouter() {
         }
     });
 
+    /* Trocar a variante de uma submissão (caso o aluno tenha marcado errado).
+       Recalcula a nota usando o gabarito da nova variante. NÃO mexe nas marcações. */
+    router.put('/classroom/provas/submissoes/:subId/variante', async (req, res) => {
+        const { varianteId } = req.body || {};
+        if (!varianteId) return res.status(400).json({ erro: 'varianteId obrigatório.' });
+        const cpfSessao = req.userSession?.cpf;
+        const perfil    = req.userSession?.perfil;
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const { rows: [sub] } = await client.query(
+                `SELECT s.*, p.criada_por_cpf
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_provas p ON p.id = s.prova_id
+                  WHERE s.id = $1
+                  FOR UPDATE`,
+                [req.params.subId]
+            );
+            if (!sub) { await client.query('ROLLBACK'); return res.status(404).json({ erro: 'Submissão não encontrada.' }); }
+            /* Apenas o professor dono da prova ou um admin pode mexer */
+            if (perfil !== 'admin' && sub.criada_por_cpf && cpfSessao && sub.criada_por_cpf !== cpfSessao) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ erro: 'Sem permissão pra alterar submissões de prova de outro professor.' });
+            }
+            if (sub.eh_segundo_corretor) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ erro: 'Não dá pra trocar variante de uma 2ª correção (apague-a e re-sorteie).' });
+            }
+            const { rows: [variante] } = await client.query(
+                `SELECT * FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
+                [varianteId, sub.prova_id]
+            );
+            if (!variante) { await client.query('ROLLBACK'); return res.status(404).json({ erro: 'Variante inválida pra esta prova.' }); }
+            if (variante.id === sub.variante_id) {
+                await client.query('ROLLBACK');
+                return res.json({ ok: true, semMudanca: true, nota: sub.nota, total_max: sub.total_max });
+            }
+            const { nota, total } = calcularNota(variante.gabarito_json, sub.marcacoes_json || {});
+            await client.query(
+                `UPDATE classroom_prova_submissoes
+                    SET variante_id = $1, nota = $2, total_max = $3
+                  WHERE id = $4`,
+                [variante.id, nota, total, sub.id]
+            );
+            /* Se houver 2ª correção atrelada, ela ficou inválida (gabarito mudou) — apaga. */
+            const { rowCount: removidas } = await client.query(
+                `DELETE FROM classroom_prova_submissoes
+                  WHERE submissao_ref_id = $1 AND eh_segundo_corretor = true`,
+                [sub.id]
+            );
+            await client.query('COMMIT');
+            logProvas(req, 'PROVA_TROCAR_VARIANTE', {
+                submissaoId: sub.id, de: sub.variante_id, para: variante.id,
+                novaNota: nota, segundasRemovidas: removidas
+            });
+            res.json({ ok: true, nota, total_max: total, segundasRemovidas: removidas });
+        } catch (e) {
+            await client.query('ROLLBACK').catch(() => {});
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    /* Apagar a submissão de um aluno (libera ele para refazer do zero) */
+    router.delete('/classroom/provas/submissoes/:subId', async (req, res) => {
+        const cpfSessao = req.userSession?.cpf;
+        const perfil    = req.userSession?.perfil;
+        try {
+            const { rows: [sub] } = await pool.query(
+                `SELECT s.id, s.prova_id, s.aluno_email, s.eh_segundo_corretor, p.criada_por_cpf
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_provas p ON p.id = s.prova_id
+                  WHERE s.id = $1`,
+                [req.params.subId]
+            );
+            if (!sub) return res.status(404).json({ erro: 'Submissão não encontrada.' });
+            if (perfil !== 'admin' && sub.criada_por_cpf && cpfSessao && sub.criada_por_cpf !== cpfSessao) {
+                return res.status(403).json({ erro: 'Sem permissão pra apagar submissões de prova de outro professor.' });
+            }
+            /* CASCADE de submissao_ref_id apaga as 2ªs correções vinculadas automaticamente */
+            await pool.query(`DELETE FROM classroom_prova_submissoes WHERE id = $1`, [sub.id]);
+            logProvas(req, 'PROVA_APAGAR_SUBMISSAO', {
+                submissaoId: sub.id, provaId: sub.prova_id, aluno: sub.aluno_email,
+                era2Corretor: sub.eh_segundo_corretor
+            });
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     return router;
 }
 

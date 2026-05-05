@@ -200,9 +200,9 @@ function renderDetalhe(d) {
     if (principais.length === 0) {
         sub += '<div class="prv-empty">Nenhum aluno corrigiu ainda.</div>';
     } else {
+        const optsVar = d.variantes.map(v => `<option value="${v.id}">.${escapeHtml(v.codigo)}</option>`).join('');
         sub += `<table class="prv-tabela"><thead><tr>
-            <th>Aluno</th><th>Variante</th><th>Quando</th><th>Flags</th><th class="prv-nota">Nota</th>
-            ${p.segundo_corretor_ativo ? '<th>Ação</th>' : ''}
+            <th>Aluno</th><th>Variante</th><th>Quando</th><th>Flags</th><th class="prv-nota">Nota</th><th>Ações</th>
         </tr></thead><tbody>`;
         for (const s of principais) {
             const seg = segundas.find(x => x.submissao_ref_id === s.id);
@@ -214,18 +214,31 @@ function renderDetalhe(d) {
                 if (div > 0.01) flags.push(`<span class="prv-flag prv-flag-2cor">DIVERG ${div.toFixed(1)}</span>`);
                 else flags.push('<span class="prv-flag prv-flag-2cor">2º ✓</span>');
             }
+            const selVar = `<select id="prvVar_${s.id}" class="prv-sel-variante" title="Trocar variante recalcula a nota">
+                ${d.variantes.map(v => `<option value="${v.id}" ${v.id===s.variante_id?'selected':''}>.${escapeHtml(v.codigo)}</option>`).join('')}
+            </select>
+            <button class="prv-link-acao prv-act-trocar" data-sub="${s.id}" title="Recalcula a nota com o gabarito da variante escolhida">↻</button>`;
+            const acoes = [];
+            if (p.segundo_corretor_ativo) acoes.push(seg ? '<small>2ª ok</small>' : `<button class="prv-link-acao prv-act-sortear" data-sub="${s.id}">Sortear 2º</button>`);
+            acoes.push(`<button class="prv-link-acao prv-link-danger prv-act-apagar" data-sub="${s.id}" data-aluno="${escapeHtml(s.aluno_nome || s.aluno_email)}" title="Apaga a submissão deste aluno para ele refazer">🗑</button>`);
             sub += `<tr>
                 <td>${escapeHtml(s.aluno_nome || s.aluno_email)}<br><small style="color:#888">${escapeHtml(s.aluno_email)}</small></td>
-                <td>.${escapeHtml(s.variante_codigo)}</td>
+                <td>${selVar}</td>
                 <td>${new Date(s.criada_em).toLocaleString('pt-BR')}</td>
                 <td>${flags.join(' ') || '—'}</td>
                 <td class="prv-nota">${s.nota} / ${s.total_max}</td>
-                ${p.segundo_corretor_ativo ? `<td>${seg ? '<small>Já corrigida</small>' : `<button class="prv-link-acao" onclick="sortear(${s.id})">Sortear 2º</button>`}</td>` : ''}
+                <td>${acoes.join(' ')}</td>
             </tr>`;
         }
         sub += `</tbody></table>`;
     }
     $('prvDetSubmissoes').innerHTML = sub;
+    $('prvDetSubmissoes').querySelectorAll('.prv-act-trocar').forEach(b =>
+        b.addEventListener('click', () => trocarVariante(parseInt(b.dataset.sub, 10))));
+    $('prvDetSubmissoes').querySelectorAll('.prv-act-sortear').forEach(b =>
+        b.addEventListener('click', () => sortear(parseInt(b.dataset.sub, 10))));
+    $('prvDetSubmissoes').querySelectorAll('.prv-act-apagar').forEach(b =>
+        b.addEventListener('click', () => apagarSubmissao(parseInt(b.dataset.sub, 10), b.dataset.aluno)));
 
     $('prvBtnEfetivar').textContent = p.efetivada ? 'Reabrir como rascunho' : 'Efetivar notas';
 }
@@ -284,6 +297,40 @@ async function excluirProva() {
     } catch (e) { alert('Erro: ' + e.message); }
 }
 
+async function trocarVariante(submissaoId) {
+    const sel = $(`prvVar_${submissaoId}`);
+    if (!sel) return;
+    const varianteId = sel.value;
+    if (!confirm('Trocar a variante desta submissão? A nota será recalculada com o novo gabarito. Se houver 2ª correção, ela será apagada (vai precisar ser sorteada de novo).')) return;
+    try {
+        const r = await fetch(`/api/classroom/provas/submissoes/${submissaoId}/variante`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ varianteId }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        if (d.semMudanca) { alert('Já era essa variante. Nada mudou.'); return; }
+        let msg = `Variante trocada. Nova nota: ${d.nota} / ${d.total_max}.`;
+        if (d.segundasRemovidas) msg += `\n${d.segundasRemovidas} 2ª(s) correção(ões) foram apagadas.`;
+        alert(msg);
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { alert('Erro: ' + e.message); }
+}
+
+async function apagarSubmissao(submissaoId, nomeAluno) {
+    if (!confirm(`Apagar a submissão de "${nomeAluno}"?\n\nIsso libera o aluno pra refazer a prova do zero (e remove qualquer 2ª correção vinculada).`)) return;
+    try {
+        const r = await fetch(`/api/classroom/provas/submissoes/${submissaoId}`, {
+            method: 'DELETE', credentials: 'include',
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { alert('Erro: ' + e.message); }
+}
+
 function fecharDet() { $('prvModalDet').style.display = 'none'; provaAberta = null; }
 
 function escapeHtml(s) {
@@ -299,6 +346,8 @@ window.sortear         = sortear;
 window.regabaritar     = regabaritar;
 window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
+window.trocarVariante  = trocarVariante;
+window.apagarSubmissao = apagarSubmissao;
 window.fecharDet       = fecharDet;
 
 init();

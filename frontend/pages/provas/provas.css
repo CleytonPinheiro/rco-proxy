@@ -121,3 +121,7 @@
     color: #1e3a8a; font-size: 13px; margin-bottom: 12px;
 }
 [data-theme="dark"] .prv-info-box { background:#1e3a8a; color:#dbeafe; border-color:#3b82f6; }
+
+.prv-sel-variante { padding: 2px 4px; font-size: 0.9em; margin-right: 4px; }
+.prv-link-danger { color: #c0392b; }
+.prv-link-danger:hover { color: #e74c3c; }
