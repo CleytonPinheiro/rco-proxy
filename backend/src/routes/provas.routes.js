@@ -774,8 +774,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             const auth = await getClassroomAuth(req);
             if (!auth) return res.status(401).json({ erro: 'Conecte-se ao Google Classroom primeiro.' });
 
-            const host    = process.env.REPLIT_DEV_DOMAIN || req.get('host');
-            const proto   = host.includes('localhost') ? 'http' : 'https';
+            /* Usa o host do request (reflete o domínio real: prod, custom domain, ou dev).
+               Cai no REPLIT_DEV_DOMAIN só se por algum motivo o header não vier. */
+            const host    = req.get('host') || process.env.REPLIT_DEV_DOMAIN;
+            const proto   = (req.protocol === 'https' || (host && !host.includes('localhost'))) ? 'https' : 'http';
             const baseUrl = `${proto}://${host}`;
             const linkProva = `${baseUrl}/alunos/prova/?ansid=${encodeURIComponent(prova.gradepen_id)}`;
 
