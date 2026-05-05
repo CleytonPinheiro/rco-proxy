@@ -86,6 +86,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verificarStatus();
 });
 
+/* ── Tarefas de 2ª correção (sortição) ───────────────── */
+async function carregarTarefasCorretor() {
+    try {
+        const r = await fetch('/api/alunos-portal/segundo-corretor/pendentes', { credentials: 'include' });
+        if (!r.ok) return;
+        const { pendentes } = await r.json();
+        const sec   = document.getElementById('paCorretorSection');
+        const lista = document.getElementById('paCorretorLista');
+        if (!sec || !lista) return;
+        if (!pendentes || pendentes.length === 0) {
+            sec.style.display = 'none';
+            return;
+        }
+        sec.style.display = '';
+        lista.innerHTML = pendentes.map(p => `
+            <div class="pa-solicita-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
+                <div>
+                    <strong>${(p.prova_nome || 'Prova').replace(/[<>]/g, '')}</strong>
+                    <div style="font-size:0.85em;color:#666">Variante ${p.variante_codigo} · ${p.qtd_questoes} questões · sorteada em ${new Date(p.criado_em).toLocaleDateString('pt-BR')}</div>
+                </div>
+                <a class="pa-btn pa-btn-primary" href="/alunos/prova/?seg=${p.submissao_ref_id}" style="background:#f59e0b;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600">Corrigir agora →</a>
+            </div>
+        `).join('');
+    } catch (_) {
+        /* silencioso — módulo opcional */
+    }
+}
+
 /* ── Verifica sessão ─────────────────────────────────── */
 async function verificarStatus() {
     mostrarLoading(true);
@@ -95,6 +123,7 @@ async function verificarStatus() {
         if (data.aluno) {
             mostrarTelaLogado(data.aluno);
             carregarAtividades();
+            carregarTarefasCorretor();
             iniciarPollingNotificacoes();
             /* Conquistas: verifica silenciosamente após atividades carregarem */
             setTimeout(verificarConquistas, 3000);
