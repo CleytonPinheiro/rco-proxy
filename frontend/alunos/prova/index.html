@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>EduSync — Correção de Prova</title>
+    <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../alunos.css">
+    <link rel="stylesheet" href="./prova.css">
+    <script>
+        (function(){
+            const t = localStorage.getItem('aluno_tema');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+<body class="pp-body">
+
+    <header class="pp-header">
+        <div class="pp-header-inner">
+            <a href="/alunos/" class="pp-back">← Portal</a>
+            <div class="pp-logo">
+                <span>⚡</span><strong>EduSync</strong>
+                <span class="pp-sub">Correção de Prova</span>
+            </div>
+            <button class="pp-theme" onclick="toggleTema()" title="Tema">🌙</button>
+        </div>
+    </header>
+
+    <main class="pp-main">
+
+        <!-- Estado: precisa logar -->
+        <section id="ppLogin" class="pp-card pp-center" style="display:none">
+            <h2>Faça login para corrigir a prova</h2>
+            <p>Use seu e-mail @escola para identificar quem está corrigindo.</p>
+            <a href="/alunos/" class="pp-btn pp-btn-primary">Entrar</a>
+        </section>
+
+        <!-- Estado: erro -->
+        <section id="ppErro" class="pp-card pp-center" style="display:none">
+            <h2>⚠️ Não foi possível abrir a prova</h2>
+            <p id="ppErroMsg"></p>
+            <a href="/alunos/" class="pp-btn">Voltar ao portal</a>
+        </section>
+
+        <!-- Estado: carregando -->
+        <section id="ppLoading" class="pp-card pp-center">
+            <div class="pp-spinner"></div>
+            <p>Carregando prova…</p>
+        </section>
+
+        <!-- Estado: já submetida -->
+        <section id="ppJaFeita" class="pp-card pp-center" style="display:none">
+            <h2>✅ Você já corrigiu esta prova</h2>
+            <p>Sua nota: <strong id="ppNotaSalva"></strong></p>
+            <p class="pp-muted">A nota está como rascunho aguardando o professor efetivar no Classroom.</p>
+            <button class="pp-btn pp-btn-primary" onclick="verResultado()">Ver minha correção</button>
+        </section>
+
+        <!-- Estado: 2º corretor cego -->
+        <section id="ppSegundo" class="pp-card" style="display:none">
+            <h2>👁 2ª correção (anônima)</h2>
+            <p class="pp-muted">
+                Você foi sorteado para conferir a prova de outro aluno. Olhando para a foto da folha,
+                preencha o que vê marcado em cada questão. <strong>Você não vê o nome nem a nota da correção original</strong> —
+                isso garante isenção.
+            </p>
+            <div id="ppSegFotoWrap" style="margin:12px 0">
+                <img id="ppSegFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha do colega">
+                <div id="ppSegSemFoto" style="display:none" class="pp-aviso">⚠️ Sem foto disponível para esta prova. Avise o professor.</div>
+            </div>
+            <div id="ppSegTabela" class="pp-tabela-wrap"></div>
+            <div class="pp-actions">
+                <a href="/alunos/" class="pp-btn">Cancelar</a>
+                <button class="pp-btn pp-btn-primary" id="ppSegBtn" onclick="enviarSegundo()">Enviar 2ª correção</button>
+            </div>
+        </section>
+
+        <!-- Estado: escolher variante -->
+        <section id="ppVariante" class="pp-card" style="display:none">
+            <h2 id="ppNomeProva"></h2>
+            <p class="pp-muted">Olá, <strong id="ppAlunoNome"></strong>. Selecione qual variante da prova você fez:</p>
+            <div id="ppListaVariantes" class="pp-variantes"></div>
+            <div class="pp-aviso pp-aviso-info">
+                <strong>Atenção:</strong> ao confirmar, você só verá o gabarito DEPOIS de marcar suas respostas. Isso preserva o valor da sua autocorreção.
+            </div>
+        </section>
+
+        <!-- Estado: marcar respostas (etapa 1 — gabarito escondido) -->
+        <section id="ppEtapa1" class="pp-card" style="display:none">
+            <div class="pp-step-header">
+                <h2>Etapa 1: Marque o que você respondeu</h2>
+                <span class="pp-pill">Variante <span id="ppVarCod1"></span></span>
+            </div>
+            <p class="pp-muted">Marque exatamente o que você assinalou na folha de papel. O gabarito será revelado depois.</p>
+            <div id="ppTabelaEtapa1" class="pp-tabela-wrap"></div>
+            <div class="pp-actions">
+                <button class="pp-btn" onclick="voltarVariante()">Voltar</button>
+                <button class="pp-btn pp-btn-primary" id="ppBtnConfirmar" onclick="confirmarMarcacoes()">Confirmar e ver gabarito →</button>
+            </div>
+        </section>
+
+        <!-- Estado: pedir foto (sorteado) -->
+        <section id="ppFoto" class="pp-card" style="display:none">
+            <h2>📷 Foto da folha — sorteado para auditoria</h2>
+            <p>Tire uma foto bem nítida da sua folha respondida (gabarito de papel).</p>
+            <input type="file" id="ppFotoInput" accept="image/*" capture="environment" onchange="previewFoto(event)">
+            <img id="ppFotoPreview" style="display:none;max-width:100%;margin-top:10px;border-radius:8px">
+            <div class="pp-actions">
+                <button class="pp-btn pp-btn-primary" id="ppBtnEnviar" onclick="enviarFotoOuSubmissao()" disabled>Enviar correção</button>
+            </div>
+        </section>
+
+        <!-- Estado: resultado (etapa 2 — gabarito + nota) -->
+        <section id="ppEtapa2" class="pp-card" style="display:none">
+            <div class="pp-resultado-header">
+                <div>
+                    <h2>📊 Sua nota</h2>
+                    <div class="pp-nota-grande"><span id="ppNotaFinal">—</span> <span class="pp-nota-de">/ <span id="ppTotalMax"></span></span></div>
+                </div>
+                <div class="pp-status-rascunho">Rascunho — aguardando professor efetivar</div>
+            </div>
+            <div id="ppTabelaEtapa2" class="pp-tabela-wrap"></div>
+            <div class="pp-actions">
+                <a href="/alunos/" class="pp-btn pp-btn-primary">Voltar ao portal</a>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="./prova.js"></script>
+</body>
+</html>

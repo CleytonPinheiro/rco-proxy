@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./provas.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync — Provas</title>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+                <a href="/pages/classroom/">Classroom</a>
+                <a href="/pages/provas/" class="active">Provas</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="prv-main">
+        <div class="prv-toolbar">
+            <h1>Provas</h1>
+            <div class="prv-toolbar-right">
+                <select id="prvCurso" onchange="onCursoChange()">
+                    <option value="">Selecione um curso…</option>
+                </select>
+                <button class="prv-btn prv-btn-primary" onclick="abrirNova()" id="prvBtnNova" disabled>+ Nova prova</button>
+            </div>
+        </div>
+
+        <div id="prvLista" class="prv-lista">
+            <div class="prv-empty">Selecione um curso acima para ver as provas.</div>
+        </div>
+    </main>
+
+    <!-- Modal Nova Prova -->
+    <div id="prvModalNova" class="prv-modal" style="display:none">
+        <div class="prv-modal-card">
+            <h2>Nova prova</h2>
+            <label>Nome da prova
+                <input id="prvfNome" type="text" placeholder="Ex: Prova de JS — 1º trimestre">
+            </label>
+            <label>ID GradePen (ansid)
+                <input id="prvfAnsid" type="text" placeholder="Ex: 2997247" inputmode="numeric">
+                <small>Cole só o número antes do ponto. Ex: do link https://gradepen.com/.../?ansid=<strong>2997247</strong>.0 → digite <strong>2997247</strong>.</small>
+            </label>
+            <label>Data da aplicação
+                <input id="prvfData" type="date">
+            </label>
+            <label>Grupo de notas (Classroom) — opcional
+                <select id="prvfGrupo"><option value="">(sem grupo destino)</option></select>
+                <small>Quando você "efetivar" a prova, é esse grupo que receberá as notas oficialmente.</small>
+            </label>
+            <label>Foto da folha
+                <select id="prvfFoto">
+                    <option value="nunca">Nunca pedir foto</option>
+                    <option value="sorteio" selected>Sorteio (alguns alunos)</option>
+                    <option value="sempre">Sempre obrigatória</option>
+                </select>
+            </label>
+            <label id="prvfFotoPctWrap">% sorteado para enviar foto
+                <input id="prvfFotoPct" type="number" min="1" max="100" value="20">
+            </label>
+            <label class="prv-toggle">
+                <input id="prvfSegundo" type="checkbox">
+                <span>Ativar 2º corretor cego (auditoria por outro aluno)</span>
+            </label>
+            <div class="prv-modal-actions">
+                <button class="prv-btn" onclick="fecharNova()">Cancelar</button>
+                <button class="prv-btn prv-btn-primary" id="prvBtnSalvarNova" onclick="salvarNova()">Cadastrar e baixar gabarito</button>
+            </div>
+            <div id="prvNovaErro" class="prv-erro" style="display:none"></div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhe -->
+    <div id="prvModalDet" class="prv-modal" style="display:none">
+        <div class="prv-modal-card prv-modal-large">
+            <div class="prv-det-header">
+                <h2 id="prvDetNome"></h2>
+                <button class="prv-btn-icon" onclick="fecharDet()" title="Fechar">✕</button>
+            </div>
+            <div id="prvDetMeta" class="prv-det-meta"></div>
+            <div id="prvDetGabarito" class="prv-det-section"></div>
+            <div id="prvDetSubmissoes" class="prv-det-section"></div>
+            <div class="prv-modal-actions">
+                <button class="prv-btn" onclick="regabaritar()">↻ Re-baixar gabarito</button>
+                <button class="prv-btn prv-btn-danger" onclick="excluirProva()">Excluir</button>
+                <button class="prv-btn prv-btn-primary" id="prvBtnEfetivar" onclick="toggleEfetivar()">Efetivar notas</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/js/auth.js"></script>
+    <script src="./provas.js"></script>
+</body>
+</html>

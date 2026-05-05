@@ -24,6 +24,7 @@ import { createPedagogicoPortalRouter }  from './pedagogico-portal.routes.js';
 import { createRcoLancamentoRouter }     from './rco-lancamento.routes.js';
 import { createQRCodeRouter }            from './qrcode.routes.js';
 import { createSuporteRouter }          from './suporte.routes.js';
+import { createProvasRouter, createProvasPublicRouter } from './provas.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -33,6 +34,9 @@ export function createApiRouter(deps) {
 
     /* ── Portal do Aluno (público — sem sessão EduSync) ── */
     router.use('/', createAlunosPortalRouter());
+
+    /* ── Provas — rotas do aluno (público; usa cookie aluno_sid) ── */
+    router.use('/', createProvasPublicRouter());
 
     /* ── Portal Pedagógico (público — sem sessão EduSync) ── */
     router.use('/', createPedagogicoPortalRouter());
@@ -75,6 +79,7 @@ export function createApiRouter(deps) {
     router.use('/', createAdminRouter(deps));
     router.use('/', createRcoLancamentoRouter(deps));
     router.use('/', createSuporteRouter());
+    router.use('/', createProvasRouter());
 
     return router;
 }

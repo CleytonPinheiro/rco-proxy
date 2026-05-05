@@ -1,0 +1,172 @@
+/* Tela de correção de prova — estilo GradePen */
+
+:root {
+    --pp-bg:        #f4f6f8;
+    --pp-card:      #ffffff;
+    --pp-border:    #e1e5ea;
+    --pp-text:      #1f2933;
+    --pp-muted:     #6b7280;
+    --pp-primary:   #4285F4;
+    --pp-primary-h: #3367d6;
+    --pp-success:   #16a34a;
+    --pp-error:     #dc2626;
+    --pp-info-bg:   #eff6ff;
+    --pp-info-bd:   #bfdbfe;
+    --pp-row-alt:   #fafbfc;
+}
+[data-theme="dark"] {
+    --pp-bg:        #0f172a;
+    --pp-card:      #1e293b;
+    --pp-border:    #334155;
+    --pp-text:      #f1f5f9;
+    --pp-muted:     #94a3b8;
+    --pp-info-bg:   #1e3a8a;
+    --pp-info-bd:   #3b82f6;
+    --pp-row-alt:   #283447;
+}
+
+* { box-sizing: border-box; }
+.pp-body {
+    margin: 0;
+    background: var(--pp-bg);
+    color: var(--pp-text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.pp-header {
+    background: var(--pp-card);
+    border-bottom: 1px solid var(--pp-border);
+    padding: 10px 0;
+    position: sticky; top: 0; z-index: 10;
+}
+.pp-header-inner {
+    max-width: 900px; margin: 0 auto;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px;
+}
+.pp-back { color: var(--pp-primary); text-decoration: none; font-weight: 500; }
+.pp-logo { display: flex; align-items: center; gap: 6px; font-size: 16px; flex: 1; }
+.pp-logo .pp-sub { color: var(--pp-muted); font-size: 12px; margin-left: 6px; }
+.pp-theme { background: none; border: none; cursor: pointer; font-size: 18px; }
+
+.pp-main { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+.pp-card {
+    background: var(--pp-card);
+    border: 1px solid var(--pp-border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.pp-center { text-align: center; }
+.pp-muted  { color: var(--pp-muted); }
+
+.pp-spinner {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 3px solid var(--pp-border);
+    border-top-color: var(--pp-primary);
+    margin: 0 auto 12px; animation: ppSpin .8s linear infinite;
+}
+@keyframes ppSpin { to { transform: rotate(360deg); } }
+
+.pp-btn {
+    display: inline-block; padding: 10px 18px;
+    border: 1px solid var(--pp-border); background: var(--pp-card);
+    color: var(--pp-text); border-radius: 8px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    text-decoration: none; transition: .15s;
+}
+.pp-btn:hover { background: var(--pp-bg); }
+.pp-btn-primary { background: var(--pp-primary); color: #fff; border-color: var(--pp-primary); }
+.pp-btn-primary:hover { background: var(--pp-primary-h); border-color: var(--pp-primary-h); }
+.pp-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.pp-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+
+.pp-aviso {
+    margin-top: 12px;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--pp-info-bd);
+    background: var(--pp-info-bg);
+    font-size: 13px;
+}
+
+.pp-step-header { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.pp-pill {
+    background: var(--pp-info-bg); color: var(--pp-text);
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--pp-info-bd);
+}
+
+/* Variantes */
+.pp-variantes { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:10px; margin: 14px 0; }
+.pp-variante-btn {
+    padding: 16px;
+    border: 2px solid var(--pp-border);
+    background: var(--pp-card); color: var(--pp-text);
+    border-radius: 10px; cursor: pointer;
+    font-size: 16px; font-weight: 600;
+    transition: .15s;
+}
+.pp-variante-btn:hover { border-color: var(--pp-primary); }
+.pp-variante-btn.pp-selected { border-color: var(--pp-primary); background: var(--pp-info-bg); }
+.pp-variante-btn small { display:block; font-weight:400; color: var(--pp-muted); margin-top:4px; font-size: 12px; }
+
+/* Tabela de correção (estilo GradePen) */
+.pp-tabela-wrap { overflow-x: auto; margin-top: 12px; }
+.pp-tabela {
+    width: 100%; border-collapse: collapse; min-width: 480px;
+}
+.pp-tabela th {
+    background: var(--pp-bg);
+    padding: 8px 6px; text-align: center;
+    font-size: 12px; font-weight: 600; color: var(--pp-muted);
+    border-bottom: 2px solid var(--pp-border);
+}
+.pp-tabela td {
+    padding: 8px 6px; text-align: center;
+    border-bottom: 1px solid var(--pp-border);
+}
+.pp-tabela tr:nth-child(even) { background: var(--pp-row-alt); }
+.pp-tabela td.pp-q-num { font-weight: 600; }
+.pp-tabela td.pp-gab-cell label { font-weight: 700; color: var(--pp-primary); }
+.pp-tabela td.pp-acerto-sim { color: var(--pp-success); font-weight: 700; font-size: 16px; }
+.pp-tabela td.pp-acerto-nao { color: var(--pp-error);   font-weight: 700; font-size: 16px; }
+.pp-tabela tr.pp-row-acerto { background: rgba(22,163,74,.08); }
+.pp-tabela tr.pp-row-erro   { background: rgba(220,38,38,.08); }
+
+/* Bolhas (radio) — grandes pra mobile */
+.pp-bolha {
+    display: inline-flex; align-items:center; justify-content:center;
+    width: 30px; height: 30px; margin: 0 2px;
+    border: 2px solid var(--pp-border); border-radius: 50%;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    background: var(--pp-card); color: var(--pp-muted);
+    user-select: none; transition: .1s;
+}
+.pp-bolha:hover { border-color: var(--pp-primary); }
+.pp-bolha.pp-marcada {
+    background: var(--pp-primary); color: #fff; border-color: var(--pp-primary);
+}
+.pp-bolha-disabled { cursor: not-allowed; opacity: .6; }
+
+/* Resultado */
+.pp-resultado-header {
+    display:flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px; margin-bottom: 8px;
+}
+.pp-nota-grande { font-size: 32px; font-weight: 700; color: var(--pp-primary); }
+.pp-nota-grande .pp-nota-de { font-size: 16px; color: var(--pp-muted); font-weight: 400; }
+.pp-status-rascunho {
+    background: #fef3c7; color: #92400e;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    border: 1px solid #fcd34d;
+}
+[data-theme="dark"] .pp-status-rascunho { background: #78350f; color: #fef3c7; border-color: #b45309; }
+
+@media (max-width: 600px) {
+    .pp-bolha { width: 32px; height: 32px; }
+    .pp-card { padding: 14px; }
+    .pp-nota-grande { font-size: 28px; }
+}

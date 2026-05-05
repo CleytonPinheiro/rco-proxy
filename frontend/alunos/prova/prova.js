@@ -1,0 +1,339 @@
+'use strict';
+/* Portal do Aluno — Tela de Correção de Prova (estilo GradePen) */
+
+const TEMA_KEY = 'aluno_tema';
+function aplicarTema(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem(TEMA_KEY, t); }
+function toggleTema() { aplicarTema((document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'light' : 'dark'); }
+
+const $ = id => document.getElementById(id);
+const LETRAS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+
+let estado = {
+    aluno:        null,
+    ansid:        null,
+    jobId:        null,
+    varSugerida:  null,
+    prova:        null,
+    variantes:    [],
+    varianteSel:  null,            // {id, codigo, qtd_questoes}
+    qtdQuestoes:  0,
+    marcacoes:    {},              // { "1": "a", "2": "c", ... }
+    fotoBase64:   null,
+    submissao:    null,            // resposta do POST
+};
+
+function show(id) {
+    ['ppLoading','ppLogin','ppErro','ppJaFeita','ppVariante','ppEtapa1','ppFoto','ppEtapa2','ppSegundo']
+        .forEach(s => { const el = $(s); if (el) el.style.display = (s === id ? '' : 'none'); });
+}
+
+function showErro(msg) {
+    $('ppErroMsg').textContent = msg || 'Erro desconhecido.';
+    show('ppErro');
+}
+
+async function init() {
+    const params = new URLSearchParams(location.search);
+    const ansid = params.get('ansid');
+    const seg   = params.get('seg');
+    if (!ansid && !seg) return showErro('Link inválido — falta o código da prova.');
+
+    /* Verifica login (compartilhado) */
+    try {
+        const r = await fetch('/api/alunos-portal/status', { credentials: 'include' });
+        const d = await r.json();
+        if (!d.aluno) {
+            sessionStorage.setItem('pp_redirect', location.href);
+            return show('ppLogin');
+        }
+        estado.aluno = d.aluno;
+    } catch (e) {
+        return showErro('Não foi possível verificar o login.');
+    }
+
+    if (seg) return iniciarSegundoCorretor(seg);
+
+    estado.ansid = ansid;
+    const [job, varCod] = ansid.split('.');
+    estado.jobId = job;
+    estado.varSugerida = varCod || null;
+
+    /* Busca prova */
+    try {
+        const r = await fetch(`/api/alunos-portal/prova/${encodeURIComponent(ansid)}`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) return showErro(d.erro || 'Prova não disponível.');
+
+        estado.prova     = d.prova;
+        estado.variantes = d.variantes;
+
+        /* Já submeteu? */
+        if (d.jaSubmeti) {
+            estado.submissao = d.jaSubmeti;
+            $('ppNotaSalva').textContent = `${d.jaSubmeti.nota ?? '?'} / ${d.jaSubmeti.total_max ?? '?'}`;
+            return show('ppJaFeita');
+        }
+
+        /* Se variante já veio na URL, pula direto */
+        if (estado.varSugerida) {
+            const v = estado.variantes.find(v => v.codigo === estado.varSugerida);
+            if (v) { selecionarVariante(v); return; }
+        }
+
+        renderVariantes();
+        show('ppVariante');
+    } catch (e) {
+        showErro(e.message);
+    }
+}
+
+function renderVariantes() {
+    $('ppNomeProva').textContent = estado.prova.nome;
+    $('ppAlunoNome').textContent = estado.aluno.nome || estado.aluno.email;
+    const wrap = $('ppListaVariantes');
+    wrap.innerHTML = '';
+    estado.variantes.forEach(v => {
+        const b = document.createElement('button');
+        b.className = 'pp-variante-btn';
+        b.innerHTML = `Variante .${v.codigo}<small>${v.qtd_questoes} questões</small>`;
+        b.onclick = () => selecionarVariante(v);
+        wrap.appendChild(b);
+    });
+}
+
+async function selecionarVariante(v) {
+    estado.varianteSel = v;
+    estado.qtdQuestoes = v.qtd_questoes;
+    estado.marcacoes = {};
+    $('ppVarCod1').textContent = v.codigo;
+    renderTabelaEtapa1();
+    show('ppEtapa1');
+}
+
+function renderTabelaEtapa1() {
+    /* Sem gabarito ainda — só a coluna "Marque" */
+    const wrap = $('ppTabelaEtapa1');
+    let html = `<table class="pp-tabela"><thead><tr>
+        <th style="width:40px">#</th>
+        <th>Sua resposta</th>
+    </tr></thead><tbody>`;
+    for (let q = 1; q <= estado.qtdQuestoes; q++) {
+        html += `<tr><td class="pp-q-num">${q}</td><td>`;
+        for (const letra of LETRAS.slice(0, 5)) {
+            html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+        }
+        html += `</td></tr>`;
+    }
+    html += `</tbody></table>`;
+    wrap.innerHTML = html;
+}
+
+function marcar(q, letra) {
+    estado.marcacoes[String(q)] = letra;
+    /* Atualiza visual */
+    document.querySelectorAll(`.pp-bolha[data-q="${q}"]`).forEach(el => {
+        el.classList.toggle('pp-marcada', el.dataset.l === letra);
+    });
+}
+
+function voltarVariante() {
+    estado.marcacoes = {};
+    show('ppVariante');
+}
+
+async function confirmarMarcacoes() {
+    const marcadas = Object.keys(estado.marcacoes).length;
+    if (marcadas < estado.qtdQuestoes) {
+        if (!confirm(`Você marcou ${marcadas} de ${estado.qtdQuestoes}. Enviar mesmo assim?`)) return;
+    }
+    /* Tentamos enviar SEM foto primeiro. Se backend disser que foto é obrigatória, redirecionamos pra etapa de foto. */
+    if (estado.prova.foto_modo === 'sempre') {
+        return show('ppFoto');
+    }
+    enviarSubmissao();
+}
+
+function previewFoto(ev) {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        estado.fotoBase64 = e.target.result;
+        $('ppFotoPreview').src = e.target.result;
+        $('ppFotoPreview').style.display = '';
+        $('ppBtnEnviar').disabled = false;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function enviarFotoOuSubmissao() {
+    /* Se já submeteu (foto era exigida via sorteio), só anexa a foto */
+    if (estado.submissao && estado.submissao.submissaoId) {
+        $('ppBtnEnviar').disabled = true;
+        try {
+            const r = await fetch(`/api/alunos-portal/prova/submissao/${estado.submissao.submissaoId}/foto`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ fotoBase64: estado.fotoBase64 }),
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.erro || 'Erro ao enviar foto.');
+            renderResultado(estado.submissao);
+        } catch (e) {
+            alert('Erro: ' + e.message);
+            $('ppBtnEnviar').disabled = false;
+        }
+        return;
+    }
+    return enviarSubmissao();
+}
+
+async function enviarSubmissao() {
+    $('ppBtnConfirmar') && ($('ppBtnConfirmar').disabled = true);
+    $('ppBtnEnviar')    && ($('ppBtnEnviar').disabled = true);
+    try {
+        const r = await fetch(`/api/alunos-portal/prova/${estado.prova.id}/submeter`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                varianteCodigo: estado.varianteSel.codigo,
+                marcacoes:      estado.marcacoes,
+                fotoBase64:     estado.fotoBase64,
+            }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao enviar.');
+
+        estado.submissao = d;
+
+        /* Se foto era exigida (sorteio) e ainda não enviamos, vai pra etapa foto agora */
+        if (d.fotoObrigatoria && !d.fotoEntregue) {
+            estado.submissao = d;
+            show('ppFoto');
+            return;
+        }
+        renderResultado(d);
+    } catch (e) {
+        alert('Erro: ' + e.message);
+        $('ppBtnConfirmar') && ($('ppBtnConfirmar').disabled = false);
+        $('ppBtnEnviar')    && ($('ppBtnEnviar').disabled = false);
+    }
+}
+
+function renderResultado(d) {
+    $('ppNotaFinal').textContent = (d.nota ?? '—').toString();
+    $('ppTotalMax').textContent  = (d.total ?? '—').toString();
+
+    const wrap = $('ppTabelaEtapa2');
+    let html = `<table class="pp-tabela"><thead><tr>
+        <th style="width:40px">#</th>
+        <th>Gabarito</th>
+        <th>Você marcou</th>
+        <th>Acerto</th>
+        <th>Valor</th>
+    </tr></thead><tbody>`;
+    for (const det of d.detalhes) {
+        const acerto = det.acerto;
+        const cls = acerto ? 'pp-row-acerto' : (det.marcado ? 'pp-row-erro' : '');
+        html += `<tr class="${cls}">
+            <td class="pp-q-num">${det.questao}</td>
+            <td class="pp-gab-cell"><label>${(det.correta || '?').toString().toUpperCase()}</label></td>
+            <td>${(det.marcado || '—').toString().toUpperCase()}</td>
+            <td class="${acerto ? 'pp-acerto-sim' : 'pp-acerto-nao'}">${acerto ? '✓' : '✗'}</td>
+            <td>${(det.valor ?? 0).toFixed(2)}</td>
+        </tr>`;
+    }
+    html += `</tbody></table>`;
+    wrap.innerHTML = html;
+    show('ppEtapa2');
+}
+
+async function verResultado() {
+    if (!estado.submissao?.id) return;
+    try {
+        const r = await fetch(`/api/alunos-portal/prova/submissao/${estado.submissao.id}`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        renderResultado({ nota: d.submissao.nota, total: d.total, detalhes: d.detalhes });
+    } catch (e) { alert('Erro: ' + e.message); }
+}
+
+async function iniciarSegundoCorretor(subRefId) {
+    try {
+        const r = await fetch('/api/alunos-portal/segundo-corretor/pendentes', { credentials: 'include' });
+        const d = await r.json();
+        const pend = (d.pendentes || []).find(p => String(p.submissao_ref_id) === String(subRefId));
+        if (!pend) return showErro('Tarefa não encontrada (talvez já tenha sido feita).');
+
+        estado.segundo = pend;
+        estado.qtdQuestoes = 0;
+        estado.marcacoes = {};
+
+        if (pend.foto_url) {
+            $('ppSegFoto').src = pend.foto_url;
+        } else {
+            $('ppSegFoto').style.display = 'none';
+            $('ppSegSemFoto').style.display = '';
+        }
+
+        estado.qtdQuestoes = pend.qtd_questoes || 12;
+        renderTabelaSegundo();
+        show('ppSegundo');
+    } catch (e) { showErro(e.message); }
+}
+
+function renderTabelaSegundo() {
+    const wrap = $('ppSegTabela');
+    let html = `<table class="pp-tabela"><thead><tr>
+        <th style="width:40px">#</th>
+        <th>O que está marcado na folha</th>
+    </tr></thead><tbody>`;
+    for (let q = 1; q <= estado.qtdQuestoes; q++) {
+        html += `<tr><td class="pp-q-num">${q}</td><td>`;
+        for (const letra of LETRAS.slice(0, 5)) {
+            html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+        }
+        html += `<span class="pp-bolha" data-q="${q}" data-l="-" onclick="marcar(${q},'-')" title="Em branco">∅</span>`;
+        html += `</td></tr>`;
+    }
+    html += `</tbody></table>`;
+    wrap.innerHTML = html;
+}
+
+async function enviarSegundo() {
+    /* Remove marcações '-' (em branco) */
+    const limpo = {};
+    for (const [k, v] of Object.entries(estado.marcacoes)) {
+        if (v && v !== '-') limpo[k] = v;
+    }
+    $('ppSegBtn').disabled = true;
+    try {
+        const r = await fetch(`/api/alunos-portal/segundo-corretor/${estado.segundo.submissao_ref_id}/submeter`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ marcacoes: limpo }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro');
+        alert('Correção enviada. Obrigado pela ajuda!');
+        location.href = '/alunos/';
+    } catch (e) {
+        alert('Erro: ' + e.message);
+        $('ppSegBtn').disabled = false;
+    }
+}
+
+window.enviarSegundo        = enviarSegundo;
+window.toggleTema           = toggleTema;
+window.marcar               = marcar;
+window.voltarVariante       = voltarVariante;
+window.confirmarMarcacoes   = confirmarMarcacoes;
+window.previewFoto          = previewFoto;
+window.enviarSubmissao        = enviarSubmissao;
+window.enviarFotoOuSubmissao  = enviarFotoOuSubmissao;
+window.verResultado         = verResultado;
+
+init();
