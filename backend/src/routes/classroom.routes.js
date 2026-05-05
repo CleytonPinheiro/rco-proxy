@@ -181,7 +181,7 @@ function deleteToken() {
     try { fs.unlinkSync(TOKEN_FILE); } catch (_) {}
 }
 
-async function getAuthenticatedClient(req) {
+export async function getAuthenticatedClient(req) {
     const oauth2Client = getOAuth2Client(req);
     if (!oauth2Client) return null;
     const token = loadToken();

@@ -16,7 +16,7 @@ import { createDebugRouter }         from './debug.routes.js';
 import { createMapaSalaRouter }      from './mapa-sala.routes.js';
 import { createAtividadesRouter }    from './atividades.routes.js';
 import { createPedagogicoRouter }    from './pedagogico.routes.js';
-import { createClassroomRouter, createClassroomPublicRouter } from './classroom.routes.js';
+import { createClassroomRouter, createClassroomPublicRouter, getAuthenticatedClient as getClassroomAuth } from './classroom.routes.js';
 import { createLivrosRouter }        from './livros.routes.js';
 import { createAdminRouter }         from './admin.routes.js';
 import { createAlunosPortalRouter }       from './alunos-portal.routes.js';
@@ -79,7 +79,7 @@ export function createApiRouter(deps) {
     router.use('/', createAdminRouter(deps));
     router.use('/', createRcoLancamentoRouter(deps));
     router.use('/', createSuporteRouter());
-    router.use('/', createProvasRouter());
+    router.use('/', createProvasRouter({ getClassroomAuth }));
 
     return router;
 }

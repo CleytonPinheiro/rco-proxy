@@ -376,7 +376,7 @@ async function podeAcessarCurso(email, cursoId, teacherAuth) {
 /* ════════════════════════════════════════════════════════════════════
  *  ROUTER PROFESSOR (autenticado por requireAuth global)
  * ═══════════════════════════════════════════════════════════════════ */
-export function createProvasRouter() {
+export function createProvasRouter({ getClassroomAuth } = {}) {
     const router = Router();
 
     /* Lista provas de um curso */
@@ -759,6 +759,45 @@ export function createProvasRouter() {
             res.status(500).json({ erro: e.message });
         } finally {
             client.release();
+        }
+    });
+
+    /* Publica/atualiza um Material no Classroom com o link da prova (auto-preenche ansid). */
+    router.post('/classroom/provas/:id/publicar-classroom', async (req, res) => {
+        if (!getClassroomAuth) return res.status(500).json({ erro: 'Integração Classroom não inicializada.' });
+        try {
+            const { rows: [prova] } = await pool.query(
+                `SELECT * FROM classroom_provas WHERE id = $1`, [req.params.id]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            const auth = await getClassroomAuth(req);
+            if (!auth) return res.status(401).json({ erro: 'Conecte-se ao Google Classroom primeiro.' });
+
+            const host    = process.env.REPLIT_DEV_DOMAIN || req.get('host');
+            const proto   = host.includes('localhost') ? 'http' : 'https';
+            const baseUrl = `${proto}://${host}`;
+            const linkProva = `${baseUrl}/alunos/prova/?ansid=${encodeURIComponent(prova.gradepen_id)}`;
+
+            const { google } = await import('googleapis');
+            const classroom  = google.classroom({ version: 'v1', auth });
+
+            const material = {
+                title:       `📝 Correção da prova: ${prova.nome}`,
+                description: `Após fazer a prova em papel, abra este link no celular ou computador, faça login com seu e-mail @escola e marque o que respondeu. Use a variante (.0/.1) que está no canto da sua folha.\n\nLink: ${linkProva}`,
+                materials: [{ link: { url: linkProva, title: 'Abrir folha de correção EduSync' } }],
+                state: 'PUBLISHED',
+            };
+
+            const r = await classroom.courses.courseWorkMaterials.create({
+                courseId: prova.curso_id,
+                requestBody: material,
+            });
+            logProvas(req, 'PROVA_PUBLICAR_CLASSROOM', { provaId: prova.id, materialId: r.data.id, link: linkProva });
+            res.json({ ok: true, materialId: r.data.id, link: linkProva, alternateLink: r.data.alternateLink });
+        } catch (e) {
+            console.error('[PROVAS] Erro ao publicar no Classroom:', e.message);
+            res.status(500).json({ erro: e.message });
         }
     });
 

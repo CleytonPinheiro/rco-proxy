@@ -331,6 +331,21 @@ async function apagarSubmissao(submissaoId, nomeAluno) {
     } catch (e) { alert('Erro: ' + e.message); }
 }
 
+async function publicarNoClassroom() {
+    if (!provaAberta) return;
+    if (!confirm('Publicar no Google Classroom um link de correção pra esta prova?\n\nVai aparecer pros alunos como Material no curso, com a variante já pré-selecionada quando abrirem.')) return;
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/publicar-classroom`, {
+            method: 'POST', credentials: 'include',
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        if (confirm(`Publicado!\n\nLink: ${d.link}\n\nAbrir o material no Classroom agora?`)) {
+            if (d.alternateLink) window.open(d.alternateLink, '_blank');
+        }
+    } catch (e) { alert('Erro ao publicar: ' + e.message); }
+}
+
 function fecharDet() { $('prvModalDet').style.display = 'none'; provaAberta = null; }
 
 function escapeHtml(s) {
@@ -348,6 +363,7 @@ window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
 window.trocarVariante  = trocarVariante;
 window.apagarSubmissao = apagarSubmissao;
+window.publicarNoClassroom = publicarNoClassroom;
 window.fecharDet       = fecharDet;
 
 init();
