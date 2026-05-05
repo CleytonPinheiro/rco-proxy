@@ -15,6 +15,7 @@ import { Router }  from 'express';
 import pkg        from 'pg';
 import crypto     from 'crypto';
 import { auditLogger } from '../services/AuditLogger.js';
+import { getBrowser }  from '../../auth-puppeteer.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -88,80 +89,141 @@ async function migrarTabelas() {
 migrarTabelas();
 
 /* ════════════════════════════════════════════════════════════════════
- *  GRADEPEN SCRAPER
- *  Faz login com GRADEPEN_EMAIL/GRADEPEN_PASSWORD, mantém cookie em
- *  memória e busca gabarito via requests/getAnswers.php
+ *  GRADEPEN SCRAPER (via Puppeteer + login Google)
+ *  GradePen exige "Sign in with Google", então usamos um navegador
+ *  headless que loga no Google com GOOGLE_EMAIL/GOOGLE_PASSWORD,
+ *  autoriza o GradePen e mantém uma página persistente que usamos
+ *  pra chamar requests/getAnswers.php via fetch dentro da própria
+ *  página (já com PHPSESSID válido).
  * ═══════════════════════════════════════════════════════════════════ */
-let _gpCookieJar = null;     // string Cookie ex.: "PHPSESSID=xxx; ..."
-let _gpCookieExp = 0;        // timestamp expiração local (1h)
-
-function parseSetCookies(setCookieHeaders) {
-    if (!setCookieHeaders) return [];
-    const arr = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
-    return arr.map(c => c.split(';')[0]).filter(Boolean);
-}
+let _gpPage      = null;     // puppeteer Page autenticada
+let _gpPageExp   = 0;        // timestamp local de expiração (~30 min)
+let _gpLoginLock = null;     // Promise atual de login (mutex)
 
 async function gpLogin() {
-    const email = process.env.GRADEPEN_EMAIL;
-    const pwd   = process.env.GRADEPEN_PASSWORD;
-    if (!email || !pwd) throw new Error('GRADEPEN_EMAIL/GRADEPEN_PASSWORD não configurados.');
+    if (_gpLoginLock) return _gpLoginLock;
 
-    /* 1. Pega cookie inicial (PHPSESSID) na home */
-    const r1 = await fetch('https://gradepen.com/p/index.php', {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-    const initialCookies = parseSetCookies(r1.headers.getSetCookie?.() || r1.headers.raw?.()['set-cookie']);
-    const cookieHeader = initialCookies.join('; ');
+    _gpLoginLock = (async () => {
+        const email = process.env.GOOGLE_EMAIL;
+        const pwd   = process.env.GOOGLE_PASSWORD;
+        if (!email || !pwd) throw new Error('GOOGLE_EMAIL/GOOGLE_PASSWORD não configurados.');
 
-    /* 2. POST login */
-    const body = new URLSearchParams({ email, pwd, remember: 'false', time: String(Date.now()) });
-    const r2 = await fetch('https://gradepen.com/p/requests/login.php', {
-        method:  'POST',
-        headers: {
-            'User-Agent':       'Mozilla/5.0',
-            'Content-Type':     'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Referer':          'https://gradepen.com/p/index.php',
-            'Cookie':           cookieHeader,
-        },
-        body,
-    });
-    const loginCookies = parseSetCookies(r2.headers.getSetCookie?.() || r2.headers.raw?.()['set-cookie']);
-    const j = await r2.json();
-    if (!j.success) throw new Error('Login GradePen falhou: ' + (j.message || 'sem detalhe'));
+        /* Fecha página antiga se houver */
+        if (_gpPage) { try { await _gpPage.close(); } catch {} _gpPage = null; }
 
-    /* Combina cookies, prefere os do login (PHPSESSID novo) */
-    const merged = {};
-    [...initialCookies, ...loginCookies].forEach(c => {
-        const [k, v] = c.split('=');
-        merged[k] = v;
-    });
-    _gpCookieJar = Object.entries(merged).map(([k, v]) => `${k}=${v}`).join('; ');
-    _gpCookieExp = Date.now() + 30 * 60 * 1000; // 30 min
-    console.log('[PROVAS] Login GradePen OK:', email);
+        const browser = await getBrowser();
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0 Safari/537.36');
+        await page.setViewport({ width: 1280, height: 800 });
+
+        try {
+            console.log('[PROVAS] Abrindo GradePen para login Google...');
+            await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 30000 });
+
+            /* Botão "Sign in with Google" — abre OAuth na mesma janela */
+            const googleBtn = await page.$('a[href*="google"], button[onclick*="google"], #googleSignInButton, .g-signin2');
+            if (googleBtn) {
+                await Promise.all([
+                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => null),
+                    googleBtn.click(),
+                ]);
+            } else {
+                /* fallback: vai direto pro endpoint OAuth do GradePen */
+                await page.goto('https://gradepen.com/p/oauth.php?provider=google', { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => null);
+            }
+
+            /* Tela do Google: digita email */
+            await page.waitForSelector('input[type="email"]', { timeout: 20000 });
+            await page.type('input[type="email"]', email, { delay: 30 });
+            await Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => null),
+                page.click('#identifierNext, button[jsname="LgbsSe"]').catch(async () => {
+                    await page.keyboard.press('Enter');
+                }),
+            ]);
+
+            /* Tela da senha */
+            await page.waitForSelector('input[type="password"]', { timeout: 20000, visible: true });
+            await page.type('input[type="password"]', pwd, { delay: 30 });
+            await Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => null),
+                page.click('#passwordNext, button[jsname="LgbsSe"]').catch(async () => {
+                    await page.keyboard.press('Enter');
+                }),
+            ]);
+
+            /* Pode haver tela de "continuar" ou consentimento — clica se aparecer */
+            await page.waitForTimeout?.(2000).catch(() => new Promise(r => setTimeout(r, 2000)));
+            const consent = await page.$('button[jsname="LgbsSe"], #submit_approve_access');
+            if (consent) {
+                await Promise.all([
+                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => null),
+                    consent.click(),
+                ]);
+            }
+
+            /* Garante que voltamos pro GradePen */
+            const url = page.url();
+            if (!/gradepen\.com/i.test(url)) {
+                await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 20000 });
+            }
+
+            /* Verifica se está logado: faz request de teste no próprio contexto */
+            const ok = await page.evaluate(async () => {
+                try {
+                    const r = await fetch('/p/requests/getAnswers.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new URLSearchParams({ jobId: '0', index: '0', type: '0' }).toString(),
+                    });
+                    const j = await r.json().catch(() => ({}));
+                    /* Logado: errorCode != 3 (acesso negado por sessão); pode dar erro 'job não existe' (4/5) — qualquer um menos 3 vale */
+                    return r.ok && j.errorCode !== 3;
+                } catch { return false; }
+            });
+            if (!ok) throw new Error('Login Google→GradePen não autenticou (verifique se 2FA está desativada).');
+
+            _gpPage    = page;
+            _gpPageExp = Date.now() + 25 * 60 * 1000; // 25 min
+            console.log('[PROVAS] Login GradePen via Google OK:', email);
+        } catch (e) {
+            try { await page.close(); } catch {}
+            throw e;
+        }
+    })().finally(() => { _gpLoginLock = null; });
+
+    return _gpLoginLock;
 }
 
-async function gpFetchAnswers(jobId, index) {
-    if (!_gpCookieJar || Date.now() > _gpCookieExp) await gpLogin();
-    const r = await fetch('https://gradepen.com/p/requests/getAnswers.php', {
-        method:  'POST',
-        headers: {
-            'User-Agent':       'Mozilla/5.0',
-            'Content-Type':     'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Referer':          'https://gradepen.com/p/gabaritos.php',
-            'Cookie':           _gpCookieJar,
-        },
-        body: new URLSearchParams({ jobId: String(jobId), index: String(index), type: '0' }),
-    });
-    const j = await r.json();
-    if (!j.success) {
-        /* sessão pode ter expirado — tenta uma vez mais */
-        if (j.errorCode === 1 || j.errorCode === 2) {
-            _gpCookieJar = null;
-            return gpFetchAnswers(jobId, index);
+async function gpFetchAnswers(jobId, index, retried = false) {
+    if (!_gpPage || Date.now() > _gpPageExp) await gpLogin();
+
+    let j;
+    try {
+        j = await _gpPage.evaluate(async (jId, idx) => {
+            const r = await fetch('/p/requests/getAnswers.php', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body:    new URLSearchParams({ jobId: String(jId), index: String(idx), type: '0' }).toString(),
+            });
+            const txt = await r.text();
+            try { return JSON.parse(txt); } catch { return { __raw: txt.slice(0, 200), __status: r.status }; }
+        }, jobId, index);
+    } catch (e) {
+        if (retried) throw e;
+        _gpPage = null;
+        return gpFetchAnswers(jobId, index, true);
+    }
+
+    if (j && j.__raw !== undefined) {
+        throw new Error('GradePen retornou resposta inválida (status ' + j.__status + ').');
+    }
+    if (!j || j.success === false) {
+        if (!retried && (j.errorCode === 1 || j.errorCode === 2 || j.errorCode === 3)) {
+            _gpPage = null;
+            return gpFetchAnswers(jobId, index, true);
         }
-        throw new Error('GradePen recusou: ' + (j.message || 'erro ' + j.errorCode));
+        throw new Error('GradePen recusou: ' + ((j && j.message) || 'erro ' + (j && j.errorCode)));
     }
     return j;
 }

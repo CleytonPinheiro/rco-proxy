@@ -11,6 +11,7 @@ Sistema de gestão escolar para professores do Paraná, com foco em sincronizaç
     - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`: Supabase credentials
     - `DATABASE_URL`: Local PostgreSQL connection string for EduSync-specific tables
     - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google API credentials for Classroom integration
+    - `GOOGLE_EMAIL`, `GOOGLE_PASSWORD`: School Google account for the GradePen scraper (Puppeteer logs into Google → GradePen)
 
 ## Stack
 
@@ -34,6 +35,9 @@ Sistema de gestão escolar para professores do Paraná, com foco em sincronizaç
 - `frontend/pages/`: Main application pages (admin, classroom, dashboard, etc.).
 - `frontend/alunos/`: Public student portal frontend.
 - `frontend/pedagogico-portal/`: Public pedagogical portal frontend.
+- `frontend/pages/provas/`: Teacher UI for the Provas module.
+- `frontend/alunos/prova/`: Student-facing exam correction page (etapa 1 → etapa 2 reveal + 2nd-corrector blind mode).
+- `backend/src/routes/provas.routes.js`: Provas module — DB migrations, GradePen scraper (Puppeteer + Google), teacher CRUD routes, student submit routes, 2nd-corrector flow.
 - `backend/data/classroom_token.json`: Global Google Classroom token (legacy).
 - `classroom_tokens` table: Per-user Google Classroom tokens.
 - `backend/src/config/planos.js`: Defines available plans and functionalities.
@@ -49,6 +53,7 @@ Sistema de gestão escolar para professores do Paraná, com foco em sincronizaç
 - **Soft delete for users:** Users are deactivated (`ativo = false`) rather than physically deleted.
 - **Auth.js injection:** A single line in `theme.js` injects `auth.js` into all frontend pages, handling authentication guards, RBAC navigation, and user badges without per-page modifications.
 - **OOP with ES Modules:** Extensive use of ES Modules and private fields (`#field`) in service classes, avoiding `require()`.
+- **Provas (GradePen scraper):** Reuses the shared Puppeteer `getBrowser()` (same one used for RCO sync) to perform "Sign in with Google" on gradepen.com using `GOOGLE_EMAIL`/`GOOGLE_PASSWORD`, keeps the authenticated `page` object cached for ~25 min and runs `getAnswers.php` calls via `page.evaluate(fetch)` so the PHPSESSID cookie stays inside the browser context. Manual fallback: `POST /classroom/provas` accepts `variantesManuais` if scraping fails.
 
 ## Product
 
@@ -63,6 +68,7 @@ EduSync provides a comprehensive school management system with features like:
 - **Subscription Plans and Trial Management:** Gateways functionalities based on user/school plans, with trial periods, extensions, and support ticket integration.
 - **Admin Panel:** User management, audit logs, configuration export/import, and plan management.
 - **PDF Generation:** Suspension notices.
+- **Provas (GradePen-style auto-grading):** Teacher registers a paper exam via GradePen ansid, system scrapes the answer key (Puppeteer + Google login), student logs into the portal at `/alunos/prova/?ansid=<jobId>.<variant>`, marks bubbles, sees grade vs answer key. Grade is draft until teacher "efetiva". Optional anonymous 2nd-corrector (toggleable per exam) — sortition creates a `notificacoes_aluno` entry, the chosen student opens `/alunos/prova/?seg=<subRefId>` to grade blind.
 
 ## User preferences
 
@@ -79,6 +85,7 @@ EduSync provides a comprehensive school management system with features like:
 - **Database Consistency:** Ensure data consistency between Supabase (remote) and local PostgreSQL instances.
 - **Plan Functionality Gating:** Remember to use `requireFuncionalidade` middleware to protect new features according to the defined plans.
 - **Google Classroom Redirect URIs:** All necessary redirect URIs (main, student portal, pedagogical portal) must be registered in the Google Cloud Console.
+- **GradePen + 2FA:** The `GOOGLE_EMAIL` account used for GradePen scraping cannot have 2FA enabled, otherwise the Puppeteer Google login flow breaks. Use a dedicated school account or app password.
 
 ## Pointers
 
