@@ -40,7 +40,6 @@ async function onCursoChange() {
         return;
     }
     await carregarProvas();
-    await carregarGruposDoCurso();
 }
 
 async function carregarProvas() {
@@ -66,7 +65,6 @@ async function carregarProvas() {
                         <span>GradePen #${escapeHtml(p.gradepen_id)}</span>
                         <span>${p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : 'Sem data'}</span>
                         <span>${p.variantes_count} variante(s)</span>
-                        ${p.grupo_destino_nome ? `<span>→ ${escapeHtml(p.grupo_destino_nome)}</span>` : ''}
                     </div>
                 </div>
                 <div class="prv-card-stats">
@@ -79,19 +77,6 @@ async function carregarProvas() {
         `).join('');
     } catch (e) {
         $('prvLista').innerHTML = `<div class="prv-empty">Erro: ${escapeHtml(e.message)}</div>`;
-    }
-}
-
-async function carregarGruposDoCurso() {
-    try {
-        const r = await fetch(`/api/classroom/groups?courseId=${encodeURIComponent(cursoAtual)}`, { credentials: 'include' });
-        if (!r.ok) { $('prvfGrupo').innerHTML = '<option value="">(nenhum grupo encontrado)</option>'; return; }
-        const grupos = await r.json();
-        const lista = Array.isArray(grupos) ? grupos : (grupos.grupos || []);
-        $('prvfGrupo').innerHTML = '<option value="">(sem grupo destino)</option>' +
-            lista.map(g => `<option value="${g.id}">${escapeHtml(g.nome)}</option>`).join('');
-    } catch (e) {
-        $('prvfGrupo').innerHTML = '<option value="">(sem grupo destino)</option>';
     }
 }
 
@@ -115,7 +100,6 @@ async function salvarNova() {
         courseId:             cursoAtual,
         nome:                 $('prvfNome').value.trim(),
         gradepenId:           $('prvfAnsid').value.trim().split('.')[0],
-        grupoDestinoId:       $('prvfGrupo').value || null,
         dataAplicacao:        $('prvfData').value || null,
         fotoModo:             $('prvfFoto').value,
         fotoSorteioPct:       parseInt($('prvfFotoPct').value, 10) || 20,
@@ -173,7 +157,6 @@ function renderDetalhe(d) {
         <span>📋 GradePen #${escapeHtml(p.gradepen_id)}</span>
         <span>📅 ${p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : 'Sem data'}</span>
         <span>📊 ${d.variantes.length} variantes • ${d.submissoes.filter(s=>!s.eh_segundo_corretor).length} alunos corrigiram</span>
-        ${p.grupo_destino_nome ? `<span>🎯 Grupo: ${escapeHtml(p.grupo_destino_nome)}</span>` : '<span>⚠️ Sem grupo destino</span>'}
         <span>📷 Foto: ${p.foto_modo}${p.foto_modo === 'sorteio' ? ` (${p.foto_sorteio_pct}%)` : ''}</span>
         <span>👁 2º corretor: ${p.segundo_corretor_ativo ? 'ativo' : 'desativado'}${p.segundo_corretor_ativo && p.permitir_outra_turma ? ' (cross-turma ON)' : ''}</span>
     `;
@@ -195,7 +178,7 @@ function renderDetalhe(d) {
     const segundas   = d.submissoes.filter(s =>  s.eh_segundo_corretor);
     let sub = `<h3>Submissões dos alunos</h3>`;
     if (!p.efetivada) {
-        sub += `<div class="prv-info-box">⚠️ <strong>As notas estão como rascunho.</strong> Quando estiver pronto, clique em <strong>"Efetivar notas"</strong> abaixo. Depois disso, lance manualmente no grupo destino "${escapeHtml(p.grupo_destino_nome || 'sem grupo')}" usando o módulo Classroom.</div>`;
+        sub += `<div class="prv-info-box">⚠️ <strong>As notas estão como rascunho.</strong> Quando estiver pronto, clique em <strong>"Efetivar notas"</strong> abaixo. Depois lance as notas no Classroom (ou use o botão <strong>📢 Publicar no Classroom</strong> que cria a atividade no grupo dedicado da avaliação).</div>`;
     }
     if (principais.length === 0) {
         sub += '<div class="prv-empty">Nenhum aluno corrigiu ainda.</div>';
@@ -333,10 +316,16 @@ async function apagarSubmissao(submissaoId, nomeAluno) {
 
 async function publicarNoClassroom() {
     if (!provaAberta) return;
-    if (!confirm('Publicar no Google Classroom um link de correção pra esta prova?\n\nVai aparecer pros alunos como Material no curso, com a variante já pré-selecionada quando abrirem.')) return;
+    const sugestao = provaAberta.prova.pontos_avaliacao || 6;
+    const txt = prompt(`Publicar no Google Classroom como atividade.\n\nQuantos pontos vale esta avaliação? (será o valor do grupo de notas dedicado)`, sugestao);
+    if (txt === null) return;
+    const pontos = parseFloat(String(txt).replace(',', '.'));
+    if (!isFinite(pontos) || pontos <= 0) return alert('Valor inválido.');
     try {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/publicar-classroom`, {
             method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pontosMeta: pontos }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
