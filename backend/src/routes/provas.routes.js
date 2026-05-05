@@ -784,19 +784,71 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             const { google } = await import('googleapis');
             const classroom  = google.classroom({ version: 'v1', auth });
 
-            const material = {
-                title:       `📝 Correção da prova: ${prova.nome}`,
-                description: `Após fazer a prova em papel, abra este link no celular ou computador, faça login com seu e-mail @escola e marque o que respondeu. Use a variante (.0/.1) que está no canto da sua folha.\n\nLink: ${linkProva}`,
-                materials: [{ link: { url: linkProva, title: 'Abrir folha de correção EduSync' } }],
-                state: 'PUBLISHED',
+            /* Calcula dueDate: usa data_aplicacao se houver, senão +7 dias.
+               Vence sempre 23:59 do fuso UTC-3 (Brasília) → 02:59 UTC do dia seguinte. */
+            const dueRaw = prova.data_aplicacao ? new Date(prova.data_aplicacao) : new Date(Date.now() + 7*86400_000);
+            const dueDate = {
+                year:  dueRaw.getUTCFullYear(),
+                month: dueRaw.getUTCMonth() + 1,
+                day:   dueRaw.getUTCDate(),
+            };
+            const dueTime = { hours: 23, minutes: 59 };
+
+            /* maxPoints: se a prova tiver grupo_destino, usa pontos_meta dele; senão, 10 */
+            let maxPoints = 10;
+            if (prova.grupo_destino_id) {
+                const { rows: [g] } = await pool.query(
+                    `SELECT pontos_meta FROM classroom_grupos WHERE id = $1`,
+                    [prova.grupo_destino_id]
+                );
+                if (g?.pontos_meta) maxPoints = Number(g.pontos_meta);
+            }
+
+            const courseWork = {
+                title:       `📝 ${prova.nome}`,
+                description: `Prova de papel + correção online no EduSync.\n\nDepois de fazer a prova, abra o link abaixo no celular ou computador, faça login com seu e-mail @escola e marque exatamente o que respondeu na folha. A variante (.0 / .1 / etc) está no canto da folha — escolha a mesma!\n\n${linkProva}`,
+                materials:   [{ link: { url: linkProva, title: 'Abrir folha de correção EduSync' } }],
+                workType:    'ASSIGNMENT',
+                state:       'PUBLISHED',
+                maxPoints,
+                dueDate,
+                dueTime,
             };
 
-            const r = await classroom.courses.courseWorkMaterials.create({
+            const r = await classroom.courses.courseWork.create({
                 courseId: prova.curso_id,
-                requestBody: material,
+                requestBody: courseWork,
             });
-            logProvas(req, 'PROVA_PUBLICAR_CLASSROOM', { provaId: prova.id, materialId: r.data.id, link: linkProva });
-            res.json({ ok: true, materialId: r.data.id, link: linkProva, alternateLink: r.data.alternateLink });
+
+            /* Vincula ao grupo de notas EduSync, se houver */
+            let vinculadaAoGrupo = false;
+            if (prova.grupo_destino_id) {
+                try {
+                    await pool.query(
+                        `INSERT INTO classroom_grupo_atividades (grupo_id, atividade_id, atividade_titulo, pontos_max)
+                         VALUES ($1,$2,$3,$4)
+                         ON CONFLICT (grupo_id, atividade_id) DO NOTHING`,
+                        [prova.grupo_destino_id, r.data.id, courseWork.title, maxPoints]
+                    );
+                    vinculadaAoGrupo = true;
+                } catch (e) {
+                    console.warn('[PROVAS] Falha ao vincular atividade ao grupo:', e.message);
+                }
+            }
+
+            logProvas(req, 'PROVA_PUBLICAR_CLASSROOM', {
+                provaId: prova.id, atividadeId: r.data.id, link: linkProva,
+                grupoDestinoId: prova.grupo_destino_id, vinculadaAoGrupo, maxPoints,
+            });
+            res.json({
+                ok: true,
+                atividadeId:    r.data.id,
+                link:           linkProva,
+                alternateLink:  r.data.alternateLink,
+                vinculadaAoGrupo,
+                maxPoints,
+                dueDate,
+            });
         } catch (e) {
             console.error('[PROVAS] Erro ao publicar no Classroom:', e.message);
             res.status(500).json({ erro: e.message });
