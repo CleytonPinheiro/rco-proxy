@@ -77,8 +77,14 @@
                 <input id="prvfFotoPct" type="number" min="1" max="100" value="20">
             </label>
             <label class="prv-toggle">
-                <input id="prvfSegundo" type="checkbox">
+                <input id="prvfSegundo" type="checkbox" onchange="document.getElementById('prvfOutraTurmaWrap').style.display = this.checked ? '' : 'none'">
                 <span>Ativar 2º corretor cego (auditoria por outro aluno)</span>
+            </label>
+            <label class="prv-toggle" id="prvfOutraTurmaWrap" style="display:none;margin-left:24px">
+                <input id="prvfOutraTurma" type="checkbox">
+                <span>Permitir corretor de outra turma (mesmo professor)<br>
+                    <small style="color:#666">Se faltar candidato na própria turma, sorteia entre alunos de outras provas suas.</small>
+                </span>
             </label>
             <div class="prv-modal-actions">
                 <button class="prv-btn" onclick="fecharNova()">Cancelar</button>

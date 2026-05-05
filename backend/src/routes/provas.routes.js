@@ -78,6 +78,12 @@ async function migrarTabelas() {
                 ON classroom_prova_submissoes(prova_id, aluno_email)
                 WHERE eh_segundo_corretor = false
         `);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS permitir_outra_turma BOOLEAN NOT NULL DEFAULT false`);
+        await pool.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_provasub_2cor_unico
+                ON classroom_prova_submissoes(submissao_ref_id, aluno_email)
+                WHERE eh_segundo_corretor = true
+        `);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_prova ON classroom_prova_submissoes(prova_id)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_email ON classroom_prova_submissoes(aluno_email)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_ref   ON classroom_prova_submissoes(submissao_ref_id)`);
@@ -435,6 +441,7 @@ export function createProvasRouter() {
             courseId, nome, gradepenId, grupoDestinoId, dataAplicacao,
             fotoModo = 'sorteio', fotoSorteioPct = 20,
             segundoCorretorAtivo = false, segundoCorretorPct = 15,
+            permitirOutraTurma = false,
             variantesManuais,    // opcional: [{codigo, gabarito: [{questao, tipo, correta, valor, n_alternativas}]}]
         } = req.body || {};
 
@@ -449,12 +456,12 @@ export function createProvasRouter() {
                 `INSERT INTO classroom_provas
                    (curso_id, gradepen_id, nome, grupo_destino_id, data_aplicacao,
                     foto_modo, foto_sorteio_pct, segundo_corretor_ativo, segundo_corretor_pct,
-                    criada_por_cpf, criada_por_nome)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    permitir_outra_turma, criada_por_cpf, criada_por_nome)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                  RETURNING *`,
                 [courseId, String(gradepenId), nome, grupoDestinoId || null, dataAplicacao || null,
                  fotoModo, fotoSorteioPct, !!segundoCorretorAtivo, segundoCorretorPct,
-                 req.userSession?.cpf || null, req.userSession?.nome || null]
+                 !!permitirOutraTurma, req.userSession?.cpf || null, req.userSession?.nome || null]
             );
 
             let variantes;
@@ -500,11 +507,13 @@ export function createProvasRouter() {
     /* Atualiza configurações da prova */
     router.put('/classroom/provas/:id', async (req, res) => {
         const fields = ['nome', 'grupo_destino_id', 'data_aplicacao', 'foto_modo',
-                        'foto_sorteio_pct', 'segundo_corretor_ativo', 'segundo_corretor_pct'];
+                        'foto_sorteio_pct', 'segundo_corretor_ativo', 'segundo_corretor_pct',
+                        'permitir_outra_turma'];
         const map = {
             nome: 'nome', grupoDestinoId: 'grupo_destino_id', dataAplicacao: 'data_aplicacao',
             fotoModo: 'foto_modo', fotoSorteioPct: 'foto_sorteio_pct',
             segundoCorretorAtivo: 'segundo_corretor_ativo', segundoCorretorPct: 'segundo_corretor_pct',
+            permitirOutraTurma: 'permitir_outra_turma',
         };
         const sets = [], vals = [];
         let i = 1;
@@ -588,22 +597,53 @@ export function createProvasRouter() {
             );
             if (!sub) return res.status(404).json({ erro: 'Submissão não encontrada nesta prova.' });
 
-            /* Candidatos: quem submeteu nesta prova com OUTRA variante e não é o próprio aluno */
-            const { rows: candidatos } = await pool.query(
-                `SELECT s.aluno_email, s.aluno_nome FROM classroom_prova_submissoes s
-                  WHERE s.prova_id = $1
-                    AND s.aluno_email <> $2
-                    AND s.eh_segundo_corretor = false
-                    AND s.variante_id <> $3
-                    AND NOT EXISTS (
-                        SELECT 1 FROM classroom_prova_submissoes c
-                         WHERE c.submissao_ref_id = s.id
-                           AND c.eh_segundo_corretor = true
-                    )`,
-                [sub.prova_id, sub.aluno_email, sub.variante_id]
+            /* Carrega config de cross-turma da prova */
+            const { rows: [provaCfg] } = await pool.query(
+                `SELECT permitir_outra_turma, criada_por_cpf FROM classroom_provas WHERE id = $1`,
+                [sub.prova_id]
             );
+
+            /* Candidatos:
+             *  - sempre: alunos da MESMA prova com OUTRA variante (≠ do aluno auditado)
+             *  - se permitir_outra_turma: também alunos que submeteram QUALQUER outra prova
+             *    do MESMO professor (filtra por criada_por_cpf). Variante não importa pois
+             *    o gabarito que o corretor vê vem da prova original.
+             */
+            let candidatos;
+            if (provaCfg?.permitir_outra_turma && provaCfg?.criada_por_cpf) {
+                ({ rows: candidatos } = await pool.query(
+                    `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
+                       FROM classroom_prova_submissoes s
+                       JOIN classroom_provas p ON p.id = s.prova_id
+                      WHERE s.aluno_email <> $1
+                        AND s.eh_segundo_corretor = false
+                        AND p.criada_por_cpf = $2
+                        AND (s.prova_id <> $3 OR s.variante_id <> $4)
+                        AND NOT EXISTS (
+                            SELECT 1 FROM classroom_prova_submissoes c
+                             WHERE c.submissao_ref_id = $5
+                               AND c.eh_segundo_corretor = true
+                               AND c.aluno_email = s.aluno_email
+                        )`,
+                    [sub.aluno_email, provaCfg.criada_por_cpf, sub.prova_id, sub.variante_id, sub.id]
+                ));
+            } else {
+                ({ rows: candidatos } = await pool.query(
+                    `SELECT s.aluno_email, s.aluno_nome FROM classroom_prova_submissoes s
+                      WHERE s.prova_id = $1
+                        AND s.aluno_email <> $2
+                        AND s.eh_segundo_corretor = false
+                        AND s.variante_id <> $3
+                        AND NOT EXISTS (
+                            SELECT 1 FROM classroom_prova_submissoes c
+                             WHERE c.submissao_ref_id = s.id
+                               AND c.eh_segundo_corretor = true
+                        )`,
+                    [sub.prova_id, sub.aluno_email, sub.variante_id]
+                ));
+            }
             if (candidatos.length === 0) {
-                return res.status(409).json({ erro: 'Sem candidatos disponíveis (todos da mesma variante ou já corrigindo).' });
+                return res.status(409).json({ erro: 'Sem candidatos disponíveis (mesma variante, sem outras turmas elegíveis ou já corrigindo).' });
             }
             const escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
 

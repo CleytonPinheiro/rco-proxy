@@ -103,6 +103,8 @@ function abrirNova() {
     $('prvfFotoPct').value = 20;
     $('prvfFotoPctWrap').style.display = '';
     $('prvfSegundo').checked = false;
+    $('prvfOutraTurma').checked = false;
+    $('prvfOutraTurmaWrap').style.display = 'none';
     $('prvNovaErro').style.display = 'none';
     $('prvModalNova').style.display = '';
 }
@@ -118,6 +120,7 @@ async function salvarNova() {
         fotoModo:             $('prvfFoto').value,
         fotoSorteioPct:       parseInt($('prvfFotoPct').value, 10) || 20,
         segundoCorretorAtivo: $('prvfSegundo').checked,
+        permitirOutraTurma:   $('prvfOutraTurma').checked,
     };
     if (!body.nome || !body.gradepenId) {
         return mostraErro('Preencha nome e ID GradePen.');
@@ -172,7 +175,7 @@ function renderDetalhe(d) {
         <span>📊 ${d.variantes.length} variantes • ${d.submissoes.filter(s=>!s.eh_segundo_corretor).length} alunos corrigiram</span>
         ${p.grupo_destino_nome ? `<span>🎯 Grupo: ${escapeHtml(p.grupo_destino_nome)}</span>` : '<span>⚠️ Sem grupo destino</span>'}
         <span>📷 Foto: ${p.foto_modo}${p.foto_modo === 'sorteio' ? ` (${p.foto_sorteio_pct}%)` : ''}</span>
-        <span>👁 2º corretor: ${p.segundo_corretor_ativo ? 'ativo' : 'desativado'}</span>
+        <span>👁 2º corretor: ${p.segundo_corretor_ativo ? 'ativo' : 'desativado'}${p.segundo_corretor_ativo && p.permitir_outra_turma ? ' (cross-turma ON)' : ''}</span>
     `;
 
     /* Gabarito */
