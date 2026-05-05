@@ -114,6 +114,100 @@ async function carregarTarefasCorretor() {
     }
 }
 
+/* ── Reputação / gamificação ─────────────────────────── */
+async function carregarReputacao() {
+    try {
+        const r = await fetch('/api/alunos-portal/reputacao', { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        const sec = document.getElementById('paReputacaoSection');
+        if (!sec) return;
+        const card = (rep, titulo) => {
+            const ra = rep.rank || { emoji: '🌱', nome: '—' };
+            const px = rep.proximoRank;
+            const prog = px ? Math.min(100, Math.round(((rep.xp_total - ra.min) / (px.min - ra.min)) * 100)) : 100;
+            const badges = (rep.badges_json || []).map(b => `<span title="${escapeAttr(b.nome)}" style="font-size:1.4em">${b.emoji}</span>`).join(' ');
+            const streakLine = rep.streak_atual > 0 ? `🔥 Streak ${rep.streak_atual}` : '';
+            return `
+                <div style="flex:1;min-width:240px;border:1px solid #ddd;border-radius:10px;padding:12px;background:#fff">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                        <strong style="font-size:0.85em;color:#666;text-transform:uppercase;letter-spacing:.5px">${titulo}</strong>
+                        <span style="font-size:0.8em;color:#999">${rep.acoes_total} ${rep.acoes_total === 1 ? 'ação' : 'ações'}</span>
+                    </div>
+                    <div style="font-size:1.2em;font-weight:600;margin-bottom:4px">${ra.emoji} ${ra.nome}</div>
+                    <div style="font-size:0.9em;color:#444;margin-bottom:8px">${rep.xp_total} XP ${streakLine ? '· ' + streakLine : ''}</div>
+                    <div style="background:#eee;border-radius:6px;overflow:hidden;height:6px;margin-bottom:6px">
+                        <div style="background:#4285f4;height:100%;width:${prog}%"></div>
+                    </div>
+                    <div style="font-size:0.75em;color:#888">${px ? `${rep.faltaProximo} XP para ${px.emoji} ${px.nome}` : '🏆 Rank máximo atingido'}</div>
+                    ${badges ? `<div style="margin-top:8px;border-top:1px solid #eee;padding-top:6px">${badges}</div>` : ''}
+                </div>`;
+        };
+        sec.style.display = '';
+        sec.innerHTML = `
+            <div style="border:1px solid #e3e3e3;border-radius:10px;padding:12px;background:#fafafa">
+                <div style="margin-bottom:8px;font-weight:600;color:#333">🎮 Sua reputação</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    ${card(d.aluno, '📝 Aluno')}
+                    ${card(d.corretor, '🔍 Corretor')}
+                </div>
+            </div>`;
+    } catch (_) { /* opcional */ }
+}
+
+async function carregarVoluntariar() {
+    try {
+        const r = await fetch('/api/alunos-portal/voluntariar/disponiveis', { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        const sec = document.getElementById('paVoluntariarSection');
+        if (!sec) return;
+        if (!d.provas || d.provas.length === 0 || d.podePegar === 0) {
+            sec.style.display = 'none';
+            return;
+        }
+        sec.style.display = '';
+        sec.innerHTML = `
+            <div style="border:1px dashed #4285f4;border-radius:10px;padding:12px;background:#f0f7ff">
+                <div style="font-weight:600;margin-bottom:6px">🎯 Quer corrigir mais provas? <span style="font-weight:400;color:#666">(XP em dobro!)</span></div>
+                <div style="font-size:0.85em;color:#555;margin-bottom:10px">Você pode pegar até <strong>${d.podePegar}</strong> tarefa(s) extra agora. Limite: 3 voluntárias por dia.</div>
+                ${d.provas.map(p => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px;border-bottom:1px solid #d8e6f7">
+                        <div>
+                            <strong>${escapeHtmlGam(p.nome)}</strong>
+                            <div style="font-size:0.8em;color:#666">${p.qtd_submetidas} submissão(ões) disponíveis · você já fez ${p.minhas_correcoes}/2 nessa prova</div>
+                        </div>
+                        <button class="pa-btn pa-btn-primary" onclick="voluntariar(${p.id}, this)" style="background:#4285f4;color:#fff;padding:6px 12px;border:none;border-radius:6px;cursor:pointer">+ Pegar uma</button>
+                    </div>
+                `).join('')}
+            </div>`;
+    } catch (_) { /* opcional */ }
+}
+
+async function voluntariar(provaId, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const r = await fetch(`/api/alunos-portal/voluntariar/${provaId}`, { method: 'POST', credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro');
+        alert('🎉 Tarefa voluntária adicionada à sua lista! Vá em "Tarefas de correção pendentes" para começar.');
+        await carregarTarefasCorretor();
+        await carregarVoluntariar();
+    } catch (e) {
+        alert('Erro: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = '+ Pegar uma';
+    }
+}
+
+function escapeHtmlGam(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtmlGam(s); }
+
+window.voluntariar = voluntariar;
+
 /* ── Verifica sessão ─────────────────────────────────── */
 async function verificarStatus() {
     mostrarLoading(true);
@@ -124,6 +218,8 @@ async function verificarStatus() {
             mostrarTelaLogado(data.aluno);
             carregarAtividades();
             carregarTarefasCorretor();
+            carregarReputacao();
+            carregarVoluntariar();
             iniciarPollingNotificacoes();
             /* Conquistas: verifica silenciosamente após atividades carregarem */
             setTimeout(verificarConquistas, 3000);

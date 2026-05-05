@@ -273,6 +273,13 @@ async function main() {
     /* 8) Limpeza */
     step(8, KEEP ? 'Mantendo dados (--keep)' : 'Limpando dados de teste');
     if (!KEEP) {
+        const { rows: subIds } = await pool.query(`SELECT id FROM classroom_prova_submissoes WHERE prova_id = $1`, [prova.id]);
+        const subIdArr = subIds.map(r => r.id);
+        if (subIdArr.length > 0) {
+            await pool.query(`DELETE FROM aluno_reputacao_log WHERE submissao_id = ANY($1)`, [subIdArr]);
+        }
+        await pool.query(`DELETE FROM aluno_reputacao     WHERE aluno_email = ANY($1)`, [['teste-prova-aluno1@edusync.local','teste-prova-aluno2@edusync.local','teste-prova-aluno3@edusync.local']]);
+        await pool.query(`DELETE FROM aluno_reputacao_log WHERE aluno_email = ANY($1)`, [['teste-prova-aluno1@edusync.local','teste-prova-aluno2@edusync.local','teste-prova-aluno3@edusync.local']]);
         await pool.query(`DELETE FROM notificacoes_aluno WHERE referencia IN (SELECT id::text FROM classroom_prova_submissoes WHERE prova_id = $1)`, [prova.id]);
         await pool.query(`DELETE FROM classroom_provas WHERE id = $1`, [prova.id]);
         for (const sid of Object.values(sids)) {

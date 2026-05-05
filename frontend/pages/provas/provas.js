@@ -191,7 +191,11 @@ function renderDetalhe(d) {
             const seg = segundas.find(x => x.submissao_ref_id === s.id);
             const flags = [];
             if (s.foto_obrigatoria && !s.foto_url) flags.push('<span class="prv-flag prv-flag-foto">SEM FOTO</span>');
-            if (s.foto_url) flags.push('<span class="prv-flag prv-flag-foto">📷</span>');
+            if (s.foto_url) {
+                if (s.foto_conferida === 'ok') flags.push('<span class="prv-flag prv-flag-foto" style="background:#dcfce7;color:#166534">📷 ✅ confere</span>');
+                else if (s.foto_conferida === 'divergente') flags.push('<span class="prv-flag prv-flag-foto" style="background:#fee2e2;color:#991b1b">📷 ⚠️ não confere</span>');
+                else flags.push(`<button class="prv-link-acao prv-act-foto" data-sub="${s.id}" title="Conferir se a foto bate com as marcações enviadas">📷 conferir</button>`);
+            }
             if (seg) {
                 const div = Math.abs((seg.nota || 0) - (s.nota || 0));
                 if (div > 0.01) flags.push(`<span class="prv-flag prv-flag-2cor">DIVERG ${div.toFixed(1)}</span>`);
@@ -222,6 +226,8 @@ function renderDetalhe(d) {
         b.addEventListener('click', () => sortear(parseInt(b.dataset.sub, 10))));
     $('prvDetSubmissoes').querySelectorAll('.prv-act-apagar').forEach(b =>
         b.addEventListener('click', () => apagarSubmissao(parseInt(b.dataset.sub, 10), b.dataset.aluno)));
+    $('prvDetSubmissoes').querySelectorAll('.prv-act-foto').forEach(b =>
+        b.addEventListener('click', () => conferirFoto(parseInt(b.dataset.sub, 10))));
 
     $('prvBtnEfetivar').textContent = p.efetivada ? 'Reabrir como rascunho' : 'Efetivar notas';
 }
@@ -351,6 +357,20 @@ window.sortear         = sortear;
 window.regabaritar     = regabaritar;
 window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
+async function conferirFoto(submissaoId) {
+    const ok = confirm('A foto da folha BATE com as marcações que o aluno enviou?\n\nOK = ✅ Confere (aluno ganha XP)\nCancelar = ❌ Não confere (aluno perde XP, será sinalizado)');
+    try {
+        const r = await fetch(`/api/classroom/provas/submissoes/${submissaoId}/conferir-foto`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ok }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { alert('Erro: ' + e.message); }
+}
+window.conferirFoto    = conferirFoto;
 window.trocarVariante  = trocarVariante;
 window.apagarSubmissao = apagarSubmissao;
 window.publicarNoClassroom = publicarNoClassroom;

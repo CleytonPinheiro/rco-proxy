@@ -225,6 +225,19 @@ async function enviarSubmissao() {
 function renderResultado(d) {
     $('ppNotaFinal').textContent = (d.nota ?? '—').toString();
     $('ppTotalMax').textContent  = (d.total ?? '—').toString();
+    if (d.xpGanho > 0 || (d.badgesGanhas && d.badgesGanhas.length > 0)) {
+        const det = (d.xpDetalhes || []).map(x => `${x.rotulo}: +${x.xp} XP`).join(' · ');
+        const bd = (d.badgesGanhas || []).map(b => `${b.emoji} ${b.nome}`).join(', ');
+        const linha = `🎮 Você ganhou +${d.xpGanho} XP! ${det ? '(' + det + ')' : ''}${bd ? ' · 🏆 Nova badge: ' + bd : ''}`;
+        let xpDiv = $('ppXpInfo');
+        if (!xpDiv) {
+            xpDiv = document.createElement('div');
+            xpDiv.id = 'ppXpInfo';
+            xpDiv.style.cssText = 'margin:12px 0;padding:10px;background:#f0fdf4;border:1px solid #4ade80;border-radius:8px;color:#166534;font-weight:500';
+            $('ppEtapa2').insertBefore(xpDiv, $('ppEtapa2').firstChild);
+        }
+        xpDiv.textContent = linha;
+    }
 
     const wrap = $('ppTabelaEtapa2');
     let html = `<table class="pp-tabela"><thead><tr>
@@ -318,7 +331,11 @@ async function enviarSegundo() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro');
-        alert('Correção enviada. Obrigado pela ajuda!');
+        let msg = '✅ Correção enviada. Obrigado pela ajuda!';
+        if (d.xpGanho) msg += `\n\n🎮 +${d.xpGanho} XP ganho`;
+        if (d.badgesGanhas && d.badgesGanhas.length) msg += `\n🏆 Nova badge: ${d.badgesGanhas.map(b => b.emoji + ' ' + b.nome).join(', ')}`;
+        if (d.aviso) msg += `\n\nℹ️ ${d.aviso}`;
+        alert(msg);
         location.href = '/alunos/';
     } catch (e) {
         alert('Erro: ' + e.message);

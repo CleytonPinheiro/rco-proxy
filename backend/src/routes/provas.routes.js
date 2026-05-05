@@ -14,11 +14,13 @@
 import { Router }  from 'express';
 import pkg        from 'pg';
 import crypto     from 'crypto';
-import { auditLogger } from '../services/AuditLogger.js';
-import { getBrowser }  from '../../auth-puppeteer.js';
+import { auditLogger }      from '../services/AuditLogger.js';
+import { getBrowser }       from '../../auth-puppeteer.js';
+import { ReputacaoService, EVENTOS, BADGES, RANKS, getRank } from '../services/reputacao.service.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
+const reputacao = new ReputacaoService(pool);
 
 /* ════════════════════════════════════════════════════════════════════
  *  MIGRAÇÃO DE TABELAS
@@ -91,7 +93,14 @@ async function migrarTabelas() {
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_prova ON classroom_prova_submissoes(prova_id)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_email ON classroom_prova_submissoes(aluno_email)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_ref   ON classroom_prova_submissoes(submissao_ref_id)`);
-        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes)');
+        /* Gamificação: snapshot de variante original + flags de XP creditado + foto conferida + flag voluntária */
+        await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS variante_id_original INTEGER`);
+        await pool.query(`UPDATE classroom_prova_submissoes SET variante_id_original = variante_id WHERE variante_id_original IS NULL`);
+        await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS foto_conferida TEXT`);
+        await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS xp_creditado_efetiv BOOLEAN NOT NULL DEFAULT false`);
+        await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS voluntaria BOOLEAN NOT NULL DEFAULT false`);
+        await reputacao.migrate();
+        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação)');
     } catch (e) {
         console.warn('[PROVAS] Erro na migração:', e.message);
     }
@@ -567,12 +576,101 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
-    /* Efetiva: marca provas como definitivas */
+    /* Efetiva: marca provas como definitivas + distribui XP (precisão 2cor + variante correta aluno) */
     router.post('/classroom/provas/:id/efetivar', async (req, res) => {
         try {
             await pool.query(`UPDATE classroom_provas SET efetivada = true WHERE id = $1`, [req.params.id]);
-            logProvas(req, 'PROVA_EFETIVAR', { provaId: req.params.id });
-            res.json({ ok: true });
+
+            /* Carrega submissões principais (1º corretor) ainda sem XP de efetivação creditado */
+            const { rows: principais } = await pool.query(
+                `SELECT id, aluno_email, aluno_nome, nota, variante_id, variante_id_original
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_segundo_corretor = false AND xp_creditado_efetiv = false`,
+                [req.params.id]
+            );
+
+            const xpStats = { aluno: 0, corretor: 0, contagem: { perfeita: 0, precisa: 0, ok: 0, longe: 0, desviante: 0 } };
+
+            for (const p of principais) {
+                /* Aluno: variante correta de primeira (não foi trocada pelo prof) */
+                if (p.variante_id_original && p.variante_id === p.variante_id_original) {
+                    try {
+                        const r = await reputacao.creditar({
+                            alunoEmail: p.aluno_email, alunoNome: p.aluno_nome,
+                            evento: 'VARIANTE_CORRETA', submissaoId: p.id,
+                        });
+                        if (r.creditado) xpStats.aluno += r.xp;
+                    } catch (e) { console.warn('[REPUTACAO] variante correta:', e.message); }
+                }
+
+                /* Corretor: pega 2ª(s) correção(ões) dessa submissão e calcula divergência */
+                const { rows: secundas } = await pool.query(
+                    `SELECT id, aluno_email, aluno_nome, nota
+                       FROM classroom_prova_submissoes
+                      WHERE submissao_ref_id = $1 AND eh_segundo_corretor = true`,
+                    [p.id]
+                );
+                for (const sc of secundas) {
+                    const div = Math.abs(Number(sc.nota || 0) - Number(p.nota || 0));
+                    let evento;
+                    if      (div <= 0.3) { evento = 'CORRECAO_PERFEITA'; xpStats.contagem.perfeita++; }
+                    else if (div <= 0.7) { evento = 'CORRECAO_PRECISA';  xpStats.contagem.precisa++; }
+                    else if (div <= 1.5) { evento = 'CORRECAO_OK';       xpStats.contagem.ok++; }
+                    else if (div <= 3.0) { evento = 'CORRECAO_LONGE';    xpStats.contagem.longe++; }
+                    else                 { evento = 'CORRECAO_DESVIANTE'; xpStats.contagem.desviante++; }
+                    try {
+                        const r = await reputacao.creditar({
+                            alunoEmail: sc.aluno_email, alunoNome: sc.aluno_nome,
+                            evento, submissaoId: sc.id,
+                            detalhes: { divergencia: Number(div.toFixed(2)), notaOficial: Number(p.nota), notaCorretor: Number(sc.nota) },
+                        });
+                        if (r.creditado) xpStats.corretor += r.xp;
+                    } catch (e) { console.warn('[REPUTACAO] precisão 2cor:', e.message); }
+                }
+
+                await pool.query(`UPDATE classroom_prova_submissoes SET xp_creditado_efetiv = true WHERE id = $1`, [p.id]);
+            }
+
+            logProvas(req, 'PROVA_EFETIVAR', { provaId: req.params.id, xpStats });
+            res.json({ ok: true, xpStats });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Professor confere foto: ok / divergente — apenas dono da prova ou admin */
+    router.post('/classroom/provas/submissoes/:subId/conferir-foto', async (req, res) => {
+        const { ok } = req.body || {};
+        if (typeof ok !== 'boolean') return res.status(400).json({ erro: 'body.ok deve ser boolean.' });
+        const cpfSessao = req.userSession?.cpf;
+        const perfil    = req.userSession?.perfil;
+        try {
+            const { rows: [sub] } = await pool.query(
+                `SELECT s.id, s.aluno_email, s.aluno_nome, s.foto_conferida, p.criada_por_cpf
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_provas p ON p.id = s.prova_id
+                  WHERE s.id = $1`,
+                [req.params.subId]
+            );
+            if (!sub) return res.status(404).json({ erro: 'Submissão não encontrada.' });
+            /* Estrito: apenas admin OU dono da prova com CPF na sessão e CPF não-nulo na prova */
+            if (perfil !== 'admin') {
+                if (!cpfSessao || !sub.criada_por_cpf || sub.criada_por_cpf !== cpfSessao) {
+                    return res.status(403).json({ erro: 'Apenas o professor dono da prova pode conferir a foto.' });
+                }
+            }
+            const novoStatus = ok ? 'ok' : 'divergente';
+            if (sub.foto_conferida === novoStatus) {
+                return res.json({ ok: true, jaConferida: true });
+            }
+            await pool.query(`UPDATE classroom_prova_submissoes SET foto_conferida = $1 WHERE id = $2`, [novoStatus, sub.id]);
+            const evento = ok ? 'FOTO_OK' : 'FOTO_DIVERGENTE';
+            const r = await reputacao.creditar({
+                alunoEmail: sub.aluno_email, alunoNome: sub.aluno_nome,
+                evento, submissaoId: sub.id,
+            });
+            logProvas(req, 'PROVA_CONFERIR_FOTO', { submissaoId: sub.id, status: novoStatus, xp: r.xp });
+            res.json({ ok: true, status: novoStatus, xpCreditado: r.creditado, xp: r.xp, badgesGanhas: r.badgesGanhas });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
@@ -1031,10 +1129,10 @@ export function createProvasPublicRouter() {
 
             const { rows: [sub] } = await pool.query(
                 `INSERT INTO classroom_prova_submissoes
-                   (prova_id, variante_id, aluno_email, aluno_nome,
+                   (prova_id, variante_id, variante_id_original, aluno_email, aluno_nome,
                     marcacoes_json, nota, total_max, ip, user_agent,
                     foto_url, foto_obrigatoria)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                 VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                  RETURNING id, criada_em`,
                 [prova.id, variante.id, aluno.email, aluno.nome,
                  JSON.stringify(marcacoes), nota, total,
@@ -1042,7 +1140,24 @@ export function createProvasPublicRouter() {
                  fotoUrlSalva, fotoObrig]
             );
 
+            /* ── Gamificação: XP imediato do 1º corretor ── */
+            const xpEventos = [];
+            try {
+                const provaCriadaEm = prova.criada_em ? new Date(prova.criada_em) : null;
+                const horasDesdeCriacao = provaCriadaEm ? (Date.now() - provaCriadaEm.getTime()) / 3600000 : 999;
+                if (horasDesdeCriacao <= 24) {
+                    const r1 = await reputacao.creditar({ alunoEmail: aluno.email, alunoNome: aluno.nome, evento: 'SUBMISSAO_RAPIDA', submissaoId: sub.id });
+                    if (r1.creditado) xpEventos.push(r1);
+                } else {
+                    const r2 = await reputacao.creditar({ alunoEmail: aluno.email, alunoNome: aluno.nome, evento: 'SUBMISSAO_NO_PRAZO', submissaoId: sub.id });
+                    if (r2.creditado) xpEventos.push(r2);
+                }
+            } catch (e) { console.warn('[REPUTACAO] aluno submissão:', e.message); }
+
             res.json({
+                xpGanho: xpEventos.reduce((acc, e) => acc + (e.xp || 0), 0),
+                xpDetalhes: xpEventos.map(e => ({ evento: e.evento, xp: e.xp, rotulo: EVENTOS[e.evento]?.rotulo })),
+                badgesGanhas: xpEventos.flatMap(e => e.badgesGanhas || []),
                 submissaoId: sub.id,
                 nota, total, detalhes,
                 gabarito,
@@ -1118,7 +1233,7 @@ export function createProvasPublicRouter() {
                    JOIN classroom_provas p           ON p.id = s.prova_id
                    JOIN classroom_prova_variantes v  ON v.id = s.variante_id
                   WHERE n.aluno_email = $1
-                    AND n.tipo = 'segundo_corretor'
+                    AND n.tipo IN ('segundo_corretor','segundo_corretor_voluntario')
                     AND NOT EXISTS (
                         SELECT 1 FROM classroom_prova_submissoes c
                          WHERE c.submissao_ref_id = s.id
@@ -1156,7 +1271,8 @@ export function createProvasPublicRouter() {
             /* Exige que exista uma notificação de sorteio para este aluno+submissão */
             const { rows: notif } = await pool.query(
                 `SELECT id FROM notificacoes_aluno
-                  WHERE aluno_email = $1 AND tipo = 'segundo_corretor'
+                  WHERE aluno_email = $1
+                    AND tipo IN ('segundo_corretor','segundo_corretor_voluntario')
                     AND (dados->>'submissaoRefId')::int = $2 LIMIT 1`,
                 [aluno.email, ref.id]
             );
@@ -1172,28 +1288,225 @@ export function createProvasPublicRouter() {
             if (existe.length > 0) return res.status(409).json({ erro: 'Você já submeteu esta correção.' });
 
             const { nota, total } = calcularNota(ref.gabarito_json, marcacoes);
-            await pool.query(
+            /* Detecta se é correção voluntária (notif tipo 'segundo_corretor_voluntario') */
+            const { rows: [notifTipo] } = await pool.query(
+                `SELECT tipo FROM notificacoes_aluno
+                  WHERE aluno_email = $1 AND (dados->>'submissaoRefId')::int = $2
+                  ORDER BY criado_em DESC LIMIT 1`,
+                [aluno.email, ref.id]
+            );
+            const ehVoluntaria = notifTipo?.tipo === 'segundo_corretor_voluntario';
+
+            const { rows: [novaSub] } = await pool.query(
                 `INSERT INTO classroom_prova_submissoes
                    (prova_id, variante_id, aluno_email, aluno_nome,
                     marcacoes_json, nota, total_max, ip, user_agent,
-                    eh_segundo_corretor, submissao_ref_id)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,$10)`,
+                    eh_segundo_corretor, submissao_ref_id, voluntaria)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,$10,$11) RETURNING id`,
                 [ref.prova_id, ref.variante_id_real, aluno.email, aluno.nome,
                  JSON.stringify(marcacoes), nota, total,
-                 req.ip, req.get('user-agent') || '', ref.id]
+                 req.ip, req.get('user-agent') || '', ref.id, ehVoluntaria]
             );
 
-            /* Marca a notificação como lida */
+            /* XP imediato base do corretor (precisão vem na efetivação) */
+            const xpEventos = [];
+            try {
+                const r1 = await reputacao.creditar({ alunoEmail: aluno.email, alunoNome: aluno.nome, evento: 'CORRECAO_ENVIADA', submissaoId: novaSub.id });
+                if (r1.creditado) xpEventos.push(r1);
+                if (ehVoluntaria) {
+                    const r2 = await reputacao.creditar({ alunoEmail: aluno.email, alunoNome: aluno.nome, evento: 'CORRECAO_VOLUNTARIA', submissaoId: novaSub.id });
+                    if (r2.creditado) xpEventos.push(r2);
+                }
+            } catch (e) { console.warn('[REPUTACAO] 2cor enviada:', e.message); }
+
+            /* Marca a notificação como lida (cobre ambos os tipos) */
             await pool.query(
                 `UPDATE notificacoes_aluno SET lida = true
-                  WHERE aluno_email = $1 AND tipo = 'segundo_corretor'
+                  WHERE aluno_email = $1 AND tipo IN ('segundo_corretor','segundo_corretor_voluntario')
                     AND (dados->>'submissaoRefId')::int = $2`,
                 [aluno.email, ref.id]
             );
 
-            res.json({ ok: true });
+            res.json({
+                ok: true,
+                xpGanho: xpEventos.reduce((a, e) => a + (e.xp || 0), 0),
+                xpDetalhes: xpEventos.map(e => ({ evento: e.evento, xp: e.xp, rotulo: EVENTOS[e.evento]?.rotulo })),
+                badgesGanhas: xpEventos.flatMap(e => e.badgesGanhas || []),
+                aviso: 'XP de precisão será creditado quando o professor efetivar a prova.',
+            });
         } catch (e) {
             res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════════════
+     *  GAMIFICAÇÃO — endpoints públicos do portal aluno
+     * ════════════════════════════════════════════════════════════════ */
+
+    /* Resumo de reputação do aluno logado */
+    router.get('/alunos-portal/reputacao', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const resumo = await reputacao.getResumo(aluno.email);
+            res.json(resumo);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* Lista provas em que o aluno pode se voluntariar como 2º corretor.
+     * Regras:
+     *  - prova com segundo_corretor_ativo=true e não efetivada
+     *  - aluno não submeteu a prova
+     *  - aluno não atingiu 2 correções nessa prova
+     *  - aluno não atingiu 3 tarefas pendentes (sortição+voluntárias)
+     *  - existe ao menos 1 submissão alvo elegível
+     */
+    router.get('/alunos-portal/voluntariar/disponiveis', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            /* Quantas pendências o aluno já tem? */
+            const { rows: [{ pend }] } = await pool.query(
+                `SELECT COUNT(*)::int AS pend FROM notificacoes_aluno n
+                  WHERE n.aluno_email = $1
+                    AND n.tipo IN ('segundo_corretor','segundo_corretor_voluntario')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = (n.dados->>'submissaoRefId')::int
+                           AND c.aluno_email = $1
+                           AND c.eh_segundo_corretor = true
+                    )`,
+                [aluno.email]
+            );
+            const limitePend = 3;
+            const podePegar = Math.max(0, limitePend - pend);
+            if (podePegar === 0) return res.json({ podePegar: 0, pend, provas: [] });
+
+            const { rows: provas } = await pool.query(
+                `SELECT p.id, p.nome, p.curso_id, p.criada_em,
+                        (SELECT COUNT(*) FROM classroom_prova_submissoes s
+                          WHERE s.prova_id = p.id AND s.eh_segundo_corretor = false) AS qtd_submetidas,
+                        (SELECT COUNT(*) FROM classroom_prova_submissoes s
+                          WHERE s.prova_id = p.id AND s.aluno_email = $1
+                            AND s.eh_segundo_corretor = true) AS minhas_correcoes
+                   FROM classroom_provas p
+                  WHERE p.segundo_corretor_ativo = true
+                    AND p.efetivada = false
+                    AND NOT EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes s
+                         WHERE s.prova_id = p.id AND s.aluno_email = $1 AND s.eh_segundo_corretor = false
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes s
+                         WHERE s.prova_id = p.id AND s.eh_segundo_corretor = false
+                           AND s.aluno_email <> $1
+                           AND (
+                               SELECT COUNT(*) FROM classroom_prova_submissoes c
+                                WHERE c.submissao_ref_id = s.id AND c.eh_segundo_corretor = true
+                           ) < 2
+                           AND NOT EXISTS (
+                               SELECT 1 FROM classroom_prova_submissoes c
+                                WHERE c.submissao_ref_id = s.id AND c.eh_segundo_corretor = true
+                                  AND c.aluno_email = $1
+                           )
+                    )
+                  ORDER BY p.criada_em DESC LIMIT 10`,
+                [aluno.email]
+            );
+            const elegiveis = provas.filter(p => Number(p.minhas_correcoes) < 2);
+            res.json({ podePegar, pend, provas: elegiveis });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* Pega uma correção voluntária: sorteia uma submissão alvo elegível e cria notif */
+    router.post('/alunos-portal/voluntariar/:provaId', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            /* Limite de 3 voluntárias/dia */
+            const { rows: [{ hoje }] } = await client.query(
+                `SELECT COUNT(*)::int AS hoje FROM notificacoes_aluno
+                  WHERE aluno_email = $1 AND tipo = 'segundo_corretor_voluntario'
+                    AND criado_em > NOW() - INTERVAL '24 hours'`,
+                [aluno.email]
+            );
+            if (hoje >= 3) { await client.query('ROLLBACK'); return res.status(429).json({ erro: 'Limite de 3 correções voluntárias por dia atingido.' }); }
+
+            /* (a) Aluno NÃO submeteu essa prova */
+            const { rows: [{ subm }] } = await client.query(
+                `SELECT COUNT(*)::int AS subm FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND aluno_email = $2 AND eh_segundo_corretor = false`,
+                [req.params.provaId, aluno.email]
+            );
+            if (subm > 0) { await client.query('ROLLBACK'); return res.status(409).json({ erro: 'Você já fez essa prova; não pode corrigi-la.' }); }
+
+            /* (b) <2 correções nessa prova */
+            const { rows: [{ jaFez }] } = await client.query(
+                `SELECT COUNT(*)::int AS "jaFez" FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND aluno_email = $2 AND eh_segundo_corretor = true`,
+                [req.params.provaId, aluno.email]
+            );
+            if (jaFez >= 2) { await client.query('ROLLBACK'); return res.status(409).json({ erro: 'Você já corrigiu o limite de 2 provas neste exame.' }); }
+
+            /* (c) <3 pendências totais */
+            const { rows: [{ pend }] } = await client.query(
+                `SELECT COUNT(*)::int AS pend FROM notificacoes_aluno n
+                  WHERE n.aluno_email = $1
+                    AND n.tipo IN ('segundo_corretor','segundo_corretor_voluntario')
+                    AND NOT EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = (n.dados->>'submissaoRefId')::int
+                           AND c.aluno_email = $1 AND c.eh_segundo_corretor = true
+                    )`,
+                [aluno.email]
+            );
+            if (pend >= 3) { await client.query('ROLLBACK'); return res.status(429).json({ erro: 'Você já tem 3 correções pendentes; conclua-as antes.' }); }
+
+            /* Confirma elegibilidade e bloqueia a submissão alvo (FOR UPDATE SKIP LOCKED para evitar corrida) */
+            const { rows: alvos } = await client.query(
+                `SELECT s.id, s.variante_id, s.aluno_email
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_provas p ON p.id = s.prova_id
+                  WHERE p.id = $1 AND p.segundo_corretor_ativo = true AND p.efetivada = false
+                    AND s.eh_segundo_corretor = false
+                    AND s.aluno_email <> $2
+                    AND NOT EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = s.id AND c.aluno_email = $2 AND c.eh_segundo_corretor = true
+                    )
+                    AND (
+                        SELECT COUNT(*) FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = s.id AND c.eh_segundo_corretor = true
+                    ) < 2
+                  ORDER BY (
+                        SELECT COUNT(*) FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = s.id AND c.eh_segundo_corretor = true
+                  ) ASC, RANDOM()
+                  LIMIT 1
+                  FOR UPDATE OF s SKIP LOCKED`,
+                [req.params.provaId, aluno.email]
+            );
+            if (alvos.length === 0) { await client.query('ROLLBACK'); return res.status(409).json({ erro: 'Sem submissões disponíveis para corrigir nessa prova.' }); }
+            const alvo = alvos[0];
+
+            await client.query(
+                `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                 VALUES ($1,'segundo_corretor_voluntario',$2,$3,$4,$5)`,
+                [aluno.email, String(alvo.id),
+                 '🤝 Correção voluntária aceita!',
+                 'Você se voluntariou para uma 2ª correção. Acesse pela sua lista de tarefas. (XP em dobro!)',
+                 JSON.stringify({ submissaoRefId: alvo.id, provaId: Number(req.params.provaId), voluntaria: true })]
+            );
+            await client.query('COMMIT');
+            res.json({ ok: true, submissaoRefId: alvo.id });
+        } catch (e) {
+            try { await client.query('ROLLBACK'); } catch (_) {}
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
         }
     });
 
