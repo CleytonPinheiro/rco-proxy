@@ -341,8 +341,7 @@ async function publicarNoClassroom() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
         const dt = d.dueDate ? `${String(d.dueDate.day).padStart(2,'0')}/${String(d.dueDate.month).padStart(2,'0')}/${d.dueDate.year}` : '—';
-        const grupoMsg = d.vinculadaAoGrupo ? '✅ Vinculada ao grupo de notas.' : 'ℹ️ Não vinculada (sem grupo destino definido).';
-        if (confirm(`Atividade publicada no Classroom!\n\n📅 Prazo: ${dt} 23:59\n💯 Vale: ${d.maxPoints} pts\n${grupoMsg}\n\nLink: ${d.link}\n\nAbrir a atividade no Classroom agora?`)) {
+        if (confirm(`Atividade publicada no Classroom!\n\n📅 Prazo: ${dt} 23:59\n💯 Vale: ${d.maxPoints} pts (Trim. ${d.trimestre}/${d.ano})\n✅ Grupo dedicado da avaliação criado/atualizado (id ${d.grupoAvaliacaoId}).\n\nLink: ${d.link}\n\nAbrir a atividade no Classroom agora?`)) {
             if (d.alternateLink) window.open(d.alternateLink, '_blank');
         }
     } catch (e) { alert('Erro ao publicar: ' + e.message); }

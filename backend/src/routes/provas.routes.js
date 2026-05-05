@@ -79,6 +79,10 @@ async function migrarTabelas() {
                 WHERE eh_segundo_corretor = false
         `);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS permitir_outra_turma BOOLEAN NOT NULL DEFAULT false`);
+        /* Grupo dedicado da avaliação (criado/reusado quando publica no Classroom).
+           Separado do grupo_destino_id (que costuma ser o de "atividades 4 pts"). */
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS grupo_avaliacao_id INTEGER REFERENCES classroom_grupos(id) ON DELETE SET NULL`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS pontos_avaliacao   NUMERIC NOT NULL DEFAULT 6.0`);
         await pool.query(`
             CREATE UNIQUE INDEX IF NOT EXISTS idx_provasub_2cor_unico
                 ON classroom_prova_submissoes(submissao_ref_id, aluno_email)
@@ -794,14 +798,40 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             };
             const dueTime = { hours: 23, minutes: 59 };
 
-            /* maxPoints: se a prova tiver grupo_destino, usa pontos_meta dele; senão, 10 */
-            let maxPoints = 10;
-            if (prova.grupo_destino_id) {
-                const { rows: [g] } = await pool.query(
-                    `SELECT pontos_meta FROM classroom_grupos WHERE id = $1`,
-                    [prova.grupo_destino_id]
+            /* Permite override pontual de pontos via body (default = pontos_avaliacao da prova) */
+            const maxPoints = Number(req.body?.pontosMeta) || Number(prova.pontos_avaliacao) || 6.0;
+
+            /* Cria (ou reusa) um grupo dedicado APENAS para essa avaliação.
+               Separado do grupo_destino_id (que normalmente é o de "atividades 4 pts").
+               Trimestre/ano deduzidos da data_aplicacao (ou data atual). */
+            let grupoAvaliacaoId = prova.grupo_avaliacao_id;
+            const refDate   = prova.data_aplicacao ? new Date(prova.data_aplicacao) : new Date();
+            const ano       = refDate.getUTCFullYear();
+            const mes       = refDate.getUTCMonth() + 1;
+            const trimestre = mes <= 4 ? 1 : (mes <= 8 ? 2 : 3);
+
+            if (!grupoAvaliacaoId) {
+                const { rows: [novoGrupo] } = await pool.query(
+                    `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, trimestre, ano)
+                     VALUES ($1, $2, $3, $4, $5, $6)
+                     RETURNING id`,
+                    [prova.curso_id, `Avaliação — ${prova.nome}`, maxPoints, '#E91E63', trimestre, ano]
                 );
-                if (g?.pontos_meta) maxPoints = Number(g.pontos_meta);
+                grupoAvaliacaoId = novoGrupo.id;
+                await pool.query(
+                    `UPDATE classroom_provas SET grupo_avaliacao_id = $1, pontos_avaliacao = $2 WHERE id = $3`,
+                    [grupoAvaliacaoId, maxPoints, prova.id]
+                );
+            } else {
+                /* Atualiza pontos_meta do grupo se mudou */
+                await pool.query(
+                    `UPDATE classroom_grupos SET pontos_meta = $1 WHERE id = $2`,
+                    [maxPoints, grupoAvaliacaoId]
+                );
+                await pool.query(
+                    `UPDATE classroom_provas SET pontos_avaliacao = $1 WHERE id = $2`,
+                    [maxPoints, prova.id]
+                );
             }
 
             const courseWork = {
@@ -820,34 +850,28 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 requestBody: courseWork,
             });
 
-            /* Vincula ao grupo de notas EduSync, se houver */
-            let vinculadaAoGrupo = false;
-            if (prova.grupo_destino_id) {
-                try {
-                    await pool.query(
-                        `INSERT INTO classroom_grupo_atividades (grupo_id, atividade_id, atividade_titulo, pontos_max)
-                         VALUES ($1,$2,$3,$4)
-                         ON CONFLICT (grupo_id, atividade_id) DO NOTHING`,
-                        [prova.grupo_destino_id, r.data.id, courseWork.title, maxPoints]
-                    );
-                    vinculadaAoGrupo = true;
-                } catch (e) {
-                    console.warn('[PROVAS] Falha ao vincular atividade ao grupo:', e.message);
-                }
-            }
+            /* Vincula a atividade ao grupo dedicado da avaliação */
+            await pool.query(
+                `INSERT INTO classroom_grupo_atividades (grupo_id, atividade_id, atividade_titulo, pontos_max)
+                 VALUES ($1,$2,$3,$4)
+                 ON CONFLICT (grupo_id, atividade_id) DO NOTHING`,
+                [grupoAvaliacaoId, r.data.id, courseWork.title, maxPoints]
+            );
 
             logProvas(req, 'PROVA_PUBLICAR_CLASSROOM', {
                 provaId: prova.id, atividadeId: r.data.id, link: linkProva,
-                grupoDestinoId: prova.grupo_destino_id, vinculadaAoGrupo, maxPoints,
+                grupoAvaliacaoId, maxPoints, trimestre, ano,
             });
             res.json({
                 ok: true,
                 atividadeId:    r.data.id,
                 link:           linkProva,
                 alternateLink:  r.data.alternateLink,
-                vinculadaAoGrupo,
+                grupoAvaliacaoId,
                 maxPoints,
                 dueDate,
+                trimestre,
+                ano,
             });
         } catch (e) {
             console.error('[PROVAS] Erro ao publicar no Classroom:', e.message);
