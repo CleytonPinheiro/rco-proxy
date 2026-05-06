@@ -1,4 +1,4 @@
-const SYNC_TTL_MS = (parseInt(process.env.RCO_SYNC_TTL_HOURS ?? '4', 10) || 4) * 60 * 60 * 1000;
+const SYNC_TTL_MS_ENV = (parseInt(process.env.RCO_SYNC_TTL_HOURS ?? '4', 10) || 4) * 60 * 60 * 1000;
 
 export class SyncService {
     #supabaseAdmin = null;
@@ -9,6 +9,26 @@ export class SyncService {
         this.#supabaseAdmin = supabaseAdmin;
         this.#rcoApiService = rcoApiService;
         this.#pool          = pool;
+    }
+
+    /**
+     * Reads the sync TTL from edusync_config at runtime.
+     * Falls back to the RCO_SYNC_TTL_HOURS env var, then 4h.
+     */
+    async #getTtlMs() {
+        if (!this.#pool) return SYNC_TTL_MS_ENV;
+        try {
+            const { rows } = await this.#pool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'rco_sync_ttl_hours'`,
+            );
+            if (rows.length) {
+                const parsed = parseFloat(rows[0].valor);
+                if (Number.isFinite(parsed) && parsed > 0) return parsed * 60 * 60 * 1000;
+            }
+        } catch (e) {
+            console.warn('[SYNC] Falha ao ler TTL de edusync_config:', e.message);
+        }
+        return SYNC_TTL_MS_ENV;
     }
 
     // Limpa dados de sessão anterior ao trocar de usuário.
@@ -53,16 +73,20 @@ export class SyncService {
     async #verificarCache(userId) {
         if (!this.#pool || !userId) return { fresco: false };
         try {
-            const { rows } = await this.#pool.query(
-                `SELECT ultimo_sync, puladas, executadas FROM edusync_sync_cache WHERE usuario_id = $1`,
-                [userId],
-            );
-            if (!rows.length) return { fresco: false };
+            const [{ rows }, ttlMs] = await Promise.all([
+                this.#pool.query(
+                    `SELECT ultimo_sync, puladas, executadas FROM edusync_sync_cache WHERE usuario_id = $1`,
+                    [userId],
+                ),
+                this.#getTtlMs(),
+            ]);
+            if (!rows.length) return { fresco: false, ttlMs };
             const ultimoSync = new Date(rows[0].ultimo_sync);
             const idadeMs    = Date.now() - ultimoSync.getTime();
             return {
-                fresco:    idadeMs < SYNC_TTL_MS,
+                fresco:    idadeMs < ttlMs,
                 idadeMs,
+                ttlMs,
                 ultimoSync,
                 puladas:   rows[0].puladas,
                 executadas: rows[0].executadas,
@@ -115,13 +139,14 @@ export class SyncService {
             const cache = await this.#verificarCache(userId);
             if (cache.fresco) {
                 const idadeMin = Math.round(cache.idadeMs / 60_000);
-                console.log(`[SYNC] Pulado — cache fresco (age ${idadeMin} min, TTL ${SYNC_TTL_MS / 60_000} min) para userId ${userId}`);
+                const ttlMin   = Math.round((cache.ttlMs ?? SYNC_TTL_MS_ENV) / 60_000);
+                console.log(`[SYNC] Pulado — cache fresco (age ${idadeMin} min, TTL ${ttlMin} min) para userId ${userId}`);
                 this.#registrarSyncPulado(userId).catch(() => {});
                 return {
                     status: 'cache_fresco',
                     idadeMin,
                     ultimoSync: cache.ultimoSync?.toISOString(),
-                    mensagem:   `Dados sincronizados há ${idadeMin} min. Próximo sync automático em ~${Math.round((SYNC_TTL_MS - cache.idadeMs) / 60_000)} min.`,
+                    mensagem:   `Dados sincronizados há ${idadeMin} min. Próximo sync automático em ~${Math.round(((cache.ttlMs ?? SYNC_TTL_MS_ENV) - cache.idadeMs) / 60_000)} min.`,
                 };
             }
         }

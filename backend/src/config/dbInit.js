@@ -171,6 +171,11 @@ export async function initializeDatabase() {
         `);
         await client.query(`
             INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('rco_sync_ttl_hours', '4', 'Tempo mínimo entre sincronizações automáticas do RCO (em horas). Valores menores aumentam a frequência de sync; valores maiores reduzem o consumo de recursos.')
+            ON CONFLICT (chave) DO NOTHING
+        `);
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
                 ('modulos_em_desenvolvimento', '["pedagogico","comunicados","retorno-pedagogico"]', 'Módulos exibidos como "🚧 em desenvolvimento" no menu (gerenciável pelo admin)')
             ON CONFLICT (chave) DO NOTHING
         `);

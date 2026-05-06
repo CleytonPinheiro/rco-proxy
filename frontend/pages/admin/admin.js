@@ -908,6 +908,11 @@ const CONFIG_LABELS = {
         desc: 'Quando ativado, permite login no Portal do Aluno e Portal Pedagógico com qualquer email Google (sem restrição de domínio @escola.pr.gov.br). Útil para testes e demonstrações.',
         tipo: 'toggle',
     },
+    rco_sync_ttl_hours: {
+        nome: 'TTL de Sincronização RCO (horas)',
+        desc: 'Tempo mínimo entre sincronizações automáticas do RCO. Após uma sincronização bem-sucedida, o sistema aguarda este período antes de sincronizar novamente. Valores menores aumentam a frequência; valores maiores reduzem o consumo de recursos. Padrão: 4.',
+        tipo: 'text',
+    },
 };
 
 async function carregarConfig() {
