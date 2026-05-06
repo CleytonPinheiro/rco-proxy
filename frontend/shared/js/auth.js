@@ -72,6 +72,7 @@
     const MODULOS_EM_DESENVOLVIMENTO = new Set([
         'pedagogico',
         'comunicados',
+        'retorno-pedagogico',
     ]);
     function emDesenvolvimento(modulo) { return MODULOS_EM_DESENVOLVIMENTO.has(modulo); }
 
@@ -466,13 +467,22 @@
         const recalcular = () => {
             if (rafId) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(() => {
-                const itens = Array.from(nav.querySelectorAll('a:not(.nav-mais-btn)'))
+                const todos = Array.from(nav.querySelectorAll('a:not(.nav-mais-btn)'))
                     .filter(a => !a.getAttribute('data-perm-hidden'));
-                /* Itens bloqueados continuam visíveis no header (não vão para overflow
-                   nem ficam escondidos), mas mantêm o estilo desabilitado.            */
 
-                /* Torna todos visíveis para medir */
-                itens.forEach(a => {
+                /* Separa: itens em desenvolvimento SEMPRE vão para o final do
+                   side panel (que funciona como extensão do menu do topo).      */
+                const bloqueados = todos.filter(a => a.getAttribute('data-perm-blocked') === 'true');
+                const liberados  = todos.filter(a => a.getAttribute('data-perm-blocked') !== 'true');
+
+                /* Bloqueados nunca aparecem no header */
+                bloqueados.forEach(a => {
+                    a.style.display = 'none';
+                    a.setAttribute('data-nav-hidden', 'true');
+                });
+
+                /* Mede largura disponível usando apenas os liberados */
+                liberados.forEach(a => {
                     a.style.visibility = 'hidden';
                     a.style.display    = '';
                     a.removeAttribute('data-nav-hidden');
@@ -489,24 +499,27 @@
                 let acumulado   = 0;
                 let overflowIdx = -1;
 
-                for (let i = 0; i < itens.length; i++) {
-                    acumulado += itens[i].offsetWidth + 6;
+                for (let i = 0; i < liberados.length; i++) {
+                    acumulado += liberados[i].offsetWidth + 6;
                     if (acumulado > dispW && overflowIdx === -1) overflowIdx = i;
                 }
 
-                const overflow = overflowIdx !== -1 && overflowIdx < itens.length;
-                btnMais.style.display = overflow ? '' : 'none';
+                const temOverflowLiberado = overflowIdx !== -1 && overflowIdx < liberados.length;
+                /* Mostra o "Mais ▾" se houver overflow OU se houver bloqueados */
+                btnMais.style.display = (temOverflowLiberado || bloqueados.length) ? '' : 'none';
 
-                itens.forEach((a, i) => {
+                liberados.forEach((a, i) => {
                     a.style.visibility = '';
-                    if (overflow && i >= overflowIdx) {
+                    if (temOverflowLiberado && i >= overflowIdx) {
                         a.style.display = 'none';
                         a.setAttribute('data-nav-hidden', 'true');
                     }
                 });
 
-                /* Injeta itens escondidos no topo do side panel */
-                injetarOverflowNoSidePanel(itens.filter(a => a.getAttribute('data-nav-hidden') === 'true'));
+                /* Monta a lista do side panel: liberados em overflow primeiro,
+                   bloqueados (em desenvolvimento) sempre ao final.              */
+                const overflowLiberados = liberados.filter(a => a.getAttribute('data-nav-hidden') === 'true');
+                injetarOverflowNoSidePanel([...overflowLiberados, ...bloqueados]);
             });
         };
 
