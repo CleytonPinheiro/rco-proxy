@@ -74,7 +74,7 @@ body {
     flex-shrink: 0;
 }
 
-.nav-menu { display: flex; gap: 6px; flex-wrap: wrap; }
+.nav-menu { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; min-width: 0; }
 
 .nav-menu a {
     color: rgba(255,255,255,0.8);
