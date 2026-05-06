@@ -28,7 +28,7 @@ function cfg(envKey, defaultVal) {
     return Number.isFinite(v) && v > 0 ? v : defaultVal;
 }
 
-function getConfig() {
+export function getConfig() {
     return {
         intervalHoras:  cfg('PURGA_INTERVALO_HORAS',  DEFAULTS.intervalHoras),
         auditDias:      cfg('PURGA_AUDIT_DIAS',        DEFAULTS.auditDias),
@@ -152,6 +152,28 @@ export async function executarPurga(pool) {
         `notif_lidas: ${resultados.notif_lidas} | ` +
         `notif_nlidas: ${resultados.notif_nlidas}`
     );
+
+    try {
+        await pool.query(
+            `INSERT INTO edusync_purga_log
+                (dur_ms, audit_log, reputacao_log, notif_lidas, notif_nlidas,
+                 politica_audit, politica_reputacao, politica_notif_lida, politica_notif_nlida)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+                durMs,
+                resultados.audit_log     < 0 ? -1 : resultados.audit_log,
+                resultados.reputacao_log < 0 ? -1 : resultados.reputacao_log,
+                resultados.notif_lidas   < 0 ? -1 : resultados.notif_lidas,
+                resultados.notif_nlidas  < 0 ? -1 : resultados.notif_nlidas,
+                conf.auditDias,
+                conf.reputacaoDias,
+                conf.notifLidaDias,
+                conf.notifNlidaDias,
+            ]
+        );
+    } catch (e) {
+        console.warn('[PURGA] Aviso: não foi possível salvar histórico de purga:', e.message);
+    }
 
     return { ...resultados, durMs };
 }

@@ -307,6 +307,26 @@ export async function initializeDatabase() {
             )
         `);
 
+        /* ── Histórico de purgas de dados ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_purga_log (
+                id               SERIAL PRIMARY KEY,
+                iniciado_em      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                dur_ms           INTEGER     NOT NULL DEFAULT 0,
+                audit_log        INTEGER     NOT NULL DEFAULT 0,
+                reputacao_log    INTEGER     NOT NULL DEFAULT 0,
+                notif_lidas      INTEGER     NOT NULL DEFAULT 0,
+                notif_nlidas     INTEGER     NOT NULL DEFAULT 0,
+                politica_audit   INTEGER     NOT NULL,
+                politica_reputacao INTEGER   NOT NULL,
+                politica_notif_lida INTEGER  NOT NULL,
+                politica_notif_nlida INTEGER NOT NULL
+            )
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_purga_log_iniciado ON edusync_purga_log(iniciado_em DESC)
+        `);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

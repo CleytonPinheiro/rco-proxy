@@ -1495,6 +1495,28 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Histórico de purga de dados ── */
+    router.get('/admin/purga/historico', async (_req, res) => {
+        try {
+            const { rows } = await pool.query(`
+                SELECT id, iniciado_em, dur_ms,
+                       audit_log, reputacao_log, notif_lidas, notif_nlidas,
+                       politica_audit, politica_reputacao,
+                       politica_notif_lida, politica_notif_nlida
+                FROM edusync_purga_log
+                ORDER BY iniciado_em DESC
+                LIMIT 50
+            `);
+
+            const { getConfig: getPurgaConfig } = await import('../services/purgeJob.js');
+            const conf = getPurgaConfig();
+
+            res.json({ historico: rows, politicaAtual: conf });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Observabilidade Puppeteer ── */
     router.get('/admin/puppeteer-stats', async (req, res) => {
         const login   = getLoginQueueStats();

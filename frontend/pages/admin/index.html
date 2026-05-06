@@ -71,6 +71,7 @@
                 <button class="admin-tab" data-tab="permissoes">Permissões</button>
                 <button class="admin-tab" data-tab="config">Configurações</button>
                 <button class="admin-tab" data-tab="sistema">Sistema</button>
+                <button class="admin-tab" data-tab="purga">Purga</button>
                 <button class="admin-tab" data-tab="audit">Audit Log</button>
             </div>
 
@@ -236,6 +237,17 @@
                 </div>
 
                 <div id="sistemaContainer">
+                    <p style="color:var(--text-muted)">Carregando...</p>
+                </div>
+            </div>
+
+            <!-- Painel Purga -->
+            <div class="admin-panel" id="panel-purga">
+                <div class="admin-section-header">
+                    <h3>Histórico de Purga de Dados</h3>
+                    <button onclick="carregarPurga()" style="padding:6px 14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text-primary)">↻ Atualizar</button>
+                </div>
+                <div id="purgaContainer">
                     <p style="color:var(--text-muted)">Carregando...</p>
                 </div>
             </div>

@@ -36,6 +36,7 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         if (btn.dataset.tab === 'permissoes') carregarPermissoes();
         if (btn.dataset.tab === 'sistema')    iniciarMonitorSistema();
         else pararMonitorSistema();
+        if (btn.dataset.tab === 'purga')      carregarPurga();
     });
 });
 
@@ -2672,6 +2673,116 @@ function renderSistema(d, cache) {
         </div>
     </div>
     <p style="margin-top:12px;font-size:.75rem;color:var(--text-muted)">Atualizado automaticamente a cada 30 segundos.</p>`;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PURGA DE DADOS
+════════════════════════════════════════════════════════════ */
+async function carregarPurga() {
+    const container = document.getElementById('purgaContainer');
+    if (!container) return;
+    container.innerHTML = '<p style="color:var(--text-muted)">Carregando...</p>';
+    try {
+        const res = await api('/admin/purga/historico');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { historico, politicaAtual } = await res.json();
+        container.innerHTML = renderPurga(historico, politicaAtual);
+    } catch (e) {
+        container.innerHTML = `<p style="color:#dc2626;font-size:.875rem">Erro ao carregar histórico: ${esc(e.message)}</p>`;
+    }
+}
+
+function renderPurga(historico, politica) {
+    const p = politica || {};
+
+    const politicaHtml = `
+    <div style="margin-bottom:20px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px">Política de Retenção Atual (variáveis de ambiente)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px 24px;font-size:.85rem">
+            <div>
+                <span style="color:var(--text-muted)">Audit log: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.auditDias ?? 365))} dias</code>
+            </div>
+            <div>
+                <span style="color:var(--text-muted)">Reputação log: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.reputacaoDias ?? 365))} dias</code>
+            </div>
+            <div>
+                <span style="color:var(--text-muted)">Notificações lidas: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.notifLidaDias ?? 90))} dias</code>
+            </div>
+            <div>
+                <span style="color:var(--text-muted)">Notificações não-lidas: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.notifNlidaDias ?? 365))} dias</code>
+            </div>
+            <div>
+                <span style="color:var(--text-muted)">Intervalo entre execuções: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.intervalHoras ?? 24))} h</code>
+            </div>
+            <div>
+                <span style="color:var(--text-muted)">Lote por DELETE: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.lote ?? 1000))} linhas</code>
+            </div>
+        </div>
+    </div>`;
+
+    if (!historico || historico.length === 0) {
+        return `
+        ${politicaHtml}
+        <p style="color:var(--text-muted);font-size:.875rem">Nenhuma execução de purga registrada ainda. A primeira purga ocorre 60 segundos após o servidor iniciar.</p>`;
+    }
+
+    const totalLinhas = historico.reduce((s, r) => {
+        const t = [r.audit_log, r.reputacao_log, r.notif_lidas, r.notif_nlidas];
+        return s + t.filter(v => v >= 0).reduce((a, b) => a + b, 0);
+    }, 0);
+
+    function celula(val) {
+        if (val === -1 || val < 0) return `<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#d97706;font-size:.82rem">erro</td>`;
+        const cor = val > 0 ? '#dc2626' : 'var(--text-muted)';
+        return `<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:${val > 0 ? '700' : '400'};color:${cor}">${val.toLocaleString('pt-BR')}</td>`;
+    }
+
+    const linhas = historico.map(r => {
+        const dt = new Date(r.iniciado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        const total = [r.audit_log, r.reputacao_log, r.notif_lidas, r.notif_nlidas]
+            .filter(v => v >= 0).reduce((a, b) => a + b, 0);
+        const durStr = r.dur_ms < 1000 ? `${r.dur_ms}ms` : `${(r.dur_ms / 1000).toFixed(1)}s`;
+        return `
+        <tr>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.82rem;color:var(--text-muted);white-space:nowrap">${dt}</td>
+            ${celula(r.audit_log)}
+            ${celula(r.reputacao_log)}
+            ${celula(r.notif_lidas)}
+            ${celula(r.notif_nlidas)}
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:${total > 0 ? '#2563eb' : 'var(--text-muted)'}">${total.toLocaleString('pt-BR')}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-size:.8rem;color:var(--text-muted)">${durStr}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    ${politicaHtml}
+    <div style="margin-bottom:10px;display:flex;gap:20px;flex-wrap:wrap;font-size:.85rem">
+        <span><span style="color:var(--text-muted)">Execuções registradas: </span><strong>${historico.length}</strong></span>
+        <span><span style="color:var(--text-muted)">Total de linhas removidas: </span><strong style="color:#dc2626">${totalLinhas.toLocaleString('pt-BR')}</strong></span>
+    </div>
+    <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+            <thead>
+                <tr style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">
+                    <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap">Executado em</th>
+                    <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap">Audit Log</th>
+                    <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap">Reputação Log</th>
+                    <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap">Notif. Lidas</th>
+                    <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap">Notif. Não-lidas</th>
+                    <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap">Total</th>
+                    <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border);white-space:nowrap">Duração</th>
+                </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    </div>
+    <p style="margin-top:10px;font-size:.75rem;color:var(--text-muted)">Valores negativos (-1) indicam erro na purga daquela tabela naquele ciclo. Mostrando as últimas 50 execuções.</p>`;
 }
 
 /* ── Init ── */
