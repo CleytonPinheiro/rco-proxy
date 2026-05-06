@@ -463,9 +463,6 @@
 
 /* ── Nav overflow: itens ocultos para caber no topo ─────────────────────── */
 .nav-menu a[data-nav-hidden="true"] { display: none !important; }
-/* Módulos em desenvolvimento NUNCA aparecem no topbar — somente no side panel.
-   Regra de segurança contra qualquer timing de JS / inline style.            */
-.nav-menu a[data-perm-blocked="true"] { display: none !important; }
 
 /* ── Badge do colégio selecionado no header ─────────────────────────────── */
 .escola-badge-nav {
