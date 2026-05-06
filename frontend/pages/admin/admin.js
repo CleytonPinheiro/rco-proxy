@@ -2748,21 +2748,30 @@ function renderSistema(d, cache, rl, historico) {
             ? `${ttlHoras}h`
             : `${(ttlHoras * 60).toFixed(0)} min`;
 
+        const _7diasMs  = 7 * 24 * 60 * 60 * 1000;
+        const neverCount     = usuarios.filter(u => !u.ultimo_sync).length;
+        const veryStaleCount = usuarios.filter(u => u.ultimo_sync && (Date.now() - new Date(u.ultimo_sync).getTime()) > _7diasMs).length;
+
         const linhas = usuarios.map(u => {
             const ut      = (u.puladas || 0) + (u.executadas || 0);
             const upct    = ut > 0 ? Math.round((u.puladas || 0) / ut * 100) : 0;
-            const syncDate = u.ultimo_sync ? new Date(u.ultimo_sync) : null;
-            const stale    = syncDate && (Date.now() - syncDate.getTime()) > 24 * 60 * 60 * 1000;
+            const syncDate   = u.ultimo_sync ? new Date(u.ultimo_sync) : null;
+            const neverSynced = !syncDate;
+            const veryStale   = syncDate && (Date.now() - syncDate.getTime()) > _7diasMs;
+            const stale       = !neverSynced && !veryStale && syncDate && (Date.now() - syncDate.getTime()) > 24 * 60 * 60 * 1000;
             const rawStr   = syncDate
                 ? syncDate.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
                 : null;
             const relStr   = syncDate ? _relativeTime(syncDate) : '—';
+            const staleIcon = (stale || veryStale)
+                ? ` <span title="${veryStale ? 'Último sync há mais de 7 dias' : 'Último sync há mais de 24 horas'}" style="color:${veryStale ? '#dc2626' : '#d97706'};font-size:.75rem">⚠️</span>`
+                : '';
             const syncCell = syncDate
-                ? `<span title="${rawStr}">${relStr}</span>${stale ? ' <span title="Último sync há mais de 24 horas" style="color:#d97706;font-size:.75rem">⚠️</span>' : ''}`
-                : '—';
+                ? `<span title="${rawStr}">${relStr}</span>${staleIcon}`
+                : '<span style="color:var(--text-muted)">—</span>';
 
-            let nextSyncCell = '—';
-            let nextSyncColor = 'var(--text-muted)';
+            let nextSyncCell = '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" title="Este usuário nunca realizou um sync RCO">Nunca sincronizou</span>';
+            let nextSyncColor = '#dc2626';
             if (syncDate) {
                 const nextMs = syncDate.getTime() + ttlMs;
                 const diffMs = nextMs - Date.now();
@@ -2780,11 +2789,17 @@ function renderSistema(d, cache, rl, historico) {
                 }
             }
 
-            const rowStyle = stale ? 'background:rgba(251,191,36,.08)' : '';
+            let rowStyle = '';
+            if (neverSynced)  rowStyle = 'background:rgba(254,226,226,.45)';
+            else if (veryStale) rowStyle = 'background:rgba(254,202,202,.25)';
+            else if (stale)     rowStyle = 'background:rgba(251,191,36,.08)';
+
+            const nameColor = neverSynced ? '#dc2626' : (veryStale ? '#b91c1c' : 'inherit');
+            const syncColColor = veryStale ? '#dc2626' : (stale ? '#d97706' : 'var(--text-muted)');
             return `
             <tr style="${rowStyle}">
-                <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${esc(u.nome || u.email || String(u.id))}</td>
-                <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${stale ? '#d97706' : 'var(--text-muted)'};font-size:.8rem">${syncCell}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${nameColor}">${esc(u.nome || u.email || String(u.id))}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${syncColColor};font-size:.8rem">${syncCell}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.8rem;color:${nextSyncColor}">${nextSyncCell}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#16a34a;font-weight:600">${u.puladas ?? 0}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#2563eb;font-weight:600">${u.executadas ?? 0}</td>
@@ -2811,10 +2826,12 @@ function renderSistema(d, cache, rl, historico) {
                     <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Cache de Sync RCO → Supabase</div>
                     <span title="TTL efetivo lido de edusync_config (chave rco_sync_ttl_hours)" style="background:var(--bg-hover);border:1px solid var(--border);border-radius:8px;padding:2px 10px;font-size:.75rem;font-weight:700;color:var(--text-secondary)">⏱ TTL: ${ttlLabel}</span>
                 </div>
-                <div style="display:flex;gap:20px;font-size:.82rem">
+                <div style="display:flex;gap:20px;font-size:.82rem;flex-wrap:wrap;align-items:center">
                     <span><span style="color:var(--text-muted)">Puladas: </span><strong style="color:#16a34a">${totais.puladas ?? 0}</strong></span>
                     <span><span style="color:var(--text-muted)">Executadas: </span><strong style="color:#2563eb">${totais.executadas ?? 0}</strong></span>
                     <span><span style="color:var(--text-muted)">Aproveitamento: </span><strong style="color:${pctSkip >= 50 ? '#16a34a' : '#d97706'}">${pctSkip}%</strong></span>
+                    ${neverCount > 0 ? `<span title="${neverCount} usuário${neverCount !== 1 ? 's' : ''} que nunca realizou um sync RCO" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:6px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:700;font-size:.75rem">⛔ ${neverCount} nunca sincronizou${neverCount !== 1 ? 'ram' : ''}</span>` : ''}
+                    ${veryStaleCount > 0 ? `<span title="${veryStaleCount} usuário${veryStaleCount !== 1 ? 's' : ''} sem sync há mais de 7 dias" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:6px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;font-weight:700;font-size:.75rem">⚠️ ${veryStaleCount} sem sync há +7 dias</span>` : ''}
                 </div>
             </div>
             ${semDados}
