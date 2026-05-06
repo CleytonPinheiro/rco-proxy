@@ -30,6 +30,7 @@
         '/pages/mapa-sala/':              'mapa-sala',
         '/pages/pedagogico/':             'pedagogico',
         '/pages/retorno-pedagogico/':     'retorno-pedagogico',
+        '/pages/provas/':                 'provas',
         '/pages/materiais/':              'materiais',
         '/pages/emprestimos/':            'emprestimos',
         '/pages/cozinha/':                'cozinha',
@@ -42,7 +43,7 @@
     /* ── Permissões por perfil — espelho exato de backend/src/config/permissions.js ── */
     const PERFIL_MODULOS = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','suporte'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','suporte'],
         pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','suporte'],
         secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','suporte'],
         aux_turno:  ['circulacao','presenca','suporte'],
@@ -396,7 +397,8 @@
                 const actW     = headerActions?.offsetWidth || 0;
                 const dividerW = 1;
                 const totalW   = headerContent.clientWidth;
-                const dispW    = totalW - leftW - actW - dividerW - 60; /* gap + mais btn */
+                /* Reserva: gap entre seções + largura do botão "Mais ▾" + folga anti-piscar */
+                const dispW    = totalW - leftW - actW - dividerW - 96;
 
                 let acumulado   = 0;
                 let overflowIdx = -1;
@@ -476,6 +478,7 @@
             '/pages/presenca/':               '✅',
             '/pages/pedagogico/':             '🎓',
             '/pages/retorno-pedagogico/':     '💬',
+            '/pages/provas/':                 '📝',
             '/pages/admin/':                  '⚙️',
             '/pages/planos/':                 '💎',
             '/pages/suporte/':               '🎫',

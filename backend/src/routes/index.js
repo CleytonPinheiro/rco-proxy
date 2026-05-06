@@ -1,5 +1,5 @@
 import { Router }               from 'express';
-import { requireAuth }          from '../middleware/auth.middleware.js';
+import { requireAuth, requireModulo } from '../middleware/auth.middleware.js';
 import { createAuthRouter }     from './auth.routes.js';
 import { createRcoRouter }      from './rco.routes.js';
 import { createAlunosRouter }   from './alunos.routes.js';
@@ -79,7 +79,8 @@ export function createApiRouter(deps) {
     router.use('/', createAdminRouter(deps));
     router.use('/', createRcoLancamentoRouter(deps));
     router.use('/', createSuporteRouter());
-    router.use('/', createProvasRouter({ getClassroomAuth }));
+    /* Provas: rotas do professor — restritas ao módulo 'provas' (admin/professor) */
+    router.use('/', requireModulo('provas'), createProvasRouter({ getClassroomAuth }));
 
     return router;
 }

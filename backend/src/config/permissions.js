@@ -11,10 +11,11 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'suporte'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'suporte'],
     },
     pedagogo: {
         nome: 'Pedagogo',
+        /* Pedagogo NÃO tem acesso a Provas (módulo restrito a professor/admin) */
         modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'suporte'],
     },
     secretaria: {
