@@ -175,6 +175,19 @@
                 if (link.classList.contains('side-nav-child-item')) return;
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
+
+                /* Itens hardcoded em .side-panel-nav que correspondem a módulos
+                   conhecidos são SEMPRE escondidos — o grupo de overflow do nav
+                   adaptativo (.side-overflow-group) é a única fonte de verdade. */
+                const ehSidePanelHardcoded =
+                    link.closest('.side-panel-nav') &&
+                    !link.closest('.side-overflow-group');
+                if (ehSidePanelHardcoded) {
+                    link.setAttribute('data-perm-hidden', 'true');
+                    link.style.display = 'none';
+                    return;
+                }
+
                 if (!podeAcessar(p, modulo)) {
                     /* Sem permissão: esconder completamente */
                     link.setAttribute('data-perm-hidden', 'true');
@@ -286,6 +299,26 @@
             const modulo = MODULO_URLS[href];
 
             if (!modulo) return; // link sem mapeamento: deixa visível
+
+            /* Itens hardcoded em .side-panel-nav que correspondem a módulos
+               conhecidos são SEMPRE escondidos — o grupo de overflow do nav
+               adaptativo (.side-overflow-group) é a única fonte de verdade,
+               evitando duplicatas entre topbar e side panel.                  */
+            const ehSidePanelHardcoded =
+                link.closest('.side-panel-nav') &&
+                !link.closest('.side-overflow-group');
+            if (ehSidePanelHardcoded) {
+                link.setAttribute('data-perm-hidden', 'true');
+                link.style.display = 'none';
+                link.removeAttribute('data-perm-blocked');
+                link.removeAttribute('aria-disabled');
+                link.removeAttribute('data-nav-pin');
+                if (link._permHandler) {
+                    link.removeEventListener('click', link._permHandler, true);
+                    link._permHandler = null;
+                }
+                return;
+            }
 
             if (!podeAcessar(perfilEfetivo, modulo)) {
                 /* Sem permissão: oculta o item */
