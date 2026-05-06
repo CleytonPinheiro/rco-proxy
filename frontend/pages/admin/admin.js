@@ -2742,6 +2742,11 @@ function renderSistema(d, cache, rl, historico) {
         const usuarios  = cache.usuarios || [];
         const total     = (totais.puladas || 0) + (totais.executadas || 0);
         const pctSkip   = total > 0 ? Math.round((totais.puladas || 0) / total * 100) : 0;
+        const ttlHoras  = (typeof cache.ttlHoras === 'number' && cache.ttlHoras > 0) ? cache.ttlHoras : 4;
+        const ttlMs     = ttlHoras * 60 * 60 * 1000;
+        const ttlLabel  = ttlHoras === Math.round(ttlHoras)
+            ? `${ttlHoras}h`
+            : `${(ttlHoras * 60).toFixed(0)} min`;
 
         const linhas = usuarios.map(u => {
             const ut      = (u.puladas || 0) + (u.executadas || 0);
@@ -2755,11 +2760,32 @@ function renderSistema(d, cache, rl, historico) {
             const syncCell = syncDate
                 ? `<span title="${rawStr}">${relStr}</span>${stale ? ' <span title="Último sync há mais de 24 horas" style="color:#d97706;font-size:.75rem">⚠️</span>' : ''}`
                 : '—';
+
+            let nextSyncCell = '—';
+            let nextSyncColor = 'var(--text-muted)';
+            if (syncDate) {
+                const nextMs = syncDate.getTime() + ttlMs;
+                const diffMs = nextMs - Date.now();
+                if (diffMs <= 0) {
+                    nextSyncCell = `<span title="Cache expirado — sync na próxima requisição" style="color:#dc2626;font-weight:700">Vencido</span>`;
+                    nextSyncColor = '#dc2626';
+                } else {
+                    const diffMin = Math.round(diffMs / 60_000);
+                    const diffH   = Math.floor(diffMin / 60);
+                    const diffM   = diffMin % 60;
+                    const diffStr = diffH > 0 ? `${diffH}h ${diffM}min` : `${diffM}min`;
+                    const nextDate = new Date(nextMs).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                    nextSyncCell = `<span title="Próximo sync em ${nextDate}">${diffStr}</span>`;
+                    nextSyncColor = diffMin < 30 ? '#d97706' : 'var(--text-muted)';
+                }
+            }
+
             const rowStyle = stale ? 'background:rgba(251,191,36,.08)' : '';
             return `
             <tr style="${rowStyle}">
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${esc(u.nome || u.email || String(u.id))}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${stale ? '#d97706' : 'var(--text-muted)'};font-size:.8rem">${syncCell}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.8rem;color:${nextSyncColor}">${nextSyncCell}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#16a34a;font-weight:600">${u.puladas ?? 0}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#2563eb;font-weight:600">${u.executadas ?? 0}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-size:.8rem;color:var(--text-muted)">${upct}%</td>
@@ -2768,7 +2794,7 @@ function renderSistema(d, cache, rl, historico) {
 
         const totaisRow = `
             <tr style="font-weight:700;background:var(--bg-hover)">
-                <td style="padding:8px 10px" colspan="2">Total (${usuarios.length} usuário${usuarios.length !== 1 ? 's' : ''})</td>
+                <td style="padding:8px 10px" colspan="3">Total (${usuarios.length} usuário${usuarios.length !== 1 ? 's' : ''})</td>
                 <td style="padding:8px 10px;text-align:right;color:#16a34a">${totais.puladas ?? 0}</td>
                 <td style="padding:8px 10px;text-align:right;color:#2563eb">${totais.executadas ?? 0}</td>
                 <td style="padding:8px 10px;text-align:right;color:var(--text-muted)">${pctSkip}%</td>
@@ -2781,7 +2807,10 @@ function renderSistema(d, cache, rl, historico) {
         syncCacheHtml = `
         <div style="margin-top:24px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-                <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Cache de Sync RCO → Supabase</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Cache de Sync RCO → Supabase</div>
+                    <span title="TTL efetivo lido de edusync_config (chave rco_sync_ttl_hours)" style="background:var(--bg-hover);border:1px solid var(--border);border-radius:8px;padding:2px 10px;font-size:.75rem;font-weight:700;color:var(--text-secondary)">⏱ TTL: ${ttlLabel}</span>
+                </div>
                 <div style="display:flex;gap:20px;font-size:.82rem">
                     <span><span style="color:var(--text-muted)">Puladas: </span><strong style="color:#16a34a">${totais.puladas ?? 0}</strong></span>
                     <span><span style="color:var(--text-muted)">Executadas: </span><strong style="color:#2563eb">${totais.executadas ?? 0}</strong></span>
@@ -2796,6 +2825,7 @@ function renderSistema(d, cache, rl, historico) {
                         <tr style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">
                             <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Usuário</th>
                             <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Último Sync</th>
+                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Próximo Sync</th>
                             <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">Puladas</th>
                             <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">Executadas</th>
                             <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">% Cache Hit</th>
@@ -2805,7 +2835,7 @@ function renderSistema(d, cache, rl, historico) {
                     <tfoot>${totaisRow}</tfoot>
                 </table>
             </div>` : ''}
-            <p style="margin-top:8px;font-size:.72rem;color:var(--text-muted)">Puladas = syncs evitados pelo cache (egress economizado). Executadas = syncs que foram ao Supabase.</p>
+            <p style="margin-top:8px;font-size:.72rem;color:var(--text-muted)">TTL efetivo: ${ttlLabel} por usuário. Puladas = syncs evitados pelo cache (egress economizado). Executadas = syncs que foram ao Supabase.</p>
         </div>`;
     }
 

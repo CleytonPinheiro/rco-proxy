@@ -1470,18 +1470,30 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     /* ── Cache de sincronização RCO → Supabase ── */
     router.get('/admin/sync-cache-stats', async (_req, res) => {
         try {
-            const { rows } = await pool.query(`
-                SELECT
-                    u.id,
-                    u.nome,
-                    u.email,
-                    c.ultimo_sync,
-                    c.puladas,
-                    c.executadas
-                FROM edusync_sync_cache c
-                JOIN edusync_usuarios u ON u.id = c.usuario_id
-                ORDER BY c.executadas DESC, u.nome
-            `);
+            const [cacheResult, ttlResult] = await Promise.all([
+                pool.query(`
+                    SELECT
+                        u.id,
+                        u.nome,
+                        u.email,
+                        c.ultimo_sync,
+                        c.puladas,
+                        c.executadas
+                    FROM edusync_sync_cache c
+                    JOIN edusync_usuarios u ON u.id = c.usuario_id
+                    ORDER BY c.executadas DESC, u.nome
+                `),
+                pool.query(`SELECT valor FROM edusync_config WHERE chave = 'rco_sync_ttl_hours'`),
+            ]);
+
+            const rows = cacheResult.rows;
+
+            const ttlEnvHoras = (parseInt(process.env.RCO_SYNC_TTL_HOURS ?? '4', 10) || 4);
+            let ttlHoras = ttlEnvHoras;
+            if (ttlResult.rows.length) {
+                const parsed = parseFloat(ttlResult.rows[0].valor);
+                if (Number.isFinite(parsed) && parsed > 0) ttlHoras = parsed;
+            }
 
             const totalPuladas    = rows.reduce((s, r) => s + (r.puladas    || 0), 0);
             const totalExecutadas = rows.reduce((s, r) => s + (r.executadas || 0), 0);
@@ -1489,6 +1501,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             res.json({
                 usuarios: rows,
                 totais: { puladas: totalPuladas, executadas: totalExecutadas },
+                ttlHoras,
             });
         } catch (e) {
             console.error('[ADMIN] Erro ao buscar sync-cache-stats:', e.message);
