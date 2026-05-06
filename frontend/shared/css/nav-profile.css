@@ -418,11 +418,13 @@
     filter: grayscale(0.5);
 }
 [data-perm-blocked="true"]::after {
-    content: "🔒";
-    font-size: 10px;
+    content: "🚧";
+    font-size: 12px;
     margin-left: 6px;
-    opacity: 0.85;
+    opacity: 0.95;
     vertical-align: middle;
+    filter: none;
+    -webkit-text-fill-color: initial;
 }
 [data-perm-blocked="true"]:hover {
     background: rgba(255,255,255,0.06) !important;
