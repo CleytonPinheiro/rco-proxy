@@ -35,3 +35,9 @@ id = "m2V3lEg9WR1yi3KEwu8He"
 uri = "file://edusync_insomnia.json"
 type = "unspecified"
 title = "EduSync — Coleção Insomnia (todas as rotas)"
+
+[[outputs]]
+id = "fNDOFgb91k6nDdx-UqThj"
+uri = "file://docs/supabase-pro-evaluation.md"
+type = "text"
+title = "Avaliação Supabase Free vs Pro"
