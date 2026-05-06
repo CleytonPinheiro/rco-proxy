@@ -326,6 +326,18 @@ export async function initializeDatabase() {
             )
         `);
 
+        /* ── Contadores de falhas de login por CPF (rate-limit persistente) ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_rate_limit_cpf (
+                cpf      VARCHAR(11) PRIMARY KEY,
+                count    INTEGER     NOT NULL DEFAULT 1,
+                reset_at TIMESTAMPTZ NOT NULL
+            )
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_rate_limit_cpf_reset ON edusync_rate_limit_cpf(reset_at)
+        `);
+
         /* ── Histórico de purgas de dados ── */
         await client.query(`
             CREATE TABLE IF NOT EXISTS edusync_purga_log (

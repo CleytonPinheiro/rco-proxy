@@ -17,6 +17,17 @@ import { auditLogger }      from '../services/AuditLogger.js';
 import { requireAuth, COOKIE_NAME } from '../middleware/auth.middleware.js';
 import { resolverPlano }    from '../config/planos.js';
 import { getLoginQueueStats } from '../../auth-puppeteer.js';
+import {
+    RL_CPF_JANELA,
+    RL_CPF_MAX,
+    INFRA_ERROR_RE,
+    cpfFailureCount,
+    cpfFailureResetAt,
+    cpfFailureClear,
+    cpfFailureIncrement,
+    getCpfRateLimitSnapshot as _getCpfRateLimitSnapshot,
+    clearCpfRateLimit       as _clearCpfRateLimit,
+} from '../services/cpfRateLimitStore.js';
 
 /* ── Feature flag: pedagogo pode entrar via Google OAuth sem token RCO ── */
 /* Lido em tempo de execução a partir do edusync_config (fallback: env var).   */
@@ -89,8 +100,6 @@ async function buscarEstabelecimentosDocente(rcoToken) {
 /* ── Rate limits configuráveis via env ── */
 const RL_IP_JANELA  = parseInt(process.env.RL_LOGIN_IP_JANELA_MS  || String(5 * 60 * 1000), 10);  // default 5 min
 const RL_IP_MAX     = parseInt(process.env.RL_LOGIN_IP_MAX         || '10', 10);                   // default 10 req / janela
-const RL_CPF_JANELA = parseInt(process.env.RL_LOGIN_CPF_JANELA_MS || String(15 * 60 * 1000), 10); // default 15 min
-const RL_CPF_MAX    = parseInt(process.env.RL_LOGIN_CPF_MAX        || '5', 10);                    // default 5 falhas / janela
 
 /* ── Rate limit por IP: conta TODAS as tentativas (sucesso + falha) ── */
 const loginIpRateLimit = rateLimit({
@@ -119,69 +128,21 @@ const loginIpRateLimit = rateLimit({
     },
 });
 
-/* ── Contador de falhas por CPF (em memória) ── */
-const cpfFailureStore = new Map();
-
-// Padrão de erros de infraestrutura que NÃO devem penalizar o CPF
-const INFRA_ERROR_RE = /timeout|network|navigation|net::|EPIPE|ECONNRESET|ENOTFOUND|Protocol error|Target closed|Page crashed/i;
-
-function _cpfEntry(cpf) {
-    const entry = cpfFailureStore.get(cpf);
-    if (!entry || Date.now() >= entry.resetAt) return null;
-    return entry;
-}
-
-function cpfFailureCount(cpf)       { return _cpfEntry(cpf)?.count ?? 0; }
-function cpfFailureResetAt(cpf)     { return _cpfEntry(cpf)?.resetAt ?? Date.now(); }
-function cpfFailureClear(cpf)       { cpfFailureStore.delete(cpf); }
-
-function cpfFailureIncrement(cpf) {
-    const now   = Date.now();
-    const entry = cpfFailureStore.get(cpf);
-    if (!entry || now >= entry.resetAt) {
-        cpfFailureStore.set(cpf, { count: 1, resetAt: now + RL_CPF_JANELA });
-    } else {
-        entry.count += 1;
-    }
-}
-
-// Poda periódica de entradas expiradas para evitar crescimento ilimitado em ataques com CPFs aleatórios
-setInterval(() => {
-    const now = Date.now();
-    for (const [cpf, entry] of cpfFailureStore) {
-        if (now >= entry.resetAt) cpfFailureStore.delete(cpf);
-    }
-}, RL_CPF_JANELA).unref();
+/* ── Contador de falhas por CPF — implementação em cpfRateLimitStore.js ── */
+/* Funções importadas acima; re-exportadas abaixo para manter a API pública. */
 
 /**
  * Retorna snapshot do estado atual de rate-limit por CPF.
- * Filtra entradas expiradas antes de retornar.
  * Usado pelo painel de admin.
  */
-export function getCpfRateLimitSnapshot() {
-    const now = Date.now();
-    const result = [];
-    for (const [cpf, entry] of cpfFailureStore) {
-        if (now >= entry.resetAt) continue;
-        result.push({
-            cpf,
-            count:        entry.count,
-            bloqueado:    entry.count >= RL_CPF_MAX,
-            resetAt:      entry.resetAt,
-            segundosAte:  Math.max(0, Math.ceil((entry.resetAt - now) / 1000)),
-        });
-    }
-    result.sort((a, b) => b.count - a.count);
-    return { entradas: result, limite: RL_CPF_MAX, janelaMin: Math.ceil(RL_CPF_JANELA / 60000) };
-}
+export function getCpfRateLimitSnapshot() { return _getCpfRateLimitSnapshot(); }
 
 /**
  * Limpa o contador de rate-limit de um CPF específico.
+ * Também remove a entrada do banco de dados.
  * Usado pelo painel de admin para desbloquear manualmente um usuário.
  */
-export function clearCpfRateLimit(cpf) {
-    return cpfFailureStore.delete(cpf);
-}
+export function clearCpfRateLimit(cpf) { return _clearCpfRateLimit(cpf); }
 
 /* ── Helper: cria OAuth2Client para login pedagógico (userinfo only) ── */
 function _pedagogoOAuth2Client(req) {

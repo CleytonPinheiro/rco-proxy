@@ -109,6 +109,10 @@ async function initializeApp() {
         const { initializeDatabase, pool: localPool } = await import('./src/config/dbInit.js');
         await initializeDatabase();
 
+        // Restaurar contadores de rate-limit por CPF que sobreviveram ao restart
+        const { loadCpfRateLimitFromDb } = await import('./src/services/cpfRateLimitStore.js');
+        await loadCpfRateLimitFromDb();
+
         const { supabase, supabaseAdmin }                     = await import('./src/config/supabase.js');
         const { loginWithPuppeteer, decodeJwtExpiration, setLoginConcurrency, setConcurrencyGetter } = await import('./auth-puppeteer.js');
         const { tokenService }                                = await import('./src/services/TokenService.js');
