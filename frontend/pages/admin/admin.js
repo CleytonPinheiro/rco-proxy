@@ -2695,34 +2695,32 @@ async function carregarPurga() {
 function renderPurga(historico, politica) {
     const p = politica || {};
 
+    function numInput(id, val, min, max, unit) {
+        return `<div style="display:flex;flex-direction:column;gap:3px;min-width:160px;flex:1">
+            <label for="${id}" style="font-size:.75rem;font-weight:600;color:var(--text-secondary)">${unit}</label>
+            <div style="display:flex;align-items:center;gap:4px">
+                <input type="number" id="${id}" value="${esc(String(val))}" min="${min}" max="${max}"
+                    style="width:90px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;background:var(--bg-input);color:var(--text-primary)">
+                <span style="font-size:.8rem;color:var(--text-muted)">${unit.toLowerCase().includes('hora') ? 'h' : unit.toLowerCase().includes('lote') ? 'linhas' : 'dias'}</span>
+            </div>
+        </div>`;
+    }
+
     const politicaHtml = `
-    <div style="margin-bottom:20px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
-        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px">Política de Retenção Atual (variáveis de ambiente)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:12px 24px;font-size:.85rem">
-            <div>
-                <span style="color:var(--text-muted)">Audit log: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.auditDias ?? 365))} dias</code>
-            </div>
-            <div>
-                <span style="color:var(--text-muted)">Reputação log: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.reputacaoDias ?? 365))} dias</code>
-            </div>
-            <div>
-                <span style="color:var(--text-muted)">Notificações lidas: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.notifLidaDias ?? 90))} dias</code>
-            </div>
-            <div>
-                <span style="color:var(--text-muted)">Notificações não-lidas: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.notifNlidaDias ?? 365))} dias</code>
-            </div>
-            <div>
-                <span style="color:var(--text-muted)">Intervalo entre execuções: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.intervalHoras ?? 24))} h</code>
-            </div>
-            <div>
-                <span style="color:var(--text-muted)">Lote por DELETE: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(p.lote ?? 1000))} linhas</code>
-            </div>
+    <div style="margin-bottom:24px;padding:18px 20px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:4px">Política de Retenção</div>
+        <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:16px">Os valores salvos aqui têm prioridade sobre as variáveis de ambiente. As alterações de retenção e lote entram em vigor na próxima execução automática (sem reiniciar o servidor). O intervalo entre execuções é lido dinamicamente antes de cada agendamento.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px 20px;margin-bottom:16px">
+            ${numInput('purga_audit_dias',       p.auditDias      ?? 365, 1,   3650,  'Audit Log')}
+            ${numInput('purga_reputacao_dias',   p.reputacaoDias  ?? 365, 1,   3650,  'Reputação Log')}
+            ${numInput('purga_notif_lida_dias',  p.notifLidaDias  ?? 90,  1,   3650,  'Notif. Lidas')}
+            ${numInput('purga_notif_nlida_dias', p.notifNlidaDias ?? 365, 1,   3650,  'Notif. Não-lidas')}
+            ${numInput('purga_intervalo_horas',  p.intervalHoras  ?? 24,  1,   720,   'Intervalo de execução (horas)')}
+            ${numInput('purga_lote',             p.lote           ?? 1000,100, 50000, 'Lote por DELETE')}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button onclick="salvarPurgaConfig()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">💾 Salvar política</button>
+            <span id="purgaConfigMsg" style="font-size:.82rem"></span>
         </div>
     </div>`;
 
@@ -2783,6 +2781,44 @@ function renderPurga(historico, politica) {
         </table>
     </div>
     <p style="margin-top:10px;font-size:.75rem;color:var(--text-muted)">Valores negativos (-1) indicam erro na purga daquela tabela naquele ciclo. Mostrando as últimas 50 execuções.</p>`;
+}
+
+async function salvarPurgaConfig() {
+    const campos = [
+        'purga_audit_dias', 'purga_reputacao_dias',
+        'purga_notif_lida_dias', 'purga_notif_nlida_dias',
+        'purga_intervalo_horas', 'purga_lote',
+    ];
+    const body = {};
+    for (const c of campos) {
+        const el = document.getElementById(c);
+        if (el) body[c] = el.value;
+    }
+
+    const msgEl = document.getElementById('purgaConfigMsg');
+    if (msgEl) msgEl.textContent = 'Salvando...';
+
+    try {
+        const res = await api('/admin/purga/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        if (msgEl) {
+            msgEl.style.color = '#16a34a';
+            msgEl.textContent = 'Salvo com sucesso! Entra em vigor na próxima execução.';
+            setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 4000);
+        }
+        showToast('Política de retenção salva.', 'success');
+    } catch (e) {
+        if (msgEl) {
+            msgEl.style.color = '#dc2626';
+            msgEl.textContent = `Erro: ${e.message}`;
+        }
+        showToast(`Erro ao salvar: ${e.message}`, 'error');
+    }
 }
 
 /* ── Init ── */

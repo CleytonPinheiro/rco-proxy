@@ -1508,11 +1508,69 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 LIMIT 50
             `);
 
-            const { getConfig: getPurgaConfig } = await import('../services/purgeJob.js');
-            const conf = getPurgaConfig();
+            const { getConfigFromDb } = await import('../services/purgeJob.js');
+            const conf = await getConfigFromDb(pool);
 
             res.json({ historico: rows, politicaAtual: conf });
         } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Salvar políticas de retenção da purga ── */
+    router.put('/admin/purga/config', async (req, res) => {
+        const CAMPOS_VALIDOS = {
+            purga_intervalo_horas:  { min: 1,   max: 720  },
+            purga_audit_dias:       { min: 1,   max: 3650 },
+            purga_reputacao_dias:   { min: 1,   max: 3650 },
+            purga_notif_lida_dias:  { min: 1,   max: 3650 },
+            purga_notif_nlida_dias: { min: 1,   max: 3650 },
+            purga_lote:             { min: 100, max: 50000 },
+        };
+
+        const atualizacoes = [];
+        const erros = [];
+
+        for (const [chave, { min, max }] of Object.entries(CAMPOS_VALIDOS)) {
+            if (!(chave in req.body)) continue;
+            const v = parseInt(req.body[chave], 10);
+            if (!Number.isFinite(v) || v < min || v > max) {
+                erros.push(`${chave}: valor inválido (${req.body[chave]}). Deve ser inteiro entre ${min} e ${max}.`);
+            } else {
+                atualizacoes.push({ chave, valor: String(v) });
+            }
+        }
+
+        if (erros.length) {
+            return res.status(400).json({ erro: erros.join(' | ') });
+        }
+        if (!atualizacoes.length) {
+            return res.status(400).json({ erro: 'Nenhum campo válido enviado.' });
+        }
+
+        try {
+            for (const { chave, valor } of atualizacoes) {
+                await pool.query(
+                    `INSERT INTO edusync_config (chave, valor)
+                     VALUES ($1, $2)
+                     ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+                    [chave, valor]
+                );
+            }
+
+            const { getConfigFromDb } = await import('../services/purgeJob.js');
+            const conf = await getConfigFromDb(pool);
+
+            await auditLogger.log({
+                req,
+                acao: 'purga_config_atualizada',
+                modulo: 'admin',
+                detalhes: { atualizacoes },
+            });
+
+            res.json({ ok: true, politicaAtual: conf });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao salvar config de purga:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

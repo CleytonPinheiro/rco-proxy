@@ -40,6 +40,46 @@ export function getConfig() {
 }
 
 /**
+ * DB config key → internal field mapping.
+ * Priority: edusync_config (DB) > env var > hardcoded default.
+ */
+const DB_KEY_MAP = [
+    { dbKey: 'purga_intervalo_horas',  field: 'intervalHoras',  envKey: 'PURGA_INTERVALO_HORAS',  def: DEFAULTS.intervalHoras  },
+    { dbKey: 'purga_audit_dias',       field: 'auditDias',      envKey: 'PURGA_AUDIT_DIAS',        def: DEFAULTS.auditDias      },
+    { dbKey: 'purga_reputacao_dias',   field: 'reputacaoDias',  envKey: 'PURGA_REPUTACAO_DIAS',    def: DEFAULTS.reputacaoDias  },
+    { dbKey: 'purga_notif_lida_dias',  field: 'notifLidaDias',  envKey: 'PURGA_NOTIF_LIDA_DIAS',   def: DEFAULTS.notifLidaDias  },
+    { dbKey: 'purga_notif_nlida_dias', field: 'notifNlidaDias', envKey: 'PURGA_NOTIF_NLIDA_DIAS',  def: DEFAULTS.notifNlidaDias },
+    { dbKey: 'purga_lote',             field: 'lote',           envKey: 'PURGA_LOTE',              def: DEFAULTS.lote           },
+];
+
+/**
+ * Async version of getConfig() that reads overrides from edusync_config.
+ * Falls back to env vars and hardcoded defaults if a key is absent or invalid.
+ */
+export async function getConfigFromDb(pool) {
+    const base = getConfig();
+    try {
+        const keys = DB_KEY_MAP.map(m => m.dbKey);
+        const { rows } = await pool.query(
+            `SELECT chave, valor FROM edusync_config WHERE chave = ANY($1)`,
+            [keys]
+        );
+        const dbMap = Object.fromEntries(rows.map(r => [r.chave, r.valor]));
+        const result = { ...base };
+        for (const { dbKey, field, def } of DB_KEY_MAP) {
+            if (dbKey in dbMap) {
+                const v = parseInt(dbMap[dbKey], 10);
+                if (Number.isFinite(v) && v > 0) result[field] = v;
+            }
+        }
+        return result;
+    } catch (e) {
+        console.warn('[PURGA] Aviso: não foi possível ler config do DB, usando env/defaults:', e.message);
+        return base;
+    }
+}
+
+/**
  * Executa DELETEs em lotes até não restar mais linhas elegíveis.
  * Retorna o total de linhas apagadas.
  */
@@ -57,7 +97,7 @@ async function deletarEmLotes(pool, sql, params, lote) {
  * Executa uma rodada completa de purga em todas as tabelas.
  */
 export async function executarPurga(pool) {
-    const conf  = getConfig();
+    const conf  = await getConfigFromDb(pool);
     const inicio = Date.now();
     console.log('[PURGA] Iniciando purga de dados antigos...');
     console.log(
@@ -214,15 +254,12 @@ export async function garantirIndicesPurga(pool) {
  * @param {import('pg').Pool} pool - Pool de conexão com o banco local.
  */
 export function agendarPurga(pool) {
-    const conf = getConfig();
-    const intervaloMs = conf.intervalHoras * 60 * 60 * 1000;
-
     let emExecucao = false;
 
     async function rodarPurga(contexto) {
         if (emExecucao) {
             console.log(`[PURGA] Execução anterior ainda em andamento — ciclo ${contexto} ignorado.`);
-            agendarProxima();
+            await agendarProxima();
             return;
         }
         emExecucao = true;
@@ -232,11 +269,14 @@ export function agendarPurga(pool) {
             console.error(`[PURGA] Erro na purga (${contexto}):`, e.message);
         } finally {
             emExecucao = false;
-            agendarProxima();
+            await agendarProxima();
         }
     }
 
-    function agendarProxima() {
+    async function agendarProxima() {
+        const conf = await getConfigFromDb(pool);
+        const intervaloMs = conf.intervalHoras * 60 * 60 * 1000;
+        console.log(`[PURGA] Próxima execução em ${conf.intervalHoras}h`);
         setTimeout(() => rodarPurga('periódica'), intervaloMs);
     }
 
@@ -245,5 +285,6 @@ export function agendarPurga(pool) {
         setTimeout(() => rodarPurga('inicial'), 60_000);
     });
 
-    console.log(`[PURGA] Job agendado — intervalo: ${conf.intervalHoras}h, primeira execução em 60s`);
+    const initialConf = getConfig();
+    console.log(`[PURGA] Job agendado — intervalo inicial: ${initialConf.intervalHoras}h, primeira execução em 60s`);
 }

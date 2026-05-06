@@ -169,6 +169,18 @@ export async function initializeDatabase() {
             INSERT INTO edusync_config (chave, valor, obs) VALUES ('portal_modo_demo', 'false', 'Permite login nos portais com qualquer email Google (sem restrição de domínio)')
             ON CONFLICT (chave) DO NOTHING
         `);
+
+        /* ── Políticas de retenção do job de purga (editáveis pelo admin) ── */
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('purga_intervalo_horas',  '24',   'Intervalo entre execuções do job de purga (horas). Mínimo: 1.'),
+                ('purga_audit_dias',       '365',  'Dias de retenção do edusync_audit_log. Registros mais antigos são apagados.'),
+                ('purga_reputacao_dias',   '365',  'Dias de retenção do aluno_reputacao_log. Agregados em aluno_reputacao não são afetados.'),
+                ('purga_notif_lida_dias',  '90',   'Dias de retenção de notificações lidas (notificacoes_aluno com lida=true).'),
+                ('purga_notif_nlida_dias', '365',  'Dias de retenção de notificações não-lidas (notificacoes_aluno com lida=false).'),
+                ('purga_lote',             '1000', 'Número máximo de linhas apagadas por operação DELETE em lote. Valores menores reduzem locks de tabela.')
+            ON CONFLICT (chave) DO NOTHING
+        `);
         await client.query(`
             INSERT INTO edusync_config (chave, valor, obs) VALUES
                 ('rco_sync_ttl_hours', '4', 'Tempo mínimo entre sincronizações automáticas do RCO (em horas). Valores menores aumentam a frequência de sync; valores maiores reduzem o consumo de recursos.')
