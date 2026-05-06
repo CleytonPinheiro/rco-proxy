@@ -80,6 +80,34 @@ export async function getConfigFromDb(pool) {
 }
 
 /**
+ * Mutex global — garante que apenas uma execução de purga ocorra por vez,
+ * seja ela agendada automaticamente ou disparada manualmente pelo admin.
+ */
+let _emExecucao = false;
+
+export function isPurgaEmExecucao() {
+    return _emExecucao;
+}
+
+/**
+ * Tenta executar a purga imediatamente.
+ * Retorna { ok: false, motivo } se outra purga já estiver em andamento.
+ * Retorna { ok: true, resultado } após concluir.
+ */
+export async function tryExecutarPurga(pool) {
+    if (_emExecucao) {
+        return { ok: false, motivo: 'Uma purga já está em execução. Aguarde a conclusão antes de iniciar outra.' };
+    }
+    _emExecucao = true;
+    try {
+        const resultado = await executarPurga(pool);
+        return { ok: true, resultado };
+    } finally {
+        _emExecucao = false;
+    }
+}
+
+/**
  * Executa DELETEs em lotes até não restar mais linhas elegíveis.
  * Retorna o total de linhas apagadas.
  */
@@ -254,21 +282,19 @@ export async function garantirIndicesPurga(pool) {
  * @param {import('pg').Pool} pool - Pool de conexão com o banco local.
  */
 export function agendarPurga(pool) {
-    let emExecucao = false;
-
     async function rodarPurga(contexto) {
-        if (emExecucao) {
+        if (_emExecucao) {
             console.log(`[PURGA] Execução anterior ainda em andamento — ciclo ${contexto} ignorado.`);
             await agendarProxima();
             return;
         }
-        emExecucao = true;
+        _emExecucao = true;
         try {
             await executarPurga(pool);
         } catch (e) {
             console.error(`[PURGA] Erro na purga (${contexto}):`, e.message);
         } finally {
-            emExecucao = false;
+            _emExecucao = false;
             await agendarProxima();
         }
     }

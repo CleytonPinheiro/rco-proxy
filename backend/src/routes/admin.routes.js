@@ -1509,6 +1509,31 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Executar purga manualmente (admin) ── */
+    router.post('/admin/purga/executar', async (req, res) => {
+        try {
+            const { tryExecutarPurga } = await import('../services/purgeJob.js');
+            const outcome = await tryExecutarPurga(pool);
+            if (!outcome.ok) {
+                return res.status(409).json({ erro: outcome.motivo });
+            }
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'PURGA_MANUAL_EXECUTADA',
+                modulo:      'admin',
+                detalhes:    outcome.resultado,
+                ip:          req.ip,
+            }).catch(() => {});
+
+            res.json({ ok: true, resultado: outcome.resultado });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao executar purga manual:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Histórico de purga de dados ── */
     router.get('/admin/purga/historico', async (_req, res) => {
         try {

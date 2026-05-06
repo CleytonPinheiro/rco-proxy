@@ -3000,6 +3000,7 @@ function renderPurga(historico, politica) {
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <button onclick="salvarPurgaConfig()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">💾 Salvar política</button>
+            <button id="btnExecutarPurga" onclick="executarPurgaAgora()" style="padding:8px 20px;background:#dc2626;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">🗑️ Executar Purga Agora</button>
             <span id="purgaConfigMsg" style="font-size:.82rem"></span>
         </div>
     </div>`;
@@ -3098,6 +3099,43 @@ async function salvarPurgaConfig() {
             msgEl.textContent = `Erro: ${e.message}`;
         }
         showToast(`Erro ao salvar: ${e.message}`, 'error');
+    }
+}
+
+async function executarPurgaAgora() {
+    const btn   = document.getElementById('btnExecutarPurga');
+    const msgEl = document.getElementById('purgaConfigMsg');
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Executando...'; }
+    if (msgEl) { msgEl.style.color = 'var(--text-muted)'; msgEl.textContent = 'Aguardando conclusão da purga...'; }
+
+    try {
+        const res  = await api('/admin/purga/executar', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+
+        const r = data.resultado || {};
+        const total = [r.audit_log, r.reputacao_log, r.notif_lidas, r.notif_nlidas]
+            .filter(v => typeof v === 'number' && v >= 0)
+            .reduce((a, b) => a + b, 0);
+        const durStr = r.durMs < 1000 ? `${r.durMs}ms` : `${(r.durMs / 1000).toFixed(1)}s`;
+
+        if (msgEl) {
+            msgEl.style.color = '#16a34a';
+            msgEl.textContent = `Purga concluída em ${durStr} — ${total.toLocaleString('pt-BR')} linha(s) removida(s).`;
+            setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 6000);
+        }
+        showToast(`Purga concluída: ${total.toLocaleString('pt-BR')} linha(s) removida(s).`, 'success');
+        carregarPurga();
+    } catch (e) {
+        if (msgEl) {
+            msgEl.style.color = '#dc2626';
+            msgEl.textContent = `Erro: ${e.message}`;
+            setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 6000);
+        }
+        showToast(`Erro na purga: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🗑️ Executar Purga Agora'; }
     }
 }
 
