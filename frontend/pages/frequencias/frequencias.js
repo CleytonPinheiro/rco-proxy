@@ -49,9 +49,36 @@ async function init() {
 
     const turmas = coletarTurmas(acessosCache);
     renderCards(turmas);
+    renderChipEscolaAtiva();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
+}
+
+/* Mostra um chip junto ao título com o colégio ativo (vem do menu Turmas).
+   Clicando, o usuário volta ao dashboard para trocar de colégio. */
+function renderChipEscolaAtiva() {
+    const escola = localStorage.getItem('edusync_escola');
+    const header = document.querySelector('.page-header-freq > div');
+    if (!header) return;
+    let chip = document.getElementById('chipEscolaFreq');
+    if (!chip) {
+        chip = document.createElement('a');
+        chip.id = 'chipEscolaFreq';
+        chip.href = '/pages/dashboard/';
+        chip.className = 'chip-escola-freq';
+        chip.title = 'Trocar de colégio (vai para Turmas)';
+        header.insertBefore(chip, header.firstChild);
+    }
+    if (escola) {
+        const max = 32;
+        const nome = escola.length > max ? escola.slice(0, max) + '…' : escola;
+        chip.innerHTML = `<span class="chip-escola-icon">🏫</span><span class="chip-escola-nome">${nome}</span><span class="chip-escola-trocar">trocar ›</span>`;
+        chip.classList.remove('sem-escola');
+    } else {
+        chip.innerHTML = `<span class="chip-escola-icon">⚠️</span><span class="chip-escola-nome">Nenhum colégio selecionado</span><span class="chip-escola-trocar">selecionar ›</span>`;
+        chip.classList.add('sem-escola');
+    }
 }
 
 // Delegação global: clique em linha de aluno abre drawer (fora do init para funcionar com dados históricos)
