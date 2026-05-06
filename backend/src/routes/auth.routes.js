@@ -11,10 +11,27 @@ import { Router }           from 'express';
 import pg                   from 'pg';
 import axios                from 'axios';
 import { rateLimit }        from 'express-rate-limit';
+import { google }           from 'googleapis';
 import { userSessionStore } from '../services/UserSessionStore.js';
 import { auditLogger }      from '../services/AuditLogger.js';
 import { requireAuth, COOKIE_NAME } from '../middleware/auth.middleware.js';
 import { resolverPlano }    from '../config/planos.js';
+
+/* ── Feature flag: pedagogo pode entrar via Google OAuth sem token RCO ── */
+const PEDAGOGICO_RCO_REQUERIDO = process.env.PEDAGOGICO_RCO_REQUERIDO !== 'false';
+console.log(`[Auth] PEDAGOGICO_RCO_REQUERIDO=${PEDAGOGICO_RCO_REQUERIDO}`);
+
+/* ── Domínios permitidos para login pedagógico via Google ── */
+const DOMINIOS_PEDAGOGO = ['escola.pr.gov.br', 'seed.pr.gov.br'];
+
+/* ── Estado temporário de OAuth (em memória, TTL 10 min) ── */
+const _oauthStates = new Map(); // state → { ip, createdAt }
+setInterval(() => {
+    const now = Date.now();
+    for (const [state, entry] of _oauthStates) {
+        if (now - entry.createdAt > 10 * 60 * 1000) _oauthStates.delete(state);
+    }
+}, 60_000).unref();
 
 const { Pool } = pg;
 const RCO_BASE = 'https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1';
@@ -120,6 +137,27 @@ setInterval(() => {
         if (now >= entry.resetAt) cpfFailureStore.delete(cpf);
     }
 }, RL_CPF_JANELA).unref();
+
+/* ── Helper: cria OAuth2Client para login pedagógico (userinfo only) ── */
+function _pedagogoOAuth2Client(req) {
+    const clientId     = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) return null;
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/pedagogo-google/callback`;
+    return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+}
+
+/* ── Helper: executa migração de email na tabela de usuários (idempotente) ── */
+async function _garantirColunaEmail(pool) {
+    await pool.query(`ALTER TABLE edusync_usuarios ADD COLUMN IF NOT EXISTS email TEXT`).catch(() => {});
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS edusync_usuarios_email_uq ON edusync_usuarios (email) WHERE email IS NOT NULL`).catch(() => {});
+}
+let _emailMigrado = false;
+async function garantirColunaEmail(pool) {
+    if (_emailMigrado) return;
+    await _garantirColunaEmail(pool);
+    _emailMigrado = true;
+}
 
 export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer, decodeJwtExpiration }) {
     const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -364,6 +402,141 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
 
         res.json({ sucesso: true, usuario: session.toPublic() });
+    });
+
+    /* ── Pedagogo Google OAuth — URL de autorização ── */
+    router.get('/auth/pedagogo-google/url', async (req, res) => {
+        if (PEDAGOGICO_RCO_REQUERIDO) {
+            return res.status(403).json({
+                erro: 'Login via Google para pedagogo não está habilitado nesta instalação. Contate o administrador.',
+            });
+        }
+
+        const oauth2Client = _pedagogoOAuth2Client(req);
+        if (!oauth2Client) {
+            return res.status(503).json({ erro: 'Credenciais Google não configuradas.' });
+        }
+
+        const state = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        _oauthStates.set(state, { ip: req.ip, createdAt: Date.now() });
+
+        const url = oauth2Client.generateAuthUrl({
+            access_type: 'online',
+            scope:       ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
+            prompt:      'select_account',
+            state,
+        });
+
+        res.json({ url });
+    });
+
+    /* ── Pedagogo Google OAuth — callback ── */
+    router.get('/auth/pedagogo-google/callback', async (req, res) => {
+        const { code, state, error } = req.query;
+
+        if (error) {
+            return res.redirect('/login/?erro=google_cancelado');
+        }
+
+        if (PEDAGOGICO_RCO_REQUERIDO) {
+            return res.redirect('/login/?erro=pedagogo_rco_requerido');
+        }
+
+        if (!state || !_oauthStates.has(state)) {
+            return res.redirect('/login/?erro=estado_invalido');
+        }
+        _oauthStates.delete(state);
+
+        const oauth2Client = _pedagogoOAuth2Client(req);
+        if (!oauth2Client) {
+            return res.redirect('/login/?erro=google_nao_configurado');
+        }
+
+        let googleEmail, googleNome;
+        try {
+            const { tokens } = await oauth2Client.getToken(code);
+            oauth2Client.setCredentials(tokens);
+            const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+            const { data: userInfo } = await oauth2.userinfo.get();
+            googleEmail = (userInfo.email || '').toLowerCase();
+            googleNome  = userInfo.name  || googleEmail.split('@')[0];
+        } catch (e) {
+            console.error('[Auth] Erro ao obter userinfo Google (pedagogo):', e.message);
+            return res.redirect('/login/?erro=google_falha');
+        }
+
+        /* Verificar domínio do email */
+        const dominioOk = DOMINIOS_PEDAGOGO.some(d => googleEmail.endsWith(`@${d}`));
+        if (!dominioOk) {
+            console.warn(`[Auth] Email não autorizado para login pedagógico: ${googleEmail}`);
+            return res.redirect(`/login/?erro=email_dominio_invalido&email=${encodeURIComponent(googleEmail)}`);
+        }
+
+        /* Garantir coluna email na tabela */
+        try { await garantirColunaEmail(pool); } catch (_) {}
+
+        /* Buscar ou criar usuário pedagogo */
+        let userId, nome, perfil, ativo;
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, nome, perfil, ativo FROM edusync_usuarios WHERE email = $1`,
+                [googleEmail],
+            );
+
+            if (rows.length > 0) {
+                ({ id: userId, nome, perfil, ativo } = rows[0]);
+                if (!ativo) return res.redirect('/login/?erro=usuario_desativado');
+                if (perfil !== 'pedagogo') {
+                    console.warn(`[Auth] Perfil '${perfil}' não pode usar login pedagógico via Google: ${googleEmail}`);
+                    return res.redirect('/login/?erro=perfil_incompativel');
+                }
+            } else {
+                /* Novo usuário — criar com perfil pedagogo */
+                const { rows: [inserted] } = await pool.query(
+                    `INSERT INTO edusync_usuarios (nome, cpf, perfil, email)
+                     VALUES ($1, $2, 'pedagogo', $3)
+                     RETURNING id, nome, perfil`,
+                    [googleNome, `oauth_${googleEmail}`, googleEmail],
+                );
+                ({ id: userId, nome, perfil } = inserted);
+                console.log(`[Auth] Novo pedagogo criado via Google OAuth: ${googleNome} <${googleEmail}>`);
+            }
+        } catch (dbErr) {
+            console.error('[Auth] Erro ao buscar/criar pedagogo:', dbErr.message);
+            return res.redirect('/login/?erro=banco_falha');
+        }
+
+        /* Criar sessão SEM token RCO */
+        const { sessionId, session } = userSessionStore.create({
+            userId,
+            cpf:    `oauth_${googleEmail}`,
+            senha:  null,
+            nome,
+            perfil,
+            email:  googleEmail,
+            loginFn:  null,
+            decodeFn: null,
+        });
+
+        /* Registrar no audit log */
+        await auditLogger.registrar({
+            usuarioId:   userId,
+            usuarioNome: nome,
+            acao:        'LOGIN_PEDAGOGO_GOOGLE_OAUTH',
+            modulo:      'auth',
+            detalhes:    { email: googleEmail, rcoDisponivel: false },
+            ip:          req.ip,
+        }).catch(() => {});
+
+        console.log(`[Auth] Pedagogo logado via Google OAuth: ${nome} <${googleEmail}> (sem token RCO)`);
+
+        res.cookie(COOKIE_NAME, sessionId, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure:   req.secure,
+        });
+
+        res.redirect('/pages/pedagogico/');
     });
 
     /* ── Logout ── (sem requireAuth: deve sempre funcionar) */

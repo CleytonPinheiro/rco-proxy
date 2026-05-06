@@ -19,10 +19,10 @@ class UserSessionStore {
      * Cria e registra uma nova sessão para o usuário autenticado.
      * @returns {{ sessionId: string, session: UserSession }}
      */
-    create({ userId, cpf, senha, nome, perfil, loginFn, decodeFn }) {
+    create({ userId, cpf, senha, nome, perfil, email, loginFn, decodeFn }) {
         const sessionId = uuidv4();
         const session   = new UserSession({
-            id: sessionId, userId, cpf, senha, nome, perfil, loginFn, decodeFn,
+            id: sessionId, userId, cpf, senha, nome, perfil, email, loginFn, decodeFn,
         });
         this.#sessions.set(sessionId, session);
         console.log(`[SessionStore] Sessão criada para ${nome} (perfil: ${perfil}). Total: ${this.#sessions.size}`);

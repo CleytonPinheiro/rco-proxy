@@ -28,6 +28,14 @@ async function init() {
 
     try {
         const r = await fetch(`${API}/api/acessos`);
+        if (r.status === 403) {
+            const body = await r.json().catch(() => ({}));
+            if (body.semTokenRco) {
+                document.getElementById('loading').style.display = 'none';
+                mostrarErro('Esta funcionalidade requer login via RCO. Entre em contato com o administrador.');
+                return;
+            }
+        }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         acessosCache = await r.json();
     } catch (e) {

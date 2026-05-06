@@ -252,6 +252,12 @@ document.getElementById('btnSyncRCO').addEventListener('click', async () => {
             body: JSON.stringify({ data: dataAtual }),
         });
         const result = await resp.json();
+
+        if (resp.status === 403 && result.semTokenRco) {
+            toast('⚠ Esta funcionalidade requer login via RCO. Entre em contato com o administrador.', true);
+            return;
+        }
+
         toast('🔄 ' + (result.msg || 'Sincronização iniciada! Aguarde e recarregue em 1-2 minutos.'));
 
         // Recarregar após delay
@@ -323,3 +329,20 @@ function toast(msg, isErro = false) {
 // Init
 document.getElementById('inputData').value = dataAtual;
 carregarDados(dataAtual);
+
+// Desabilitar sync RCO visualmente se o usuário não tiver token RCO
+(async () => {
+    try {
+        const meResp = await fetch(`${API}/api/me`);
+        if (meResp.ok) {
+            const me = await meResp.json();
+            if (me.rcoDisponivel === false) {
+                const btnSync = document.getElementById('btnSyncRCO');
+                btnSync.disabled = true;
+                btnSync.title = 'Requer login via RCO — funcionalidade indisponível';
+                btnSync.style.opacity = '0.45';
+                btnSync.style.cursor = 'not-allowed';
+            }
+        }
+    } catch (_) {}
+})();

@@ -641,6 +641,16 @@ async function sincronizarRco() {
     setSyncStatus('sincronizando', 'Sincronizando observações RCO com dados mais recentes…');
     try {
         const res = await fetch('/api/pedagogico/sincronizar-rco', { method: 'POST' });
+
+        if (res.status === 403) {
+            const body = await res.json().catch(() => ({}));
+            if (body.semTokenRco) {
+                setSyncStatus('aviso', '⚠ Observações RCO em tempo real requerem login via RCO. Exibindo dados já sincronizados pelos professores.');
+                setTimeout(() => { elSyncBar.style.display = 'none'; }, 10000);
+                return;
+            }
+        }
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -665,6 +675,20 @@ async function sincronizarRco() {
     await carregarTurmas();
     // Exibe dados em cache imediatamente (rápido)
     await carregarTudo();
+
+    // Verificar se o usuário tem token RCO disponível antes de tentar sincronizar
+    try {
+        const meResp = await fetch(`${API}/api/me`);
+        if (meResp.ok) {
+            const me = await meResp.json();
+            if (me.rcoDisponivel === false) {
+                // Exibir aviso persistente e não tentar auto-sync
+                setSyncStatus('aviso', '⚠ Conectado sem token RCO — Frequências em tempo real e Sincronizar RCO estão desabilitados. Exibindo dados já sincronizados pelos professores.');
+                return;
+            }
+        }
+    } catch (_) {}
+
     // Sincroniza com RCO em seguida e recarrega com dados frescos
     sincronizarRco();
 })();

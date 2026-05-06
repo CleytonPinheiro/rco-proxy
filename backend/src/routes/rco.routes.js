@@ -5,6 +5,12 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
     const router = Router();
 
     router.get('/acessos', async (req, res) => {
+        if (req.userSession && !req.userSession.rcoDisponivel) {
+            return res.status(403).json({
+                erro: 'Esta funcionalidade requer login via RCO. Entre em contato com o administrador.',
+                semTokenRco: true,
+            });
+        }
         try {
             /* Se o cliente passou uma data específica, usa ela sem fallback */
             if (req.query.data) {
@@ -55,6 +61,12 @@ export function createRcoRouter({ rcoApiService, supabaseAdmin }) {
     });
 
     router.get('/frequencias', async (req, res) => {
+        if (req.userSession && !req.userSession.rcoDisponivel) {
+            return res.status(403).json({
+                erro: 'Esta funcionalidade requer login via RCO. Entre em contato com o administrador.',
+                semTokenRco: true,
+            });
+        }
         const codClasse           = req.query.codClasse;
         const codPeriodoAvaliacao = req.query.codPeriodoAvaliacao || 9;
         const codPeriodoLetivo    = req.query.codPeriodoLetivo    || 261;

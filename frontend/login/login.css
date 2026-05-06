@@ -424,6 +424,59 @@ body {
     opacity: .85;
 }
 
+/* Acesso pedagógico via Google OAuth */
+.pedagogo-oauth-section {
+    margin-top: 18px;
+}
+
+.pedagogo-oauth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-size: .78rem;
+    color: var(--text-muted);
+}
+
+.pedagogo-oauth-divider::before,
+.pedagogo-oauth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.btn-pedagogo-google {
+    width: 100%;
+    padding: 11px 16px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border);
+    border-radius: 11px;
+    font-size: .9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-pedagogo-google:hover {
+    border-color: #4285F4;
+    box-shadow: 0 0 0 3px rgba(66,133,244,.12);
+    background: rgba(66,133,244,.04);
+}
+
+.pedagogo-oauth-hint {
+    margin-top: 8px;
+    text-align: center;
+    font-size: .72rem;
+    color: var(--text-muted);
+}
+
 /* Rodapé do form */
 .form-footer {
     display: flex;

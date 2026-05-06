@@ -14,6 +14,7 @@ EduSync is a school management system for Paraná teachers, focusing on synchron
   - `GOOGLE_EMAIL`, `GOOGLE_PASSWORD` — Google account for GradePen scraping
   - `GOOGLE_REDIRECT_URI` — optional override; defaults to `{host}/api/classroom/callback`
   - `SESSION_SECRET`, `AUTHORIZATION_TOKEN` — session/auth tokens
+  - `PEDAGOGICO_RCO_REQUERIDO` — feature flag (default `true`). Set to `false` to allow users with `@escola.pr.gov.br` or `@seed.pr.gov.br` emails to log in as `pedagogo` via Google OAuth, without RCO credentials. When `false`, features that need a live RCO token (Frequências em tempo real, Sincronizar RCO, Sync de Presença Diária) show a friendly "requires RCO login" message instead of crashing. Revert to `true` at any time without redeploying to restore the old behavior.
 
 ## Stack
 

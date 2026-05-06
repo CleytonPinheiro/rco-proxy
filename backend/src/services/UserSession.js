@@ -10,9 +10,11 @@ export class UserSession {
     #senha;
     #nome;
     #perfil;
+    #email          = null;
     #rcoToken       = null;
     #rcoTokenExpiry = null;
     #refreshPromise = null;
+    #rcoDisponivel  = true;
     #createdAt;
     #lastActivity;
     #loginFn;
@@ -24,27 +26,30 @@ export class UserSession {
 
     #planoInfo = null;
 
-    constructor({ id, userId, cpf, senha, nome, perfil, loginFn, decodeFn }) {
+    constructor({ id, userId, cpf, senha, nome, perfil, loginFn, decodeFn, email }) {
         this.#id           = id;
         this.#userId       = userId;
-        this.#cpf          = cpf;
-        this.#senha        = senha;
+        this.#cpf          = cpf  || null;
+        this.#senha        = senha || null;
         this.#nome         = nome;
         this.#perfil       = perfil;
-        this.#loginFn      = loginFn;
-        this.#decodeFn     = decodeFn;
+        this.#loginFn      = loginFn  || null;
+        this.#decodeFn     = decodeFn || null;
+        this.#email        = email    || null;
+        this.#rcoDisponivel = !!(loginFn && cpf && senha);
         this.#createdAt    = Date.now();
         this.#lastActivity = Date.now();
     }
 
     /* ── Getters públicos ── */
-    get id()           { return this.#id; }
-    get userId()       { return this.#userId; }
-    get cpf()          { return this.#cpf; }
-    get nome()         { return this.#nome; }
-    get perfil()       { return this.#perfil; }          // perfil REAL (para auth backend)
-    get lastActivity() { return this.#lastActivity; }
-    get createdAt()    { return this.#createdAt; }
+    get id()             { return this.#id; }
+    get userId()         { return this.#userId; }
+    get cpf()            { return this.#cpf; }
+    get nome()           { return this.#nome; }
+    get perfil()         { return this.#perfil; }          // perfil REAL (para auth backend)
+    get lastActivity()   { return this.#lastActivity; }
+    get createdAt()      { return this.#createdAt; }
+    get rcoDisponivel()  { return this.#rcoDisponivel; }
 
     /* ── Impersonação: getters ── */
     get isImpersonando()     { return this.#impersonandoPerfil !== null; }
@@ -84,6 +89,10 @@ export class UserSession {
      * @returns {Promise<string>}
      */
     async getRcoToken(force = false) {
+        if (!this.#rcoDisponivel) {
+            throw new Error('SEM_TOKEN_RCO');
+        }
+
         const now   = Date.now();
         const valid = !force
             && this.#rcoToken
@@ -127,12 +136,14 @@ export class UserSession {
             : cpf;
 
         const base = {
-            userId:     this.#userId,
-            nome:       this.#nome,
-            cpf:        cpfMask,
-            perfil:     this.#perfil,
-            perfilReal: this.#perfil,
-            planoInfo:  this.#planoInfo || null,
+            userId:        this.#userId,
+            nome:          this.#nome,
+            cpf:           cpfMask,
+            perfil:        this.#perfil,
+            perfilReal:    this.#perfil,
+            planoInfo:     this.#planoInfo || null,
+            rcoDisponivel: this.#rcoDisponivel,
+            email:         this.#email || null,
         };
 
         if (this.#impersonandoPerfil) {

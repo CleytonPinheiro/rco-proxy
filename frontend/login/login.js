@@ -8,6 +8,30 @@
         }
     } catch { /* não autenticado, exibir form */ }
 
+    // ── Tratar mensagens de erro do callback OAuth ────────────────────────────
+    const erroCodes = {
+        google_cancelado:       'Login cancelado. Tente novamente.',
+        pedagogo_rco_requerido: 'Login via Google para pedagogo não está habilitado nesta instalação.',
+        estado_invalido:        'Sessão expirada. Tente novamente.',
+        google_nao_configurado: 'Credenciais Google não configuradas. Contate o administrador.',
+        google_falha:           'Falha ao autenticar com Google. Tente novamente.',
+        email_dominio_invalido: 'E-mail não autorizado. Use um e-mail @escola.pr.gov.br ou @seed.pr.gov.br.',
+        usuario_desativado:     'Usuário desativado. Contate o administrador.',
+        perfil_incompativel:    'Este e-mail está associado a outro perfil no sistema.',
+        banco_falha:            'Erro interno. Tente novamente.',
+    };
+    const params = new URLSearchParams(location.search);
+    const erroParam = params.get('erro');
+    if (erroParam) {
+        const msgEl = document.getElementById('loginMsg');
+        if (msgEl) {
+            msgEl.textContent   = erroCodes[erroParam] || 'Erro no login. Tente novamente.';
+            msgEl.className     = 'login-msg login-msg--erro';
+            msgEl.style.display = 'block';
+        }
+        history.replaceState({}, '', location.pathname);
+    }
+
     const form      = document.getElementById('loginForm');
     const msg       = document.getElementById('loginMsg');
     const btnEntrar = document.getElementById('btnEntrar');
@@ -119,6 +143,24 @@
         msg.className     = `login-msg login-msg--${tipo}`;
         msg.style.display = 'block';
     }
+
+    // ── Botão pedagogo OAuth (visível apenas quando o servidor habilita) ────────
+    (async () => {
+        try {
+            const r = await fetch('/api/auth/pedagogo-google/url');
+            if (r.status === 403) {
+                document.getElementById('pedagogo-oauth-section').style.display = 'none';
+                return;
+            }
+            if (r.ok) {
+                document.getElementById('pedagogo-oauth-section').style.display = '';
+                const { url } = await r.json();
+                document.getElementById('btnPedagogoGoogle').addEventListener('click', () => {
+                    window.location.href = url;
+                });
+            }
+        } catch { /* silencia */ }
+    })();
 
     // ── Banner de Cookies ───────────────────────────────────────────────────
     const banner = document.getElementById('cookieBanner');

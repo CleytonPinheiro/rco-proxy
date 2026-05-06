@@ -504,6 +504,11 @@
     border-color: color-mix(in srgb, #ef4444 30%, transparent);
     color: #dc2626;
 }
+.ped-sync-bar--aviso {
+    background: color-mix(in srgb, #f59e0b 10%, var(--bg-card));
+    border-color: color-mix(in srgb, #f59e0b 30%, transparent);
+    color: #b45309;
+}
 .ped-sync-spinner {
     display: inline-block;
     width: 16px;

@@ -101,6 +101,12 @@ export function createPedagogicoRouter({ supabaseAdmin, rcoApiService }) {
     // Sincroniza observações RCO de todas as turmas do professor atual.
     // Chamado automaticamente pelo frontend ao abrir o Painel Pedagógico.
     router.post('/pedagogico/sincronizar-rco', async (req, res) => {
+        if (req.userSession && !req.userSession.rcoDisponivel) {
+            return res.status(403).json({
+                erro: 'Esta funcionalidade requer login via RCO. Entre em contato com o administrador.',
+                semTokenRco: true,
+            });
+        }
         try {
             // Busca todas as classes do usuário atual
             const turmas = await getTurmasDoUsuario(supabaseAdmin);

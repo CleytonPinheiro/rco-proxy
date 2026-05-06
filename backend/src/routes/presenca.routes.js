@@ -16,6 +16,12 @@ export function createPresencaRouter({ supabaseAdmin, presencaService }) {
     });
 
     router.post('/presenca-diaria/sync', async (req, res) => {
+        if (req.userSession && !req.userSession.rcoDisponivel) {
+            return res.status(403).json({
+                erro: 'Esta funcionalidade requer login via RCO. Entre em contato com o administrador.',
+                semTokenRco: true,
+            });
+        }
         try {
             const data = req.body?.data || dataBrasilia();
             presencaService.syncPresencaDiariaRCO(data).catch(console.error);
