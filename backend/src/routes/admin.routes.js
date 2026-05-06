@@ -1466,6 +1466,35 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Cache de sincronização RCO → Supabase ── */
+    router.get('/admin/sync-cache-stats', async (_req, res) => {
+        try {
+            const { rows } = await pool.query(`
+                SELECT
+                    u.id,
+                    u.nome,
+                    u.email,
+                    c.ultimo_sync,
+                    c.puladas,
+                    c.executadas
+                FROM edusync_sync_cache c
+                JOIN edusync_usuarios u ON u.id = c.usuario_id
+                ORDER BY c.executadas DESC, u.nome
+            `);
+
+            const totalPuladas    = rows.reduce((s, r) => s + (r.puladas    || 0), 0);
+            const totalExecutadas = rows.reduce((s, r) => s + (r.executadas || 0), 0);
+
+            res.json({
+                usuarios: rows,
+                totais: { puladas: totalPuladas, executadas: totalExecutadas },
+            });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao buscar sync-cache-stats:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar estatísticas de cache.' });
+        }
+    });
+
     /* ── Observabilidade Puppeteer ── */
     router.get('/admin/puppeteer-stats', async (req, res) => {
         const login   = getLoginQueueStats();

@@ -2489,17 +2489,30 @@ async function carregarSistema() {
     const tsEl      = document.getElementById('sistemaUltimaAtt');
     if (!container) return;
     try {
-        const res  = await api('/admin/puppeteer-stats');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const d    = await res.json();
+        const [resPuppeteer, resCache] = await Promise.allSettled([
+            api('/admin/puppeteer-stats'),
+            api('/admin/sync-cache-stats'),
+        ]);
+
+        if (resPuppeteer.status === 'rejected') throw new Error(resPuppeteer.reason?.message || 'Erro ao buscar métricas do servidor');
+        const puppeteerRes = resPuppeteer.value;
+        if (!puppeteerRes.ok) throw new Error(`HTTP ${puppeteerRes.status}`);
+
+        const d = await puppeteerRes.json();
+
+        let cache = null;
+        if (resCache.status === 'fulfilled' && resCache.value.ok) {
+            try { cache = await resCache.value.json(); } catch {}
+        }
+
         tsEl.textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
-        container.innerHTML = renderSistema(d);
+        container.innerHTML = renderSistema(d, cache);
     } catch (e) {
         container.innerHTML = `<p style="color:#dc2626;font-size:.875rem">Erro ao carregar métricas: ${esc(e.message)}</p>`;
     }
 }
 
-function renderSistema(d) {
+function renderSistema(d, cache) {
     const login      = d.login   || {};
     const sessoes    = d.sessoes || {};
     const config     = d.config  || {};
@@ -2564,6 +2577,73 @@ function renderSistema(d) {
     const concurrency = config.PUPPETEER_LOGIN_CONCURRENCY || '—';
     const queueTimeout = config.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '—';
 
+    /* ── Cache de sync RCO → Supabase ── */
+    let syncCacheHtml = '';
+    if (cache) {
+        const totais    = cache.totais   || {};
+        const usuarios  = cache.usuarios || [];
+        const total     = (totais.puladas || 0) + (totais.executadas || 0);
+        const pctSkip   = total > 0 ? Math.round((totais.puladas || 0) / total * 100) : 0;
+
+        const linhas = usuarios.map(u => {
+            const ut      = (u.puladas || 0) + (u.executadas || 0);
+            const upct    = ut > 0 ? Math.round((u.puladas || 0) / ut * 100) : 0;
+            const syncStr = u.ultimo_sync
+                ? new Date(u.ultimo_sync).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                : '—';
+            return `
+            <tr>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${esc(u.nome || u.email || String(u.id))}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.8rem">${syncStr}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#16a34a;font-weight:600">${u.puladas ?? 0}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#2563eb;font-weight:600">${u.executadas ?? 0}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-size:.8rem;color:var(--text-muted)">${upct}%</td>
+            </tr>`;
+        }).join('');
+
+        const totaisRow = `
+            <tr style="font-weight:700;background:var(--bg-hover)">
+                <td style="padding:8px 10px" colspan="2">Total (${usuarios.length} usuário${usuarios.length !== 1 ? 's' : ''})</td>
+                <td style="padding:8px 10px;text-align:right;color:#16a34a">${totais.puladas ?? 0}</td>
+                <td style="padding:8px 10px;text-align:right;color:#2563eb">${totais.executadas ?? 0}</td>
+                <td style="padding:8px 10px;text-align:right;color:var(--text-muted)">${pctSkip}%</td>
+            </tr>`;
+
+        const semDados = usuarios.length === 0
+            ? `<p style="color:var(--text-muted);font-size:.875rem;margin-top:8px">Nenhum usuário sincronizou ainda.</p>`
+            : '';
+
+        syncCacheHtml = `
+        <div style="margin-top:24px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+                <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Cache de Sync RCO → Supabase</div>
+                <div style="display:flex;gap:20px;font-size:.82rem">
+                    <span><span style="color:var(--text-muted)">Puladas: </span><strong style="color:#16a34a">${totais.puladas ?? 0}</strong></span>
+                    <span><span style="color:var(--text-muted)">Executadas: </span><strong style="color:#2563eb">${totais.executadas ?? 0}</strong></span>
+                    <span><span style="color:var(--text-muted)">Aproveitamento: </span><strong style="color:${pctSkip >= 50 ? '#16a34a' : '#d97706'}">${pctSkip}%</strong></span>
+                </div>
+            </div>
+            ${semDados}
+            ${usuarios.length > 0 ? `
+            <div style="overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+                    <thead>
+                        <tr style="font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">
+                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Usuário</th>
+                            <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Último Sync</th>
+                            <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">Puladas</th>
+                            <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">Executadas</th>
+                            <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">% Cache Hit</th>
+                        </tr>
+                    </thead>
+                    <tbody>${linhas}</tbody>
+                    <tfoot>${totaisRow}</tfoot>
+                </table>
+            </div>` : ''}
+            <p style="margin-top:8px;font-size:.72rem;color:var(--text-muted)">Puladas = syncs evitados pelo cache (egress economizado). Executadas = syncs que foram ao Supabase.</p>
+        </div>`;
+    }
+
     return `
     <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:4px">
         ${metricBox('🔑', 'Logins ativos', ativos, `limite: ${limite}`, ativos > 0 ? '#2563eb' : 'var(--text-primary)')}
@@ -2572,6 +2652,7 @@ function renderSistema(d) {
     </div>
     ${progBar}
     ${gradePenHtml}
+    ${syncCacheHtml}
     <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
         <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px">Configuração atual (variáveis de ambiente)</div>
         <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:.85rem">
