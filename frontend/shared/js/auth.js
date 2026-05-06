@@ -204,8 +204,25 @@
             /* Reordena: itens bloqueados vão para o fim de cada contêiner */
             reordenarBloqueadosParaFim();
 
-            /* NÃO revela ainda — espera o nav adaptativo medir e mover overflow
-               para o side panel, evitando que o usuário veja itens "saltando".  */
+            /* Revela a nav o mais cedo possível usando o cache, sem esperar o
+               /api/me retornar. Inicia o nav adaptativo assim que o DOM estiver
+               pronto — assim os menus permanecem visíveis durante o carregamento
+               do conteúdo da página.                                              */
+            const revelarComCache = () => {
+                /* Injeta CSS de nav-profile cedo para evitar flash visual */
+                if (!document.querySelector('link[href="/shared/css/nav-profile.css"]')) {
+                    const _css = document.createElement('link');
+                    _css.rel   = 'stylesheet';
+                    _css.href  = '/shared/css/nav-profile.css';
+                    document.head.appendChild(_css);
+                }
+                iniciarNavAdaptativo(); // mede + chama marcarNavPronto
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', revelarComCache, { once: true });
+            } else {
+                revelarComCache();
+            }
         } catch {
             /* Erro de localStorage ou parse: mantém invisível, fetch assumirá o controle */
         }
@@ -265,12 +282,16 @@
 
     onDomReady(() => {
         /* Injeta CSS antes de qualquer coisa para evitar flash do btn-theme */
-        const _css = document.createElement('link');
-        _css.rel   = 'stylesheet';
-        _css.href  = '/shared/css/nav-profile.css';
-        document.head.appendChild(_css);
+        if (!document.querySelector('link[href="/shared/css/nav-profile.css"]')) {
+            const _css = document.createElement('link');
+            _css.rel   = 'stylesheet';
+            _css.href  = '/shared/css/nav-profile.css';
+            document.head.appendChild(_css);
+        }
 
         document.body.classList.add('auth-ready');
+        /* Reaplica permissões com perfil REAL (já pode ter sido aplicado a partir
+           do cache; é idempotente).                                              */
         aplicarPermissoesNav(user);
         injetarAvatarHeader(user);
         injetarBadgeEscola();
@@ -505,6 +526,7 @@
     /* ══════════════════════════════════════════════════════════════════════
        5. Nav Adaptativo — ResizeObserver
     ══════════════════════════════════════════════════════════════════════ */
+    let _navAdaptativoIniciado = false;
     function iniciarNavAdaptativo() {
         const nav           = document.querySelector('.nav-menu');
         const headerContent = document.querySelector('.header-content');
@@ -512,13 +534,22 @@
         const headerActions = document.querySelector('.header-actions');
         if (!nav || !headerContent) return;
 
-        /* Botão "Mais ▾" */
-        const btnMais = document.createElement('a');
-        btnMais.className   = 'nav-mais-btn';
-        btnMais.textContent = 'Mais ▾';
-        btnMais.href        = '#';
-        btnMais.addEventListener('click', e => { e.preventDefault(); window.abrirSidePanel?.(); });
-        nav.parentNode.insertBefore(btnMais, nav.nextSibling);
+        /* Idempotência: se já foi inicializado, apenas re-mede */
+        let btnMais = nav.parentNode.querySelector(':scope > .nav-mais-btn');
+        if (!btnMais) {
+            btnMais = document.createElement('a');
+            btnMais.className   = 'nav-mais-btn';
+            btnMais.textContent = 'Mais ▾';
+            btnMais.href        = '#';
+            btnMais.addEventListener('click', e => { e.preventDefault(); window.abrirSidePanel?.(); });
+            nav.parentNode.insertBefore(btnMais, nav.nextSibling);
+        }
+        if (_navAdaptativoIniciado) {
+            /* Apenas re-mede após mudanças posteriores (ex: novos links injetados) */
+            window.__edusyncRecalcularNav?.();
+            return;
+        }
+        _navAdaptativoIniciado = true;
 
         let rafId = null;
         let primeiraExecucao = true;
@@ -601,6 +632,9 @@
             if (rafId) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(executar);
         };
+        /* Exposto para re-medir quando novos links são injetados depois (ex:
+           Admin/Planos/Retorno após /api/me retornar).                          */
+        window.__edusyncRecalcularNav = recalcular;
 
         if (window.ResizeObserver) {
             new ResizeObserver(recalcular).observe(headerContent);
