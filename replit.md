@@ -5,6 +5,7 @@ EduSync is a school management system for Paraná teachers, focusing on synchron
 ## Run & Operate
 
 - **Run:** `cd backend && node index.js` (Backend listens on port 5000)
+- **Deploy target:** Reserved VM (`deploymentTarget = "vm"` in `.replit`). Chosen over autoscale because the app keeps Chromium/Puppeteer alive between requests (RCO browser singleton + GradePen cached page + 8-hour user sessions), so autoscale never reaches scale-zero and charges platform overhead without predictability. Reserved VM gives a fixed monthly cost. Recommended minimum: 2 vCPU / 4 GB RAM (each Chromium instance consumes 150–300 MB; RCO sync causes CPU spikes).
 - **Environment Variables (all stored in Replit Secrets vault — never in files):**
   - `RCO_CPF`, `RCO_SENHA` — RCO Digital credentials
   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase connection
@@ -49,6 +50,7 @@ EduSync is a school management system for Paraná teachers, focusing on synchron
 - **Parent-Child Module Dependencies:** `permissions.js` defines parent-child relationships between modules, ensuring both parent and child permissions are checked for access. Frontend UI reorders and indents child modules.
 - **Gamification (Reputation):** Separate reputation tracks (`aluno`, `corretor`) for students and 2nd correctors, with XP awarded at submission, 2nd correction, and exam finalization. No public leaderboard for privacy.
 - **Secrets in vault only:** All credentials live in Replit Secrets. The `.replit` file must never contain secret values. `GOOGLE_REDIRECT_URI` falls back to `{host}/api/classroom/callback` if not set.
+- **Reserved VM deployment:** `deploymentTarget = "vm"` (not autoscale) because Puppeteer/Chromium singletons, cached sessions, and background sync workers mean the process never idles, making autoscale's scale-to-zero irrelevant and its per-request pricing less predictable than a flat VM rate.
 
 ## Product
 
