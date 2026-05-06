@@ -64,6 +64,17 @@
         return lista.includes('*') || lista.includes(modulo);
     }
 
+    /* ── Módulos "em desenvolvimento" ───────────────────────────────────────
+       Estes módulos AINDA aparecem no menu para os perfis que normalmente
+       teriam acesso, mas são exibidos desabilitados (cadeado + tooltip + toast)
+       para sinalizar que o desenvolvimento ainda está em andamento.
+       Para liberar um módulo, basta remover dessa lista.                       */
+    const MODULOS_EM_DESENVOLVIMENTO = new Set([
+        'pedagogico',
+        'comunicados',
+    ]);
+    function emDesenvolvimento(modulo) { return MODULOS_EM_DESENVOLVIMENTO.has(modulo); }
+
     /** Retorna a primeira URL acessível para o perfil (evita loop de redirecionamento) */
     function primeiraUrlPermitida(perfil) {
         for (const [url, modulo] of Object.entries(MODULO_URLS)) {
@@ -96,14 +107,14 @@
     }
 
     /* Mensagem de bloqueio mostrada quando o usuário clica em um menu desabilitado */
-    function mostrarToastBloqueio(perfilLabel, modulo) {
+    function mostrarToastBloqueio(modulo) {
         let toast = document.querySelector('.perm-block-toast');
         if (!toast) {
             toast = document.createElement('div');
             toast.className = 'perm-block-toast';
             document.body.appendChild(toast);
         }
-        toast.textContent = `🔒 "${modulo}" está em implementação para o perfil ${perfilLabel}.`;
+        toast.textContent = `🚧 "${modulo}" está em desenvolvimento. Em breve disponível.`;
         toast.classList.add('show');
         clearTimeout(toast._tid);
         toast._tid = setTimeout(() => toast.classList.remove('show'), 2800);
@@ -120,18 +131,17 @@
         });
     }
 
-    /* Marca um link como bloqueado (visível, porém desabilitado) e instala o handler */
-    function marcarBloqueado(link, perfil) {
+    /* Marca um link como "em desenvolvimento" (visível, porém desabilitado) */
+    function marcarBloqueado(link) {
         link.setAttribute('data-perm-blocked', 'true');
         link.setAttribute('aria-disabled', 'true');
         const nome = (link.querySelector('.side-nav-nome')?.textContent || link.textContent || '').trim();
-        const perfilLabel = PERFIL_LABEL[perfil] || perfil;
-        link.setAttribute('title', `Acesso restrito — em implementação para o perfil ${perfilLabel}.`);
+        link.setAttribute('title', `🚧 ${nome} — módulo em desenvolvimento. Em breve disponível.`);
         if (!link._permHandler) {
             link._permHandler = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                mostrarToastBloqueio(perfilLabel, nome);
+                mostrarToastBloqueio(nome);
             };
             link.addEventListener('click', link._permHandler, true);
         }
@@ -156,7 +166,12 @@
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
                 if (!podeAcessar(p, modulo)) {
-                    marcarBloqueado(link, p);
+                    /* Sem permissão: esconder completamente */
+                    link.setAttribute('data-perm-hidden', 'true');
+                    link.style.display = 'none';
+                } else if (emDesenvolvimento(modulo)) {
+                    /* Permissão OK, mas módulo em desenvolvimento → bloqueado com aviso */
+                    marcarBloqueado(link);
                 }
             });
 
@@ -260,9 +275,21 @@
             if (!modulo) return; // link sem mapeamento: deixa visível
 
             if (!podeAcessar(perfilEfetivo, modulo)) {
-                marcarBloqueado(link, perfilEfetivo);
+                /* Sem permissão: oculta o item */
+                link.setAttribute('data-perm-hidden', 'true');
+                link.style.display = 'none';
+                /* Limpa qualquer estado de bloqueio remanescente */
+                link.removeAttribute('data-perm-blocked');
+                link.removeAttribute('aria-disabled');
+                if (link._permHandler) {
+                    link.removeEventListener('click', link._permHandler, true);
+                    link._permHandler = null;
+                }
+            } else if (emDesenvolvimento(modulo)) {
+                /* Permitido pelo perfil, mas módulo em desenvolvimento → bloqueado */
+                marcarBloqueado(link);
             } else {
-                /* Item liberado: limpa qualquer marcação anterior */
+                /* Item totalmente liberado: limpa qualquer marcação */
                 link.removeAttribute('data-perm-blocked');
                 link.removeAttribute('aria-disabled');
                 link.removeAttribute('data-perm-hidden');
@@ -522,14 +549,7 @@
             /* Propaga estado bloqueado: clone também precisa exibir cadeado, tooltip
                e interceptar o clique mostrando o toast. */
             if (a.getAttribute('data-perm-blocked') === 'true') {
-                const modulo = MODULO_URLS[a.getAttribute('href')];
-                const cachedPerfil = (() => {
-                    try {
-                        const c = JSON.parse(localStorage.getItem(NAV_CACHE_KEY) || 'null');
-                        return c?.impersonando ? c.impersonandoPerfil : c?.perfil;
-                    } catch { return null; }
-                })();
-                marcarBloqueado(clone, cachedPerfil || 'usuário');
+                marcarBloqueado(clone);
             }
             grupo.appendChild(clone);
         });

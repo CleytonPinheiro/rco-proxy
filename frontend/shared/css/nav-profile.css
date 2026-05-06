@@ -429,7 +429,7 @@
     color: inherit !important;
 }
 .side-nav-item[data-perm-blocked="true"] .side-nav-desc::before {
-    content: "Em implementação para seu perfil · ";
+    content: "🚧 Em desenvolvimento · ";
     color: var(--cor-texto-secundario, #9ca3af);
     font-style: italic;
 }
