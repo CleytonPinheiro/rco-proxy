@@ -1,7 +1,7 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 pool.on('error', (err) => {
     console.error('[DB] Erro inesperado no pool:', err.message);
@@ -291,6 +291,16 @@ export async function initializeDatabase() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_aluno_id ON edusync_comunicados_suspensao(aluno_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_emitido  ON edusync_comunicados_suspensao(emitido_em DESC)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_nome     ON edusync_comunicados_suspensao(nome_aluno)`);
+
+        /* ── Cache de sincronização RCO → Supabase ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_sync_cache (
+                usuario_id  INTEGER PRIMARY KEY REFERENCES edusync_usuarios(id) ON DELETE CASCADE,
+                ultimo_sync TIMESTAMP NOT NULL,
+                puladas     INTEGER   NOT NULL DEFAULT 0,
+                executadas  INTEGER   NOT NULL DEFAULT 0
+            )
+        `);
 
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {

@@ -267,8 +267,8 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             ip:          req.ip,
         });
 
-        // 7. Sync em background
-        syncService.sincronizarComSupabase()
+        // 7. Sync em background — respeita TTL; só executa se cache expirado
+        syncService.sincronizarSeNecessario(userId)
             .catch(e => console.warn('[Auth] Sync pós-login falhou:', e.message));
 
         res.json({ sucesso: true, usuario: session.toPublic() });

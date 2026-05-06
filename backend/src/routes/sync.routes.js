@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.middleware.js';
 
 export function createSyncRouter({ supabase, syncService }) {
     const router = Router();
@@ -22,6 +23,51 @@ export function createSyncRouter({ supabase, syncService }) {
         try {
             const resultado = await syncService.sincronizarComSupabase();
             res.json(resultado);
+        } catch (erro) { res.status(500).json({ erro: erro.message }); }
+    });
+
+    /* Força sync imediato para o usuário autenticado, ignorando TTL */
+    router.post('/sync/force', requireAuth, async (req, res) => {
+        try {
+            const userId  = req.userSession.userId;
+            const resultado = await syncService.sincronizarSeNecessario(userId, true);
+            res.json(resultado);
+        } catch (erro) { res.status(500).json({ erro: erro.message }); }
+    });
+
+    /* Status real do cache de sync para o usuário autenticado */
+    router.get('/sync/cache', requireAuth, async (req, res) => {
+        try {
+            const userId = req.userSession.userId;
+            const ttlMs  = (parseInt(process.env.RCO_SYNC_TTL_HOURS ?? '4', 10) || 4) * 60 * 60 * 1000;
+            const ttlMin = Math.round(ttlMs / 60_000);
+
+            const { pool } = await import('../config/dbInit.js');
+            const { rows } = await pool.query(
+                `SELECT ultimo_sync, puladas, executadas FROM edusync_sync_cache WHERE usuario_id = $1`,
+                [userId],
+            );
+
+            if (!rows.length) {
+                return res.json({ userId, ttlMin, fresco: false, ultimoSync: null, idadeMin: null, puladas: 0, executadas: 0 });
+            }
+
+            const ultimoSync = new Date(rows[0].ultimo_sync);
+            const idadeMs    = Date.now() - ultimoSync.getTime();
+            const idadeMin   = Math.round(idadeMs / 60_000);
+            const fresco     = idadeMs < ttlMs;
+            const proxSyncMin = fresco ? Math.round((ttlMs - idadeMs) / 60_000) : 0;
+
+            res.json({
+                userId,
+                ttlMin,
+                fresco,
+                ultimoSync: ultimoSync.toISOString(),
+                idadeMin,
+                proxSyncMin,
+                puladas:    rows[0].puladas,
+                executadas: rows[0].executadas,
+            });
         } catch (erro) { res.status(500).json({ erro: erro.message }); }
     });
 

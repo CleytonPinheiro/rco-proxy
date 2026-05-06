@@ -1,10 +1,14 @@
+const SYNC_TTL_MS = (parseInt(process.env.RCO_SYNC_TTL_HOURS ?? '4', 10) || 4) * 60 * 60 * 1000;
+
 export class SyncService {
     #supabaseAdmin = null;
     #rcoApiService = null;
+    #pool          = null;
 
-    initialize(supabaseAdmin, rcoApiService) {
+    initialize(supabaseAdmin, rcoApiService, pool) {
         this.#supabaseAdmin = supabaseAdmin;
         this.#rcoApiService = rcoApiService;
+        this.#pool          = pool;
     }
 
     // Limpa dados de sessão anterior ao trocar de usuário.
@@ -42,8 +46,98 @@ export class SyncService {
         return [...new Map(arr.map(x => [x[key], x])).values()];
     }
 
+    /**
+     * Verifica se o userId tem um sync recente.
+     * Retorna { fresco: true, idadeMs, ultimoSync } ou { fresco: false }.
+     */
+    async #verificarCache(userId) {
+        if (!this.#pool || !userId) return { fresco: false };
+        try {
+            const { rows } = await this.#pool.query(
+                `SELECT ultimo_sync, puladas, executadas FROM edusync_sync_cache WHERE usuario_id = $1`,
+                [userId],
+            );
+            if (!rows.length) return { fresco: false };
+            const ultimoSync = new Date(rows[0].ultimo_sync);
+            const idadeMs    = Date.now() - ultimoSync.getTime();
+            return {
+                fresco:    idadeMs < SYNC_TTL_MS,
+                idadeMs,
+                ultimoSync,
+                puladas:   rows[0].puladas,
+                executadas: rows[0].executadas,
+            };
+        } catch (e) {
+            console.warn('[SYNC] Falha ao verificar cache local:', e.message);
+            return { fresco: false };
+        }
+    }
+
+    /** Persiste o timestamp do último sync bem-sucedido e incrementa o contador. */
+    async #registrarSyncExecutado(userId) {
+        if (!this.#pool || !userId) return;
+        try {
+            await this.#pool.query(
+                `INSERT INTO edusync_sync_cache (usuario_id, ultimo_sync, executadas)
+                 VALUES ($1, NOW(), 1)
+                 ON CONFLICT (usuario_id)
+                 DO UPDATE SET ultimo_sync = NOW(), executadas = edusync_sync_cache.executadas + 1`,
+                [userId],
+            );
+        } catch (e) {
+            console.warn('[SYNC] Falha ao persistir cache sync:', e.message);
+        }
+    }
+
+    /** Incrementa o contador de syncs pulados. */
+    async #registrarSyncPulado(userId) {
+        if (!this.#pool || !userId) return;
+        try {
+            await this.#pool.query(
+                `UPDATE edusync_sync_cache SET puladas = puladas + 1 WHERE usuario_id = $1`,
+                [userId],
+            );
+        } catch (e) {
+            console.warn('[SYNC] Falha ao atualizar contador de pulados:', e.message);
+        }
+    }
+
+    /**
+     * Sincroniza apenas se o cache estiver expirado ou se `forcar = true`.
+     * Usado no fluxo pós-login e no endpoint de refresh manual.
+     *
+     * @param {number} userId   - ID local do usuário
+     * @param {boolean} forcar  - ignora TTL e executa de qualquer forma
+     * @returns {Promise<object>} resultado ou status 'cache_fresco'
+     */
+    async sincronizarSeNecessario(userId, forcar = false) {
+        if (!forcar) {
+            const cache = await this.#verificarCache(userId);
+            if (cache.fresco) {
+                const idadeMin = Math.round(cache.idadeMs / 60_000);
+                console.log(`[SYNC] Pulado — cache fresco (age ${idadeMin} min, TTL ${SYNC_TTL_MS / 60_000} min) para userId ${userId}`);
+                this.#registrarSyncPulado(userId).catch(() => {});
+                return {
+                    status: 'cache_fresco',
+                    idadeMin,
+                    ultimoSync: cache.ultimoSync?.toISOString(),
+                    mensagem:   `Dados sincronizados há ${idadeMin} min. Próximo sync automático em ~${Math.round((SYNC_TTL_MS - cache.idadeMs) / 60_000)} min.`,
+                };
+            }
+        }
+
+        const resultado = await this.sincronizarComSupabase();
+
+        if (resultado.status === 'sucesso') {
+            await this.#registrarSyncExecutado(userId);
+        }
+
+        return resultado;
+    }
+
     async sincronizarComSupabase() {
         const agora = new Date().toISOString();
+        const t0    = Date.now();
         console.log(`[SYNC] Iniciando sincronização com Supabase em ${agora}...`);
 
         try {
@@ -228,6 +322,7 @@ export class SyncService {
                 classes: classesUnicas.length,
             });
 
+            const duracaoS = ((Date.now() - t0) / 1000).toFixed(1);
             const resultado = {
                 status: 'sucesso',
                 estabelecimentos: estabsUnicos.length,
@@ -236,8 +331,9 @@ export class SyncService {
                 classes: classesUnicas.length,
                 alunos: totalAlunos,
                 executadoEm: agora,
+                duracaoS,
             };
-            console.log('[SYNC] Concluído:', resultado);
+            console.log(`[SYNC] Concluído em ${duracaoS}s:`, resultado);
             return resultado;
 
         } catch (erro) {

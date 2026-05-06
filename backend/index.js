@@ -106,7 +106,7 @@ async function initializeApp() {
     try {
         console.log('Carregando dependências...');
 
-        const { initializeDatabase }    = await import('./src/config/dbInit.js');
+        const { initializeDatabase, pool: localPool } = await import('./src/config/dbInit.js');
         await initializeDatabase();
 
         const { supabase, supabaseAdmin }                     = await import('./src/config/supabase.js');
@@ -118,7 +118,7 @@ async function initializeApp() {
 
         tokenService.initialize(loginWithPuppeteer, decodeJwtExpiration);
         rcoApiService.initialize(tokenService);
-        syncService.initialize(supabaseAdmin, rcoApiService);
+        syncService.initialize(supabaseAdmin, rcoApiService, localPool);
         presencaService.initialize(supabaseAdmin, rcoApiService);
 
         const { createApiRouter } = await import('./src/routes/index.js');
