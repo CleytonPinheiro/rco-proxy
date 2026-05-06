@@ -38,6 +38,15 @@
         </div>
     </header>
 
+    <!-- ── Rodapé de Status ─────────────────────────────────────────────────── -->
+    <footer class="status-footer">
+        <button class="footer-btn footer-sync-btn" id="footerSyncBtn" onclick="forcarSyncFooter()" title="Atualizar dados do RCO agora">
+            <span class="footer-sync-icon" id="footerSyncIcon">🕒</span>
+            <span id="footerSyncText">Verificando...</span>
+        </button>
+        <span class="footer-version">EduSync 2026</span>
+    </footer>
+
     <main class="container">
 
         <!-- ── Topbar ──────────────────────────────────────────────────── -->
@@ -278,6 +287,7 @@
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
+    <script src="../../shared/js/sync-status.js"></script>
     <script src="./comunicados.js"></script>
 
     <!-- ── Painel Lateral ───────────────────────────────────────────── -->

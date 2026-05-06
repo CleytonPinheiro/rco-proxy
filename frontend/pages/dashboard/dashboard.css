@@ -288,24 +288,5 @@
     background: #0056b3; color: white; border-color: #0056b3;
 }
 
-/* ── Sync status no footer ───────────────────────────────────────────────── */
-.footer-sync-btn { border-left: 1px solid var(--border); }
-
-.footer-sync-icon {
-    font-size: 14px;
-    line-height: 1;
-    transition: transform 0.3s;
-}
-.footer-sync-btn.spinning .footer-sync-icon {
-    animation: sync-spin 0.9s linear infinite;
-    display: inline-block;
-}
-@keyframes sync-spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-}
-
-.footer-sync-btn.fresh  { color: #28a745; }
-.footer-sync-btn.stale  { color: #fd7e14; }
-.footer-sync-btn.synced { color: #007bff; }
+/* Sync status chip styles live in shared/css/layout.css */
 

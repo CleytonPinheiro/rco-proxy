@@ -1660,3 +1660,4 @@ function atualizarResumoDiario() {
 }
 
 init();
+initSyncStatus();

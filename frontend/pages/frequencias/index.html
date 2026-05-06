@@ -48,6 +48,10 @@
             <span class="footer-btn-icon">📡</span>
             Dados do RCO
         </button>
+        <button class="footer-btn footer-sync-btn" id="footerSyncBtn" onclick="forcarSyncFooter()" title="Atualizar dados do RCO agora">
+            <span class="footer-sync-icon" id="footerSyncIcon">🕒</span>
+            <span id="footerSyncText">Verificando...</span>
+        </button>
         <span class="footer-version">EduSync 2026</span>
     </footer>
 
@@ -232,6 +236,7 @@
         </div>
     </main>
 
+    <script src="../../shared/js/sync-status.js"></script>
     <script src="./frequencias.js"></script>
 
     <!-- ── Painel Lateral ───────────────────────────────────────────────── -->

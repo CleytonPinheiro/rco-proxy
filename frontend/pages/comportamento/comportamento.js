@@ -494,3 +494,4 @@ function formatarData(iso) {
 }
 
 init();
+initSyncStatus();

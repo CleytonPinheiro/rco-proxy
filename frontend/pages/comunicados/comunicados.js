@@ -16,6 +16,7 @@ let detAtual      = null; // comunicado aberto no modal detalhes
 document.addEventListener('DOMContentLoaded', async () => {
     verificarAuth();
     setDataDefault();
+    initSyncStatus();
     await Promise.all([
         carregarStats(),
         carregarComunicados(),
