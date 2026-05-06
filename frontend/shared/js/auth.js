@@ -636,13 +636,16 @@
     }
 
     /* Injeta os itens em overflow no topo do side panel como grupo extra */
-    let _overflowGroup = null;
     function injetarOverflowNoSidePanel(itensOcultos) {
         const sideNav = document.querySelector('.side-panel-nav');
         if (!sideNav) return;
 
-        /* Remove grupo anterior */
-        if (_overflowGroup) { _overflowGroup.remove(); _overflowGroup = null; }
+        /* Remove grupo anterior (estado guardado como propriedade da função para
+           evitar TDZ quando chamada antes da declaração de um `let` no módulo).  */
+        if (injetarOverflowNoSidePanel._grupo) {
+            injetarOverflowNoSidePanel._grupo.remove();
+            injetarOverflowNoSidePanel._grupo = null;
+        }
         if (!itensOcultos.length) return;
 
         const grupo = document.createElement('div');
@@ -672,7 +675,7 @@
         });
 
         sideNav.insertBefore(grupo, sideNav.firstChild);
-        _overflowGroup = grupo;
+        injetarOverflowNoSidePanel._grupo = grupo;
 
         /* Reordena dentro do próprio grupo de overflow (bloqueados ao final) */
         reordenarBloqueadosParaFim();
