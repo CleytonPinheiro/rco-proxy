@@ -526,7 +526,6 @@
     /* ══════════════════════════════════════════════════════════════════════
        5. Nav Adaptativo — ResizeObserver
     ══════════════════════════════════════════════════════════════════════ */
-    let _navAdaptativoIniciado = false;
     function iniciarNavAdaptativo() {
         const nav           = document.querySelector('.nav-menu');
         const headerContent = document.querySelector('.header-content');
@@ -544,12 +543,12 @@
             btnMais.addEventListener('click', e => { e.preventDefault(); window.abrirSidePanel?.(); });
             nav.parentNode.insertBefore(btnMais, nav.nextSibling);
         }
-        if (_navAdaptativoIniciado) {
+        if (iniciarNavAdaptativo._iniciado) {
             /* Apenas re-mede após mudanças posteriores (ex: novos links injetados) */
             window.__edusyncRecalcularNav?.();
             return;
         }
-        _navAdaptativoIniciado = true;
+        iniciarNavAdaptativo._iniciado = true;
 
         let rafId = null;
         let primeiraExecucao = true;
