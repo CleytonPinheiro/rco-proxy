@@ -409,6 +409,58 @@
 /* ── Itens proibidos por perfil — imutável por JS ───────────────────────── */
 [data-perm-hidden="true"] { display: none !important; }
 
+/* ── Itens bloqueados por perfil — visíveis, porém desabilitados ────────── */
+[data-perm-blocked="true"] {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    pointer-events: auto !important; /* permite tooltip e nosso click handler */
+    position: relative;
+    filter: grayscale(0.5);
+}
+[data-perm-blocked="true"]::after {
+    content: "🔒";
+    font-size: 10px;
+    margin-left: 6px;
+    opacity: 0.85;
+    vertical-align: middle;
+}
+[data-perm-blocked="true"]:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: inherit !important;
+}
+.side-nav-item[data-perm-blocked="true"] .side-nav-desc::before {
+    content: "Em implementação para seu perfil · ";
+    color: var(--cor-texto-secundario, #9ca3af);
+    font-style: italic;
+}
+/* Banner toast para o aviso de bloqueio */
+.perm-block-toast {
+    position: fixed;
+    left: 50%; bottom: 24px;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(31,41,55,0.96);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity .2s, transform .2s;
+    pointer-events: none;
+    max-width: 90vw;
+    text-align: center;
+}
+.perm-block-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+[data-theme="dark"] .perm-block-toast {
+    background: rgba(17,24,39,0.98);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
 /* ── Nav overflow: itens ocultos para caber no topo ─────────────────────── */
 .nav-menu a[data-nav-hidden="true"] { display: none !important; }
 

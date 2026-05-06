@@ -16,7 +16,7 @@ export const PERFIS = {
     pedagogo: {
         nome: 'Pedagogo',
         /* Pedagogo NÃO tem acesso a Provas (módulo restrito a professor/admin) */
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'suporte'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'suporte'],
     },
     secretaria: {
         nome: 'Secretaria',

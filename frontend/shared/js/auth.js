@@ -44,7 +44,7 @@
     const PERFIL_MODULOS = {
         admin:      ['*'],
         professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','suporte'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','suporte'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','suporte'],
         secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','suporte'],
         aux_turno:  ['circulacao','presenca','suporte'],
         cozinha:    ['cozinha','suporte'],
@@ -95,9 +95,44 @@
         document.querySelector('.side-panel')?.setAttribute('data-perms-ready', 'true');
     }
 
+    /* Mensagem de bloqueio mostrada quando o usuário clica em um menu desabilitado */
+    function mostrarToastBloqueio(perfilLabel, modulo) {
+        let toast = document.querySelector('.perm-block-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.className = 'perm-block-toast';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = `🔒 "${modulo}" está em implementação para o perfil ${perfilLabel}.`;
+        toast.classList.add('show');
+        clearTimeout(toast._tid);
+        toast._tid = setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    /* Marca um link como bloqueado (visível, porém desabilitado) e instala o handler */
+    function marcarBloqueado(link, perfil) {
+        link.setAttribute('data-perm-blocked', 'true');
+        link.setAttribute('aria-disabled', 'true');
+        const nome = (link.querySelector('.side-nav-nome')?.textContent || link.textContent || '').trim();
+        const perfilLabel = PERFIL_LABEL[perfil] || perfil;
+        link.setAttribute('title', `Acesso restrito — em implementação para o perfil ${perfilLabel}.`);
+        if (!link._permHandler) {
+            link._permHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                mostrarToastBloqueio(perfilLabel, nome);
+            };
+            link.addEventListener('click', link._permHandler, true);
+        }
+        /* Garante visibilidade caso uma camada anterior tenha escondido */
+        link.style.display = '';
+        link.removeAttribute('data-perm-hidden');
+    }
+
     /* Aplica permissões imediatamente da cache — sem esperar o fetch.
        Com o <style> anti-flash do theme.js, os menus ficam invisíveis até aqui.
-       Após este IIFE, apenas os itens permitidos ficam visíveis.
+       Após este IIFE, os itens permitidos ficam totalmente visíveis e os bloqueados
+       aparecem desabilitados (pointer-events: not-allowed + cadeado).
        Se não há cache (primeiro login), menus ficam invisíveis até o fetch. */
     (function aplicarCacheImediato() {
         try {
@@ -110,8 +145,7 @@
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
                 if (!podeAcessar(p, modulo)) {
-                    link.setAttribute('data-perm-hidden', 'true');
-                    link.style.display = 'none';
+                    marcarBloqueado(link, p);
                 }
             });
 
@@ -212,11 +246,17 @@
             if (!modulo) return; // link sem mapeamento: deixa visível
 
             if (!podeAcessar(perfilEfetivo, modulo)) {
-                link.setAttribute('data-perm-hidden', 'true');
-                link.style.display = 'none';
+                marcarBloqueado(link, perfilEfetivo);
             } else {
+                /* Item liberado: limpa qualquer marcação anterior */
+                link.removeAttribute('data-perm-blocked');
+                link.removeAttribute('aria-disabled');
                 link.removeAttribute('data-perm-hidden');
                 link.style.display = '';
+                if (link._permHandler) {
+                    link.removeEventListener('click', link._permHandler, true);
+                    link._permHandler = null;
+                }
             }
         });
 
@@ -320,7 +360,7 @@
 
         const link = document.createElement('a');
         link.href        = '/pages/retorno-pedagogico/';
-        link.textContent = '💬 Retorno Pedagógico';
+        link.textContent = 'Retorno Pedagógico';
         if (location.pathname.startsWith('/pages/retorno-pedagogico/')) link.classList.add('active');
         // Insere logo após o link do Painel Pedagógico se existir, senão appenda
         const pedLink = nav.querySelector('a[href="/pages/pedagogico/"]');
@@ -342,7 +382,7 @@
 
         const link = document.createElement('a');
         link.href        = '/pages/admin/';
-        link.textContent = '⚙ Admin';
+        link.textContent = 'Admin';
         if (location.pathname === '/pages/admin/') link.classList.add('active');
         nav.appendChild(link);
     }
@@ -355,7 +395,7 @@
 
         const link = document.createElement('a');
         link.href        = '/pages/planos/';
-        link.textContent = '💎 Planos';
+        link.textContent = 'Planos';
         if (location.pathname === '/pages/planos/') link.classList.add('active');
         nav.appendChild(link);
     }
@@ -384,6 +424,8 @@
             rafId = requestAnimationFrame(() => {
                 const itens = Array.from(nav.querySelectorAll('a:not(.nav-mais-btn)'))
                     .filter(a => !a.getAttribute('data-perm-hidden'));
+                /* Itens bloqueados continuam visíveis no header (não vão para overflow
+                   nem ficam escondidos), mas mantêm o estilo desabilitado.            */
 
                 /* Torna todos visíveis para medir */
                 itens.forEach(a => {
@@ -458,7 +500,20 @@
                 <span class="side-nav-icon" style="font-size:18px">${_navIcon(a.getAttribute('href'))}</span>
                 <div class="side-nav-info">
                     <span class="side-nav-nome">${a.textContent.trim()}</span>
+                    <span class="side-nav-desc"></span>
                 </div>`;
+            /* Propaga estado bloqueado: clone também precisa exibir cadeado, tooltip
+               e interceptar o clique mostrando o toast. */
+            if (a.getAttribute('data-perm-blocked') === 'true') {
+                const modulo = MODULO_URLS[a.getAttribute('href')];
+                const cachedPerfil = (() => {
+                    try {
+                        const c = JSON.parse(localStorage.getItem(NAV_CACHE_KEY) || 'null');
+                        return c?.impersonando ? c.impersonandoPerfil : c?.perfil;
+                    } catch { return null; }
+                })();
+                marcarBloqueado(clone, cachedPerfil || 'usuário');
+            }
             grupo.appendChild(clone);
         });
 
