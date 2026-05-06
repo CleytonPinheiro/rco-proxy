@@ -157,6 +157,14 @@ function renderCards(turmas) {
             btn.addEventListener('click', () => toggleDisc(btn, ti));
         });
     });
+
+    /* Auto-abre a primeira disciplina da primeira turma para que o usuário
+       já visualize dados sem precisar clicar — sinaliza visualmente a
+       interatividade do accordion.                                          */
+    const primeiroBtn = container.querySelector('.turma-card:first-child .disc-btn');
+    if (primeiroBtn && primeiroBtn.getAttribute('aria-expanded') !== 'true') {
+        toggleDisc(primeiroBtn, 0);
+    }
 }
 
 // ── Toggle disciplina (accordion) ─────────────────────────────────────────────

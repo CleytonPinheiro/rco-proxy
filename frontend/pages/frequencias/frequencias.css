@@ -143,13 +143,41 @@
 }
 
 .disc-btn-chevron {
-    font-size: 16px;
-    color: #9ca3af;
-    transition: transform 0.22s;
+    font-size: 14px;
+    font-weight: 700;
+    color: #4f46e5;
+    background: #eef0ff;
+    border: 1px solid #d8def7;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.22s ease, background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
     flex-shrink: 0;
+    line-height: 1;
+    box-shadow: 0 1px 2px rgba(79,70,229,0.10);
+}
+.disc-btn:hover .disc-btn-chevron {
+    background: #4f46e5;
+    color: #fff;
+    border-color: #4f46e5;
+    box-shadow: 0 2px 6px rgba(79,70,229,0.30);
 }
 .disc-btn[aria-expanded="true"] .disc-btn-chevron {
     transform: rotate(180deg);
+    background: #4f46e5;
+    color: #fff;
+    border-color: #4f46e5;
+}
+/* Pulso sutil no primeiro acesso para reforçar que é clicável */
+@keyframes chevronHint {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(2px); }
+}
+.disc-btn[aria-expanded="false"] .disc-btn-chevron {
+    animation: chevronHint 1.8s ease-in-out 1;
 }
 
 /* ── Painel de frequência da disciplina ──────────────────────────────────── */
@@ -732,7 +760,17 @@
     border-bottom: 1px solid var(--border) !important;
 }
 [data-theme="dark"] .disc-btn-nome { color: var(--text-primary) !important; }
-[data-theme="dark"] .disc-btn-chevron { color: var(--text-muted) !important; }
+[data-theme="dark"] .disc-btn-chevron {
+    color: #a5b4fc !important;
+    background: rgba(99,102,241,0.12) !important;
+    border-color: rgba(99,102,241,0.35) !important;
+}
+[data-theme="dark"] .disc-btn:hover .disc-btn-chevron,
+[data-theme="dark"] .disc-btn[aria-expanded="true"] .disc-btn-chevron {
+    background: #6366f1 !important;
+    color: #fff !important;
+    border-color: #6366f1 !important;
+}
 [data-theme="dark"] .disc-freq-panel {
     background: var(--bg-card) !important;
     border-top-color: var(--border) !important;
