@@ -3,6 +3,39 @@
    Inclua este arquivo em TODAS as páginas antes dos outros CSS
    ================================================================ */
 
+/* ── Transições suaves entre páginas (View Transitions API) ─────
+   Faz o navegador animar a navegação entre páginas; elementos comuns
+   marcados com view-transition-name parecem persistir visualmente.
+   Suporte: Chrome/Edge 126+, Safari 18+. Firefox: degrada silenciosamente.
+   ================================================================ */
+@view-transition { navigation: auto; }
+
+/* Header e side panel mantêm continuidade visual entre páginas */
+.header       { view-transition-name: edu-header; }
+.side-panel   { view-transition-name: edu-side-panel; }
+
+/* Animação rápida e discreta para a área de conteúdo */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 180ms;
+    animation-timing-function: ease;
+}
+::view-transition-old(edu-header),
+::view-transition-new(edu-header),
+::view-transition-old(edu-side-panel),
+::view-transition-new(edu-side-panel) {
+    /* Elementos persistentes não devem piscar */
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+/* Respeita preferência do usuário por menos movimento */
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none; }
+}
+
+
 /* ── Tema Claro (padrão) ──────────────────────────────────────── */
 :root {
     --bg:               #f0f2f5;
