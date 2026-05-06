@@ -1,0 +1,74 @@
+Análise de impacto de custos ao liberar inscrições
+Mapeei os principais drivers de custo do EduSync. Aqui vai o que você precisa decidir antes de abrir cadastro.
+
+Resumo executivo
+Item	Risco de custo	Por quê
+Puppeteer (RCO + GradePen)	🔴 ALTO	1 navegador Chromium por usuário ativo, ~150-300 MB RAM cada
+Replit Autoscale (deploy)	🟠 MÉDIO-ALTO	Cobra por compute-time. Chromium quebra o modelo "scale-to-zero"
+Supabase free tier	🟠 MÉDIO	Tem teto de 500 MB de banco e 5 GB de egress/mês
+PostgreSQL local (Replit)	🟡 BAIXO	Vai junto com o plano, mas tem limite de armazenamento
+Google Classroom API	🟢 BAIXO	Free, só limite de quota (não cobra)
+Audit log + sessões	🟡 BAIXO	Cresce linear, mas linhas pequenas
+1. Puppeteer/Chromium — o gargalo crítico 🔴
+O sistema mantém um navegador Chromium por usuário (UserSessionStore, getBrowser() em RcoWebAutomation.js e cache de página em provas.routes.js por ~25min). É de longe o maior consumidor.
+
+Hoje (uso solo): 1-2 instâncias rodando, RAM ~300-600 MB.
+Com 20 professores ativos simultâneos: facilmente 5-8 GB de RAM + alta CPU em logins concorrentes ao RCO.
+Deploy autoscale: cada réplica precisa caber na máquina. Se passar do limite, o Replit escala — mas autoscale cobra por compute-time, e Chromium nunca fica realmente ocioso (mantém WebSocket aberto).
+Recomendações antes de abrir:
+
+Definir um teto de sessões Puppeteer concorrentes (ex.: pool de 5-10 navegadores compartilhados, ao invés de 1 por usuário). Hoje UserSessionStore faz cleanup a cada 30 min — confirme que browsers fechados são realmente liberados (browser.close()).
+Considerar mudar o deploy para Reserved VM ao invés de Autoscale. Para apps com Puppeteer, Reserved VM costuma ficar mais barato e previsível porque não há cold-start nem cobrança por request.
+Adicionar fila/backoff no sync RCO pós-login para evitar 10 logins Puppeteer simultâneos quando todos entram às 7h.
+2. Supabase free tier — limites concretos 🟠
+O tier gratuito do Supabase tem:
+
+500 MB de banco (postgres + storage)
+5 GB de egress/mês (todo dado lido pela API conta)
+50.000 MAU (autenticação, vocês não usam — ok)
+O SyncService.sincronizarComSupabase() faz DELETE + INSERT em massa das tabelas rco_estabelecimentos, rco_turmas, rco_classes, rco_observacoes a cada login do professor. Com mais usuários:
+
+Egress explode: cada login lê todas as turmas/alunos → fácil estourar 5 GB/mês com 30+ professores ativos.
+Banco cresce: dependendo do volume de turmas/observações, 500 MB pode acabar.
+Recomendações:
+
+Verifique uso atual no painel Supabase (Settings → Usage). Se já está acima de 30%, planeje upgrade para Pro ($25/mês) antes de abrir.
+Considere cache local (PG) das tabelas rco_* por X horas para evitar re-sync a cada login.
+O limparParaTroca() faz DELETE com >= 0 — confirme que tem índice na PK (geralmente sim) para não fazer full scan caro.
+3. PostgreSQL local (Replit) 🟡
+Você tem ~30 tabelas locais (audit, sessões aluno, notificações, provas, reputação, etc). Maior risco de crescimento:
+
+edusync_audit_log — toda ação de admin gera linha. Sem rotação. Com 50 usuários, vai inchar em meses.
+aluno_portal_sessions + pedagogo_portal_sessions — confira se há cleanup de sessões expiradas.
+aluno_reputacao_log — cresce com cada submissão de prova. Já tem UNIQUE para idempotência, mas não é purgado.
+notificacoes_aluno — sem TTL aparente.
+Recomendação: criar um job mensal que purga audit > 1 ano, sessões expiradas, notificações lidas > 90 dias.
+
+4. Google Classroom API 🟢
+É gratuito. Tem quotas (geralmente 10k-100k requests/dia por projeto), mas para uso normal de turma você não chega perto. Sem impacto financeiro.
+
+5. Replit Autoscale — modelo de cobrança
+Você está em deploymentTarget = "autoscale". Esse modelo cobra:
+
+Por número de requests
+Por compute-time (vCPU·s e RAM·GB·s)
+Problema com Puppeteer: o Chromium fica ativo entre requests, então o autoscale não consegue scale-to-zero, e você acaba pagando como se fosse VM dedicada — mas com overhead extra.
+
+Sugestão forte: mudar para deploymentTarget = "vm" (Reserved VM). Custo previsível mensal, sem surpresa quando muita gente entra junto.
+
+⚠️ Alerta de segurança (não-financeiro, mas urgente)
+Encontrei segredos commitados em .replit na seção [userenv.shared]:
+
+SUPABASE_SERVICE_ROLE_KEY (parece ser a anon key pelo conteúdo, mas o nome confunde)
+GOOGLE_CLIENT_SECRET (este é real)
+GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI
+Antes de abrir cadastro público, mova essas chaves para o painel de Secrets do Replit (que você já usa para RCO_CPF, GOOGLE_EMAIL, etc.) e remova de .replit. Se o repo estiver público em algum momento, o GOOGLE_CLIENT_SECRET exposto permite que terceiros usem seu projeto Google — isso pode gerar quota suspension ou abuse de OAuth.
+
+O que eu faria antes de abrir cadastro (em ordem)
+Trocar deploy para Reserved VM — custo previsível com Puppeteer.
+Mover secrets de .replit para o cofre de Secrets.
+Implementar pool de browsers Puppeteer (5-10 compartilhados, não 1/usuário) ou aumentar o cleanup interval.
+Cache de sync RCO — não re-sincronizar a cada login, só a cada 4h ou sob demanda.
+Job de purga para audit/sessões/notificações antigas.
+Verificar uso atual do Supabase e decidir se já precisa do plano Pro.
+Adicionar rate limit no /auth/login mais agressivo se ainda não tiver — login Puppeteer é caro.
