@@ -282,8 +282,100 @@ export function getGradePenStats() {
         pageExpira:       _gpPageExp ? new Date(_gpPageExp).toISOString() : null,
         fetchNaFila:      _gpQueueSize,
         loginEmAndamento: !!_gpLoginLock,
+        ultimoPing:       _gpLastPingTs  ? new Date(_gpLastPingTs).toISOString()  : null,
+        ultimoPingOk:     _gpLastPingOk,
     };
 }
+
+/* ════════════════════════════════════════════════════════════════════
+ *  HEALTH-PING PROATIVO DA SESSÃO GRADEPEN
+ *
+ *  Roda a cada GP_PING_INTERVAL_MS (padrão 20 min).
+ *  Faz um fetch leve de getAnswers.php com jobId=0 dentro do contexto
+ *  da página já autenticada.  errorCode !== 3 → sessão válida.
+ *  Se falhar ou retornar errorCode=3, invalida _gpPage imediatamente
+ *  para que a próxima requisição real dispare um re-login.
+ * ═══════════════════════════════════════════════════════════════════ */
+const GP_PING_INTERVAL_MS = 20 * 60 * 1000; // 20 minutos
+
+let _gpLastPingTs  = 0;     // timestamp do último ping executado
+let _gpLastPingOk  = null;  // true / false / null (nunca pingado)
+
+async function gpHealthPing() {
+    /* Não pinga se não há sessão ativa ou se um login já está em curso */
+    if (!_gpPage || _gpLoginLock) {
+        console.log('[PROVAS][ping] GradePen: sem sessão ativa — ping ignorado.');
+        return;
+    }
+
+    /* Sessão expirou pela validade local — não é necessário pingar; invalida diretamente */
+    if (Date.now() > _gpPageExp) {
+        console.log('[PROVAS][ping] GradePen: sessão local expirada — invalidando sem ping.');
+        const old = _gpPage;
+        _gpPage = null;
+        _gpLastPingOk = false;
+        _gpLastPingTs = Date.now();
+        try { await old.close(); } catch {}
+        return;
+    }
+
+    /*
+     * Serializa o ping através da mesma cadeia de promises que gpFetchAnswers() usa.
+     * Isso garante que o ping nunca fecha _gpPage enquanto um evaluate() está em curso,
+     * eliminando a condição de corrida: o ping espera a fila esvaziar, depois roda,
+     * depois libera para o próximo fetch.
+     */
+    let releasePingMutex;
+    const waitForPrev = _gpMutexChain;
+    _gpMutexChain = new Promise(r => { releasePingMutex = r; });
+
+    let ok = false;
+    try {
+        await waitForPrev; // aguarda todos os fetches anteriores terminarem
+
+        /* Reavalia: pode ter sido invalidado enquanto aguardávamos na fila */
+        if (!_gpPage || _gpLoginLock) {
+            console.log('[PROVAS][ping] GradePen: sessão desapareceu enquanto aguardava — ping ignorado.');
+            return;
+        }
+
+        _gpLastPingTs = Date.now();
+
+        ok = await _gpPage.evaluate(async () => {
+            try {
+                const r = await fetch('/p/requests/getAnswers.php', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                    body:    new URLSearchParams({ jobId: '0', index: '0', type: '0' }).toString(),
+                });
+                const j = await r.json().catch(() => ({}));
+                /* errorCode 3 = sessão negada; 4/5 = job inexistente (ok para nós) */
+                return r.ok && j.errorCode !== 3;
+            } catch { return false; }
+        });
+    } catch (e) {
+        console.error('[PROVAS][ping] GradePen: erro durante ping —', e.message);
+        ok = false;
+    } finally {
+        releasePingMutex(); // libera o próximo waiter na cadeia
+    }
+
+    _gpLastPingOk = ok;
+
+    if (ok) {
+        console.log('[PROVAS][ping] GradePen: sessão OK —', new Date().toISOString());
+    } else {
+        console.warn('[PROVAS][ping] GradePen: sessão INVÁLIDA — invalidando _gpPage para forçar re-login na próxima requisição.');
+        const old = _gpPage;
+        _gpPage = null;
+        try { await old.close(); } catch {}
+    }
+}
+
+/* Inicia o ping periódico assim que o módulo é carregado */
+setInterval(() => {
+    gpHealthPing().catch(e => console.error('[PROVAS][ping] GradePen: falha inesperada no health-ping —', e.message));
+}, GP_PING_INTERVAL_MS);
 
 /**
  * Converte resposta GradePen para nosso formato.
