@@ -12,6 +12,69 @@ function getChromiumPath() {
     return null;
 }
 
+// ── Semáforo de logins concorrentes ──────────────────────────────────────────
+// Impede que dezenas de professores entrando simultaneamente abram Chromium em paralelo.
+// Limite e timeout configuráveis via variáveis de ambiente.
+function clampInt(value, min, max, defaultVal) {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n)) return defaultVal;
+    return Math.max(min, Math.min(max, n));
+}
+
+const LOGIN_CONCURRENCY   = clampInt(process.env.PUPPETEER_LOGIN_CONCURRENCY,  1, 20,       3);
+const LOGIN_QUEUE_TIMEOUT = clampInt(process.env.PUPPETEER_LOGIN_QUEUE_TIMEOUT, 5000, 300000, 60000);
+
+class Semaphore {
+    constructor(max) {
+        this._max     = max;
+        this._active  = 0;
+        this._waiting = [];
+    }
+
+    acquire(timeoutMs) {
+        return new Promise((resolve, reject) => {
+            if (this._active < this._max) {
+                this._active++;
+                resolve(() => this._release());
+                return;
+            }
+            const entry = { resolve, reject, timer: null };
+            entry.timer = setTimeout(() => {
+                const idx = this._waiting.indexOf(entry);
+                if (idx !== -1) this._waiting.splice(idx, 1);
+                console.warn(`[Puppeteer] Login aguardou ${timeoutMs}ms na fila e foi recusado (fila: ${this._waiting.length}, ativos: ${this._active}/${this._max})`);
+                reject(new Error("PUPPETEER_LOGIN_QUEUE_TIMEOUT"));
+            }, timeoutMs);
+            this._waiting.push(entry);
+        });
+    }
+
+    _release() {
+        this._active--;
+        if (this._waiting.length > 0) {
+            const next = this._waiting.shift();
+            clearTimeout(next.timer);
+            this._active++;
+            next.resolve(() => this._release());
+        }
+    }
+
+    get active()  { return this._active; }
+    get queued()  { return this._waiting.length; }
+    get maxSlots(){ return this._max; }
+}
+
+const loginSemaphore = new Semaphore(LOGIN_CONCURRENCY);
+
+/** Retorna estatísticas da fila de logins para observabilidade */
+export function getLoginQueueStats() {
+    return {
+        active:   loginSemaphore.active,
+        queued:   loginSemaphore.queued,
+        maxSlots: loginSemaphore.maxSlots,
+    };
+}
+
 const AUTH_CONFIG = {
     loginPageUrl: process.env.AUTH_LOGIN_PAGE_URL || "https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/login.html",
     clientId: process.env.AUTH_CLIENT_ID || "f340f1b1f65b6df5b5e3f94d95b11daf",
@@ -120,8 +183,18 @@ function extractTokenFromUrl(url) {
 export async function loginWithPuppeteer(cpf, senha) {
     if (!cpf || !senha) throw new Error("CPF e senha são obrigatórios");
 
+    // Adquire slot no semáforo; lança PUPPETEER_LOGIN_QUEUE_TIMEOUT se fila cheia
+    const stats = getLoginQueueStats();
+    if (stats.queued > 0 || stats.active >= stats.maxSlots) {
+        console.log(`[Puppeteer] Fila de login: ativos=${stats.active}/${stats.maxSlots} aguardando=${stats.queued}`);
+    }
+    const releaseSlot = await loginSemaphore.acquire(LOGIN_QUEUE_TIMEOUT);
+
     const loginUrl = `${AUTH_CONFIG.loginPageUrl}?response_type=token&client_id=${AUTH_CONFIG.clientId}&redirect_uri=${encodeURIComponent(AUTH_CONFIG.redirectUri)}&scope=${encodeURIComponent(AUTH_CONFIG.scope)}&tokenFormat=jwt&captcha=false`;
 
+    // Envolver tudo no outer try/finally garante que releaseSlot() seja chamado
+    // mesmo que getBrowser(), newPage() ou qualquer passo intermediário falhe.
+    try {
     const browser = await getBrowser();
     const page = await browser.newPage();
 
@@ -292,8 +365,16 @@ export async function loginWithPuppeteer(cpf, senha) {
         throw new Error("Falha na autenticação. Verifique CPF e senha.");
 
     } finally {
-        await page.close();
+        // page.close() é best-effort: se lançar, o slot ainda deve ser liberado
+        try { await page.close(); } catch (closeErr) {
+            console.warn("[Puppeteer] Erro ao fechar página (ignorado):", closeErr.message);
+        }
         console.log("Página fechada (browser mantido em memória).");
+    }
+    } finally {
+        // Outer finally: garante liberação do slot em qualquer cenário de falha
+        releaseSlot();
+        console.log(`[Puppeteer] Slot liberado — ativos: ${loginSemaphore.active}/${loginSemaphore.maxSlots}, na fila: ${loginSemaphore.queued}`);
     }
 }
 

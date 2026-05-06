@@ -11,6 +11,8 @@ import { google }          from 'googleapis';
 import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 import { auditLogger }     from '../services/AuditLogger.js';
 import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS, getModulosEmDesenvolvimento, setModulosEmDesenvolvimento, MODULO_PAI } from '../config/permissions.js';
+import { getLoginQueueStats } from '../../auth-puppeteer.js';
+import { userSessionStore }   from '../services/UserSessionStore.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1462,6 +1464,34 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             console.error('[ADMIN] Erro ao buscar comunicados de suspensão:', e.message);
             res.status(500).json({ erro: 'Erro interno ao buscar comunicados.' });
         }
+    });
+
+    /* ── Observabilidade Puppeteer ── */
+    router.get('/admin/puppeteer-stats', async (req, res) => {
+        const login   = getLoginQueueStats();
+        const sessoes = userSessionStore.size;
+
+        let gradepen = null;
+        try {
+            const mod = await import('./provas.routes.js');
+            gradepen = mod.getGradePenStats();
+        } catch {}
+
+        res.json({
+            login: {
+                ativos:       login.active,
+                naFila:       login.queued,
+                limiteMáximo: login.maxSlots,
+            },
+            sessoes: {
+                ativas: sessoes,
+            },
+            gradepen,
+            config: {
+                PUPPETEER_LOGIN_CONCURRENCY:   process.env.PUPPETEER_LOGIN_CONCURRENCY   || '3 (padrão)',
+                PUPPETEER_LOGIN_QUEUE_TIMEOUT: process.env.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '60000 (padrão)',
+            },
+        });
     });
 
     return router;

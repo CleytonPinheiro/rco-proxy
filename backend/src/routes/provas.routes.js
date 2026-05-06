@@ -115,9 +115,11 @@ migrarTabelas();
  *  pra chamar requests/getAnswers.php via fetch dentro da própria
  *  página (já com PHPSESSID válido).
  * ═══════════════════════════════════════════════════════════════════ */
-let _gpPage      = null;     // puppeteer Page autenticada
-let _gpPageExp   = 0;        // timestamp local de expiração (~30 min)
-let _gpLoginLock = null;     // Promise atual de login (mutex)
+let _gpPage        = null;              // puppeteer Page autenticada
+let _gpPageExp     = 0;                 // timestamp local de expiração (~30 min)
+let _gpLoginLock   = null;              // Promise atual de login (mutex)
+let _gpMutexChain  = Promise.resolve(); // cadeia de serialização dos fetches
+let _gpQueueSize   = 0;                 // nº de fetches na fila/executando
 
 async function gpLogin() {
     if (_gpLoginLock) return _gpLoginLock;
@@ -217,8 +219,23 @@ async function gpLogin() {
 async function gpFetchAnswers(jobId, index, retried = false) {
     if (!_gpPage || Date.now() > _gpPageExp) await gpLogin();
 
+    // Serialização por cadeia de promises: cada chamada encadeia na cauda atual,
+    // garantindo que apenas UMA execute page.evaluate() por vez mesmo com N waiters.
+    // (Solução robusta vs. mutex simples, que permite que N waiters acordem juntos.)
+    _gpQueueSize++;
+    if (_gpQueueSize > 1) {
+        console.log(`[PROVAS] GradePen: ${_gpQueueSize} operações em fila (serializando)`);
+    }
+
+    let releaseMutex;
+    const waitForPrev = _gpMutexChain;
+    _gpMutexChain = new Promise(r => { releaseMutex = r; });
+
     let j;
+    let fetchError = null;
     try {
+        await waitForPrev;  // aguarda todos os fetches anteriores terminarem
+
         j = await _gpPage.evaluate(async (jId, idx) => {
             const r = await fetch('/p/requests/getAnswers.php', {
                 method:  'POST',
@@ -229,8 +246,17 @@ async function gpFetchAnswers(jobId, index, retried = false) {
             try { return JSON.parse(txt); } catch { return { __raw: txt.slice(0, 200), __status: r.status }; }
         }, jobId, index);
     } catch (e) {
-        if (retried) throw e;
+        fetchError = e;
+    } finally {
+        _gpQueueSize--;
+        releaseMutex();  // libera o próximo waiter na cadeia
+    }
+
+    if (fetchError) {
+        if (retried) throw fetchError;
+        const oldPage = _gpPage;
         _gpPage = null;
+        try { await oldPage.close(); } catch {}
         return gpFetchAnswers(jobId, index, true);
     }
 
@@ -239,12 +265,24 @@ async function gpFetchAnswers(jobId, index, retried = false) {
     }
     if (!j || j.success === false) {
         if (!retried && (j.errorCode === 1 || j.errorCode === 2 || j.errorCode === 3)) {
+            const oldPage = _gpPage;
             _gpPage = null;
+            try { await oldPage.close(); } catch {}
             return gpFetchAnswers(jobId, index, true);
         }
         throw new Error('GradePen recusou: ' + ((j && j.message) || 'erro ' + (j && j.errorCode)));
     }
     return j;
+}
+
+/** Retorna estatísticas do scraper GradePen para observabilidade */
+export function getGradePenStats() {
+    return {
+        pageAtiva:        !!_gpPage && Date.now() < _gpPageExp,
+        pageExpira:       _gpPageExp ? new Date(_gpPageExp).toISOString() : null,
+        fetchNaFila:      _gpQueueSize,
+        loginEmAndamento: !!_gpLoginLock,
+    };
 }
 
 /**

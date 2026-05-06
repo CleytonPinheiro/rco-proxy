@@ -41,27 +41,43 @@ class UserSessionStore {
         return session;
     }
 
-    /** Remove e destrói uma sessão */
+    /**
+     * Remove e destrói uma sessão.
+     * Zera credenciais (CPF/senha) e token RCO da memória.
+     * Nota: sessões não possuem páginas Puppeteer próprias — o browser é um
+     * singleton compartilhado e as páginas de login são sempre fechadas no
+     * finally de loginWithPuppeteer(), então não há recursos Chromium por sessão.
+     */
     destroy(sessionId) {
         const session = this.#sessions.get(sessionId);
         if (session) {
+            const nome = session.nome || '?';
             session.destroy();
             this.#sessions.delete(sessionId);
-            console.log(`[SessionStore] Sessão encerrada. Restantes: ${this.#sessions.size}`);
+            console.log(`[SessionStore] Sessão encerrada: ${nome}. Token RCO e credenciais zerados da memória. Restantes: ${this.#sessions.size}`);
         }
     }
 
-    /** Remove todas as sessões expiradas */
+    /**
+     * Remove todas as sessões expiradas (chamado a cada 30 min).
+     * Cada sessão expirada tem credenciais e token zerados da memória.
+     * O singleton Chromium permanece ativo (compartilhado entre todos).
+     */
     #cleanup() {
         let removed = 0;
         for (const [id, session] of this.#sessions) {
             if (session.isExpired()) {
+                const nome = session.nome || '?';
+                const idle = Math.round((Date.now() - session.lastActivity) / 60_000);
                 session.destroy();
                 this.#sessions.delete(id);
+                console.log(`[SessionStore] Sessão expirada: ${nome} (${idle} min inativa) — credenciais e token zerados.`);
                 removed++;
             }
         }
-        if (removed > 0) console.log(`[SessionStore] Limpeza: ${removed} sessão(ões) expirada(s) removida(s)`);
+        if (removed > 0) {
+            console.log(`[SessionStore] Limpeza: ${removed} sessão(ões) removida(s). Ativas: ${this.#sessions.size}`);
+        }
     }
 
     get size() { return this.#sessions.size; }

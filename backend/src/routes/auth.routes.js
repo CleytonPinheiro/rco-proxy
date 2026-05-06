@@ -135,7 +135,10 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         let rcoToken;
         try {
             rcoToken = await loginWithPuppeteer(cpfLimpo, senha);
-        } catch {
+        } catch (loginErr) {
+            if (loginErr.message === 'PUPPETEER_LOGIN_QUEUE_TIMEOUT') {
+                return res.status(503).json({ erro: 'Servidor ocupado com muitos logins simultâneos. Aguarde alguns segundos e tente novamente.' });
+            }
             return res.status(401).json({ erro: 'CPF ou senha incorretos (RCO).' });
         }
 
