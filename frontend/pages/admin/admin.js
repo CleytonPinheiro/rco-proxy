@@ -2796,8 +2796,11 @@ function renderSistema(d, cache, rl, historico) {
 
             const nameColor = neverSynced ? '#dc2626' : (veryStale ? '#b91c1c' : 'inherit');
             const syncColColor = veryStale ? '#dc2626' : (stale ? '#d97706' : 'var(--text-muted)');
+
+            const _isExpired = syncDate && (syncDate.getTime() + ttlMs - Date.now()) <= 0;
+            const _filterStatus = neverSynced ? 'never' : veryStale ? 'very-stale' : _isExpired ? 'expired' : 'ok';
             return `
-            <tr style="${rowStyle}">
+            <tr style="${rowStyle}" data-filter-status="${_filterStatus}">
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${nameColor}">${esc(u.nome || u.email || String(u.id))}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${syncColColor};font-size:.8rem">${syncCell}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.8rem;color:${nextSyncColor}">${nextSyncCell}</td>
@@ -2836,6 +2839,13 @@ function renderSistema(d, cache, rl, historico) {
             </div>
             ${semDados}
             ${usuarios.length > 0 ? `
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                <span style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-right:2px">Filtrar:</span>
+                <button onclick="filterSyncCache('all',this)" data-filter-btn style="padding:3px 11px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid #2563eb;background:#2563eb;color:#fff">Todos</button>
+                <button onclick="filterSyncCache('never',this)" data-filter-btn style="padding:3px 11px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid #fca5a5;background:#fee2e2;color:#dc2626">⛔ Nunca sincronizou</button>
+                <button onclick="filterSyncCache('very-stale',this)" data-filter-btn style="padding:3px 11px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid #fca5a5;background:#fee2e2;color:#b91c1c">⚠️ Sem sync há +7 dias</button>
+                <button onclick="filterSyncCache('expired',this)" data-filter-btn style="padding:3px 11px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid #fcd34d;background:#fef9c3;color:#92400e">🕐 Vencidos</button>
+            </div>
             <div style="overflow-x:auto">
                 <table style="width:100%;border-collapse:collapse;font-size:.85rem">
                     <thead>
@@ -2848,7 +2858,7 @@ function renderSistema(d, cache, rl, historico) {
                             <th style="padding:6px 10px;text-align:right;border-bottom:2px solid var(--border)">% Cache Hit</th>
                         </tr>
                     </thead>
-                    <tbody>${linhas}</tbody>
+                    <tbody id="syncCacheTbody">${linhas}</tbody>
                     <tfoot>${totaisRow}</tfoot>
                 </table>
             </div>` : ''}
@@ -3245,6 +3255,36 @@ window.salvarPuppeteerConcurrency = async function () {
     } catch (e) {
         if (msg) { msg.style.color = '#dc2626'; msg.textContent = `Erro: ${e.message}`; }
         showToast(`Erro ao salvar: ${e.message}`, 'error');
+    }
+};
+
+window.filterSyncCache = function (filter, clickedBtn) {
+    const tbody = document.getElementById('syncCacheTbody');
+    if (!tbody) return;
+
+    const PREDICATES = {
+        'all':        () => true,
+        'never':      s => s === 'never',
+        'very-stale': s => s === 'very-stale',
+        'expired':    s => s === 'expired' || s === 'very-stale' || s === 'never',
+        'ok':         s => s === 'ok',
+    };
+    const pred = PREDICATES[filter] || (() => true);
+
+    const rows = tbody.querySelectorAll('tr[data-filter-status]');
+    rows.forEach(row => {
+        row.style.display = pred(row.getAttribute('data-filter-status')) ? '' : 'none';
+    });
+
+    const allBtns = document.querySelectorAll('[data-filter-btn]');
+    allBtns.forEach(btn => {
+        btn.style.opacity = '0.55';
+        btn.style.outline = 'none';
+    });
+    if (clickedBtn) {
+        clickedBtn.style.opacity = '1';
+        clickedBtn.style.outline = '2px solid currentColor';
+        clickedBtn.style.outlineOffset = '2px';
     }
 };
 
