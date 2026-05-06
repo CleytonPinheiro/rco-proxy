@@ -110,7 +110,7 @@ async function initializeApp() {
         await initializeDatabase();
 
         const { supabase, supabaseAdmin }                     = await import('./src/config/supabase.js');
-        const { loginWithPuppeteer, decodeJwtExpiration }     = await import('./auth-puppeteer.js');
+        const { loginWithPuppeteer, decodeJwtExpiration, setLoginConcurrency, setConcurrencyGetter } = await import('./auth-puppeteer.js');
         const { tokenService }                                = await import('./src/services/TokenService.js');
         const { rcoApiService }                               = await import('./src/services/RcoApiService.js');
         const { syncService }                                 = await import('./src/services/SyncService.js');
@@ -157,6 +157,34 @@ async function initializeApp() {
 
         // Agendar sync de presença nos horários fixos
         setTimeout(() => presencaService.agendarSyncPresenca(), 5000);
+
+        // Registrar getter de concorrência: lido do banco a cada login (fallback para env/padrão).
+        // Também aplica imediatamente o valor salvo para pré-aquecer o semáforo após restart.
+        setConcurrencyGetter(async () => {
+            const { rows } = await localPool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'puppeteer_login_concurrency' LIMIT 1`
+            );
+            if (rows.length > 0) {
+                const v = parseInt(rows[0].valor, 10);
+                return Number.isFinite(v) ? v : null;
+            }
+            return null;
+        });
+        // Aplicar imediatamente ao iniciar (sem esperar o primeiro login)
+        try {
+            const { rows } = await localPool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'puppeteer_login_concurrency' LIMIT 1`
+            );
+            if (rows.length > 0) {
+                const saved = parseInt(rows[0].valor, 10);
+                if (Number.isFinite(saved) && saved >= 1 && saved <= 20) {
+                    setLoginConcurrency(saved);
+                    console.log(`[Puppeteer] Concorrência restaurada do banco: ${saved}`);
+                }
+            }
+        } catch (e) {
+            console.warn('[Puppeteer] Não foi possível restaurar concorrência do banco:', e.message);
+        }
 
         // Job de purga de dados antigos (audit_log, reputacao_log, notificacoes_aluno)
         const { agendarPurga } = await import('./src/services/purgeJob.js');

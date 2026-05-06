@@ -31,6 +31,11 @@ class Semaphore {
         this._waiting = [];
     }
 
+    /** Update the concurrency limit at runtime — takes effect on the next acquire() call. */
+    setMax(newMax) {
+        this._max = Math.max(1, Math.min(20, newMax));
+    }
+
     acquire(timeoutMs) {
         return new Promise((resolve, reject) => {
             if (this._active < this._max) {
@@ -73,6 +78,31 @@ export function getLoginQueueStats() {
         queued:   loginSemaphore.queued,
         maxSlots: loginSemaphore.maxSlots,
     };
+}
+
+/**
+ * Atualiza o limite de concorrência do semáforo em tempo de execução.
+ * Deve ser chamado após salvar o novo valor no banco (edusync_config).
+ * @param {number} n — novo limite (1–20)
+ */
+export function setLoginConcurrency(n) {
+    loginSemaphore.setMax(n);
+    console.log(`[Puppeteer] Concorrência de login atualizada para ${loginSemaphore.maxSlots}`);
+}
+
+/**
+ * Getter assíncrono opcional injetado por index.js após o pool estar pronto.
+ * Chamado antes de cada login para sincronizar o semáforo com edusync_config.
+ * Assinatura: () => Promise<number|null>
+ */
+let _concurrencyGetter = null;
+
+/**
+ * Registra um getter que retorna o limite de concorrência atual do banco.
+ * @param {() => Promise<number|null>} fn
+ */
+export function setConcurrencyGetter(fn) {
+    _concurrencyGetter = fn;
 }
 
 const AUTH_CONFIG = {
@@ -182,6 +212,21 @@ function extractTokenFromUrl(url) {
 // ── Login principal ───────────────────────────────────────────────────────────
 export async function loginWithPuppeteer(cpf, senha) {
     if (!cpf || !senha) throw new Error("CPF e senha são obrigatórios");
+
+    // Sincronizar o semáforo com o valor atual do banco antes de cada tentativa.
+    // Isso garante que mudanças feitas no painel de admin entrem em vigor no próximo login
+    // sem reiniciar o servidor, mesmo que o processo nunca tenha chamado setLoginConcurrency.
+    if (_concurrencyGetter) {
+        try {
+            const dbVal = await _concurrencyGetter();
+            if (Number.isFinite(dbVal) && dbVal >= 1 && dbVal <= 20 && dbVal !== loginSemaphore.maxSlots) {
+                loginSemaphore.setMax(dbVal);
+                console.log(`[Puppeteer] Concorrência sincronizada do banco: ${dbVal}`);
+            }
+        } catch (e) {
+            console.warn('[Puppeteer] Falha ao ler concorrência do banco (usando valor atual):', e.message);
+        }
+    }
 
     // Adquire slot no semáforo; lança PUPPETEER_LOGIN_QUEUE_TIMEOUT se fila cheia
     const stats = getLoginQueueStats();

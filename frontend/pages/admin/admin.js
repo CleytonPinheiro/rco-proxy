@@ -2718,7 +2718,7 @@ function renderSistema(d, cache, rl, historico) {
         </div>`;
     }
 
-    const concurrency  = config.PUPPETEER_LOGIN_CONCURRENCY  || '—';
+    const concurrency  = (typeof config.PUPPETEER_LOGIN_CONCURRENCY === 'number') ? config.PUPPETEER_LOGIN_CONCURRENCY : (parseInt(config.PUPPETEER_LOGIN_CONCURRENCY, 10) || 3);
     const queueTimeout = config.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '—';
     const filaLimiar   = (typeof config.FILA_ALERTA_LIMIAR === 'number') ? config.FILA_ALERTA_LIMIAR : 5;
 
@@ -2876,12 +2876,21 @@ function renderSistema(d, cache, rl, historico) {
     ${rateLimitHtml}
     ${syncCacheHtml}
     <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
-        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px">Configuração atual (variáveis de ambiente)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:.85rem">
-            <div>
-                <span style="color:var(--text-muted)">PUPPETEER_LOGIN_CONCURRENCY: </span>
-                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(concurrency))}</code>
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px">Configuração de Concorrência</div>
+        <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:14px">Limite de logins simultâneos via Puppeteer. A alteração entra em vigor no próximo login, sem reiniciar o servidor.</div>
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:4px">
+                <label for="puppeteer_concurrency_input" style="font-size:.75rem;font-weight:600;color:var(--text-secondary)">Slots simultâneos (1–20)</label>
+                <input type="number" id="puppeteer_concurrency_input" value="${esc(String(concurrency))}" min="1" max="20"
+                    style="width:90px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.9rem;font-weight:700;background:var(--bg-input);color:var(--text-primary)">
             </div>
+            <button onclick="salvarPuppeteerConcurrency()"
+                style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">
+                💾 Salvar
+            </button>
+            <span id="puppeteerConcurrencyMsg" style="font-size:.82rem"></span>
+        </div>
+        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:16px;font-size:.85rem">
             <div>
                 <span style="color:var(--text-muted)">PUPPETEER_LOGIN_QUEUE_TIMEOUT: </span>
                 <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(queueTimeout))} ms</code>
@@ -3041,6 +3050,40 @@ async function salvarPurgaConfig() {
         showToast(`Erro ao salvar: ${e.message}`, 'error');
     }
 }
+
+window.salvarPuppeteerConcurrency = async function () {
+    const el  = document.getElementById('puppeteer_concurrency_input');
+    const msg = document.getElementById('puppeteerConcurrencyMsg');
+    if (!el) return;
+
+    const v = parseInt(el.value, 10);
+    if (!Number.isFinite(v) || v < 1 || v > 20) {
+        if (msg) { msg.style.color = '#dc2626'; msg.textContent = 'Valor inválido (1–20).'; }
+        return;
+    }
+
+    if (msg) { msg.style.color = 'var(--text-muted)'; msg.textContent = 'Salvando...'; }
+
+    try {
+        const res = await api('/admin/puppeteer-concurrency', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ concurrency: v }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        if (msg) {
+            msg.style.color = '#16a34a';
+            msg.textContent = `Salvo! Limite ativo: ${data.concurrency} slots.`;
+            setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
+        }
+        showToast(`Concorrência atualizada para ${data.concurrency} slots.`, 'success');
+        carregarSistema();
+    } catch (e) {
+        if (msg) { msg.style.color = '#dc2626'; msg.textContent = `Erro: ${e.message}`; }
+        showToast(`Erro ao salvar: ${e.message}`, 'error');
+    }
+};
 
 /* ── Init ── */
 carregarUsuarios();

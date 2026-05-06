@@ -11,7 +11,7 @@ import { google }          from 'googleapis';
 import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 import { auditLogger }     from '../services/AuditLogger.js';
 import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS, getModulosEmDesenvolvimento, setModulosEmDesenvolvimento, MODULO_PAI } from '../config/permissions.js';
-import { getLoginQueueStats } from '../../auth-puppeteer.js';
+import { getLoginQueueStats, setLoginConcurrency } from '../../auth-puppeteer.js';
 import { userSessionStore }   from '../services/UserSessionStore.js';
 import { getCpfRateLimitSnapshot, clearCpfRateLimit } from './auth.routes.js';
 
@@ -1596,6 +1596,39 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         res.json({ ok: true, removido: removed });
     });
 
+    /* ── Concorrência de login Puppeteer (ajuste em tempo real) ── */
+    router.put('/admin/puppeteer-concurrency', async (req, res) => {
+        const v = parseInt(req.body?.concurrency, 10);
+        if (!Number.isFinite(v) || v < 1 || v > 20) {
+            return res.status(400).json({ erro: 'Valor inválido. Deve ser um inteiro entre 1 e 20.' });
+        }
+
+        try {
+            await pool.query(
+                `INSERT INTO edusync_config (chave, valor)
+                 VALUES ('puppeteer_login_concurrency', $1)
+                 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+                [String(v)]
+            );
+
+            setLoginConcurrency(v);
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'PUPPETEER_CONCURRENCY_ATUALIZADA',
+                modulo:      'admin',
+                detalhes:    { concurrency: v },
+                ip:          req.ip,
+            }).catch(() => {});
+
+            res.json({ ok: true, concurrency: v });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao salvar concorrência Puppeteer:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Observabilidade Puppeteer ── */
     router.get('/admin/puppeteer-stats', async (req, res) => {
         const login   = getLoginQueueStats();
@@ -1618,7 +1651,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             },
             gradepen,
             config: {
-                PUPPETEER_LOGIN_CONCURRENCY:   process.env.PUPPETEER_LOGIN_CONCURRENCY   || '3 (padrão)',
+                PUPPETEER_LOGIN_CONCURRENCY:   login.maxSlots,
                 PUPPETEER_LOGIN_QUEUE_TIMEOUT: process.env.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '60000 (padrão)',
                 FILA_ALERTA_LIMIAR:            (v => Number.isFinite(v) ? v : 5)(parseInt(process.env.FILA_ALERTA_LIMIAR, 10)),
             },
