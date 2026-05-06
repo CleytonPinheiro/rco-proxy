@@ -57,8 +57,22 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'qrcode',             nome: 'Gerador de QR Code' },
     { id: 'suporte',            nome: 'Suporte' },
     { id: 'portal-aluno',       nome: 'Portal do Aluno (admin)' },
+    { id: 'solicitacoes',       nome: 'Solicitações (Classroom)' },
+    { id: 'portal-log',         nome: 'Log Portal Aluno' },
     { id: 'planos',             nome: 'Planos' },
 ];
+
+/**
+ * Dependência pai → filho entre módulos.
+ * Para um perfil acessar um módulo "filho", precisa ter o módulo "pai" também.
+ * Usado pelo backend (podeAcessar) e pela UI do admin para auto-habilitar
+ * o pai quando o admin marca o filho.
+ */
+export const MODULO_PAI = {
+    'portal-aluno':  'classroom',
+    'solicitacoes':  'classroom',
+    'portal-log':    'classroom',
+};
 
 /* ── Módulos em desenvolvimento (gerenciado pelo admin) ── */
 let _modulosEmDesenvolvimento = new Set(['pedagogico', 'comunicados', 'retorno-pedagogico']);
@@ -119,7 +133,11 @@ export function podeAcessar(perfil, modulo) {
     const lista = getModulosEfetivos(perfil);
     if (!lista || lista.length === 0) return false;
     if (lista.includes('*')) return true;
-    return lista.includes(modulo);
+    if (!lista.includes(modulo)) return false;
+    /* Dependência: para acessar um filho, precisa ter o pai também. */
+    const pai = MODULO_PAI[modulo];
+    if (pai && !lista.includes(pai)) return false;
+    return true;
 }
 
 export const LISTA_PERFIS = Object.entries(PERFIS).map(([id, cfg]) => ({

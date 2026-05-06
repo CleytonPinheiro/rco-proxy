@@ -96,9 +96,10 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
     router.get('/me', requireAuth, async (req, res) => {
         const base = req.userSession.toPublic();
         try {
-            const { getMapaPermissoesEfetivas, getModulosEmDesenvolvimento } = await import('../config/permissions.js');
+            const { getMapaPermissoesEfetivas, getModulosEmDesenvolvimento, MODULO_PAI } = await import('../config/permissions.js');
             base.permissoesPerfis           = getMapaPermissoesEfetivas();
             base.modulosEmDesenvolvimento   = getModulosEmDesenvolvimento();
+            base.modulosPai                 = MODULO_PAI;
         } catch {}
         res.json(base);
     });

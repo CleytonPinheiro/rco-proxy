@@ -1,17 +1,11 @@
 # EduSync
 
-Sistema de gestão escolar para professores do Paraná, com foco em sincronização com o RCO Digital e integração com Google Classroom.
+EduSync is a school management system for Paraná teachers, focusing on synchronization with RCO Digital and integration with Google Classroom.
 
 ## Run & Operate
 
 - **Run:** `cd backend && node index.js` (Backend listens on port 5000)
-- **Environment Variables:**
-    - `RCO_CPF`: Service account CPF for background RCO sync
-    - `RCO_SENHA`: Service account password
-    - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`: Supabase credentials
-    - `DATABASE_URL`: Local PostgreSQL connection string for EduSync-specific tables
-    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google API credentials for Classroom integration
-    - `GOOGLE_EMAIL`, `GOOGLE_PASSWORD`: School Google account for the GradePen scraper (Puppeteer logs into Google → GradePen)
+- **Environment Variables:** `RCO_CPF`, `RCO_SENHA`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_EMAIL`, `GOOGLE_PASSWORD`
 
 ## Stack
 
@@ -28,60 +22,37 @@ Sistema de gestão escolar para professores do Paraná, com foco em sincronizaç
 - `backend/index.js`: Main backend entry point.
 - `backend/src/config/`: Configuration files (Supabase, DB init, permissions, plans).
 - `backend/src/middleware/auth.middleware.js`: Authentication and RBAC middleware.
-- `backend/src/services/`: Core business logic and external API integrations (RCO, Token, Sync, UserSession, AuditLog).
+- `backend/src/services/`: Core business logic and external API integrations.
 - `backend/src/routes/`: API route definitions.
-- `frontend/login/`: User login page.
-- `frontend/shared/`: Shared CSS, JS (authentication guard, theme), and assets.
-- `frontend/pages/`: Main application pages (admin, classroom, dashboard, etc.).
-- `frontend/alunos/`: Public student portal frontend.
-- `frontend/pedagogico-portal/`: Public pedagogical portal frontend.
-- `frontend/pages/provas/`: Teacher UI for the Provas module.
-- `frontend/alunos/prova/`: Student-facing exam correction page (etapa 1 → etapa 2 reveal + 2nd-corrector blind mode).
-- `backend/src/routes/provas.routes.js`: Provas module — DB migrations, GradePen scraper (Puppeteer + Google), teacher CRUD routes, student submit routes, 2nd-corrector flow.
-- `backend/data/classroom_token.json`: Global Google Classroom token (legacy).
-- `classroom_tokens` table: Per-user Google Classroom tokens.
+- `frontend/`: Contains login, shared, pages, alunos, and pedagogico-portal directories.
 - `backend/src/config/planos.js`: Defines available plans and functionalities.
+- `classroom_tokens` table: Per-user Google Classroom tokens.
 - `edusync_usuarios` table: User management and RBAC.
-- `edusync_audit_log` table: Audit trail for user actions.
-- `edusync_config` table: Global system configurations, including demo mode.
+- `edusync_audit_log` table: Audit trail.
+- `edusync_config` table: Global system configurations.
 
 ## Architecture decisions
 
-- **Token RCO por usuário:** Each user maintains an isolated RCO session and token, refreshed lazily via Puppeteer only when needed.
-- **Session-aware TokenService:** Uses `AsyncLocalStorage` to delegate RCO token management to the current user's session if available, falling back to a service account for background tasks.
-- **First login as admin:** The very first successful login populates the `edusync_usuarios` table by creating the user as an `admin`.
-- **Soft delete for users:** Users are deactivated (`ativo = false`) rather than physically deleted.
-- **Auth.js injection:** A single line in `theme.js` injects `auth.js` into all frontend pages, handling authentication guards, RBAC navigation, and user badges without per-page modifications.
-- **OOP with ES Modules:** Extensive use of ES Modules and private fields (`#field`) in service classes, avoiding `require()`.
-- **Permissão vs. "em desenvolvimento":** dois conceitos independentes em `auth.js`:
-    - **Sem permissão pelo perfil:** item é **escondido** (`data-perm-hidden=true` + `display:none`).
-    - **Em desenvolvimento:** módulo está em `MODULOS_EM_DESENVOLVIMENTO` (Set declarado no topo de `auth.js`). Para os perfis que normalmente teriam acesso, o item aparece **desabilitado** (`data-perm-blocked=true`): acinzentado, cadeado `🔒`, `cursor: not-allowed`, tooltip "🚧 X — módulo em desenvolvimento" e toast inferior ao clicar. Backend ainda pode atender essas rotas; o flag é puramente de UI/comunicação. Para liberar, basta remover o módulo do Set. Itens bloqueados disputam espaço no topbar como qualquer outro item — quando não cabem, vão para o overflow do side panel (sem duplicação). São reordenados para o fim de cada contêiner (`.nav-menu`, `.side-panel-nav`, `.side-overflow-group`).
-- **Provas (GradePen scraper):** Reuses the shared Puppeteer `getBrowser()` (same one used for RCO sync) to perform "Sign in with Google" on gradepen.com using `GOOGLE_EMAIL`/`GOOGLE_PASSWORD`, keeps the authenticated `page` object cached for ~25 min and runs `getAnswers.php` calls via `page.evaluate(fetch)` so the PHPSESSID cookie stays inside the browser context. Manual fallback: `POST /classroom/provas` accepts `variantesManuais` if scraping fails.
-- **Provas → Classroom:** Publicar uma prova cria um `courseWork` ASSIGNMENT (com `dueDate`/pontos) e auto-cria/garante um grupo dedicado "Avaliação — X" (cor `#E91E63`, idempotente via `classroom_grupo_atividades`). `baseUrl` deriva de `req.get('host')`. O form de criação NÃO pede mais grupo destino (foi removido).
-- **Gamificação (Reputação):** Dois trilhos independentes em `aluno_reputacao` (PK `email+trilho`): `aluno` (1º corretor) e `corretor` (2º corretor). Idempotência via `aluno_reputacao_log` com UNIQUE `(aluno_email, evento, submissao_id)`. XP creditado em três momentos: (1) na submissão do aluno (rapidez/no-prazo), (2) no envio da 2ª correção (envio + bônus voluntária), (3) na efetivação da prova (variante correta + precisão da 2ª correção em 5 faixas: ≤0.3/≤0.7/≤1.5/≤3.0/>3.0). Foto conferida pelo prof: +8 ou -10. Streaks separados por categoria (geral, perfeitas, rápido, foto_ok). Badges em JSONB. **Sem leaderboard público (privacidade).**
-- **Permissões editáveis pelo admin:** `permissions.js` mantém os defaults em `PERFIS`, mas o admin pode sobrescrever via aba "Permissões" do painel admin. Overrides ficam em `edusync_perfis_overrides (perfil PK, modulos JSONB)` e são carregados para um `Map` em memória durante `dbInit` (via dynamic import — ESM cacheia o módulo, então `auth.middleware.js` enxerga o mesmo singleton). `getModulosEfetivos(perfil)` consulta override → fallback para default. `/api/me` devolve `permissoesPerfis` que o frontend (`auth.js`) cacheia em `localStorage.edusync_perms_cache` para reidratar a nav sem flash. `MODULOS_DISPONIVEIS` em `permissions.js` é o catálogo único de módulos da UI. Admin nunca pode ser editado (sempre `*`); rotas: GET/PUT/DELETE `/api/admin/permissoes[/:perfil]`.
-- **Módulos "em desenvolvimento" dinâmicos:** lista persistida em `edusync_config (chave='modulos_em_desenvolvimento', valor JSON array)`, carregada para `_modulosEmDesenvolvimento` (Set em memória) no `dbInit` via dynamic import de `permissions.js`. `/api/me` devolve `modulosEmDesenvolvimento`; frontend `auth.js` cacheia em `localStorage.edusync_devmods_cache`. Rota: `PUT /api/admin/permissoes/em-desenvolvimento` (precede `/:perfil` no admin.routes para não cair no param). UI: cada linha da matriz de Permissões tem um chip "em dev" com toggle laranja — admin marca/desmarca e clica Salvar (envia em paralelo com os PUTs por perfil). Indicador visual: cone 🚧 antes do nome do módulo na matriz. CSS: `[data-perm-blocked="true"]::before { content:"🚧"; font-size:16px; margin-right:6px }` (antes era ::after pequeno depois do nome). No `.side-nav-item`, o ::before é desativado para não conflitar com o ícone próprio do item — o aviso aparece via `.side-nav-desc::before`.
-- **Side-panel hardcoded sem duplicata:** `auth.js` só esconde itens hardcoded em `.side-panel-nav` quando o mesmo módulo aparece também no `.nav-menu` do topbar (via `modulosNoTopbar` Set). Caso contrário (ex.: `mapa-sala` nas pages do pedagogo onde só está no side panel), o item é mantido — antes o esconde-tudo causava o sumiço de mapa-sala para pedagogo.
-- **Provas — RBAC:** Módulo `provas` está em `MODULO_URLS`/`PERFIL_MODULOS` (frontend `auth.js`) e em `backend/src/config/permissions.js`, liberado apenas para `admin` e `professor`. No backend, o `createProvasRouter` é montado com `requireModulo('provas')` em `backend/src/routes/index.js` (rotas públicas do aluno via `createProvasPublicRouter` ficam fora desse gate). Pedagogo NÃO vê o link nem chama a API.
-- **Trocar de colégio em qualquer página:** o dashboard publica em `localStorage.edusync_escolas_map` o objeto `{ "ESCOLA A": [codTurmas...], ... }` sempre que `persistirEscolaContexto()` é chamado. Em `auth.js`, `injetarBadgeEscola()` lê esse mapa: se houver >1 escola, a badge vira um `<button>` clicável com caret `▾`, abrindo um dropdown (`.escola-switcher-menu`) ancorado em `.escola-switcher` (position:relative). Selecionar outra escola chama `trocarEscola(nome, codTurmas)` que atualiza `edusync_escola` + `edusync_escola_codturmas` e dá `location.reload()` para os filtros da página atual reaplicarem o contexto. Fecha em click fora ou Esc. Em telas <768px o switcher fica oculto (mesma regra anterior).
-- **Sidebar QR Code:** O link `<a href="/qrcode/">` deve estar DENTRO de `<div class="side-panel-nav">` (antes ele estava órfão entre o `</div>` do nav e o footer, causando desalinhamento). Padrão único para todas as páginas com side panel.
-- **Nav adaptativo:** `iniciarNavAdaptativo()` em `auth.js` usa `ResizeObserver` para empurrar itens do `.nav-menu` que não cabem no header para o topo do `.side-panel-nav` (grupo "Navegação") e mostra um botão "Mais ▾". A folga (`dispW = totalW - leftW - actW - 96px`) reserva espaço para o botão Mais e evita flicker.
-- **Voluntariar 2º corretor:** Aluno pode pegar correções extras em provas com `segundo_corretor_ativo=true` e não efetivadas, desde que (a) não tenha submetido essa prova, (b) tenha <2 correções nessa prova, (c) tenha <3 pendências totais e (d) limite de 3 voluntárias/dia. Cria notificação `tipo='segundo_corretor_voluntario'` (queries de pendentes/submeter incluem ambos os tipos).
+- **Token RCO por usuário:** Each user maintains an isolated RCO session, refreshed lazily. `AsyncLocalStorage` delegates RCO token management to the current user's session or a service account for background tasks.
+- **First login as admin:** The very first successful login populates `edusync_usuarios` by creating the user as an `admin`.
+- **Auth.js injection:** A single line in `theme.js` injects `auth.js` into all frontend pages for authentication guards, RBAC navigation, and user badges.
+- **Dynamic "In Development" Modules:** A list of modules "em desenvolvimento" is persisted in `edusync_config`, loaded into an in-memory Set. Frontend caches this list for UI adjustments (e.g., disabling features).
+- **Provas Module (GradePen Scraper):** Reuses Puppeteer's `getBrowser()` for Google login on gradepen.com, caches the authenticated page, and runs `getAnswers.php` calls within the browser context. Creating a "Prova" publishes a Google Classroom `courseWork` assignment.
+- **Admin-Editable Permissions:** `permissions.js` defines default roles, but admins can override them via the admin panel, stored in `edusync_perfis_overrides`. The frontend (`auth.js`) caches these for seamless navigation updates.
+- **Parent-Child Module Dependencies:** `permissions.js` defines parent-child relationships between modules, ensuring both parent and child permissions are checked for access. Frontend UI reorders and indents child modules.
+- **Gamification (Reputation):** Separate reputation tracks (`aluno`, `corretor`) for students and 2nd correctors, with XP awarded at submission, 2nd correction, and exam finalization. No public leaderboard for privacy.
 
 ## Product
 
 EduSync provides a comprehensive school management system with features like:
-- **Multi-user authentication (RBAC):** Profiles for `admin`, `professor`, `pedagogo`, `secretaria`, `aux_turno`, `cozinha`.
-- **RCO Digital Integration:** Automatic authentication and data synchronization with RCO Digital via Puppeteer.
-- **Google Classroom Integration:** Full OAuth2 flow, CRUD operations for courses, assignments, and grades.
-- **QR Code Generator:** For students and teachers, accessible without authentication.
-- **Modules:** Class management, attendance, badges, groups, behavior tracking, materials, loans, daily presence, kitchen panel, student circulation, WhatsApp absence notifications (via N8n), drag-and-drop classroom map, daily checklists, Pedagogical Panel.
-- **Student Portal:** Publicly accessible portal for students to view pending assignments from Google Classroom.
-- **Pedagogical Portal:** Publicly accessible portal for pedagogical staff to view and manage classroom data, including grades, late submissions, and absences.
-- **Subscription Plans and Trial Management:** Gateways functionalities based on user/school plans, with trial periods, extensions, and support ticket integration.
-- **Admin Panel:** User management, audit logs, configuration export/import, and plan management.
-- **PDF Generation:** Suspension notices.
-- **Provas (GradePen-style auto-grading):** Teacher registers a paper exam via GradePen ansid, system scrapes the answer key (Puppeteer + Google login), student logs into the portal at `/alunos/prova/?ansid=<jobId>.<variant>`, marks bubbles, sees grade vs answer key. Grade is draft until teacher "efetiva". Optional anonymous 2nd-corrector (toggleable per exam) — sortition creates a `notificacoes_aluno` entry, the chosen student opens `/alunos/prova/?seg=<subRefId>` to grade blind.
+- **Multi-user authentication (RBAC):** Profiles for various school roles.
+- **RCO Digital Integration:** Automatic authentication and data synchronization.
+- **Google Classroom Integration:** Full OAuth2 flow, CRUD for courses, assignments, grades.
+- **Modules:** Class management, attendance, badges, groups, behavior, materials, loans, daily presence, kitchen panel, student circulation, WhatsApp notifications, drag-and-drop classroom map, daily checklists, Pedagogical Panel.
+- **Student and Pedagogical Portals:** Publicly accessible portals for viewing pending assignments, grades, late submissions, and absences.
+- **Subscription Plans and Trial Management:** Feature gating based on user/school plans.
+- **Admin Panel:** User management, audit logs, configuration export/import, plan management.
+- **Provas (GradePen-style auto-grading):** Teacher-created exams, system-scraped answer keys, student bubble marking and draft grading, optional anonymous 2nd-corrector.
 
 ## User preferences
 
@@ -92,13 +63,12 @@ EduSync provides a comprehensive school management system with features like:
 
 ## Gotchas
 
-- **RCO Token Expiration:** RCO tokens expire, requiring Puppeteer to re-authenticate. The system handles this lazily.
-- **Puppeteer Headless:** Puppeteer runs in headless mode; issues might arise if RCO site changes significantly.
-- **Google Classroom API Quotas:** Be mindful of Google Classroom API rate limits when performing bulk operations.
-- **Database Consistency:** Ensure data consistency between Supabase (remote) and local PostgreSQL instances.
-- **Plan Functionality Gating:** Remember to use `requireFuncionalidade` middleware to protect new features according to the defined plans.
-- **Google Classroom Redirect URIs:** All necessary redirect URIs (main, student portal, pedagogical portal) must be registered in the Google Cloud Console.
-- **GradePen + 2FA:** The `GOOGLE_EMAIL` account used for GradePen scraping cannot have 2FA enabled, otherwise the Puppeteer Google login flow breaks. Use a dedicated school account or app password.
+- **RCO Token Expiration:** RCO tokens expire, requiring Puppeteer to re-authenticate lazily.
+- **Google Classroom API Quotas:** Be mindful of API rate limits for bulk operations.
+- **Database Consistency:** Ensure data consistency between Supabase and local PostgreSQL.
+- **Plan Functionality Gating:** Use `requireFuncionalidade` middleware to protect features based on plans.
+- **Google Classroom Redirect URIs:** All necessary redirect URIs must be registered in the Google Cloud Console.
+- **GradePen + 2FA:** The `GOOGLE_EMAIL` used for GradePen scraping cannot have 2FA enabled.
 
 ## Pointers
 

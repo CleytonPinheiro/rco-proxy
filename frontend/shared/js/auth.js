@@ -39,7 +39,22 @@
         '/pages/planos/':                 'planos',
         '/pages/suporte/':               'suporte',
         '/qrcode/':                       'qrcode',
+        '/pages/solicitacoes/':           'solicitacoes',
+        '/pages/portal-log/':             'portal-log',
     };
+
+    /* ── Dependência pai → filho. Espelha backend/src/config/permissions.js
+         (MODULO_PAI). Servidor envia em /api/me como `modulosPai`. ── */
+    const MODULO_PAI_DEFAULT = {
+        'portal-aluno':  'classroom',
+        'solicitacoes':  'classroom',
+        'portal-log':    'classroom',
+    };
+    let MODULO_PAI = { ...MODULO_PAI_DEFAULT };
+    try {
+        const cachedPai = JSON.parse(localStorage.getItem('edusync_modpai_cache') || 'null');
+        if (cachedPai && typeof cachedPai === 'object') MODULO_PAI = { ...MODULO_PAI_DEFAULT, ...cachedPai };
+    } catch {}
 
     /* ── Permissões por perfil — defaults espelham backend/src/config/permissions.js
          Podem ser sobrescritos em runtime pelo admin (vêm em /api/me como
@@ -72,7 +87,11 @@
 
     function podeAcessar(perfil, modulo) {
         const lista = PERFIL_MODULOS[perfil] || [];
-        return lista.includes('*') || lista.includes(modulo);
+        if (lista.includes('*')) return true;
+        if (!lista.includes(modulo)) return false;
+        const pai = MODULO_PAI[modulo];
+        if (pai && !lista.includes(pai)) return false;
+        return true;
     }
 
     /* ── Módulos "em desenvolvimento" ───────────────────────────────────────
@@ -191,7 +210,7 @@
                 const m = MODULO_URLS[a.getAttribute('href')];
                 if (m) modulosNoTopbar.add(m);
             });
-            document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+            document.querySelectorAll('.nav-menu a, .side-panel a, .classroom-flyout a').forEach(link => {
                 if (link.classList.contains('side-nav-child-item')) return;
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
@@ -273,6 +292,11 @@
         MODULOS_EM_DESENVOLVIMENTO = new Set(user.modulosEmDesenvolvimento);
         try { localStorage.setItem('edusync_devmods_cache', JSON.stringify(user.modulosEmDesenvolvimento)); } catch {}
     }
+    /* Sincroniza mapa de dependência pai→filho */
+    if (user.modulosPai && typeof user.modulosPai === 'object') {
+        MODULO_PAI = { ...MODULO_PAI_DEFAULT, ...user.modulosPai };
+        try { localStorage.setItem('edusync_modpai_cache', JSON.stringify(user.modulosPai)); } catch {}
+    }
 
     window.__edusync = { user };
 
@@ -351,7 +375,7 @@
             if (m) modulosNoTopbar.add(m);
         });
 
-        document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
+        document.querySelectorAll('.nav-menu a, .side-panel a, .classroom-flyout a').forEach(link => {
             if (link.classList.contains('side-nav-child-item')) return;
             const href   = link.getAttribute('href');
             const modulo = MODULO_URLS[href];

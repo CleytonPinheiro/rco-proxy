@@ -2226,7 +2226,7 @@ document.getElementById('buscaComunicados').addEventListener('keydown', e => {
 /* ════════════════════════════════════════════════════════════
    PERMISSÕES POR PERFIL
 ════════════════════════════════════════════════════════════ */
-let _permissoesEstado = null; // { perfis:[], modulos:[], edits:{perfilId:Set<modulo>} }
+let _permissoesEstado = null; // { perfis:[], modulos:[], edits:{perfilId:Set<modulo>}, modulosPai }
 
 async function carregarPermissoes() {
     const wrap = document.getElementById('permissoesContainer');
@@ -2236,9 +2236,13 @@ async function carregarPermissoes() {
         if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
         const data = await res.json();
         const perfisEditaveis = data.perfis.filter(p => p.id !== 'admin');
+        const modulosPai = data.modulosPai || {};
+        /* Reordena módulos: cada filho aparece logo depois do seu pai */
+        const modulosOrdenados = ordenarModulosComHierarquia(data.modulos, modulosPai);
         _permissoesEstado = {
             perfis: perfisEditaveis,
-            modulos: data.modulos,
+            modulos: modulosOrdenados,
+            modulosPai,
             edits: {},
             emDev: new Set(data.modulosEmDesenvolvimento || []),
             emDevOriginal: new Set(data.modulosEmDesenvolvimento || []),
@@ -2252,9 +2256,38 @@ async function carregarPermissoes() {
     }
 }
 
+/**
+ * Reordena os módulos para que cada filho fique logo após o respectivo pai.
+ * Mantém a ordem original do catálogo para os módulos sem dependência.
+ */
+function ordenarModulosComHierarquia(modulos, modulosPai) {
+    const porId = new Map(modulos.map(m => [m.id, m]));
+    const filhosDe = new Map();
+    for (const [filho, pai] of Object.entries(modulosPai || {})) {
+        if (!filhosDe.has(pai)) filhosDe.set(pai, []);
+        filhosDe.get(pai).push(filho);
+    }
+    const ordem = [];
+    const visitados = new Set();
+    for (const m of modulos) {
+        if (visitados.has(m.id)) continue;
+        if (modulosPai[m.id]) continue; // filho — entra depois do pai
+        ordem.push(m); visitados.add(m.id);
+        const filhos = filhosDe.get(m.id) || [];
+        for (const fid of filhos) {
+            const f = porId.get(fid);
+            if (f && !visitados.has(fid)) { ordem.push(f); visitados.add(fid); }
+        }
+    }
+    /* Filhos órfãos (pai não está no catálogo) entram no fim */
+    for (const m of modulos) if (!visitados.has(m.id)) ordem.push(m);
+    return ordem;
+}
+
 function renderPermissoes() {
     const wrap = document.getElementById('permissoesContainer');
-    const { perfis, modulos, edits, emDev } = _permissoesEstado;
+    const { perfis, modulos, edits, emDev, modulosPai } = _permissoesEstado;
+    const nomePorId = Object.fromEntries(modulos.map(m => [m.id, m.nome]));
 
     const headPerfis = perfis.map(p => `
         <th style="text-align:center;padding:10px 8px;font-size:.78rem;min-width:110px">
@@ -2268,22 +2301,33 @@ function renderPermissoes() {
 
     const linhas = modulos.map(m => {
         const ehDev = emDev.has(m.id);
+        const paiId = modulosPai[m.id] || null;
+        const ehFilho = !!paiId;
         const cels = perfis.map(p => {
             const marcado = edits[p.id].has(m.id);
             const eraDefault = p.modulosDefault.includes('*') || p.modulosDefault.includes(m.id);
             const mudou = marcado !== eraDefault;
-            return `<td style="text-align:center;padding:6px;background:${mudou ? 'rgba(217,119,6,.08)' : 'transparent'}">
+            const paiDesmarcado = ehFilho && marcado && !edits[p.id].has(paiId);
+            const bgCel = paiDesmarcado ? 'rgba(220,38,38,.10)' : (mudou ? 'rgba(217,119,6,.08)' : 'transparent');
+            return `<td style="text-align:center;padding:6px;background:${bgCel}" ${paiDesmarcado ? `title="⚠ Filho marcado mas pai (${esc(nomePorId[paiId] || paiId)}) está desmarcado — será corrigido ao salvar"` : ''}>
                 <input type="checkbox"
                     data-perfil="${esc(p.id)}"
                     data-modulo="${esc(m.id)}"
                     ${marcado ? 'checked' : ''}
                     style="width:17px;height:17px;cursor:pointer;accent-color:#2563eb">
+                ${paiDesmarcado ? '<div style="font-size:.65rem;color:#dc2626;font-weight:700;margin-top:2px">⚠ s/ pai</div>' : ''}
             </td>`;
         }).join('');
-        return `<tr>
-            <td style="padding:7px 10px;font-size:.85rem;font-weight:600">
+        const nomeBadge = ehFilho
+            ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:.65rem;font-weight:600;color:#0369a1;background:#e0f2fe;border:1px solid #bae6fd;padding:1px 6px;border-radius:8px" title="Depende do módulo ${esc(nomePorId[paiId] || paiId)} — habilitar este filho exige o pai">↳ pai: ${esc(nomePorId[paiId] || paiId)}</span>`
+            : '';
+        const indent = ehFilho ? 'padding-left:32px' : '';
+        const corLinha = ehFilho ? 'background:rgba(2,132,199,.03)' : '';
+        return `<tr style="${corLinha}" data-modulo-id="${esc(m.id)}" ${ehFilho ? `data-modulo-pai="${esc(paiId)}"` : ''}>
+            <td style="padding:7px 10px;font-size:.85rem;font-weight:600;${indent}">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                    <span>${ehDev ? '🚧 ' : ''}${esc(m.nome)}</span>
+                    <span>${ehFilho ? '<span style="color:#0369a1;font-weight:700;margin-right:4px">↳</span>' : ''}${ehDev ? '🚧 ' : ''}${esc(m.nome)}</span>
+                    ${nomeBadge}
                     <label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:500;color:${ehDev ? '#d97706' : 'var(--text-muted)'};cursor:pointer;padding:2px 6px;border:1px solid ${ehDev ? '#fbbf24' : 'var(--border)'};border-radius:10px;background:${ehDev ? '#fffbeb' : 'transparent'}">
                         <input type="checkbox" data-emdev="${esc(m.id)}" ${ehDev ? 'checked' : ''} style="width:13px;height:13px;cursor:pointer;accent-color:#d97706;margin:0">
                         em dev
@@ -2300,6 +2344,11 @@ function renderPermissoes() {
         <strong>🚧 Em desenvolvimento:</strong> marque os módulos que ainda estão sendo desenvolvidos.
         Eles aparecem com cone de obras no menu, ficam acinzentados e bloqueiam o clique do usuário,
         mas continuam visíveis para os perfis com permissão. Desmarque quando o módulo estiver pronto para liberar.
+    </div>
+    <div style="margin-bottom:12px;padding:10px 14px;background:#e0f2fe;border:1px solid #bae6fd;border-radius:8px;font-size:.82rem;color:#075985">
+        <strong>↳ Módulos filhos:</strong> linhas com seta e badge azul são submenus que dependem de um módulo pai.
+        Marcar um filho <strong>habilita o pai automaticamente</strong>; desmarcar o pai
+        <strong>desmarca todos os filhos</strong>. Você verá um aviso visual e um toast a cada ajuste.
     </div>
     <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
         <table class="admin-table" style="margin:0">
@@ -2327,10 +2376,46 @@ function renderPermissoes() {
         cb.addEventListener('change', () => {
             const perfil = cb.dataset.perfil;
             const modulo = cb.dataset.modulo;
-            if (cb.checked) edits[perfil].add(modulo);
-            else            edits[perfil].delete(modulo);
+            if (cb.checked) {
+                edits[perfil].add(modulo);
+                /* Auto-habilita o pai se necessário */
+                const pai = modulosPai[modulo];
+                if (pai && !edits[perfil].has(pai)) {
+                    edits[perfil].add(pai);
+                    showToast(`↳ "${nomePorId[pai] || pai}" foi habilitado automaticamente porque "${nomePorId[modulo] || modulo}" depende dele.`);
+                    flashLinhaModulo(pai);
+                }
+            } else {
+                edits[perfil].delete(modulo);
+                /* Cascata: se desmarcou um pai, desmarca filhos do mesmo perfil */
+                const filhos = Object.entries(modulosPai).filter(([, p]) => p === modulo).map(([f]) => f);
+                const filhosRemovidos = filhos.filter(f => edits[perfil].has(f));
+                if (filhosRemovidos.length) {
+                    filhosRemovidos.forEach(f => edits[perfil].delete(f));
+                    const nomes = filhosRemovidos.map(f => `"${nomePorId[f] || f}"`).join(', ');
+                    showToast(`⚠ Submenu(s) ${nomes} foram desmarcados porque dependem de "${nomePorId[modulo] || modulo}".`, 'error');
+                    filhosRemovidos.forEach(f => flashLinhaModulo(f));
+                }
+            }
+            renderPermissoes();
         });
     });
+    /* Adiciona keyframe de flash uma única vez */
+    if (!document.getElementById('permFlashKf')) {
+        const st = document.createElement('style'); st.id = 'permFlashKf';
+        st.textContent = '@keyframes permFlash{0%{background:#fef3c7}50%{background:#fde68a}100%{background:transparent}}.perm-flash td{animation:permFlash 1.4s ease-out}';
+        document.head.appendChild(st);
+    }
+    /* Helper de destaque visual (flash) na linha do módulo afetado */
+    function flashLinhaModulo(id) {
+        requestAnimationFrame(() => {
+            const tr = wrap.querySelector(`tr[data-modulo-id="${CSS.escape(id)}"]`);
+            if (!tr) return;
+            tr.classList.remove('perm-flash');
+            void tr.offsetWidth;
+            tr.classList.add('perm-flash');
+        });
+    }
     wrap.querySelectorAll('button[data-restaurar]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const perfil = btn.dataset.restaurar;

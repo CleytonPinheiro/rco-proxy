@@ -10,7 +10,7 @@ import { fileURLToPath }   from 'url';
 import { google }          from 'googleapis';
 import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 import { auditLogger }     from '../services/AuditLogger.js';
-import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS, getModulosEmDesenvolvimento, setModulosEmDesenvolvimento } from '../config/permissions.js';
+import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS, getModulosEmDesenvolvimento, setModulosEmDesenvolvimento, MODULO_PAI } from '../config/permissions.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -78,6 +78,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 perfis,
                 modulos: MODULOS_DISPONIVEIS,
                 modulosEmDesenvolvimento: getModulosEmDesenvolvimento(),
+                modulosPai: MODULO_PAI,
             });
         } catch (e) {
             res.status(500).json({ erro: e.message });
@@ -133,6 +134,17 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         const idsValidos = new Set(MODULOS_DISPONIVEIS.map(m => m.id));
         const limpos = [...new Set(modulos.filter(m => idsValidos.has(m)))];
 
+        /* Defesa: se algum filho está marcado mas o pai não, inclui o pai
+           automaticamente. Isso garante consistência mesmo se a UI falhar. */
+        const setLimpos = new Set(limpos);
+        for (const filho of limpos) {
+            const pai = MODULO_PAI[filho];
+            if (pai && !setLimpos.has(pai) && idsValidos.has(pai)) {
+                setLimpos.add(pai);
+            }
+        }
+        const limposComPais = [...setLimpos];
+
         try {
             await pool.query(
                 `INSERT INTO edusync_perfis_overrides (perfil, modulos, atualizado_em, atualizado_por)
@@ -141,20 +153,20 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                  SET modulos = EXCLUDED.modulos,
                      atualizado_em = now(),
                      atualizado_por = EXCLUDED.atualizado_por`,
-                [perfil, JSON.stringify(limpos), req.userSession.userId]
+                [perfil, JSON.stringify(limposComPais), req.userSession.userId]
             );
-            setOverride(perfil, limpos);
+            setOverride(perfil, limposComPais);
 
             await auditLogger.registrar({
                 usuarioId:   req.userSession.userId,
                 usuarioNome: req.userSession.nome,
                 acao:        'PERMISSOES_PERFIL_ATUALIZADAS',
                 modulo:      'admin',
-                detalhes:    { perfil, modulos: limpos },
+                detalhes:    { perfil, modulos: limposComPais },
                 ip:          req.ip,
             });
 
-            res.json({ sucesso: true, perfil, modulos: limpos });
+            res.json({ sucesso: true, perfil, modulos: limposComPais });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
