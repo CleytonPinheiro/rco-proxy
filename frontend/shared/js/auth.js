@@ -179,8 +179,8 @@
             /* Reordena: itens bloqueados vão para o fim de cada contêiner */
             reordenarBloqueadosParaFim();
 
-            /* Revela menus apenas dentro do try — só depois de aplicar permissões com sucesso */
-            marcarNavPronto();
+            /* NÃO revela ainda — espera o nav adaptativo medir e mover overflow
+               para o side panel, evitando que o usuário veja itens "saltando".  */
         } catch {
             /* Erro de localStorage ou parse: mantém invisível, fetch assumirá o controle */
         }
@@ -464,9 +464,8 @@
         nav.parentNode.insertBefore(btnMais, nav.nextSibling);
 
         let rafId = null;
-        const recalcular = () => {
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(() => {
+        let primeiraExecucao = true;
+        const executar = () => {
                 const todos = Array.from(nav.querySelectorAll('a:not(.nav-mais-btn)'))
                     .filter(a => !a.getAttribute('data-perm-hidden'));
 
@@ -520,7 +519,18 @@
                    bloqueados (em desenvolvimento) sempre ao final.              */
                 const overflowLiberados = liberados.filter(a => a.getAttribute('data-nav-hidden') === 'true');
                 injetarOverflowNoSidePanel([...overflowLiberados, ...bloqueados]);
-            });
+
+                /* Após a primeira medição com layout estável, revela a nav
+                   (remove o anti-flash). Próximas execuções já não piscam.    */
+                if (primeiraExecucao) {
+                    primeiraExecucao = false;
+                    marcarNavPronto();
+                }
+        };
+
+        const recalcular = () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(executar);
         };
 
         if (window.ResizeObserver) {
@@ -528,7 +538,9 @@
         } else {
             window.addEventListener('resize', recalcular);
         }
-        recalcular();
+        /* Primeira execução SÍNCRONA: garante que o layout final esteja pronto
+           antes da primeira pintura, evitando o "salto" entre navegações.      */
+        executar();
     }
 
     /* Injeta os itens em overflow no topo do side panel como grupo extra */
