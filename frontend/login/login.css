@@ -398,9 +398,37 @@ body {
 
 .login-msg--erro { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 .login-msg--ok   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.login-msg--fila {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.login-msg--fila::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+    border: 2px solid #d97706;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: fila-spin .8s linear infinite;
+}
+@keyframes fila-spin {
+    to { transform: rotate(360deg); }
+}
 
 [data-theme="dark"] .login-msg--erro { background: rgba(220,38,38,.12); border-color: rgba(220,38,38,.25); }
 [data-theme="dark"] .login-msg--ok   { background: rgba(22,163,74,.12);  border-color: rgba(22,163,74,.25); }
+[data-theme="dark"] .login-msg--fila {
+    background: rgba(217,119,6,.12);
+    color: #fbbf24;
+    border-color: rgba(217,119,6,.3);
+}
+[data-theme="dark"] .login-msg--fila::before { border-color: #fbbf24; border-top-color: transparent; }
 
 /* Caixa informativa */
 .form-info-box {

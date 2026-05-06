@@ -81,9 +81,24 @@
         return '/pages/dashboard/';
     }
 
+    // ── Estado de tentativa automática ─────────────────────────────────────
+    let _retryTimer     = null;
+    let _retryAbortado  = false;
+
+    function cancelarRetry() {
+        _retryAbortado = true;
+        if (_retryTimer) { clearInterval(_retryTimer); _retryTimer = null; }
+    }
+
     // ── Submit ──────────────────────────────────────────────────────────────
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', (e) => {
         e.preventDefault();
+        cancelarRetry();
+        _retryAbortado = false;
+        _executarLogin();
+    });
+
+    async function _executarLogin(tentativa = 1) {
         const cpf   = inputCpf.value.replace(/\D/g, '');
         const senha = inputSenha.value;
 
@@ -108,6 +123,7 @@
             const data = await res.json();
 
             if (res.ok && data.sucesso) {
+                cancelarRetry();
                 try { localStorage.setItem('edusync_termos_aceitos', '1'); } catch {}
 
                 if (data.usuario) {
@@ -121,26 +137,83 @@
                 }
                 mostrarMsg('Login realizado! Redirecionando…', 'ok');
                 setTimeout(() => window.location.replace(destinoLogin()), 800);
-            } else {
-                mostrarMsg(data.erro || 'Erro ao autenticar.', 'erro');
-                setCarregando(false);
+                return;
             }
+
+            // Servidor ocupado com fila de login — tentar novamente automaticamente
+            if (res.status === 503 && data.tipo === 'fila_cheia') {
+                const MAX_TENTATIVAS = 5;
+                const aguardarSeg    = data.retentar || 15;
+
+                if (tentativa >= MAX_TENTATIVAS) {
+                    mostrarMsg('O servidor continua ocupado. Tente novamente em alguns minutos.', 'erro');
+                    setCarregando(false);
+                    return;
+                }
+
+                const fila = data.fila || {};
+                _iniciarContagem(tentativa, aguardarSeg, fila, () => {
+                    if (!_retryAbortado) _executarLogin(tentativa + 1);
+                });
+                return;
+            }
+
+            mostrarMsg(data.erro || 'Erro ao autenticar.', 'erro');
+            setCarregando(false);
         } catch (err) {
             mostrarMsg('Erro de conexão: ' + err.message, 'erro');
             setCarregando(false);
         }
-    });
+    }
+
+    /**
+     * Exibe mensagem de fila com contagem regressiva e dispara callback ao fim.
+     */
+    function _iniciarContagem(tentativa, segundos, fila, callback) {
+        let restando = segundos;
+
+        function _atualizar() {
+            const aguardando = fila.aguardando > 0
+                ? ` · ${fila.aguardando} na fila`
+                : '';
+            const slots = fila.maxSlots ? ` (${fila.ativa || '?'}/${fila.maxSlots} slots)` : '';
+            mostrarFila(
+                `Servidor ocupado${slots}${aguardando} — tentativa ${tentativa}/5. Tentando novamente em ${restando}s…`,
+            );
+        }
+
+        _atualizar();
+
+        const intervalo = setInterval(() => {
+            if (_retryAbortado) { clearInterval(intervalo); return; }
+            restando--;
+            if (restando <= 0) {
+                clearInterval(intervalo);
+                callback();
+            } else {
+                _atualizar();
+            }
+        }, 1000);
+
+        _retryTimer = intervalo;
+    }
 
     function setCarregando(sim) {
         btnEntrar.disabled       = sim;
         btnTexto.style.display   = sim ? 'none' : '';
         btnSpin.style.display    = sim ? ''     : 'none';
-        msg.style.display        = 'none';
+        if (sim) msg.style.display = 'none';
     }
 
     function mostrarMsg(texto, tipo) {
         msg.textContent   = texto;
         msg.className     = `login-msg login-msg--${tipo}`;
+        msg.style.display = 'block';
+    }
+
+    function mostrarFila(texto) {
+        msg.textContent   = texto;
+        msg.className     = 'login-msg login-msg--fila';
         msg.style.display = 'block';
     }
 

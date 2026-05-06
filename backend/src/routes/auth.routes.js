@@ -16,6 +16,7 @@ import { userSessionStore } from '../services/UserSessionStore.js';
 import { auditLogger }      from '../services/AuditLogger.js';
 import { requireAuth, COOKIE_NAME } from '../middleware/auth.middleware.js';
 import { resolverPlano }    from '../config/planos.js';
+import { getLoginQueueStats } from '../../auth-puppeteer.js';
 
 /* ── Feature flag: pedagogo pode entrar via Google OAuth sem token RCO ── */
 const PEDAGOGICO_RCO_REQUERIDO = process.env.PEDAGOGICO_RCO_REQUERIDO !== 'false';
@@ -169,6 +170,17 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
         console.error('[Auth] Erro inesperado no pool PostgreSQL:', err.message);
     });
 
+    /* ── Status da fila de logins (público — sem auth) ── */
+    router.get('/auth/queue-status', (req, res) => {
+        const stats = getLoginQueueStats();
+        res.json({
+            ativa:     stats.active,
+            maxSlots:  stats.maxSlots,
+            aguardando: stats.queued,
+            ocupado:   stats.active >= stats.maxSlots,
+        });
+    });
+
     /* ── Status da conexão global (compatibilidade) ── */
     router.get('/status', (req, res) => {
         const session = req.cookies?.[COOKIE_NAME]
@@ -249,7 +261,14 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             rcoToken = await loginWithPuppeteer(cpfLimpo, senha);
         } catch (loginErr) {
             if (loginErr.message === 'PUPPETEER_LOGIN_QUEUE_TIMEOUT') {
-                return res.status(503).json({ erro: 'Servidor ocupado com muitos logins simultâneos. Aguarde alguns segundos e tente novamente.' });
+                const qStats = getLoginQueueStats();
+                res.set('Retry-After', '15');
+                return res.status(503).json({
+                    erro:      'Servidor ocupado com muitos logins simultâneos. Aguarde e tente novamente.',
+                    tipo:      'fila_cheia',
+                    fila:      { ativa: qStats.active, maxSlots: qStats.maxSlots, aguardando: qStats.queued },
+                    retentar:  15,
+                });
             }
             // Incrementar contador apenas para erros de credencial; erros de infra não penalizam o CPF
             if (!INFRA_ERROR_RE.test(loginErr.message)) {
