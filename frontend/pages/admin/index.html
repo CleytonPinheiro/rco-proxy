@@ -70,6 +70,7 @@
                 <button class="admin-tab" data-tab="suporte">Suporte <span id="suporteBadge" style="display:none;background:#ef4444;color:#fff;font-size:.7rem;padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:700"></span></button>
                 <button class="admin-tab" data-tab="permissoes">Permissões</button>
                 <button class="admin-tab" data-tab="config">Configurações</button>
+                <button class="admin-tab" data-tab="sistema">Sistema</button>
                 <button class="admin-tab" data-tab="audit">Audit Log</button>
             </div>
 
@@ -220,6 +221,21 @@
                     O perfil <strong>Administrador</strong> sempre tem acesso total e não aparece aqui.
                 </p>
                 <div id="permissoesContainer">
+                    <p style="color:var(--text-muted)">Carregando...</p>
+                </div>
+            </div>
+
+            <!-- Painel Sistema -->
+            <div class="admin-panel" id="panel-sistema">
+                <div class="admin-section-header">
+                    <h3>Recursos do Servidor</h3>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <span id="sistemaUltimaAtt" style="font-size:.78rem;color:var(--text-muted)"></span>
+                        <button id="btnAtualizarSistema" onclick="carregarSistema()" style="padding:6px 14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text-primary)">↻ Atualizar</button>
+                    </div>
+                </div>
+
+                <div id="sistemaContainer">
                     <p style="color:var(--text-muted)">Carregando...</p>
                 </div>
             </div>

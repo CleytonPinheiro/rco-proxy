@@ -34,6 +34,8 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         if (btn.dataset.tab === 'config')     { carregarConfig(); carregarDadosEscola(); }
         if (btn.dataset.tab === 'alunos')     carregarTurmasAlunos();
         if (btn.dataset.tab === 'permissoes') carregarPermissoes();
+        if (btn.dataset.tab === 'sistema')    iniciarMonitorSistema();
+        else pararMonitorSistema();
     });
 });
 
@@ -2466,6 +2468,125 @@ document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async 
         btn.disabled = false; btn.innerHTML = '💾 Salvar alterações';
     }
 });
+
+/* ════════════════════════════════════════════════════════════
+   SISTEMA — Puppeteer / Recursos do Servidor
+════════════════════════════════════════════════════════════ */
+let _sistemaTimer = null;
+
+function pararMonitorSistema() {
+    if (_sistemaTimer) { clearInterval(_sistemaTimer); _sistemaTimer = null; }
+}
+
+function iniciarMonitorSistema() {
+    carregarSistema();
+    pararMonitorSistema();
+    _sistemaTimer = setInterval(carregarSistema, 30_000);
+}
+
+async function carregarSistema() {
+    const container = document.getElementById('sistemaContainer');
+    const tsEl      = document.getElementById('sistemaUltimaAtt');
+    if (!container) return;
+    try {
+        const res  = await api('/admin/puppeteer-stats');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d    = await res.json();
+        tsEl.textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
+        container.innerHTML = renderSistema(d);
+    } catch (e) {
+        container.innerHTML = `<p style="color:#dc2626;font-size:.875rem">Erro ao carregar métricas: ${esc(e.message)}</p>`;
+    }
+}
+
+function renderSistema(d) {
+    const login      = d.login   || {};
+    const sessoes    = d.sessoes || {};
+    const config     = d.config  || {};
+    const gradepen   = d.gradepen;
+
+    const naFila     = login.naFila       ?? 0;
+    const ativos     = login.ativos       ?? 0;
+    const limite     = login.limiteMáximo ?? '—';
+    const sessoesAt  = sessoes.ativas     ?? '—';
+
+    const filaColor  = naFila >= 5 ? '#dc2626' : naFila >= 2 ? '#d97706' : '#16a34a';
+    const ativosPct  = limite && limite !== '—' ? Math.min(100, Math.round(ativos / limite * 100)) : 0;
+
+    function metricBox(icon, label, value, subtext, color) {
+        return `
+        <div style="flex:1;min-width:160px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+            <div style="font-size:1.5rem;margin-bottom:4px">${icon}</div>
+            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:2px">${label}</div>
+            <div style="font-size:1.6rem;font-weight:800;color:${color || 'var(--text-primary)'}">${value}</div>
+            ${subtext ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:3px">${subtext}</div>` : ''}
+        </div>`;
+    }
+
+    let gradePenHtml = '';
+    if (gradepen) {
+        const gpStatus = gradepen.pageReady
+            ? `<span style="color:#16a34a;font-weight:700">Pronta</span>`
+            : `<span style="color:#6b7280;font-weight:700">Inativa</span>`;
+        const gpLogin = gradepen.loggedIn
+            ? `<span style="color:#16a34a">Autenticado</span>`
+            : `<span style="color:#d97706">Não autenticado</span>`;
+        const gpUlt = gradepen.lastUsedAgo != null
+            ? `${Math.round(gradepen.lastUsedAgo / 1000 / 60)} min atrás`
+            : '—';
+        gradePenHtml = `
+        <div style="margin-top:24px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+            <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px">GradePen (Provas)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:20px;font-size:.875rem">
+                <div><span style="color:var(--text-muted)">Página: </span>${gpStatus}</div>
+                <div><span style="color:var(--text-muted)">Login: </span>${gpLogin}</div>
+                <div><span style="color:var(--text-muted)">Último uso: </span>${gpUlt}</div>
+            </div>
+        </div>`;
+    }
+
+    let progBar = '';
+    if (limite !== '—' && limite > 0) {
+        const pct   = ativosPct;
+        const barColor = pct >= 80 ? '#dc2626' : pct >= 50 ? '#d97706' : '#16a34a';
+        progBar = `
+        <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">Uso de slots de login</span>
+                <span style="font-size:.82rem;font-weight:700;color:${barColor}">${ativos} / ${limite} (${pct}%)</span>
+            </div>
+            <div style="height:8px;border-radius:4px;background:var(--bg-hover);overflow:hidden">
+                <div style="height:100%;width:${pct}%;border-radius:4px;background:${barColor};transition:width .4s"></div>
+            </div>
+        </div>`;
+    }
+
+    const concurrency = config.PUPPETEER_LOGIN_CONCURRENCY || '—';
+    const queueTimeout = config.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '—';
+
+    return `
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:4px">
+        ${metricBox('🔑', 'Logins ativos', ativos, `limite: ${limite}`, ativos > 0 ? '#2563eb' : 'var(--text-primary)')}
+        ${metricBox('⏳', 'Na fila', naFila, naFila === 0 ? 'Nenhum aguardando' : `${naFila} aguardando slot`, filaColor)}
+        ${metricBox('👥', 'Sessões ativas', sessoesAt, 'usuários com sessão aberta', 'var(--text-primary)')}
+    </div>
+    ${progBar}
+    ${gradePenHtml}
+    <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+        <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px">Configuração atual (variáveis de ambiente)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:.85rem">
+            <div>
+                <span style="color:var(--text-muted)">PUPPETEER_LOGIN_CONCURRENCY: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(concurrency))}</code>
+            </div>
+            <div>
+                <span style="color:var(--text-muted)">PUPPETEER_LOGIN_QUEUE_TIMEOUT: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(queueTimeout))} ms</code>
+            </div>
+        </div>
+    </div>
+    <p style="margin-top:12px;font-size:.75rem;color:var(--text-muted)">Atualizado automaticamente a cada 30 segundos.</p>`;
+}
 
 /* ── Init ── */
 carregarUsuarios();
