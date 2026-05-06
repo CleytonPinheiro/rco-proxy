@@ -109,6 +109,17 @@
         toast._tid = setTimeout(() => toast.classList.remove('show'), 2800);
     }
 
+    /* Move todos os itens bloqueados para o final do contêiner pai — garante que os
+       menus liberados venham primeiro e os bloqueados fiquem agrupados no fim. */
+    function reordenarBloqueadosParaFim() {
+        ['.nav-menu', '.side-panel-nav', '.side-overflow-group'].forEach(sel => {
+            document.querySelectorAll(sel).forEach(container => {
+                const bloqueados = container.querySelectorAll(':scope > [data-perm-blocked="true"]');
+                bloqueados.forEach(el => container.appendChild(el));
+            });
+        });
+    }
+
     /* Marca um link como bloqueado (visível, porém desabilitado) e instala o handler */
     function marcarBloqueado(link, perfil) {
         link.setAttribute('data-perm-blocked', 'true');
@@ -148,6 +159,9 @@
                     marcarBloqueado(link, p);
                 }
             });
+
+            /* Reordena: itens bloqueados vão para o fim de cada contêiner */
+            reordenarBloqueadosParaFim();
 
             /* Revela menus apenas dentro do try — só depois de aplicar permissões com sucesso */
             marcarNavPronto();
@@ -259,6 +273,9 @@
                 }
             }
         });
+
+        /* Reordena: itens bloqueados vão para o fim de cada contêiner */
+        reordenarBloqueadosParaFim();
 
         /* Revela os menus (caso o cache estivesse vazio e o anti-flash ainda ativo) */
         marcarNavPronto();
@@ -519,6 +536,9 @@
 
         sideNav.insertBefore(grupo, sideNav.firstChild);
         _overflowGroup = grupo;
+
+        /* Reordena dentro do próprio grupo de overflow (bloqueados ao final) */
+        reordenarBloqueadosParaFim();
     }
 
     function _navIcon(href) {
