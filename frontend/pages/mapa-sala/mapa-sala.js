@@ -70,6 +70,12 @@ async function carregarTurmas() {
             sel.appendChild(opt);
         }
 
+        /* Substitui o <select> nativo por um dropdown customizado, mais
+           coerente com o resto do sistema (cantos arredondados, tema,
+           animação). Mantém o <select> escondido para o evento change
+           continuar funcionando sem refatorar o resto do fluxo. */
+        construirDropdownTurma(sel);
+
         /* Mostra a escola atual no label "Turma" para reforçar o contexto. */
         const escolaNome = localStorage.getItem('edusync_escola');
         if (escolaNome) {
@@ -83,6 +89,113 @@ async function carregarTurmas() {
             }
         }
     } catch (e) { console.error(e); }
+}
+
+/* ── Dropdown customizado para o seletor de turma ─────────────────
+   Substitui o popup nativo (que não respeita o tema/border-radius
+   cross-browser) por um menu HTML estilizado. O <select> original
+   continua no DOM (escondido) e recebe `value` + dispatchEvent
+   para preservar `onTurmaChange()` e qualquer integração futura.   */
+function construirDropdownTurma(sel) {
+    if (sel.dataset.enhanced === '1') {
+        // Re-enhance: apenas reconstrói os itens do menu.
+        const grupo = sel.closest('.ms-config-group');
+        const menu  = grupo?.querySelector('.ms-dropdown-menu');
+        if (menu) preencherDropdownItens(sel, menu);
+        return;
+    }
+    sel.dataset.enhanced = '1';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ms-dropdown';
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'ms-dropdown-trigger ms-select';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'ms-dropdown-label';
+    labelEl.textContent = sel.options[sel.selectedIndex]?.textContent || '— selecione —';
+    trigger.appendChild(labelEl);
+
+    const menu = document.createElement('div');
+    menu.className = 'ms-dropdown-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.hidden = true;
+
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(trigger);
+    wrap.appendChild(menu);
+    sel.classList.add('ms-select--hidden');
+
+    const abrir  = () => { menu.hidden = false; trigger.classList.add('aberto'); trigger.setAttribute('aria-expanded', 'true'); };
+    const fechar = () => { menu.hidden = true;  trigger.classList.remove('aberto'); trigger.setAttribute('aria-expanded', 'false'); };
+    /* Expor fechar para preencherDropdownItens usar no click handler. */
+    menu._fechar = fechar;
+
+    preencherDropdownItens(sel, menu, labelEl);
+
+    trigger.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (menu.hidden) abrir(); else fechar();
+    });
+    document.addEventListener('click', (ev) => {
+        if (!menu.hidden && !wrap.contains(ev.target)) fechar();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !menu.hidden) fechar();
+    });
+
+    /* Expor uma forma de reverter visualmente quando o usuário cancela
+       a troca de turma (ver onTurmaChange).                              */
+    sel.addEventListener('change', () => {
+        labelEl.textContent = sel.options[sel.selectedIndex]?.textContent || '— selecione —';
+        menu.querySelectorAll('.ms-dropdown-item').forEach(it => {
+            const ativo = it.dataset.value === sel.value;
+            it.classList.toggle('ativo', ativo);
+            it.setAttribute('aria-selected', ativo ? 'true' : 'false');
+            const chk = it.querySelector('.ms-dropdown-check');
+            if (chk) chk.textContent = ativo ? '✓' : '';
+        });
+    });
+}
+
+function preencherDropdownItens(sel, menu, labelEl) {
+    menu.innerHTML = '';
+    [...sel.options].forEach(opt => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'ms-dropdown-item' + (opt.value === sel.value ? ' ativo' : '');
+        if (opt.disabled) { item.classList.add('desabilitado'); item.disabled = true; item.setAttribute('aria-disabled', 'true'); }
+        item.dataset.value = opt.value;
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', opt.value === sel.value ? 'true' : 'false');
+
+        const chk = document.createElement('span');
+        chk.className = 'ms-dropdown-check';
+        chk.textContent = (opt.value === sel.value && opt.value !== '') ? '✓' : '';
+        item.appendChild(chk);
+
+        const txt = document.createElement('span');
+        txt.className = 'ms-dropdown-text';
+        txt.textContent = opt.textContent;
+        item.appendChild(txt);
+
+        item.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            if (opt.disabled) return;
+            if (sel.value !== opt.value) {
+                sel.value = opt.value;
+                if (labelEl) labelEl.textContent = opt.textContent;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            (menu._fechar || (() => { menu.hidden = true; }))();
+        });
+
+        menu.appendChild(item);
+    });
 }
 
 async function onTurmaChange() {
