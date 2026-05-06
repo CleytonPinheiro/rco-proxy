@@ -2486,14 +2486,23 @@ document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async 
 let _sistemaTimer      = null;
 let _filaAlertaAtiva   = false;
 let _filaBgTimer       = null;
+let _filaHistorico     = [];   /* circular buffer: { ts, v }; max 60 points */
+
+const _FILA_MAX_PTS = 60;
+
+function _registrarFilaHistorico(naFila) {
+    _filaHistorico.push({ ts: Date.now(), v: naFila });
+    if (_filaHistorico.length > _FILA_MAX_PTS) _filaHistorico.shift();
+}
 
 function pararMonitorSistema() {
     if (_sistemaTimer) { clearInterval(_sistemaTimer); _sistemaTimer = null; }
+    _filaHistorico = [];   /* reset on tab leave */
 }
 
 function iniciarMonitorSistema() {
-    carregarSistema();
     pararMonitorSistema();
+    carregarSistema();
     _sistemaTimer = setInterval(carregarSistema, 30_000);
 }
 
@@ -2555,10 +2564,12 @@ async function carregarSistema() {
             try { rl = await resRL.value.json(); } catch {}
         }
 
-        tsEl.textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
-        container.innerHTML = renderSistema(d, cache, rl);
-
         const naFila = d.login?.naFila ?? 0;
+        _registrarFilaHistorico(naFila);
+
+        tsEl.textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
+        container.innerHTML = renderSistema(d, cache, rl, _filaHistorico.slice());
+
         const limiar = Number.isFinite(d.config?.FILA_ALERTA_LIMIAR) ? d.config.FILA_ALERTA_LIMIAR : 5;
         _atualizarSistemaBadge(naFila, limiar);
     } catch (e) {
@@ -2578,7 +2589,74 @@ window.resetarRateLimitCpf = async function (cpf) {
     }
 };
 
-function renderSistema(d, cache, rl) {
+function _renderFilaChart(historico) {
+    if (!historico || historico.length < 2) {
+        return `
+        <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+            <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:8px">Histórico de Fila de Login (últimos 30 min)</div>
+            <p style="font-size:.8rem;color:var(--text-muted);margin:0">Aguardando dados suficientes (min. 2 amostras a cada 30 s)…</p>
+        </div>`;
+    }
+
+    const W = 600, H = 80, PAD_LEFT = 32, PAD_BOTTOM = 18, PAD_TOP = 6, PAD_RIGHT = 8;
+    const plotW = W - PAD_LEFT - PAD_RIGHT;
+    const plotH = H - PAD_BOTTOM - PAD_TOP;
+
+    const maxVal = Math.max(...historico.map(p => p.v), 1);
+    const yMax   = Math.ceil(maxVal * 1.2) || 1;
+
+    const n = historico.length;
+    const pts = historico.map((p, i) => {
+        const x = PAD_LEFT + (i / (n - 1)) * plotW;
+        const y = PAD_TOP + plotH - (p.v / yMax) * plotH;
+        return { x, y, v: p.v, ts: p.ts };
+    });
+
+    const polyline = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const areaClose = `${pts[pts.length-1].x.toFixed(1)},${(PAD_TOP + plotH).toFixed(1)} ${pts[0].x.toFixed(1)},${(PAD_TOP + plotH).toFixed(1)}`;
+
+    const yTickCount = Math.min(yMax, 4);
+    let yTicks = '';
+    for (let i = 0; i <= yTickCount; i++) {
+        const val  = Math.round((yMax / yTickCount) * i);
+        const y    = PAD_TOP + plotH - (val / yMax) * plotH;
+        const color = val >= 5 ? '#dc2626' : val >= 2 ? '#d97706' : '#9ca3af';
+        yTicks += `<line x1="${PAD_LEFT}" y1="${y.toFixed(1)}" x2="${W - PAD_RIGHT}" y2="${y.toFixed(1)}"
+            stroke="${val === 0 ? '#e5e7eb' : '#e5e7eb'}" stroke-width="1" stroke-dasharray="${val === 0 ? '0' : '3,3'}"/>
+            <text x="${(PAD_LEFT - 4).toFixed(1)}" y="${(y + 4).toFixed(1)}"
+                font-size="9" fill="${color}" text-anchor="end">${val}</text>`;
+    }
+
+    const oldest = new Date(historico[0].ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const newest = new Date(historico[n-1].ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const midTs  = n > 2 ? new Date(historico[Math.floor(n/2)].ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null;
+
+    const lastPt = pts[pts.length - 1];
+    const lineColor = lastPt.v >= 5 ? '#dc2626' : lastPt.v >= 2 ? '#d97706' : '#2563eb';
+    const areaColor = lastPt.v >= 5 ? '#fef2f2' : lastPt.v >= 2 ? '#fefce8' : '#eff6ff';
+
+    return `
+    <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+            <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Histórico de Fila de Login (últimos 30 min)</div>
+            <div style="font-size:.75rem;color:var(--text-muted)">${n} amostras · max: <strong style="color:${maxVal>=5?'#dc2626':maxVal>=2?'#d97706':'#16a34a'}">${maxVal}</strong></div>
+        </div>
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;overflow:visible" xmlns="http://www.w3.org/2000/svg">
+            ${yTicks}
+            <polyline points="${polyline} ${areaClose}"
+                fill="${areaColor}" fill-opacity="0.6" stroke="none"/>
+            <polyline points="${polyline}"
+                fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="${lastPt.x.toFixed(1)}" cy="${lastPt.y.toFixed(1)}" r="3.5" fill="${lineColor}"/>
+            <text x="${PAD_LEFT}" y="${H}" font-size="9" fill="#9ca3af" text-anchor="middle">${oldest}</text>
+            ${midTs ? `<text x="${(PAD_LEFT + plotW/2).toFixed(1)}" y="${H}" font-size="9" fill="#9ca3af" text-anchor="middle">${midTs}</text>` : ''}
+            <text x="${(W - PAD_RIGHT).toFixed(1)}" y="${H}" font-size="9" fill="#9ca3af" text-anchor="end">${newest}</text>
+        </svg>
+        <p style="margin-top:4px;font-size:.72rem;color:var(--text-muted)">Amostrado a cada 30 s. Reinicia ao sair e retornar à aba.</p>
+    </div>`;
+}
+
+function renderSistema(d, cache, rl, historico) {
     const login      = d.login   || {};
     const sessoes    = d.sessoes || {};
     const config     = d.config  || {};
@@ -2793,6 +2871,7 @@ function renderSistema(d, cache, rl) {
         ${metricBox('👥', 'Sessões ativas', sessoesAt, 'usuários com sessão aberta', 'var(--text-primary)')}
     </div>
     ${progBar}
+    ${_renderFilaChart(historico)}
     ${gradePenHtml}
     ${rateLimitHtml}
     ${syncCacheHtml}
