@@ -1,17 +1,34 @@
 <!DOCTYPE html>
-<html lang="pt-br" data-theme="light">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduSync — Gerador de QR Code</title>
     <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
     <script>
+        /* ── Resolve o tema ANTES da primeira pintura para evitar flash claro
+           ao chegar de uma página que esteja no escuro. As outras páginas do
+           sistema usam `edugest_theme` (theme.js) — esse era o vazamento que
+           fazia o gerador abrir sempre claro. Mantemos as chaves antigas
+           (`aluno_tema` e `edusync_theme`) como fallback para sessões antigas
+           e para alinhamento com o portal do aluno.                          */
         (function () {
-            const t = localStorage.getItem('aluno_tema') || localStorage.getItem('edusync_theme');
-            if (t) document.documentElement.setAttribute('data-theme', t);
+            const t = localStorage.getItem('edugest_theme')
+                   || localStorage.getItem('aluno_tema')
+                   || localStorage.getItem('edusync_theme')
+                   || 'light';
+            document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
-    <link rel="stylesheet" href="./qrcode.css">
+    <style>
+        /* Anti-flash: pinta o background com a cor certa do tema antes do CSS
+           da página chegar, eliminando o "branco-escuro-cor" que causava o
+           desgaste visual ao trocar de menu. */
+        html[data-theme="dark"] { background: #0f172a; color-scheme: dark; }
+        html:not([data-theme="dark"]) { background: #f8fafc; color-scheme: light; }
+        body { margin: 0; }
+    </style>
+    <link rel="stylesheet" href="./qrcode.css?v=20260506b">
 </head>
 <body>
 

@@ -35,6 +35,10 @@ function temaAtual() { return document.documentElement.getAttribute('data-theme'
 
 function aplicarTema(tema) {
     document.documentElement.setAttribute('data-theme', tema);
+    /* Grava em todas as chaves usadas pelo sistema para o tema permanecer
+       consistente ao voltar para o app principal (edugest_theme — theme.js)
+       ou para o portal do aluno (aluno_tema / edusync_theme).               */
+    localStorage.setItem('edugest_theme', tema);
     localStorage.setItem('aluno_tema',    tema);
     localStorage.setItem('edusync_theme', tema);
     atualizarIconeTema(tema);
