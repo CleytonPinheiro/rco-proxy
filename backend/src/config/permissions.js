@@ -2,6 +2,10 @@
  * Configuração de perfis e permissões do EduSync.
  * Cada perfil define quais módulos o usuário pode acessar.
  * O perfil 'admin' tem acesso total (*).
+ *
+ * As permissões definidas aqui são DEFAULTS. O admin pode sobrepô-las
+ * em runtime via tela "Permissões" (gravadas em edusync_perfis_overrides).
+ * Ver setOverrides() / getModulosEfetivos().
  */
 
 export const PERFIS = {
@@ -15,7 +19,6 @@ export const PERFIS = {
     },
     pedagogo: {
         nome: 'Pedagogo',
-        /* Pedagogo NÃO tem acesso a Provas (módulo restrito a professor/admin) */
         modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'suporte'],
     },
     secretaria: {
@@ -32,17 +35,80 @@ export const PERFIS = {
     },
 };
 
+/** Lista de TODOS os módulos disponíveis no sistema (catálogo para a UI). */
+export const MODULOS_DISPONIVEIS = [
+    { id: 'dashboard',          nome: 'Turmas / Dashboard' },
+    { id: 'frequencias',        nome: 'Frequências' },
+    { id: 'atividades',         nome: 'Atividades' },
+    { id: 'classroom',          nome: 'Google Classroom' },
+    { id: 'comportamento',      nome: 'Comportamento' },
+    { id: 'grupos',             nome: 'Grupos' },
+    { id: 'mapa-sala',          nome: 'Mapa de Sala' },
+    { id: 'pedagogico',         nome: 'Painel Pedagógico' },
+    { id: 'retorno-pedagogico', nome: 'Retorno Pedagógico' },
+    { id: 'provas',             nome: 'Provas' },
+    { id: 'comunicados',        nome: 'Comunicados' },
+    { id: 'crachas',            nome: 'Crachás' },
+    { id: 'emprestimos',        nome: 'Empréstimos' },
+    { id: 'materiais',          nome: 'Materiais' },
+    { id: 'circulacao',         nome: 'Circulação' },
+    { id: 'presenca',           nome: 'Presença Diária' },
+    { id: 'cozinha',            nome: 'Cozinha' },
+    { id: 'suporte',            nome: 'Suporte' },
+    { id: 'portal-aluno',       nome: 'Portal do Aluno (admin)' },
+    { id: 'planos',             nome: 'Planos' },
+];
+
+/* ── Overrides em memória, populados a partir da tabela edusync_perfis_overrides ── */
+const _overrides = new Map(); // perfil -> string[]
+
+/** Substitui os overrides em memória (chamar após carregar do DB). */
+export function setOverrides(map) {
+    _overrides.clear();
+    for (const [perfil, modulos] of Object.entries(map || {})) {
+        if (Array.isArray(modulos)) _overrides.set(perfil, modulos);
+    }
+}
+
+/** Define o override para UM perfil (em memória). */
+export function setOverride(perfil, modulos) {
+    if (Array.isArray(modulos)) _overrides.set(perfil, modulos);
+}
+
+/** Remove o override de um perfil (volta ao default do código). */
+export function clearOverride(perfil) {
+    _overrides.delete(perfil);
+}
+
+/** Retorna os módulos efetivos do perfil (override > default). */
+export function getModulosEfetivos(perfil) {
+    if (perfil === 'admin') return ['*'];
+    if (_overrides.has(perfil)) return _overrides.get(perfil);
+    return PERFIS[perfil]?.modulos || [];
+}
+
+/** Mapa { perfil: modulos[] } com TODOS os perfis. */
+export function getMapaPermissoesEfetivas() {
+    const out = {};
+    for (const id of Object.keys(PERFIS)) {
+        out[id] = getModulosEfetivos(id);
+    }
+    return out;
+}
+
 /**
- * Verifica se um perfil tem acesso a um módulo.
+ * Verifica se um perfil tem acesso a um módulo (respeita overrides).
  * @param {string} perfil
  * @param {string} modulo
  * @returns {boolean}
  */
 export function podeAcessar(perfil, modulo) {
-    const config = PERFIS[perfil];
-    if (!config) return false;
-    if (config.modulos.includes('*')) return true;
-    return config.modulos.includes(modulo);
+    if (!perfil) return false;
+    if (perfil === 'admin') return true;
+    const lista = getModulosEfetivos(perfil);
+    if (!lista || lista.length === 0) return false;
+    if (lista.includes('*')) return true;
+    return lista.includes(modulo);
 }
 
 export const LISTA_PERFIS = Object.entries(PERFIS).map(([id, cfg]) => ({

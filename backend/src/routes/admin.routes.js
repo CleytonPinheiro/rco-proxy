@@ -10,7 +10,7 @@ import { fileURLToPath }   from 'url';
 import { google }          from 'googleapis';
 import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 import { auditLogger }     from '../services/AuditLogger.js';
-import { LISTA_PERFIS }    from '../config/permissions.js';
+import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS } from '../config/permissions.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,6 +52,102 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     /* ── Perfis disponíveis ── */
     router.get('/admin/perfis', (_req, res) => {
         res.json(LISTA_PERFIS);
+    });
+
+    /* ════════════════════════════════════════════════════════
+       PERMISSÕES POR PERFIL — defaults + overrides editáveis
+    ════════════════════════════════════════════════════════ */
+    router.get('/admin/permissoes', async (_req, res) => {
+        try {
+            const { rows } = await pool.query(
+                `SELECT perfil, modulos, atualizado_em FROM edusync_perfis_overrides`
+            );
+            const overridesMap = {};
+            for (const r of rows) overridesMap[r.perfil] = { modulos: r.modulos, atualizadoEm: r.atualizado_em };
+
+            const perfis = Object.entries(PERFIS).map(([id, cfg]) => ({
+                id,
+                nome: cfg.nome,
+                modulosDefault: cfg.modulos,
+                modulosEfetivos: getMapaPermissoesEfetivas()[id] || cfg.modulos,
+                customizado: !!overridesMap[id],
+                atualizadoEm: overridesMap[id]?.atualizadoEm || null,
+            }));
+
+            res.json({ perfis, modulos: MODULOS_DISPONIVEIS });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Atualiza módulos permitidos para um perfil. Body: { modulos: ['dashboard',...] } */
+    router.put('/admin/permissoes/:perfil', async (req, res) => {
+        const perfil = req.params.perfil;
+        const { modulos } = req.body || {};
+
+        if (!PERFIS[perfil]) {
+            return res.status(400).json({ erro: 'Perfil desconhecido.' });
+        }
+        if (perfil === 'admin') {
+            return res.status(400).json({ erro: 'O perfil admin tem acesso total e não pode ser editado.' });
+        }
+        if (!Array.isArray(modulos)) {
+            return res.status(400).json({ erro: 'modulos deve ser um array.' });
+        }
+
+        const idsValidos = new Set(MODULOS_DISPONIVEIS.map(m => m.id));
+        const limpos = [...new Set(modulos.filter(m => idsValidos.has(m)))];
+
+        try {
+            await pool.query(
+                `INSERT INTO edusync_perfis_overrides (perfil, modulos, atualizado_em, atualizado_por)
+                 VALUES ($1, $2::jsonb, now(), $3)
+                 ON CONFLICT (perfil) DO UPDATE
+                 SET modulos = EXCLUDED.modulos,
+                     atualizado_em = now(),
+                     atualizado_por = EXCLUDED.atualizado_por`,
+                [perfil, JSON.stringify(limpos), req.userSession.userId]
+            );
+            setOverride(perfil, limpos);
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'PERMISSOES_PERFIL_ATUALIZADAS',
+                modulo:      'admin',
+                detalhes:    { perfil, modulos: limpos },
+                ip:          req.ip,
+            });
+
+            res.json({ sucesso: true, perfil, modulos: limpos });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Restaura defaults de um perfil (remove override). */
+    router.delete('/admin/permissoes/:perfil', async (req, res) => {
+        const perfil = req.params.perfil;
+        if (!PERFIS[perfil]) return res.status(400).json({ erro: 'Perfil desconhecido.' });
+        if (perfil === 'admin')  return res.status(400).json({ erro: 'admin não tem override.' });
+
+        try {
+            await pool.query(`DELETE FROM edusync_perfis_overrides WHERE perfil = $1`, [perfil]);
+            clearOverride(perfil);
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'PERMISSOES_PERFIL_RESTAURADAS',
+                modulo:      'admin',
+                detalhes:    { perfil },
+                ip:          req.ip,
+            });
+
+            res.json({ sucesso: true, perfil, modulos: PERFIS[perfil].modulos });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
     });
 
     /* ── Listar usuários ── */

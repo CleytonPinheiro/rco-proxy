@@ -68,6 +68,7 @@
                 <button class="admin-tab" data-tab="escolas">Escolas</button>
                 <button class="admin-tab" data-tab="alunos">Alunos</button>
                 <button class="admin-tab" data-tab="suporte">Suporte <span id="suporteBadge" style="display:none;background:#ef4444;color:#fff;font-size:.7rem;padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:700"></span></button>
+                <button class="admin-tab" data-tab="permissoes">Permissões</button>
                 <button class="admin-tab" data-tab="config">Configurações</button>
                 <button class="admin-tab" data-tab="audit">Audit Log</button>
             </div>
@@ -206,6 +207,21 @@
                     </div>
                 </div>
                 <div id="suporteContainer" style="margin-top:12px">Carregando...</div>
+            </div>
+
+            <!-- Painel Permissões -->
+            <div class="admin-panel" id="panel-permissoes">
+                <div class="admin-section-header">
+                    <h3>Permissões por perfil</h3>
+                    <button id="btnSalvarPermissoes" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">💾 Salvar alterações</button>
+                </div>
+                <p style="color:var(--text-muted);font-size:.85rem;margin:4px 0 16px">
+                    Marque os módulos que cada perfil pode acessar. As mudanças entram em vigor no próximo carregamento de página dos usuários.
+                    O perfil <strong>Administrador</strong> sempre tem acesso total e não aparece aqui.
+                </p>
+                <div id="permissoesContainer">
+                    <p style="color:var(--text-muted)">Carregando...</p>
+                </div>
             </div>
 
             <!-- Painel Audit Log -->

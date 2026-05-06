@@ -141,6 +141,30 @@ export async function initializeDatabase() {
                 obs    TEXT
             )
         `);
+
+        /* ── Overrides de permissões por perfil (admin pode editar) ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS edusync_perfis_overrides (
+                perfil          VARCHAR(40)  PRIMARY KEY,
+                modulos         JSONB        NOT NULL,
+                atualizado_em   TIMESTAMP    NOT NULL DEFAULT now(),
+                atualizado_por  INTEGER      REFERENCES edusync_usuarios(id)
+            )
+        `);
+
+        /* Carrega overrides existentes para a memória */
+        try {
+            const { rows: ovr } = await client.query(
+                `SELECT perfil, modulos FROM edusync_perfis_overrides`
+            );
+            const { setOverrides } = await import('./permissions.js');
+            const map = {};
+            for (const r of ovr) map[r.perfil] = r.modulos;
+            setOverrides(map);
+            if (ovr.length > 0) console.log(`[Permissões] ${ovr.length} override(s) de perfil carregado(s).`);
+        } catch (e) {
+            console.warn('[Permissões] Falha ao carregar overrides:', e.message);
+        }
         await client.query(`
             INSERT INTO edusync_config (chave, valor, obs) VALUES ('portal_modo_demo', 'false', 'Permite login nos portais com qualquer email Google (sem restrição de domínio)')
             ON CONFLICT (chave) DO NOTHING

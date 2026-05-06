@@ -40,8 +40,10 @@
         '/pages/suporte/':               'suporte',
     };
 
-    /* ── Permissões por perfil — espelho exato de backend/src/config/permissions.js ── */
-    const PERFIL_MODULOS = {
+    /* ── Permissões por perfil — defaults espelham backend/src/config/permissions.js
+         Podem ser sobrescritos em runtime pelo admin (vêm em /api/me como
+         `permissoesPerfis`) — usamos cache em localStorage para flash-free.   ── */
+    const PERFIL_MODULOS_DEFAULT = {
         admin:      ['*'],
         professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','suporte'],
         pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','suporte'],
@@ -49,6 +51,14 @@
         aux_turno:  ['circulacao','presenca','suporte'],
         cozinha:    ['cozinha','suporte'],
     };
+    let PERFIL_MODULOS = { ...PERFIL_MODULOS_DEFAULT };
+    /* Carrega override do cache, se existir */
+    try {
+        const cachedPerms = JSON.parse(localStorage.getItem('edusync_perms_cache') || 'null');
+        if (cachedPerms && typeof cachedPerms === 'object') {
+            PERFIL_MODULOS = { ...PERFIL_MODULOS_DEFAULT, ...cachedPerms };
+        }
+    } catch {}
 
     const PERFIL_LABEL = {
         admin:      'Administrador',
@@ -171,18 +181,26 @@
             if (!cached) return; // sem cache: permanece invisível até fetch + aplicarPermissoesNav
 
             const p = cached.impersonando ? cached.impersonandoPerfil : cached.perfil;
+            /* Pré-computa quais módulos existem no topbar (.nav-menu) — isso
+               permite manter no side-panel itens hardcoded SEM duplicata
+               (ex.: mapa-sala em pages do pedagogo onde só está no side). */
+            const modulosNoTopbar = new Set();
+            document.querySelectorAll('.nav-menu a').forEach(a => {
+                const m = MODULO_URLS[a.getAttribute('href')];
+                if (m) modulosNoTopbar.add(m);
+            });
             document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
                 if (link.classList.contains('side-nav-child-item')) return;
                 const modulo = MODULO_URLS[link.getAttribute('href')];
                 if (!modulo) return;
 
-                /* Itens hardcoded em .side-panel-nav que correspondem a módulos
-                   conhecidos são SEMPRE escondidos — o grupo de overflow do nav
-                   adaptativo (.side-overflow-group) é a única fonte de verdade. */
+                /* Itens hardcoded em .side-panel-nav: só escondemos se
+                   houver duplicata no topbar (overflow é fonte da verdade).
+                   Caso contrário, mantemos para preservar acesso ao módulo. */
                 const ehSidePanelHardcoded =
                     link.closest('.side-panel-nav') &&
                     !link.closest('.side-overflow-group');
-                if (ehSidePanelHardcoded) {
+                if (ehSidePanelHardcoded && modulosNoTopbar.has(modulo)) {
                     link.setAttribute('data-perm-hidden', 'true');
                     link.style.display = 'none';
                     return;
@@ -243,6 +261,11 @@
 
     /* Atualiza cache com dados frescos do servidor */
     salvarCacheNav(user);
+    /* Sincroniza mapa de permissões dinâmico vindo do servidor */
+    if (user.permissoesPerfis && typeof user.permissoesPerfis === 'object') {
+        PERFIL_MODULOS = { ...PERFIL_MODULOS_DEFAULT, ...user.permissoesPerfis };
+        try { localStorage.setItem('edusync_perms_cache', JSON.stringify(user.permissoesPerfis)); } catch {}
+    }
 
     window.__edusync = { user };
 
@@ -314,6 +337,13 @@
     function aplicarPermissoesNav(user) {
         const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
 
+        /* Pré-computa módulos presentes no topbar para detectar duplicata real */
+        const modulosNoTopbar = new Set();
+        document.querySelectorAll('.nav-menu a').forEach(a => {
+            const m = MODULO_URLS[a.getAttribute('href')];
+            if (m) modulosNoTopbar.add(m);
+        });
+
         document.querySelectorAll('.nav-menu a, .side-panel a').forEach(link => {
             if (link.classList.contains('side-nav-child-item')) return;
             const href   = link.getAttribute('href');
@@ -321,14 +351,13 @@
 
             if (!modulo) return; // link sem mapeamento: deixa visível
 
-            /* Itens hardcoded em .side-panel-nav que correspondem a módulos
-               conhecidos são SEMPRE escondidos — o grupo de overflow do nav
-               adaptativo (.side-overflow-group) é a única fonte de verdade,
-               evitando duplicatas entre topbar e side panel.                  */
+            /* Item hardcoded em .side-panel-nav: só escondemos se houver
+               duplicata no topbar (overflow é fonte da verdade). Sem
+               duplicata, mantemos para preservar acesso ao módulo. */
             const ehSidePanelHardcoded =
                 link.closest('.side-panel-nav') &&
                 !link.closest('.side-overflow-group');
-            if (ehSidePanelHardcoded) {
+            if (ehSidePanelHardcoded && modulosNoTopbar.has(modulo)) {
                 link.setAttribute('data-perm-hidden', 'true');
                 link.style.display = 'none';
                 link.removeAttribute('data-perm-blocked');

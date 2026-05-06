@@ -28,11 +28,12 @@ document.querySelectorAll('.admin-tab').forEach(btn => {
         btn.classList.add('admin-tab--ativo');
         document.getElementById(`panel-${btn.dataset.tab}`).classList.add('admin-panel--ativo');
 
-        if (btn.dataset.tab === 'audit')   carregarAuditLog();
-        if (btn.dataset.tab === 'escolas') carregarEscolas();
-        if (btn.dataset.tab === 'suporte') carregarSuporte();
-        if (btn.dataset.tab === 'config')  { carregarConfig(); carregarDadosEscola(); }
-        if (btn.dataset.tab === 'alunos')  carregarTurmasAlunos();
+        if (btn.dataset.tab === 'audit')      carregarAuditLog();
+        if (btn.dataset.tab === 'escolas')    carregarEscolas();
+        if (btn.dataset.tab === 'suporte')    carregarSuporte();
+        if (btn.dataset.tab === 'config')     { carregarConfig(); carregarDadosEscola(); }
+        if (btn.dataset.tab === 'alunos')     carregarTurmasAlunos();
+        if (btn.dataset.tab === 'permissoes') carregarPermissoes();
     });
 });
 
@@ -2220,6 +2221,129 @@ function renderHistoricoComunicados(lista, total) {
 document.getElementById('btnBuscarComunicados').addEventListener('click', carregarHistoricoComunicados);
 document.getElementById('buscaComunicados').addEventListener('keydown', e => {
     if (e.key === 'Enter') carregarHistoricoComunicados();
+});
+
+/* ════════════════════════════════════════════════════════════
+   PERMISSÕES POR PERFIL
+════════════════════════════════════════════════════════════ */
+let _permissoesEstado = null; // { perfis:[], modulos:[], edits:{perfilId:Set<modulo>} }
+
+async function carregarPermissoes() {
+    const wrap = document.getElementById('permissoesContainer');
+    wrap.innerHTML = '<p style="color:var(--text-muted)">Carregando...</p>';
+    try {
+        const res = await api('/admin/permissoes');
+        if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
+        const data = await res.json();
+        const perfisEditaveis = data.perfis.filter(p => p.id !== 'admin');
+        _permissoesEstado = {
+            perfis: perfisEditaveis,
+            modulos: data.modulos,
+            edits: {},
+        };
+        for (const p of perfisEditaveis) {
+            _permissoesEstado.edits[p.id] = new Set(p.modulosEfetivos.includes('*') ? data.modulos.map(m => m.id) : p.modulosEfetivos);
+        }
+        renderPermissoes();
+    } catch (e) {
+        wrap.innerHTML = `<p style="color:#dc2626">Erro: ${esc(e.message)}</p>`;
+    }
+}
+
+function renderPermissoes() {
+    const wrap = document.getElementById('permissoesContainer');
+    const { perfis, modulos, edits } = _permissoesEstado;
+
+    const headPerfis = perfis.map(p => `
+        <th style="text-align:center;padding:10px 8px;font-size:.78rem;min-width:110px">
+            <div style="font-weight:800">${esc(p.nome)}</div>
+            <div style="font-size:.7rem;font-weight:500;color:var(--text-muted);margin-top:2px">
+                ${p.customizado ? '<span style="color:#d97706">● customizado</span>' : '<span style="opacity:.5">● padrão</span>'}
+            </div>
+            ${p.customizado ? `<button data-restaurar="${p.id}" title="Restaurar padrão" style="margin-top:4px;padding:2px 8px;font-size:.7rem;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;cursor:pointer">↺ padrão</button>` : ''}
+        </th>
+    `).join('');
+
+    const linhas = modulos.map(m => {
+        const cels = perfis.map(p => {
+            const marcado = edits[p.id].has(m.id);
+            const eraDefault = p.modulosDefault.includes('*') || p.modulosDefault.includes(m.id);
+            const mudou = marcado !== eraDefault;
+            return `<td style="text-align:center;padding:6px;background:${mudou ? 'rgba(217,119,6,.08)' : 'transparent'}">
+                <input type="checkbox"
+                    data-perfil="${esc(p.id)}"
+                    data-modulo="${esc(m.id)}"
+                    ${marcado ? 'checked' : ''}
+                    style="width:17px;height:17px;cursor:pointer;accent-color:#2563eb">
+            </td>`;
+        }).join('');
+        return `<tr>
+            <td style="padding:7px 10px;font-size:.85rem;font-weight:600">${esc(m.nome)}<div style="font-size:.7rem;color:var(--text-muted);font-weight:400">${esc(m.id)}</div></td>
+            ${cels}
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
+        <table class="admin-table" style="margin:0">
+            <thead>
+                <tr>
+                    <th style="text-align:left;padding:10px;min-width:180px">Módulo</th>
+                    ${headPerfis}
+                </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    </div>`;
+
+    wrap.querySelectorAll('input[type="checkbox"][data-perfil]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const perfil = cb.dataset.perfil;
+            const modulo = cb.dataset.modulo;
+            if (cb.checked) edits[perfil].add(modulo);
+            else            edits[perfil].delete(modulo);
+        });
+    });
+    wrap.querySelectorAll('button[data-restaurar]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const perfil = btn.dataset.restaurar;
+            if (!confirm(`Restaurar permissões padrão para "${perfil}"?`)) return;
+            try {
+                const res = await api(`/admin/permissoes/${perfil}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
+                showToast('Padrão restaurado.');
+                await carregarPermissoes();
+            } catch (e) {
+                showToast(`Erro: ${e.message}`, 'error');
+            }
+        });
+    });
+}
+
+document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async () => {
+    if (!_permissoesEstado) return;
+    const btn = document.getElementById('btnSalvarPermissoes');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+        const { perfis, edits } = _permissoesEstado;
+        const promessas = perfis.map(p => {
+            const modulos = [...edits[p.id]];
+            return api(`/admin/permissoes/${p.id}`, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ modulos }),
+            }).then(async r => {
+                if (!r.ok) throw new Error(`${p.id}: ${(await r.json()).erro || r.status}`);
+            });
+        });
+        await Promise.all(promessas);
+        showToast('Permissões atualizadas com sucesso.');
+        await carregarPermissoes();
+    } catch (e) {
+        showToast(`Erro: ${e.message}`, 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '💾 Salvar alterações';
+    }
 });
 
 /* ── Init ── */
