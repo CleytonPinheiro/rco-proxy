@@ -169,6 +169,13 @@ export async function initializeDatabase() {
             INSERT INTO edusync_config (chave, valor, obs) VALUES ('portal_modo_demo', 'false', 'Permite login nos portais com qualquer email Google (sem restrição de domínio)')
             ON CONFLICT (chave) DO NOTHING
         `);
+        /* Seed defaults to whatever the env var says (or 'true' if not set).
+           ON CONFLICT DO NOTHING means existing DB values are never overwritten. */
+        const _pedRcoEnv = process.env.PEDAGOGICO_RCO_REQUERIDO === 'false' ? 'false' : 'true';
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES ('pedagogico_rco_requerido', $1, 'Quando ativado, pedagogos precisam de credenciais RCO para entrar. Quando desativado, pedagogos com @escola.pr.gov.br ou @seed.pr.gov.br podem entrar via Google OAuth sem RCO.')
+            ON CONFLICT (chave) DO NOTHING
+        `, [_pedRcoEnv]);
 
         /* ── Políticas de retenção do job de purga (editáveis pelo admin) ── */
         await client.query(`

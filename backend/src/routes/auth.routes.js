@@ -19,8 +19,22 @@ import { resolverPlano }    from '../config/planos.js';
 import { getLoginQueueStats } from '../../auth-puppeteer.js';
 
 /* ── Feature flag: pedagogo pode entrar via Google OAuth sem token RCO ── */
-const PEDAGOGICO_RCO_REQUERIDO = process.env.PEDAGOGICO_RCO_REQUERIDO !== 'false';
-console.log(`[Auth] PEDAGOGICO_RCO_REQUERIDO=${PEDAGOGICO_RCO_REQUERIDO}`);
+/* Lido em tempo de execução a partir do edusync_config (fallback: env var).   */
+/* O pool é criado dentro de createAuthRouter; usamos um getter que recebe o   */
+/* pool como argumento para evitar referência circular ao módulo do banco.      */
+async function _isPedagogoRcoRequerido(pool) {
+    try {
+        const { rows } = await pool.query(
+            `SELECT valor FROM edusync_config WHERE chave = 'pedagogico_rco_requerido'`
+        );
+        if (rows.length > 0) return rows[0].valor !== 'false';
+    } catch (e) {
+        console.warn('[Auth] Falha ao ler pedagogico_rco_requerido do DB; usando env var:', e.message);
+    }
+    return process.env.PEDAGOGICO_RCO_REQUERIDO !== 'false';
+}
+const _PEDAGOGICO_RCO_ENV = process.env.PEDAGOGICO_RCO_REQUERIDO !== 'false';
+console.log(`[Auth] PEDAGOGICO_RCO_REQUERIDO (env)=${_PEDAGOGICO_RCO_ENV} (pode ser sobrescrito via admin panel)`);
 
 /* ── Domínios permitidos para login pedagógico via Google ── */
 const DOMINIOS_PEDAGOGO = ['escola.pr.gov.br', 'seed.pr.gov.br'];
@@ -455,7 +469,7 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
 
     /* ── Pedagogo Google OAuth — URL de autorização ── */
     router.get('/auth/pedagogo-google/url', async (req, res) => {
-        if (PEDAGOGICO_RCO_REQUERIDO) {
+        if (await _isPedagogoRcoRequerido(pool)) {
             return res.status(403).json({
                 erro: 'Login via Google para pedagogo não está habilitado nesta instalação. Contate o administrador.',
             });
@@ -487,7 +501,7 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             return res.redirect('/login/?erro=google_cancelado');
         }
 
-        if (PEDAGOGICO_RCO_REQUERIDO) {
+        if (await _isPedagogoRcoRequerido(pool)) {
             return res.redirect('/login/?erro=pedagogo_rco_requerido');
         }
 
