@@ -565,9 +565,15 @@
                 const fixados = liberados.filter(a => a.getAttribute('data-nav-pin') === 'true');
                 const normais = liberados.filter(a => a.getAttribute('data-nav-pin') !== 'true');
 
-                /* Torna todos visíveis para medir (bloqueados também: podem caber
-                   no topbar se houver espaço; senão ficam só no side panel)     */
-                todos.forEach(a => {
+                /* Bloqueados (em desenvolvimento) NUNCA aparecem no topbar —
+                   ficam sempre apenas no side panel.                            */
+                bloqueados.forEach(a => {
+                    a.style.display = 'none';
+                    a.setAttribute('data-nav-hidden', 'true');
+                });
+
+                /* Torna liberados visíveis para medir */
+                liberados.forEach(a => {
                     a.style.visibility = 'hidden';
                     a.style.display    = '';
                     a.removeAttribute('data-nav-hidden');
@@ -603,39 +609,16 @@
                     }
                 });
 
-                /* Largura realmente usada pelos normais visíveis */
-                const normaisUsadosW = temOverflowNormal
-                    ? normais.slice(0, overflowIdx).reduce((s, a) => s + a.offsetWidth + 6, 0)
-                    : acumulado;
-                let restanteW = dispW - normaisUsadosW;
-
-                /* Tenta acomodar bloqueados no final do topbar (no espaço que sobrou).
-                   Os que não couberem ficam só no side panel.                    */
-                let bloqueadosOverflow = false;
-                bloqueados.forEach(a => {
-                    a.style.visibility = '';
-                    const w = a.offsetWidth + 6;
-                    if (!bloqueadosOverflow && w <= restanteW) {
-                        restanteW -= w;
-                        /* Cabe no topbar — fica visível também no header */
-                    } else {
-                        bloqueadosOverflow = true;
-                        a.style.display = 'none';
-                        a.setAttribute('data-nav-hidden', 'true');
-                    }
-                });
-
                 /* Fixados sempre visíveis no header */
                 fixados.forEach(a => { a.style.visibility = ''; });
 
-                /* Mostra o "Mais ▾" se houver overflow de qualquer tipo, ou
-                   sempre que houver bloqueados (eles ficam SEMPRE no side panel
-                   também, mesmo quando aparecem no topbar).                     */
+                /* Mostra o "Mais ▾" se houver overflow normal OU bloqueados
+                   (que vivem permanentemente no side panel).                    */
                 btnMais.style.display = (temOverflowNormal || bloqueados.length) ? '' : 'none';
 
                 /* Side panel: normais em overflow primeiro, depois TODOS os
-                   bloqueados (sempre presentes ali, independente de também
-                   aparecerem no topbar). Fixados nunca aparecem no side panel. */
+                   bloqueados (que SEMPRE ficam apenas aqui).
+                   Fixados nunca aparecem no side panel.                         */
                 const overflowNormais = normais.filter(a => a.getAttribute('data-nav-hidden') === 'true');
                 injetarOverflowNoSidePanel([...overflowNormais, ...bloqueados]);
 
