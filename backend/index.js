@@ -133,6 +133,20 @@ async function initializeApp() {
 
         console.log('Dependências e rotas carregadas com sucesso!');
 
+        // Lembrete: registrar URIs de redirecionamento no Google Cloud Console
+        const devHost = process.env.REPLIT_DEV_DOMAIN
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : `http://localhost:${PORT}`;
+        console.log('─────────────────────────────────────────────────────────────');
+        console.log('[Google OAuth] URIs que DEVEM estar no Google Cloud Console:');
+        console.log(`  Classroom:  ${devHost}/api/classroom/callback`);
+        console.log(`  Pedagogo:   ${devHost}/api/auth/pedagogo-google/callback`);
+        if (process.env.GOOGLE_REDIRECT_URI) {
+            console.log(`  (GOOGLE_REDIRECT_URI override ativo: ${process.env.GOOGLE_REDIRECT_URI})`);
+        }
+        console.log('  Adicione também o domínio de produção ao implantar.');
+        console.log('─────────────────────────────────────────────────────────────');
+
         // Sync inicial e agendamento
         await syncService.sincronizarComSupabase()
             .catch(e => console.warn('[SYNC] Falha no sync inicial:', e.message));

@@ -510,7 +510,13 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             googleEmail = (userInfo.email || '').toLowerCase();
             googleNome  = userInfo.name  || googleEmail.split('@')[0];
         } catch (e) {
-            console.error('[Auth] Erro ao obter userinfo Google (pedagogo):', e.message);
+            if (e.message && e.message.includes('redirect_uri_mismatch')) {
+                console.error('[Auth] redirect_uri_mismatch no OAuth pedagogo. A URI de callback desta instalação não está registrada no Google Cloud Console.');
+                console.error(`[Auth] URI esperada: ${req.protocol}://${req.get('host')}/api/auth/pedagogo-google/callback`);
+                console.error('[Auth] Acesse: Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client → Authorized redirect URIs');
+            } else {
+                console.error('[Auth] Erro ao obter userinfo Google (pedagogo):', e.message);
+            }
             return res.redirect('/login/?erro=google_falha');
         }
 

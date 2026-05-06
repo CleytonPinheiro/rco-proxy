@@ -80,7 +80,10 @@ EduSync provides a comprehensive school management system with features like:
 - **Google Classroom API Quotas:** Be mindful of API rate limits for bulk operations.
 - **Database Consistency:** Ensure data consistency between Supabase and local PostgreSQL.
 - **Plan Functionality Gating:** Use `requireFuncionalidade` middleware to protect features based on plans.
-- **Google Classroom Redirect URIs:** All necessary redirect URIs must be registered in the Google Cloud Console.
+- **Google OAuth Redirect URIs:** Two URIs must be registered in Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client → Authorized redirect URIs, for **each environment** (dev + production):
+  - `https://<host>/api/classroom/callback` — teacher Google Classroom OAuth
+  - `https://<host>/api/auth/pedagogo-google/callback` — pedagogo Google login (used when `PEDAGOGICO_RCO_REQUERIDO=false`)
+  The backend logs these exact URIs at startup. A `redirect_uri_mismatch` error in the logs means one is missing.
 - **GradePen + 2FA:** The `GOOGLE_EMAIL` used for GradePen scraping cannot have 2FA enabled.
 - **SUPABASE_SERVICE_ROLE_KEY vs ANON_KEY:** The service role key bypasses RLS and is used by `supabaseAdmin`. It is different from the anon key — verify in Supabase Dashboard → Settings → API.
 
