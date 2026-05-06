@@ -54,15 +54,72 @@ async function buscarEstabelecimentosDocente(rcoToken) {
     }
 }
 
-/* ── Rate limit: máx 5 tentativas por IP a cada 15 minutos ── */
-const loginRateLimit = rateLimit({
-    windowMs:               15 * 60 * 1000,
-    max:                    5,
-    standardHeaders:        true,
-    legacyHeaders:          false,
-    message:                { erro: 'Muitas tentativas de login. Aguarde 15 minutos.' },
-    skipSuccessfulRequests: true,
+/* ── Rate limits configuráveis via env ── */
+const RL_IP_JANELA  = parseInt(process.env.RL_LOGIN_IP_JANELA_MS  || String(5 * 60 * 1000), 10);  // default 5 min
+const RL_IP_MAX     = parseInt(process.env.RL_LOGIN_IP_MAX         || '10', 10);                   // default 10 req / janela
+const RL_CPF_JANELA = parseInt(process.env.RL_LOGIN_CPF_JANELA_MS || String(15 * 60 * 1000), 10); // default 15 min
+const RL_CPF_MAX    = parseInt(process.env.RL_LOGIN_CPF_MAX        || '5', 10);                    // default 5 falhas / janela
+
+/* ── Rate limit por IP: conta TODAS as tentativas (sucesso + falha) ── */
+const loginIpRateLimit = rateLimit({
+    windowMs:        RL_IP_JANELA,
+    max:             RL_IP_MAX,
+    standardHeaders: true,
+    legacyHeaders:   false,
+    handler: async (req, res) => {
+        // Usar resetTime do próprio middleware para Retry-After preciso; fallback à janela inteira
+        const resetMs       = req.rateLimit?.resetTime instanceof Date
+            ? req.rateLimit.resetTime.getTime() - Date.now()
+            : RL_IP_JANELA;
+        const retryAfterSec = Math.max(1, Math.ceil(resetMs / 1000));
+        res.set('Retry-After', String(retryAfterSec));
+        auditLogger.registrar({
+            usuarioId:   null,
+            usuarioNome: 'Sistema',
+            acao:        'LOGIN_BLOQUEADO_IP',
+            modulo:      'auth',
+            detalhes:    { ip: req.ip, limite: RL_IP_MAX, janela_min: Math.ceil(RL_IP_JANELA / 60000) },
+            ip:          req.ip,
+        }).catch(() => {});
+        res.status(429).json({
+            erro: `Muitas tentativas de login deste endereço. Aguarde ${Math.ceil(retryAfterSec / 60)} minuto(s) e tente novamente.`,
+        });
+    },
 });
+
+/* ── Contador de falhas por CPF (em memória) ── */
+const cpfFailureStore = new Map();
+
+// Padrão de erros de infraestrutura que NÃO devem penalizar o CPF
+const INFRA_ERROR_RE = /timeout|network|navigation|net::|EPIPE|ECONNRESET|ENOTFOUND|Protocol error|Target closed|Page crashed/i;
+
+function _cpfEntry(cpf) {
+    const entry = cpfFailureStore.get(cpf);
+    if (!entry || Date.now() >= entry.resetAt) return null;
+    return entry;
+}
+
+function cpfFailureCount(cpf)       { return _cpfEntry(cpf)?.count ?? 0; }
+function cpfFailureResetAt(cpf)     { return _cpfEntry(cpf)?.resetAt ?? Date.now(); }
+function cpfFailureClear(cpf)       { cpfFailureStore.delete(cpf); }
+
+function cpfFailureIncrement(cpf) {
+    const now   = Date.now();
+    const entry = cpfFailureStore.get(cpf);
+    if (!entry || now >= entry.resetAt) {
+        cpfFailureStore.set(cpf, { count: 1, resetAt: now + RL_CPF_JANELA });
+    } else {
+        entry.count += 1;
+    }
+}
+
+// Poda periódica de entradas expiradas para evitar crescimento ilimitado em ataques com CPFs aleatórios
+setInterval(() => {
+    const now = Date.now();
+    for (const [cpf, entry] of cpfFailureStore) {
+        if (now >= entry.resetAt) cpfFailureStore.delete(cpf);
+    }
+}, RL_CPF_JANELA).unref();
 
 export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer, decodeJwtExpiration }) {
     const pool   = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -105,13 +162,30 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
     });
 
     /* ── Login ── */
-    router.post('/auth/login', loginRateLimit, async (req, res) => {
+    router.post('/auth/login', loginIpRateLimit, async (req, res) => {
         const { cpf, senha } = req.body;
         if (!cpf || !senha) {
             return res.status(400).json({ erro: 'CPF e senha são obrigatórios.' });
         }
 
         const cpfLimpo = cpf.replace(/\D/g, '');
+
+        // 0. Verificar limite de falhas por CPF
+        if (cpfFailureCount(cpfLimpo) >= RL_CPF_MAX) {
+            const retryAfterSec = Math.max(1, Math.ceil((cpfFailureResetAt(cpfLimpo) - Date.now()) / 1000));
+            res.set('Retry-After', String(retryAfterSec));
+            auditLogger.registrar({
+                usuarioId:   null,
+                usuarioNome: 'Desconhecido',
+                acao:        'LOGIN_BLOQUEADO_CPF',
+                modulo:      'auth',
+                detalhes:    { cpf: cpfLimpo, limite: RL_CPF_MAX, janela_min: Math.ceil(RL_CPF_JANELA / 60000) },
+                ip:          req.ip,
+            }).catch(() => {});
+            return res.status(429).json({
+                erro: `Muitas tentativas incorretas para este usuário. Aguarde ${Math.ceil(retryAfterSec / 60)} minuto(s) e tente novamente.`,
+            });
+        }
 
         // 1. Verificar se o usuário já existe na base local
         let existentes;
@@ -139,8 +213,26 @@ export function createAuthRouter({ tokenService, syncService, loginWithPuppeteer
             if (loginErr.message === 'PUPPETEER_LOGIN_QUEUE_TIMEOUT') {
                 return res.status(503).json({ erro: 'Servidor ocupado com muitos logins simultâneos. Aguarde alguns segundos e tente novamente.' });
             }
+            // Incrementar contador apenas para erros de credencial; erros de infra não penalizam o CPF
+            if (!INFRA_ERROR_RE.test(loginErr.message)) {
+                cpfFailureIncrement(cpfLimpo);
+            }
+            if (cpfFailureCount(cpfLimpo) >= RL_CPF_MAX) {
+                // Primeira vez que atinge o limite → registrar no audit log
+                auditLogger.registrar({
+                    usuarioId:   null,
+                    usuarioNome: 'Desconhecido',
+                    acao:        'LOGIN_BLOQUEADO_CPF',
+                    modulo:      'auth',
+                    detalhes:    { cpf: cpfLimpo, limite: RL_CPF_MAX, janela_min: Math.ceil(RL_CPF_JANELA / 60000) },
+                    ip:          req.ip,
+                }).catch(() => {});
+            }
             return res.status(401).json({ erro: 'CPF ou senha incorretos (RCO).' });
         }
+
+        // Autenticação bem-sucedida: zerar contador de falhas deste CPF
+        cpfFailureClear(cpfLimpo);
 
         // 3. Extrair nome do JWT do RCO
         const payload = decodeJwtPayload(rcoToken);
