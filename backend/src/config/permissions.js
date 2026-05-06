@@ -59,6 +59,16 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'planos',             nome: 'Planos' },
 ];
 
+/* ── Módulos em desenvolvimento (gerenciado pelo admin) ── */
+let _modulosEmDesenvolvimento = new Set(['pedagogico', 'comunicados', 'retorno-pedagogico']);
+
+export function setModulosEmDesenvolvimento(lista) {
+    if (Array.isArray(lista)) _modulosEmDesenvolvimento = new Set(lista);
+}
+export function getModulosEmDesenvolvimento() {
+    return [..._modulosEmDesenvolvimento];
+}
+
 /* ── Overrides em memória, populados a partir da tabela edusync_perfis_overrides ── */
 const _overrides = new Map(); // perfil -> string[]
 

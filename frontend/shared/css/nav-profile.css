@@ -417,15 +417,20 @@
     position: relative;
     filter: grayscale(0.5);
 }
-[data-perm-blocked="true"]::after {
+[data-perm-blocked="true"]::before {
     content: "🚧";
-    font-size: 12px;
-    margin-left: 6px;
-    opacity: 0.95;
+    font-size: 16px;
+    margin-right: 6px;
+    opacity: 1;
     vertical-align: middle;
     filter: none;
     -webkit-text-fill-color: initial;
+    display: inline-block;
+    line-height: 1;
 }
+/* No side panel, o ícone aparece junto ao texto da descrição (não no link
+   inteiro), para não conflitar com o ícone próprio do item. */
+.side-nav-item[data-perm-blocked="true"]::before { content: none; }
 [data-perm-blocked="true"]:hover {
     background: rgba(255,255,255,0.06) !important;
     color: inherit !important;

@@ -75,15 +75,16 @@
     }
 
     /* ── Módulos "em desenvolvimento" ───────────────────────────────────────
-       Estes módulos AINDA aparecem no menu para os perfis que normalmente
-       teriam acesso, mas são exibidos desabilitados (cadeado + tooltip + toast)
-       para sinalizar que o desenvolvimento ainda está em andamento.
-       Para liberar um módulo, basta remover dessa lista.                       */
-    const MODULOS_EM_DESENVOLVIMENTO = new Set([
-        'pedagogico',
-        'comunicados',
-        'retorno-pedagogico',
-    ]);
+       Lista dinâmica gerenciada pelo admin (aba Permissões). Os defaults
+       abaixo são usados apenas no primeiro carregamento (antes do /api/me).
+       O servidor envia `modulosEmDesenvolvimento` em /api/me, e cacheamos
+       em localStorage.edusync_devmods_cache para reidratar sem flash.        */
+    const MODULOS_EM_DESENVOLVIMENTO_DEFAULT = ['pedagogico','comunicados','retorno-pedagogico'];
+    let MODULOS_EM_DESENVOLVIMENTO = new Set(MODULOS_EM_DESENVOLVIMENTO_DEFAULT);
+    try {
+        const cachedDev = JSON.parse(localStorage.getItem('edusync_devmods_cache') || 'null');
+        if (Array.isArray(cachedDev)) MODULOS_EM_DESENVOLVIMENTO = new Set(cachedDev);
+    } catch {}
     function emDesenvolvimento(modulo) { return MODULOS_EM_DESENVOLVIMENTO.has(modulo); }
 
     /* ── Módulos FIXADOS na barra de menu ─────────────────────────────────
@@ -265,6 +266,11 @@
     if (user.permissoesPerfis && typeof user.permissoesPerfis === 'object') {
         PERFIL_MODULOS = { ...PERFIL_MODULOS_DEFAULT, ...user.permissoesPerfis };
         try { localStorage.setItem('edusync_perms_cache', JSON.stringify(user.permissoesPerfis)); } catch {}
+    }
+    /* Sincroniza lista de módulos em desenvolvimento */
+    if (Array.isArray(user.modulosEmDesenvolvimento)) {
+        MODULOS_EM_DESENVOLVIMENTO = new Set(user.modulosEmDesenvolvimento);
+        try { localStorage.setItem('edusync_devmods_cache', JSON.stringify(user.modulosEmDesenvolvimento)); } catch {}
     }
 
     window.__edusync = { user };

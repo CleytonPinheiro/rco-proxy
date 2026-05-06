@@ -171,6 +171,24 @@ export async function initializeDatabase() {
         `);
         await client.query(`
             INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('modulos_em_desenvolvimento', '["pedagogico","comunicados","retorno-pedagogico"]', 'Módulos exibidos como "🚧 em desenvolvimento" no menu (gerenciável pelo admin)')
+            ON CONFLICT (chave) DO NOTHING
+        `);
+        /* Carrega lista atual para a memória */
+        try {
+            const { rows: cfgDev } = await client.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'modulos_em_desenvolvimento'`
+            );
+            if (cfgDev.length > 0) {
+                const lista = JSON.parse(cfgDev[0].valor || '[]');
+                const { setModulosEmDesenvolvimento } = await import('./permissions.js');
+                setModulosEmDesenvolvimento(lista);
+            }
+        } catch (e) {
+            console.warn('[Permissões] Falha ao carregar módulos em desenvolvimento:', e.message);
+        }
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
                 ('escola_nome_oficial', '', 'Nome oficial da escola para o cabeçalho do PDF'),
                 ('escola_endereco',     '', 'Endereço da escola para o cabeçalho do PDF'),
                 ('escola_logo_base64',  '', 'Logo da escola em Base64 para o cabeçalho do PDF')

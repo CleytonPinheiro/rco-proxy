@@ -2240,6 +2240,8 @@ async function carregarPermissoes() {
             perfis: perfisEditaveis,
             modulos: data.modulos,
             edits: {},
+            emDev: new Set(data.modulosEmDesenvolvimento || []),
+            emDevOriginal: new Set(data.modulosEmDesenvolvimento || []),
         };
         for (const p of perfisEditaveis) {
             _permissoesEstado.edits[p.id] = new Set(p.modulosEfetivos.includes('*') ? data.modulos.map(m => m.id) : p.modulosEfetivos);
@@ -2252,7 +2254,7 @@ async function carregarPermissoes() {
 
 function renderPermissoes() {
     const wrap = document.getElementById('permissoesContainer');
-    const { perfis, modulos, edits } = _permissoesEstado;
+    const { perfis, modulos, edits, emDev } = _permissoesEstado;
 
     const headPerfis = perfis.map(p => `
         <th style="text-align:center;padding:10px 8px;font-size:.78rem;min-width:110px">
@@ -2265,6 +2267,7 @@ function renderPermissoes() {
     `).join('');
 
     const linhas = modulos.map(m => {
+        const ehDev = emDev.has(m.id);
         const cels = perfis.map(p => {
             const marcado = edits[p.id].has(m.id);
             const eraDefault = p.modulosDefault.includes('*') || p.modulosDefault.includes(m.id);
@@ -2278,23 +2281,47 @@ function renderPermissoes() {
             </td>`;
         }).join('');
         return `<tr>
-            <td style="padding:7px 10px;font-size:.85rem;font-weight:600">${esc(m.nome)}<div style="font-size:.7rem;color:var(--text-muted);font-weight:400">${esc(m.id)}</div></td>
+            <td style="padding:7px 10px;font-size:.85rem;font-weight:600">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span>${ehDev ? '🚧 ' : ''}${esc(m.nome)}</span>
+                    <label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:500;color:${ehDev ? '#d97706' : 'var(--text-muted)'};cursor:pointer;padding:2px 6px;border:1px solid ${ehDev ? '#fbbf24' : 'var(--border)'};border-radius:10px;background:${ehDev ? '#fffbeb' : 'transparent'}">
+                        <input type="checkbox" data-emdev="${esc(m.id)}" ${ehDev ? 'checked' : ''} style="width:13px;height:13px;cursor:pointer;accent-color:#d97706;margin:0">
+                        em dev
+                    </label>
+                </div>
+                <div style="font-size:.7rem;color:var(--text-muted);font-weight:400;margin-top:2px">${esc(m.id)}</div>
+            </td>
             ${cels}
         </tr>`;
     }).join('');
 
     wrap.innerHTML = `
+    <div style="margin-bottom:12px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:.82rem;color:#78350f">
+        <strong>🚧 Em desenvolvimento:</strong> marque os módulos que ainda estão sendo desenvolvidos.
+        Eles aparecem com cone de obras no menu, ficam acinzentados e bloqueiam o clique do usuário,
+        mas continuam visíveis para os perfis com permissão. Desmarque quando o módulo estiver pronto para liberar.
+    </div>
     <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
         <table class="admin-table" style="margin:0">
             <thead>
                 <tr>
-                    <th style="text-align:left;padding:10px;min-width:180px">Módulo</th>
+                    <th style="text-align:left;padding:10px;min-width:220px">Módulo</th>
                     ${headPerfis}
                 </tr>
             </thead>
             <tbody>${linhas}</tbody>
         </table>
     </div>`;
+
+    /* Toggle "em desenvolvimento" — atualiza estado e re-renderiza para refletir o cone */
+    wrap.querySelectorAll('input[type="checkbox"][data-emdev]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const id = cb.dataset.emdev;
+            if (cb.checked) emDev.add(id);
+            else            emDev.delete(id);
+            renderPermissoes();
+        });
+    });
 
     wrap.querySelectorAll('input[type="checkbox"][data-perfil]').forEach(cb => {
         cb.addEventListener('change', () => {
@@ -2325,7 +2352,7 @@ document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async 
     const btn = document.getElementById('btnSalvarPermissoes');
     btn.disabled = true; btn.textContent = 'Salvando...';
     try {
-        const { perfis, edits } = _permissoesEstado;
+        const { perfis, edits, emDev } = _permissoesEstado;
         const promessas = perfis.map(p => {
             const modulos = [...edits[p.id]];
             return api(`/admin/permissoes/${p.id}`, {
@@ -2336,6 +2363,15 @@ document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async 
                 if (!r.ok) throw new Error(`${p.id}: ${(await r.json()).erro || r.status}`);
             });
         });
+        promessas.push(
+            api('/admin/permissoes/em-desenvolvimento', {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ modulos: [...emDev] }),
+            }).then(async r => {
+                if (!r.ok) throw new Error(`em-dev: ${(await r.json()).erro || r.status}`);
+            })
+        );
         await Promise.all(promessas);
         showToast('Permissões atualizadas com sucesso.');
         await carregarPermissoes();

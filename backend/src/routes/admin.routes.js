@@ -10,7 +10,7 @@ import { fileURLToPath }   from 'url';
 import { google }          from 'googleapis';
 import { requireAuth, requirePerfil } from '../middleware/auth.middleware.js';
 import { auditLogger }     from '../services/AuditLogger.js';
-import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS } from '../config/permissions.js';
+import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS, getModulosEmDesenvolvimento, setModulosEmDesenvolvimento } from '../config/permissions.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,7 +74,42 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 atualizadoEm: overridesMap[id]?.atualizadoEm || null,
             }));
 
-            res.json({ perfis, modulos: MODULOS_DISPONIVEIS });
+            res.json({
+                perfis,
+                modulos: MODULOS_DISPONIVEIS,
+                modulosEmDesenvolvimento: getModulosEmDesenvolvimento(),
+            });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Define a lista de módulos "em desenvolvimento". Body: { modulos: [...] } */
+    router.put('/admin/permissoes/em-desenvolvimento', async (req, res) => {
+        const { modulos } = req.body || {};
+        if (!Array.isArray(modulos)) {
+            return res.status(400).json({ erro: 'modulos deve ser um array.' });
+        }
+        const idsValidos = new Set(MODULOS_DISPONIVEIS.map(m => m.id));
+        const limpos = [...new Set(modulos.filter(m => idsValidos.has(m)))];
+        try {
+            await pool.query(
+                `INSERT INTO edusync_config (chave, valor, obs)
+                 VALUES ('modulos_em_desenvolvimento', $1, 'Módulos exibidos como em desenvolvimento')
+                 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+                [JSON.stringify(limpos)]
+            );
+            setModulosEmDesenvolvimento(limpos);
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'MODULOS_EM_DESENVOLVIMENTO_ATUALIZADOS',
+                modulo:      'admin',
+                detalhes:    { modulos: limpos },
+                ip:          req.ip,
+            });
+            res.json({ sucesso: true, modulos: limpos });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
