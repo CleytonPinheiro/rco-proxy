@@ -5,6 +5,7 @@ let colegioSelecionado = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     carregarDados();
+    carregarSyncStatus();
     document.getElementById('btnLogout').addEventListener('click', logout);
     document.getElementById('btnVoltar').addEventListener('click', () => {
         window.location.href = '/';
@@ -120,6 +121,130 @@ async function forcarSync() {
     } catch {
         btn.textContent = '❌ Erro na sincronização';
         setTimeout(() => { btn.disabled = false; btn.textContent = '🔄 Sincronizar agora'; }, 3000);
+    }
+}
+
+// ── Sync Status no footer ─────────────────────────────────────────────────────
+let _syncIdadeMin  = null;
+let _syncTtlMin    = null;
+let _syncFresco    = null;
+let _syncProxMin   = null;
+let _syncTicker    = null;
+
+function formatarIdadeSync(idadeMin) {
+    if (idadeMin === null || idadeMin === undefined) return 'nunca sincronizado';
+    if (idadeMin < 1)  return 'agora mesmo';
+    if (idadeMin < 60) return `há ${idadeMin} min`;
+    const h = Math.floor(idadeMin / 60);
+    const m = idadeMin % 60;
+    return m > 0 ? `há ${h}h ${m}min` : `há ${h}h`;
+}
+
+function atualizarTextoSyncFooter() {
+    const btn  = document.getElementById('footerSyncBtn');
+    const text = document.getElementById('footerSyncText');
+    if (!btn || !text) return;
+
+    if (_syncIdadeMin === null) {
+        text.textContent = 'Toque para atualizar';
+        btn.classList.remove('fresh', 'stale', 'synced');
+        btn.title = 'Atualizar dados do RCO agora';
+        return;
+    }
+
+    text.textContent = formatarIdadeSync(_syncIdadeMin);
+    btn.classList.remove('fresh', 'stale', 'synced');
+
+    const fresco = _syncFresco !== null
+        ? _syncFresco
+        : (_syncTtlMin !== null ? _syncIdadeMin < _syncTtlMin : _syncIdadeMin < 240);
+    btn.classList.add(fresco ? 'fresh' : 'stale');
+
+    if (!fresco) {
+        btn.title = 'Cache expirado — clique para atualizar agora';
+    } else if (_syncProxMin !== null && _syncProxMin > 0) {
+        btn.title = `Dados atuais · próxima atualização automática em ~${_syncProxMin} min`;
+    } else {
+        btn.title = 'Dados atuais · clique para forçar atualização';
+    }
+}
+
+async function carregarSyncStatus() {
+    const icon = document.getElementById('footerSyncIcon');
+    if (icon) icon.textContent = '🕒';
+    try {
+        const r = await fetch(`${API_URL}/api/sync/cache`);
+        if (!r.ok) throw new Error('status ' + r.status);
+        const d = await r.json();
+        _syncIdadeMin = d.idadeMin  ?? null;
+        _syncTtlMin   = d.ttlMin    ?? null;
+        _syncFresco   = d.fresco    ?? null;
+        _syncProxMin  = d.proxSyncMin ?? null;
+    } catch {
+        _syncIdadeMin = null;
+        _syncTtlMin   = null;
+        _syncFresco   = null;
+        _syncProxMin  = null;
+    }
+    atualizarTextoSyncFooter();
+
+    if (_syncTicker) clearInterval(_syncTicker);
+    _syncTicker = setInterval(() => {
+        if (_syncIdadeMin !== null) {
+            _syncIdadeMin++;
+            if (_syncProxMin !== null && _syncProxMin > 0) _syncProxMin--;
+            if (_syncFresco && _syncTtlMin !== null && _syncIdadeMin >= _syncTtlMin) {
+                _syncFresco  = false;
+                _syncProxMin = 0;
+            }
+        }
+        atualizarTextoSyncFooter();
+    }, 60_000);
+}
+
+async function forcarSyncFooter() {
+    const btn  = document.getElementById('footerSyncBtn');
+    const icon = document.getElementById('footerSyncIcon');
+    const text = document.getElementById('footerSyncText');
+    if (!btn || btn.disabled) return;
+
+    btn.disabled = true;
+    btn.classList.remove('fresh', 'stale', 'synced');
+    btn.classList.add('spinning');
+    if (icon) icon.textContent = '🔄';
+    if (text) text.textContent = 'Atualizando...';
+
+    try {
+        const r = await fetch(`${API_URL}/api/sync/force`, { method: 'POST' });
+        if (!r.ok) throw new Error('status ' + r.status);
+        _syncIdadeMin = 0;
+        btn.classList.remove('spinning');
+        btn.classList.add('synced');
+        if (icon) icon.textContent = '✓';
+        if (text) text.textContent = 'agora mesmo';
+
+        if (_syncTicker) clearInterval(_syncTicker);
+        _syncTicker = setInterval(() => {
+            if (_syncIdadeMin !== null) _syncIdadeMin++;
+            atualizarTextoSyncFooter();
+        }, 60_000);
+
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.classList.remove('synced');
+            btn.classList.add('fresh');
+            if (icon) icon.textContent = '🕒';
+            atualizarTextoSyncFooter();
+        }, 4000);
+    } catch {
+        btn.classList.remove('spinning');
+        if (icon) icon.textContent = '❌';
+        if (text) text.textContent = 'Erro ao atualizar';
+        setTimeout(() => {
+            btn.disabled = false;
+            if (icon) icon.textContent = '🕒';
+            atualizarTextoSyncFooter();
+        }, 3000);
     }
 }
 
