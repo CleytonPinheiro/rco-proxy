@@ -25,11 +25,29 @@ async function carregarTurmas() {
         const turmas = await r.json();
         const sel = document.getElementById('selTurma');
 
+        /* Filtra pelas turmas do colégio selecionado no menu (badge da topbar).
+           O dashboard guarda em `edusync_escola_codturmas` o array de codturmas
+           da escola atual; usamos esse mesmo contexto para manter a navegação
+           coerente entre páginas. Se a chave não existir (ainda sem escola
+           selecionada), mostra todas. */
+        let codturmasEscola = null;
+        try {
+            const raw = localStorage.getItem('edusync_escola_codturmas');
+            if (raw) {
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr) && arr.length > 0) {
+                    const limpos = arr.map(Number).filter(Number.isFinite);
+                    if (limpos.length > 0) codturmasEscola = new Set(limpos);
+                }
+            }
+        } catch {}
+
         /* Dedupe por turma física (mesma série/letra/período).
            Várias disciplinas podem compartilhar a mesma turma — só queremos
            uma entrada por turma, já que o mapa de sala é o mesmo. */
         const vistos = new Map();   /* chave: turma curta · valor: { codturma, turma, label } */
         (Array.isArray(turmas) ? turmas : []).forEach(t => {
+            if (codturmasEscola && !codturmasEscola.has(Number(t.codturma))) return;
             const label = abreviarNomeTurma(t.turma);
             if (!vistos.has(label)) vistos.set(label, { codturma: t.codturma, turma: t.turma, label });
         });
@@ -42,6 +60,28 @@ async function carregarTurmas() {
             opt.dataset.turma = t.turma;
             sel.appendChild(opt);
         });
+
+        /* Mensagem amigável se não houver turmas para a escola atual. */
+        if (codturmasEscola && ordenadas.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.textContent = '— nenhuma turma nesta escola —';
+            sel.appendChild(opt);
+        }
+
+        /* Mostra a escola atual no label "Turma" para reforçar o contexto. */
+        const escolaNome = localStorage.getItem('edusync_escola');
+        if (escolaNome) {
+            const lbl = document.querySelector('label.ms-config-label');
+            if (lbl && !lbl.querySelector('.ms-escola-hint')) {
+                const hint = document.createElement('span');
+                hint.className = 'ms-escola-hint';
+                hint.textContent = '🏫 ' + (escolaNome.length > 22 ? escolaNome.slice(0, 22) + '…' : escolaNome);
+                hint.title = escolaNome;
+                lbl.appendChild(hint);
+            }
+        }
     } catch (e) { console.error(e); }
 }
 
