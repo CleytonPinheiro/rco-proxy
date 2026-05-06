@@ -5,7 +5,14 @@ EduSync is a school management system for Paraná teachers, focusing on synchron
 ## Run & Operate
 
 - **Run:** `cd backend && node index.js` (Backend listens on port 5000)
-- **Environment Variables:** `RCO_CPF`, `RCO_SENHA`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_EMAIL`, `GOOGLE_PASSWORD`
+- **Environment Variables (all stored in Replit Secrets vault — never in files):**
+  - `RCO_CPF`, `RCO_SENHA` — RCO Digital credentials
+  - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase connection
+  - `DATABASE_URL` — local PostgreSQL (managed by Replit)
+  - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth app credentials
+  - `GOOGLE_EMAIL`, `GOOGLE_PASSWORD` — Google account for GradePen scraping
+  - `GOOGLE_REDIRECT_URI` — optional override; defaults to `{host}/api/classroom/callback`
+  - `SESSION_SECRET`, `AUTHORIZATION_TOKEN` — session/auth tokens
 
 ## Stack
 
@@ -41,6 +48,7 @@ EduSync is a school management system for Paraná teachers, focusing on synchron
 - **Admin-Editable Permissions:** `permissions.js` defines default roles, but admins can override them via the admin panel, stored in `edusync_perfis_overrides`. The frontend (`auth.js`) caches these for seamless navigation updates.
 - **Parent-Child Module Dependencies:** `permissions.js` defines parent-child relationships between modules, ensuring both parent and child permissions are checked for access. Frontend UI reorders and indents child modules.
 - **Gamification (Reputation):** Separate reputation tracks (`aluno`, `corretor`) for students and 2nd correctors, with XP awarded at submission, 2nd correction, and exam finalization. No public leaderboard for privacy.
+- **Secrets in vault only:** All credentials live in Replit Secrets. The `.replit` file must never contain secret values. `GOOGLE_REDIRECT_URI` falls back to `{host}/api/classroom/callback` if not set.
 
 ## Product
 
@@ -63,12 +71,14 @@ EduSync provides a comprehensive school management system with features like:
 
 ## Gotchas
 
+- **Secrets vault only:** Never add secrets to `.replit` or any versioned file. Use Replit Secrets exclusively.
 - **RCO Token Expiration:** RCO tokens expire, requiring Puppeteer to re-authenticate lazily.
 - **Google Classroom API Quotas:** Be mindful of API rate limits for bulk operations.
 - **Database Consistency:** Ensure data consistency between Supabase and local PostgreSQL.
 - **Plan Functionality Gating:** Use `requireFuncionalidade` middleware to protect features based on plans.
 - **Google Classroom Redirect URIs:** All necessary redirect URIs must be registered in the Google Cloud Console.
 - **GradePen + 2FA:** The `GOOGLE_EMAIL` used for GradePen scraping cannot have 2FA enabled.
+- **SUPABASE_SERVICE_ROLE_KEY vs ANON_KEY:** The service role key bypasses RLS and is used by `supabaseAdmin`. It is different from the anon key — verify in Supabase Dashboard → Settings → API.
 
 ## Pointers
 
