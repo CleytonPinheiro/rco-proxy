@@ -1620,6 +1620,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             config: {
                 PUPPETEER_LOGIN_CONCURRENCY:   process.env.PUPPETEER_LOGIN_CONCURRENCY   || '3 (padrão)',
                 PUPPETEER_LOGIN_QUEUE_TIMEOUT: process.env.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '60000 (padrão)',
+                FILA_ALERTA_LIMIAR:            (v => Number.isFinite(v) ? v : 5)(parseInt(process.env.FILA_ALERTA_LIMIAR, 10)),
             },
         });
     });

@@ -2483,7 +2483,9 @@ document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async 
 /* ════════════════════════════════════════════════════════════
    SISTEMA — Puppeteer / Recursos do Servidor
 ════════════════════════════════════════════════════════════ */
-let _sistemaTimer = null;
+let _sistemaTimer      = null;
+let _filaAlertaAtiva   = false;
+let _filaBgTimer       = null;
 
 function pararMonitorSistema() {
     if (_sistemaTimer) { clearInterval(_sistemaTimer); _sistemaTimer = null; }
@@ -2493,6 +2495,37 @@ function iniciarMonitorSistema() {
     carregarSistema();
     pararMonitorSistema();
     _sistemaTimer = setInterval(carregarSistema, 30_000);
+}
+
+function _atualizarSistemaBadge(naFila, limiar) {
+    const badgeEl = document.getElementById('sistemaBadge');
+    if (naFila >= limiar) {
+        if (badgeEl) { badgeEl.textContent = naFila; badgeEl.style.display = 'inline'; }
+        if (!_filaAlertaAtiva) {
+            _filaAlertaAtiva = true;
+            showToast(`⚠ Fila de login acima do limite: ${naFila} aguardando (limiar: ${limiar})`, 'warning');
+        }
+    } else {
+        if (badgeEl) badgeEl.style.display = 'none';
+        _filaAlertaAtiva = false;
+    }
+}
+
+async function verificarFilaBackground() {
+    try {
+        const res = await api('/admin/puppeteer-stats');
+        if (!res.ok) return;
+        const d = await res.json();
+        const naFila = d.login?.naFila ?? 0;
+        const limiar = Number.isFinite(d.config?.FILA_ALERTA_LIMIAR) ? d.config.FILA_ALERTA_LIMIAR : 5;
+        _atualizarSistemaBadge(naFila, limiar);
+    } catch {}
+}
+
+function iniciarFilaBackground() {
+    verificarFilaBackground();
+    if (_filaBgTimer) clearInterval(_filaBgTimer);
+    _filaBgTimer = setInterval(verificarFilaBackground, 30_000);
 }
 
 async function carregarSistema() {
@@ -2524,6 +2557,10 @@ async function carregarSistema() {
 
         tsEl.textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
         container.innerHTML = renderSistema(d, cache, rl);
+
+        const naFila = d.login?.naFila ?? 0;
+        const limiar = Number.isFinite(d.config?.FILA_ALERTA_LIMIAR) ? d.config.FILA_ALERTA_LIMIAR : 5;
+        _atualizarSistemaBadge(naFila, limiar);
     } catch (e) {
         container.innerHTML = `<p style="color:#dc2626;font-size:.875rem">Erro ao carregar métricas: ${esc(e.message)}</p>`;
     }
@@ -2603,8 +2640,9 @@ function renderSistema(d, cache, rl) {
         </div>`;
     }
 
-    const concurrency = config.PUPPETEER_LOGIN_CONCURRENCY || '—';
+    const concurrency  = config.PUPPETEER_LOGIN_CONCURRENCY  || '—';
     const queueTimeout = config.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '—';
+    const filaLimiar   = (typeof config.FILA_ALERTA_LIMIAR === 'number') ? config.FILA_ALERTA_LIMIAR : 5;
 
     /* ── Cache de sync RCO → Supabase ── */
     let syncCacheHtml = '';
@@ -2769,6 +2807,11 @@ function renderSistema(d, cache, rl) {
                 <span style="color:var(--text-muted)">PUPPETEER_LOGIN_QUEUE_TIMEOUT: </span>
                 <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${esc(String(queueTimeout))} ms</code>
             </div>
+            <div>
+                <span style="color:var(--text-muted)">FILA_ALERTA_LIMIAR: </span>
+                <code style="background:var(--bg-hover);padding:2px 7px;border-radius:5px;font-size:.8rem">${filaLimiar}</code>
+                <span style="font-size:.75rem;color:var(--text-muted)"> (alerta ao atingir este número)</span>
+            </div>
         </div>
     </div>
     <p style="margin-top:12px;font-size:.75rem;color:var(--text-muted)">Atualizado automaticamente a cada 30 segundos.</p>`;
@@ -2924,3 +2967,4 @@ async function salvarPurgaConfig() {
 carregarUsuarios();
 carregarEscolas();
 carregarSuporte();
+iniciarFilaBackground();
