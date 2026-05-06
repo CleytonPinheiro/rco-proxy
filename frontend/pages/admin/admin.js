@@ -2886,7 +2886,13 @@ function renderSistema(d, cache, rl, historico) {
             const barColor = e.bloqueado ? '#dc2626' : e.count >= limiteRL - 1 ? '#d97706' : '#2563eb';
             const mins = Math.floor(e.segundosAte / 60);
             const secs = e.segundosAte % 60;
-            const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+            const countdownStr = mins > 0
+                ? `em ${mins} min${secs > 0 ? ` ${secs}s` : ''}`
+                : `em ${secs}s`;
+            const resetDate = e.resetAt ? new Date(e.resetAt) : null;
+            const resetAbsoluto = resetDate
+                ? resetDate.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' })
+                : '';
             return `
             <tr>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:.82rem">${esc(cpfFmt)}</td>
@@ -2903,7 +2909,8 @@ function renderSistema(d, cache, rl, historico) {
                         ? `<span style="background:#fef2f2;color:#dc2626;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #fca5a5">BLOQUEADO</span>`
                         : `<span style="background:#f0fdf4;color:#16a34a;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #86efac">Com aviso</span>`}
                 </td>
-                <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.82rem;color:var(--text-muted)">${esc(timeStr)}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.82rem;color:var(--text-muted);cursor:${resetAbsoluto ? 'help' : 'default'}"
+                    title="${resetAbsoluto ? `Expira exatamente em: ${resetAbsoluto}` : ''}">${esc(countdownStr)}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
                     <button onclick="resetarRateLimitCpf('${esc(e.cpf)}')"
                         style="padding:4px 12px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer">
@@ -2921,7 +2928,7 @@ function renderSistema(d, cache, rl, historico) {
                         <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">CPF</th>
                         <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Tentativas</th>
                         <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Status</th>
-                        <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Reset em</th>
+                        <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Expira em</th>
                         <th style="padding:6px 10px;border-bottom:2px solid var(--border)"></th>
                     </tr>
                 </thead>
