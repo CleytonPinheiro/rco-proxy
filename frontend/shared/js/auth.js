@@ -352,8 +352,6 @@
     function injetarBadgeEscola() {
         const escola = localStorage.getItem('edusync_escola');
         if (!escola) return;
-        /* No dashboard o seletor de colégio já está visível na página */
-        if (location.pathname.startsWith('/pages/dashboard/')) return;
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
         if (headerActions.querySelector('.escola-badge-nav')) return; // evita duplicata
@@ -363,6 +361,14 @@
         const max = 28;
         const nome = escola.length > max ? escola.slice(0, max) + '…' : escola;
         badge.textContent = '🏫 ' + nome;
+        /* No dashboard o seletor de colégio já está visível na página, mas
+           mantemos a badge no DOM (invisível) para preservar a largura do
+           header-actions e evitar que os itens do .nav-menu mudem de
+           posição/quantidade ao navegar entre dashboard e outras páginas.   */
+        if (location.pathname.startsWith('/pages/dashboard/')) {
+            badge.style.visibility = 'hidden';
+            badge.setAttribute('aria-hidden', 'true');
+        }
         headerActions.insertBefore(badge, headerActions.firstChild);
     }
 
