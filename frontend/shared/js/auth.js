@@ -76,6 +76,15 @@
     ]);
     function emDesenvolvimento(modulo) { return MODULOS_EM_DESENVOLVIMENTO.has(modulo); }
 
+    /* ── Módulos FIXADOS na barra de menu ─────────────────────────────────
+       Estes módulos NUNCA são empurrados para o side panel, independente da
+       largura disponível. O nav adaptativo reserva espaço para eles primeiro
+       e só depois calcula o overflow dos demais.                            */
+    const MODULOS_FIXADOS = new Set([
+        'mapa-sala',
+    ]);
+    function isFixado(modulo) { return MODULOS_FIXADOS.has(modulo); }
+
     /** Retorna a primeira URL acessível para o perfil (evita loop de redirecionamento) */
     function primeiraUrlPermitida(perfil) {
         for (const [url, modulo] of Object.entries(MODULO_URLS)) {
@@ -173,6 +182,9 @@
                 } else if (emDesenvolvimento(modulo)) {
                     /* Permissão OK, mas módulo em desenvolvimento → bloqueado com aviso */
                     marcarBloqueado(link);
+                } else if (isFixado(modulo)) {
+                    /* Módulo fixado: nunca vai para overflow */
+                    link.setAttribute('data-nav-pin', 'true');
                 }
             });
 
@@ -289,12 +301,18 @@
             } else if (emDesenvolvimento(modulo)) {
                 /* Permitido pelo perfil, mas módulo em desenvolvimento → bloqueado */
                 marcarBloqueado(link);
+                link.removeAttribute('data-nav-pin');
             } else {
                 /* Item totalmente liberado: limpa qualquer marcação */
                 link.removeAttribute('data-perm-blocked');
                 link.removeAttribute('aria-disabled');
                 link.removeAttribute('data-perm-hidden');
                 link.style.display = '';
+                if (isFixado(modulo)) {
+                    link.setAttribute('data-nav-pin', 'true');
+                } else {
+                    link.removeAttribute('data-nav-pin');
+                }
                 if (link._permHandler) {
                     link.removeEventListener('click', link._permHandler, true);
                     link._permHandler = null;
@@ -486,7 +504,11 @@
                     a.setAttribute('data-nav-hidden', 'true');
                 });
 
-                /* Mede largura disponível usando apenas os liberados */
+                /* Separa liberados em FIXADOS (nunca vão p/ overflow) e normais */
+                const fixados = liberados.filter(a => a.getAttribute('data-nav-pin') === 'true');
+                const normais = liberados.filter(a => a.getAttribute('data-nav-pin') !== 'true');
+
+                /* Torna todos visíveis para medir */
                 liberados.forEach(a => {
                     a.style.visibility = 'hidden';
                     a.style.display    = '';
@@ -499,32 +521,40 @@
                 const dividerW = 1;
                 const totalW   = headerContent.clientWidth;
                 /* Reserva: gap entre seções + largura do botão "Mais ▾" + folga anti-piscar */
-                const dispW    = totalW - leftW - actW - dividerW - 96;
+                let dispW      = totalW - leftW - actW - dividerW - 96;
+
+                /* Reserva primeiro o espaço dos fixados — eles nunca movem */
+                const fixadosW = fixados.reduce((s, a) => s + a.offsetWidth + 6, 0);
+                dispW -= fixadosW;
 
                 let acumulado   = 0;
                 let overflowIdx = -1;
 
-                for (let i = 0; i < liberados.length; i++) {
-                    acumulado += liberados[i].offsetWidth + 6;
+                for (let i = 0; i < normais.length; i++) {
+                    acumulado += normais[i].offsetWidth + 6;
                     if (acumulado > dispW && overflowIdx === -1) overflowIdx = i;
                 }
 
-                const temOverflowLiberado = overflowIdx !== -1 && overflowIdx < liberados.length;
+                const temOverflowNormal = overflowIdx !== -1 && overflowIdx < normais.length;
                 /* Mostra o "Mais ▾" se houver overflow OU se houver bloqueados */
-                btnMais.style.display = (temOverflowLiberado || bloqueados.length) ? '' : 'none';
+                btnMais.style.display = (temOverflowNormal || bloqueados.length) ? '' : 'none';
 
-                liberados.forEach((a, i) => {
+                /* Fixados sempre visíveis no header */
+                fixados.forEach(a => { a.style.visibility = ''; });
+
+                normais.forEach((a, i) => {
                     a.style.visibility = '';
-                    if (temOverflowLiberado && i >= overflowIdx) {
+                    if (temOverflowNormal && i >= overflowIdx) {
                         a.style.display = 'none';
                         a.setAttribute('data-nav-hidden', 'true');
                     }
                 });
 
-                /* Monta a lista do side panel: liberados em overflow primeiro,
-                   bloqueados (em desenvolvimento) sempre ao final.              */
-                const overflowLiberados = liberados.filter(a => a.getAttribute('data-nav-hidden') === 'true');
-                injetarOverflowNoSidePanel([...overflowLiberados, ...bloqueados]);
+                /* Monta a lista do side panel: normais em overflow primeiro,
+                   bloqueados (em desenvolvimento) sempre ao final.
+                   Fixados nunca aparecem no side panel.                       */
+                const overflowNormais = normais.filter(a => a.getAttribute('data-nav-hidden') === 'true');
+                injetarOverflowNoSidePanel([...overflowNormais, ...bloqueados]);
 
                 /* Após a primeira medição com layout estável, revela a nav
                    (remove o anti-flash). Próximas execuções já não piscam.    */
