@@ -4,6 +4,19 @@
 const esc  = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api  = (path, opts = {}) => fetch(`/api${path}`, { credentials: 'include', ...opts });
 
+function _relativeTime(date) {
+    if (!date || !Number.isFinite(date.getTime())) return '—';
+    const diffMs = Date.now() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60)   return 'agora mesmo';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60)   return `há ${diffMin} min`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24)    return `há ${diffHr} hora${diffHr !== 1 ? 's' : ''}`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `há ${diffDay} dia${diffDay !== 1 ? 's' : ''}`;
+}
+
 function showToast(msg, tipo = 'success') {
     const old = document.getElementById('_adminToast');
     if (old) old.remove();
@@ -2733,13 +2746,20 @@ function renderSistema(d, cache, rl, historico) {
         const linhas = usuarios.map(u => {
             const ut      = (u.puladas || 0) + (u.executadas || 0);
             const upct    = ut > 0 ? Math.round((u.puladas || 0) / ut * 100) : 0;
-            const syncStr = u.ultimo_sync
-                ? new Date(u.ultimo_sync).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+            const syncDate = u.ultimo_sync ? new Date(u.ultimo_sync) : null;
+            const stale    = syncDate && (Date.now() - syncDate.getTime()) > 24 * 60 * 60 * 1000;
+            const rawStr   = syncDate
+                ? syncDate.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                : null;
+            const relStr   = syncDate ? _relativeTime(syncDate) : '—';
+            const syncCell = syncDate
+                ? `<span title="${rawStr}">${relStr}</span>${stale ? ' <span title="Último sync há mais de 24 horas" style="color:#d97706;font-size:.75rem">⚠️</span>' : ''}`
                 : '—';
+            const rowStyle = stale ? 'background:rgba(251,191,36,.08)' : '';
             return `
-            <tr>
+            <tr style="${rowStyle}">
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${esc(u.nome || u.email || String(u.id))}</td>
-                <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.8rem">${syncStr}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);color:${stale ? '#d97706' : 'var(--text-muted)'};font-size:.8rem">${syncCell}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#16a34a;font-weight:600">${u.puladas ?? 0}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;color:#2563eb;font-weight:600">${u.executadas ?? 0}</td>
                 <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-size:.8rem;color:var(--text-muted)">${upct}%</td>
