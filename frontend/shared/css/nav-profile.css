@@ -472,16 +472,21 @@
 .nav-menu a[data-nav-hidden="true"] { display: none !important; }
 
 /* ── Badge do colégio selecionado no header ─────────────────────────────── */
+.escola-switcher {
+    position: relative;
+    display: inline-flex;
+    margin-right: 6px;
+}
 .escola-badge-nav {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     padding: 4px 10px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
-    max-width: 220px;
+    max-width: 240px;
     overflow: hidden;
     text-overflow: ellipsis;
     background: var(--badge-escola-bg, rgba(99,102,241,0.12));
@@ -489,13 +494,116 @@
     border: 1px solid var(--badge-escola-border, rgba(99,102,241,0.3));
     cursor: default;
     user-select: none;
-    margin-right: 6px;
+    font-family: inherit;
+    line-height: 1.2;
 }
+.escola-badge-nav .escola-badge-nome {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+.escola-badge-nav--clicavel {
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.escola-badge-nav--clicavel:hover {
+    background: var(--badge-escola-bg-hover, rgba(99,102,241,0.20));
+    border-color: var(--badge-escola-border-hover, rgba(99,102,241,0.5));
+}
+.escola-badge-nav--clicavel.aberto {
+    background: var(--badge-escola-bg-hover, rgba(99,102,241,0.20));
+    border-color: var(--badge-escola-border-hover, rgba(99,102,241,0.55));
+}
+.escola-badge-caret {
+    font-size: 10px;
+    opacity: .8;
+    transition: transform .15s ease;
+}
+.escola-badge-nav.aberto .escola-badge-caret { transform: rotate(180deg); }
+
 [data-theme="dark"] .escola-badge-nav {
     background: rgba(99,102,241,0.18);
     color: #a5b4fc;
     border-color: rgba(99,102,241,0.35);
 }
+[data-theme="dark"] .escola-badge-nav--clicavel:hover,
+[data-theme="dark"] .escola-badge-nav--clicavel.aberto {
+    background: rgba(99,102,241,0.30);
+    border-color: rgba(99,102,241,0.55);
+}
+
+/* Dropdown */
+.escola-switcher-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 260px;
+    max-width: 360px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--bg-card, #fff);
+    color: var(--text, #111);
+    border: 1px solid var(--border, rgba(0,0,0,.10));
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+    padding: 6px;
+    z-index: 9999;
+    animation: escolaSwitcherIn .12s ease-out;
+}
+@keyframes escolaSwitcherIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+[data-theme="dark"] .escola-switcher-menu {
+    background: #1f2937;
+    border-color: rgba(255,255,255,.08);
+}
+.escola-switcher-titulo {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-muted, #6b7280);
+    padding: 8px 12px 6px;
+}
+.escola-switcher-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color .12s ease;
+}
+.escola-switcher-item:hover { background: var(--bg-hover, rgba(99,102,241,.08)); }
+.escola-switcher-item.ativo {
+    background: rgba(99,102,241,.10);
+    color: #6366f1;
+    font-weight: 600;
+}
+[data-theme="dark"] .escola-switcher-item:hover { background: rgba(255,255,255,.06); }
+[data-theme="dark"] .escola-switcher-item.ativo { background: rgba(99,102,241,.20); color: #a5b4fc; }
+.escola-switcher-check {
+    width: 16px;
+    color: #6366f1;
+    font-weight: 700;
+    flex-shrink: 0;
+    text-align: center;
+}
+.escola-switcher-nome {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
 @media (max-width: 768px) {
-    .escola-badge-nav { display: none; }
+    .escola-switcher { display: none; }
 }

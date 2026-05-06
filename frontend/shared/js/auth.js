@@ -462,21 +462,99 @@
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
         if (headerActions.querySelector('.escola-badge-nav')) return; // evita duplicata
-        const badge = document.createElement('span');
-        badge.className = 'escola-badge-nav';
-        badge.title = escola;
+
+        /* Carrega lista de colégios disponíveis (publicada pelo dashboard). */
+        let mapaEscolas = {};
+        try { mapaEscolas = JSON.parse(localStorage.getItem('edusync_escolas_map') || '{}') || {}; } catch {}
+        const escolasDisponiveis = Object.keys(mapaEscolas).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const podeTrocar = escolasDisponiveis.length > 1;
+
+        /* Wrapper para dar contexto de posicionamento ao dropdown. */
+        const wrap = document.createElement('div');
+        wrap.className = 'escola-switcher';
+
+        const badge = document.createElement('button');
+        badge.type = 'button';
+        badge.className = 'escola-badge-nav' + (podeTrocar ? ' escola-badge-nav--clicavel' : '');
+        badge.title = podeTrocar ? `${escola} · clique para trocar de colégio` : escola;
         const max = 28;
         const nome = escola.length > max ? escola.slice(0, max) + '…' : escola;
-        badge.textContent = '🏫 ' + nome;
-        /* No dashboard o seletor de colégio já está visível na página, mas
-           mantemos a badge no DOM (invisível) para preservar a largura do
-           header-actions e evitar que os itens do .nav-menu mudem de
+        badge.innerHTML = '<span class="escola-badge-icon">🏫</span> '
+            + '<span class="escola-badge-nome">' + nome.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>'
+            + (podeTrocar ? ' <span class="escola-badge-caret" aria-hidden="true">▾</span>' : '');
+
+        /* No dashboard o seletor de colégio já está visível na página. Mesmo
+           assim mantemos a badge no DOM (invisível) para preservar a largura
+           do header-actions e evitar que os itens do .nav-menu mudem de
            posição/quantidade ao navegar entre dashboard e outras páginas.   */
         if (location.pathname.startsWith('/pages/dashboard/')) {
-            badge.style.visibility = 'hidden';
-            badge.setAttribute('aria-hidden', 'true');
+            wrap.style.visibility = 'hidden';
+            wrap.setAttribute('aria-hidden', 'true');
         }
-        headerActions.insertBefore(badge, headerActions.firstChild);
+
+        wrap.appendChild(badge);
+
+        if (podeTrocar) {
+            const menu = document.createElement('div');
+            menu.className = 'escola-switcher-menu';
+            menu.setAttribute('role', 'menu');
+            menu.hidden = true;
+
+            const titulo = document.createElement('div');
+            titulo.className = 'escola-switcher-titulo';
+            titulo.textContent = 'Trocar de colégio';
+            menu.appendChild(titulo);
+
+            escolasDisponiveis.forEach(nomeEscola => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'escola-switcher-item' + (nomeEscola === escola ? ' ativo' : '');
+                item.setAttribute('role', 'menuitem');
+                item.title = nomeEscola;
+                item.innerHTML = '<span class="escola-switcher-check">'
+                    + (nomeEscola === escola ? '✓' : '')
+                    + '</span>'
+                    + '<span class="escola-switcher-nome">'
+                    + nomeEscola.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    + '</span>';
+                item.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    if (nomeEscola === escola) { fechar(); return; }
+                    trocarEscola(nomeEscola, mapaEscolas[nomeEscola] || []);
+                });
+                menu.appendChild(item);
+            });
+
+            wrap.appendChild(menu);
+
+            const abrir  = () => { menu.hidden = false; badge.classList.add('aberto'); };
+            const fechar = () => { menu.hidden = true;  badge.classList.remove('aberto'); };
+            badge.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (menu.hidden) abrir(); else fechar();
+            });
+            document.addEventListener('click', (ev) => {
+                if (!menu.hidden && !wrap.contains(ev.target)) fechar();
+            });
+            document.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Escape' && !menu.hidden) fechar();
+            });
+        }
+
+        headerActions.insertBefore(wrap, headerActions.firstChild);
+    }
+
+    /* Troca de colégio a partir de qualquer página: persiste o novo contexto
+       no localStorage e recarrega a página atual para que os filtros refletm. */
+    function trocarEscola(nome, codTurmas) {
+        try {
+            localStorage.setItem('edusync_escola', nome);
+            const limpos = (Array.isArray(codTurmas) ? codTurmas : [])
+                .map(Number).filter(Number.isFinite);
+            localStorage.setItem('edusync_escola_codturmas', JSON.stringify(limpos));
+        } catch {}
+        /* Reload força os módulos da página atual a re-lerem o contexto. */
+        window.location.reload();
     }
 
     /* ══════════════════════════════════════════════════════════════════════

@@ -494,7 +494,10 @@ function selecionarColegio(colegio) {
 }
 
 /* Salva o colégio selecionado e os codTurmas correspondentes no localStorage
-   para que os outros menus usem o mesmo contexto de escola. */
+   para que os outros menus usem o mesmo contexto de escola.
+   Também publica um mapa { escola → [codTurmas] } em `edusync_escolas_map`
+   para que qualquer página possa trocar de colégio via badge sem precisar
+   ter os dados do dashboard carregados. */
 function persistirEscolaContexto(colegio) {
     localStorage.setItem('edusync_escola', colegio);
     const codTurmas = [...new Set(
@@ -504,6 +507,18 @@ function persistirEscolaContexto(colegio) {
             .filter(Boolean)
     )];
     localStorage.setItem('edusync_escola_codturmas', JSON.stringify(codTurmas));
+
+    /* Mapa global de colégios → codturmas */
+    const mapa = {};
+    (dadosGlobais?.turmas || []).forEach(t => {
+        const e = t.escola || '';
+        if (!e || !t.codTurma) return;
+        if (!mapa[e]) mapa[e] = new Set();
+        mapa[e].add(t.codTurma);
+    });
+    const mapaSerial = {};
+    Object.keys(mapa).forEach(e => { mapaSerial[e] = [...mapa[e]]; });
+    localStorage.setItem('edusync_escolas_map', JSON.stringify(mapaSerial));
 }
 
 // ── Renderizar tudo com filtro de colégio ─────────────────────────────────────
