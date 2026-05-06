@@ -2495,9 +2495,10 @@ async function carregarSistema() {
     const tsEl      = document.getElementById('sistemaUltimaAtt');
     if (!container) return;
     try {
-        const [resPuppeteer, resCache] = await Promise.allSettled([
+        const [resPuppeteer, resCache, resRL] = await Promise.allSettled([
             api('/admin/puppeteer-stats'),
             api('/admin/sync-cache-stats'),
+            api('/admin/rate-limit/login'),
         ]);
 
         if (resPuppeteer.status === 'rejected') throw new Error(resPuppeteer.reason?.message || 'Erro ao buscar métricas do servidor');
@@ -2511,14 +2512,31 @@ async function carregarSistema() {
             try { cache = await resCache.value.json(); } catch {}
         }
 
+        let rl = null;
+        if (resRL.status === 'fulfilled' && resRL.value.ok) {
+            try { rl = await resRL.value.json(); } catch {}
+        }
+
         tsEl.textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`;
-        container.innerHTML = renderSistema(d, cache);
+        container.innerHTML = renderSistema(d, cache, rl);
     } catch (e) {
         container.innerHTML = `<p style="color:#dc2626;font-size:.875rem">Erro ao carregar métricas: ${esc(e.message)}</p>`;
     }
 }
 
-function renderSistema(d, cache) {
+window.resetarRateLimitCpf = async function (cpf) {
+    if (!confirm(`Resetar o contador de tentativas para o CPF ${cpf}?`)) return;
+    try {
+        const res = await api(`/admin/rate-limit/login/${cpf}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast('Contador resetado com sucesso.', 'success');
+        carregarSistema();
+    } catch (e) {
+        showToast(`Erro ao resetar: ${e.message}`, 'error');
+    }
+};
+
+function renderSistema(d, cache, rl) {
     const login      = d.login   || {};
     const sessoes    = d.sessoes || {};
     const config     = d.config  || {};
@@ -2650,6 +2668,81 @@ function renderSistema(d, cache) {
         </div>`;
     }
 
+    /* ── Rate-limit por CPF ── */
+    let rateLimitHtml = '';
+    if (rl) {
+        const entradas  = rl.entradas  || [];
+        const limiteRL  = rl.limite    || 5;
+        const janelaMin = rl.janelaMin || 15;
+        const bloqueados = entradas.filter(e => e.bloqueado).length;
+
+        const linhasRL = entradas.map(e => {
+            const cpfFmt = e.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            const barPct = Math.min(100, Math.round(e.count / limiteRL * 100));
+            const barColor = e.bloqueado ? '#dc2626' : e.count >= limiteRL - 1 ? '#d97706' : '#2563eb';
+            const mins = Math.floor(e.segundosAte / 60);
+            const secs = e.segundosAte % 60;
+            const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+            return `
+            <tr>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:monospace;font-size:.82rem">${esc(cpfFmt)}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div style="flex:1;height:6px;border-radius:3px;background:var(--bg-hover);overflow:hidden;min-width:60px">
+                            <div style="height:100%;width:${barPct}%;border-radius:3px;background:${barColor}"></div>
+                        </div>
+                        <span style="font-size:.82rem;font-weight:700;color:${barColor}">${e.count} / ${limiteRL}</span>
+                    </div>
+                </td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
+                    ${e.bloqueado
+                        ? `<span style="background:#fef2f2;color:#dc2626;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #fca5a5">BLOQUEADO</span>`
+                        : `<span style="background:#f0fdf4;color:#16a34a;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #86efac">Com aviso</span>`}
+                </td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.82rem;color:var(--text-muted)">${esc(timeStr)}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
+                    <button onclick="resetarRateLimitCpf('${esc(e.cpf)}')"
+                        style="padding:4px 12px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer">
+                        Resetar
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        const tabelaRL = entradas.length > 0 ? `
+        <div style="overflow-x:auto;margin-top:10px">
+            <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+                <thead>
+                    <tr style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">
+                        <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">CPF</th>
+                        <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Tentativas</th>
+                        <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Status</th>
+                        <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border)">Reset em</th>
+                        <th style="padding:6px 10px;border-bottom:2px solid var(--border)"></th>
+                    </tr>
+                </thead>
+                <tbody>${linhasRL}</tbody>
+            </table>
+        </div>` : `<p style="color:var(--text-muted);font-size:.875rem;margin-top:8px">Nenhum CPF com tentativas registradas no momento.</p>`;
+
+        const headerColor = bloqueados > 0 ? '#dc2626' : '#d97706';
+        const headerBadge = bloqueados > 0
+            ? `<span style="background:#fef2f2;color:#dc2626;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #fca5a5;margin-left:8px">${bloqueados} bloqueado${bloqueados !== 1 ? 's' : ''}</span>`
+            : (entradas.length > 0 ? `<span style="background:#fefce8;color:#92400e;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #fde68a;margin-left:8px">${entradas.length} com aviso</span>` : '');
+
+        rateLimitHtml = `
+        <div style="margin-top:24px;padding:16px 18px;border:1.5px solid ${entradas.length > 0 ? (bloqueados > 0 ? '#fca5a5' : '#fde68a') : 'var(--border)'};border-radius:12px;background:var(--bg-card)">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+                <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">
+                    Rate-limit de Login (por CPF) ${headerBadge}
+                </div>
+                <div style="font-size:.75rem;color:var(--text-muted)">Limite: ${limiteRL} falhas / ${janelaMin} min</div>
+            </div>
+            ${tabelaRL}
+            <p style="margin-top:6px;font-size:.72rem;color:var(--text-muted)">"Resetar" limpa o contador antes da janela expirar, desbloqueando o CPF imediatamente. A ação fica registrada no Audit Log.</p>
+        </div>`;
+    }
+
     return `
     <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:4px">
         ${metricBox('🔑', 'Logins ativos', ativos, `limite: ${limite}`, ativos > 0 ? '#2563eb' : 'var(--text-primary)')}
@@ -2658,6 +2751,7 @@ function renderSistema(d, cache) {
     </div>
     ${progBar}
     ${gradePenHtml}
+    ${rateLimitHtml}
     ${syncCacheHtml}
     <div style="margin-top:20px;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
         <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px">Configuração atual (variáveis de ambiente)</div>

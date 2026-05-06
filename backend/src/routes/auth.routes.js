@@ -139,6 +139,36 @@ setInterval(() => {
     }
 }, RL_CPF_JANELA).unref();
 
+/**
+ * Retorna snapshot do estado atual de rate-limit por CPF.
+ * Filtra entradas expiradas antes de retornar.
+ * Usado pelo painel de admin.
+ */
+export function getCpfRateLimitSnapshot() {
+    const now = Date.now();
+    const result = [];
+    for (const [cpf, entry] of cpfFailureStore) {
+        if (now >= entry.resetAt) continue;
+        result.push({
+            cpf,
+            count:        entry.count,
+            bloqueado:    entry.count >= RL_CPF_MAX,
+            resetAt:      entry.resetAt,
+            segundosAte:  Math.max(0, Math.ceil((entry.resetAt - now) / 1000)),
+        });
+    }
+    result.sort((a, b) => b.count - a.count);
+    return { entradas: result, limite: RL_CPF_MAX, janelaMin: Math.ceil(RL_CPF_JANELA / 60000) };
+}
+
+/**
+ * Limpa o contador de rate-limit de um CPF específico.
+ * Usado pelo painel de admin para desbloquear manualmente um usuário.
+ */
+export function clearCpfRateLimit(cpf) {
+    return cpfFailureStore.delete(cpf);
+}
+
 /* ── Helper: cria OAuth2Client para login pedagógico (userinfo only) ── */
 function _pedagogoOAuth2Client(req) {
     const clientId     = process.env.GOOGLE_CLIENT_ID;

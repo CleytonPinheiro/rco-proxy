@@ -13,6 +13,7 @@ import { auditLogger }     from '../services/AuditLogger.js';
 import { LISTA_PERFIS, MODULOS_DISPONIVEIS, getMapaPermissoesEfetivas, setOverride, clearOverride, PERFIS, getModulosEmDesenvolvimento, setModulosEmDesenvolvimento, MODULO_PAI } from '../config/permissions.js';
 import { getLoginQueueStats } from '../../auth-puppeteer.js';
 import { userSessionStore }   from '../services/UserSessionStore.js';
+import { getCpfRateLimitSnapshot, clearCpfRateLimit } from './auth.routes.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1573,6 +1574,26 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             console.error('[ADMIN] Erro ao salvar config de purga:', e.message);
             res.status(500).json({ erro: e.message });
         }
+    });
+
+    /* ── Rate-limit por CPF: leitura e reset manual ── */
+    router.get('/admin/rate-limit/login', (req, res) => {
+        res.json(getCpfRateLimitSnapshot());
+    });
+
+    router.delete('/admin/rate-limit/login/:cpf', async (req, res) => {
+        const cpf = req.params.cpf.replace(/\D/g, '');
+        if (!cpf) return res.status(400).json({ erro: 'CPF inválido.' });
+        const removed = clearCpfRateLimit(cpf);
+        await auditLogger.registrar({
+            usuarioId:   req.userSession.userId,
+            usuarioNome: req.userSession.nome,
+            acao:        'RATE_LIMIT_CPF_RESETADO',
+            modulo:      'admin',
+            detalhes:    { cpf, removido: removed },
+            ip:          req.ip,
+        }).catch(() => {});
+        res.json({ ok: true, removido: removed });
     });
 
     /* ── Observabilidade Puppeteer ── */
