@@ -144,6 +144,10 @@ async function initializeApp() {
         // Agendar sync de presença nos horários fixos
         setTimeout(() => presencaService.agendarSyncPresenca(), 5000);
 
+        // Job de purga de dados antigos (audit_log, reputacao_log, notificacoes_aluno)
+        const { agendarPurga } = await import('./src/services/purgeJob.js');
+        agendarPurga(localPool);
+
     } catch (error) {
         console.error('Erro ao inicializar aplicação:', error.message);
     }
