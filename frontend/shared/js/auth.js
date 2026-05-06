@@ -38,6 +38,7 @@
         '/pages/portal-aluno/':           'portal-aluno',
         '/pages/planos/':                 'planos',
         '/pages/suporte/':               'suporte',
+        '/qrcode/':                       'qrcode',
     };
 
     /* ── Permissões por perfil — defaults espelham backend/src/config/permissions.js
@@ -45,11 +46,11 @@
          `permissoesPerfis`) — usamos cache em localStorage para flash-free.   ── */
     const PERFIL_MODULOS_DEFAULT = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','suporte'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','suporte'],
-        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','suporte'],
-        aux_turno:  ['circulacao','presenca','suporte'],
-        cozinha:    ['cozinha','suporte'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','qrcode','suporte'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','qrcode','suporte'],
+        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte'],
+        aux_turno:  ['circulacao','presenca','qrcode','suporte'],
+        cozinha:    ['cozinha','qrcode','suporte'],
     };
     let PERFIL_MODULOS = { ...PERFIL_MODULOS_DEFAULT };
     /* Carrega override do cache, se existir */

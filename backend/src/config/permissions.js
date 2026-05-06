@@ -15,23 +15,23 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'suporte'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'qrcode', 'suporte'],
     },
     pedagogo: {
         nome: 'Pedagogo',
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'suporte'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'qrcode', 'suporte'],
     },
     secretaria: {
         nome: 'Secretaria',
-        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'suporte'],
+        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'qrcode', 'suporte'],
     },
     aux_turno: {
         nome: 'Aux. de Turno',
-        modulos: ['circulacao', 'presenca', 'suporte'],
+        modulos: ['circulacao', 'presenca', 'qrcode', 'suporte'],
     },
     cozinha: {
         nome: 'Cozinha',
-        modulos: ['cozinha', 'suporte'],
+        modulos: ['cozinha', 'qrcode', 'suporte'],
     },
 };
 
@@ -54,6 +54,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'circulacao',         nome: 'Circulação' },
     { id: 'presenca',           nome: 'Presença Diária' },
     { id: 'cozinha',            nome: 'Cozinha' },
+    { id: 'qrcode',             nome: 'Gerador de QR Code' },
     { id: 'suporte',            nome: 'Suporte' },
     { id: 'portal-aluno',       nome: 'Portal do Aluno (admin)' },
     { id: 'planos',             nome: 'Planos' },
