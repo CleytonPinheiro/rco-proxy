@@ -739,7 +739,17 @@
         window.__edusyncRecalcularNav = recalcular;
 
         if (window.ResizeObserver) {
-            new ResizeObserver(recalcular).observe(headerContent);
+            const ro = new ResizeObserver(recalcular);
+            ro.observe(headerContent);
+            /* headerContent é flex de largura ~window; sozinho ele quase nunca
+               muda. As mudanças que importam são em .header-left e
+               .header-actions (badge de escola injetada depois, contador de
+               retorno carregado via /api/me, banner de impersonação, etc.).
+               Observar ambos garante recálculo determinístico — antes a contagem
+               de itens variava entre páginas porque o badge entrava DEPOIS do
+               primeiro executar() sem disparar novo recalc.                     */
+            if (headerLeft)    ro.observe(headerLeft);
+            if (headerActions) ro.observe(headerActions);
         } else {
             window.addEventListener('resize', recalcular);
         }
