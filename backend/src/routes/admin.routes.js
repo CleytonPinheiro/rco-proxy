@@ -1634,6 +1634,37 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         res.json({ ok: true, removido: removed });
     });
 
+    /* ── TTL de sync RCO (ajuste em tempo real) ── */
+    router.patch('/admin/sync-ttl', async (req, res) => {
+        const v = parseFloat(req.body?.ttlHoras);
+        if (!Number.isFinite(v) || v <= 0 || v > 168) {
+            return res.status(400).json({ erro: 'Valor inválido. Deve ser um número positivo entre 0 e 168 horas.' });
+        }
+
+        try {
+            await pool.query(
+                `INSERT INTO edusync_config (chave, valor)
+                 VALUES ('rco_sync_ttl_hours', $1)
+                 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+                [String(v)]
+            );
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'SYNC_TTL_ATUALIZADO',
+                modulo:      'admin',
+                detalhes:    { ttlHoras: v },
+                ip:          req.ip,
+            }).catch(() => {});
+
+            res.json({ ok: true, ttlHoras: v });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao salvar TTL de sync:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Concorrência de login Puppeteer (ajuste em tempo real) ── */
     router.put('/admin/puppeteer-concurrency', async (req, res) => {
         const v = parseInt(req.body?.concurrency, 10);

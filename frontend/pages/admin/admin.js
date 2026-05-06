@@ -2836,6 +2836,22 @@ function renderSistema(d, cache, rl, historico) {
                 </table>
             </div>` : ''}
             <p style="margin-top:8px;font-size:.72rem;color:var(--text-muted)">TTL efetivo: ${ttlLabel} por usuário. Puladas = syncs evitados pelo cache (egress economizado). Executadas = syncs que foram ao Supabase.</p>
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                <div style="font-size:.75rem;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Ajustar TTL do sync</div>
+                <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+                    <div style="display:flex;flex-direction:column;gap:4px">
+                        <label for="sync_ttl_input" style="font-size:.75rem;font-weight:600;color:var(--text-secondary)">TTL do sync (horas)</label>
+                        <input type="number" id="sync_ttl_input" value="${esc(String(ttlHoras))}" min="0.1" max="168" step="0.5"
+                            style="width:100px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.9rem;font-weight:700;background:var(--bg-input);color:var(--text-primary)">
+                    </div>
+                    <button onclick="salvarSyncTtl()"
+                        style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">
+                        💾 Salvar
+                    </button>
+                    <span id="syncTtlMsg" style="font-size:.82rem"></span>
+                </div>
+                <p style="margin-top:6px;font-size:.72rem;color:var(--text-muted)">Altera a janela de cache de sincronização. O chip TTL acima reflete o valor salvo após atualizar. A alteração entra em vigor no próximo sync de qualquer usuário.</p>
+            </div>
         </div>`;
     }
 
@@ -3138,6 +3154,41 @@ async function executarPurgaAgora() {
         if (btn) { btn.disabled = false; btn.textContent = '🗑️ Executar Purga Agora'; }
     }
 }
+
+window.salvarSyncTtl = async function () {
+    const el  = document.getElementById('sync_ttl_input');
+    const msg = document.getElementById('syncTtlMsg');
+    if (!el) return;
+
+    const v = parseFloat(el.value);
+    if (!Number.isFinite(v) || v <= 0 || v > 168) {
+        if (msg) { msg.style.color = '#dc2626'; msg.textContent = 'Valor inválido (0.1–168 h).'; }
+        return;
+    }
+
+    if (msg) { msg.style.color = 'var(--text-muted)'; msg.textContent = 'Salvando...'; }
+
+    try {
+        const res = await api('/admin/sync-ttl', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ttlHoras: v }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        const ttlLabel = v === Math.round(v) ? `${v}h` : `${(v * 60).toFixed(0)} min`;
+        if (msg) {
+            msg.style.color = '#16a34a';
+            msg.textContent = `Salvo! TTL ativo: ${ttlLabel}.`;
+            setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
+        }
+        showToast(`TTL de sync atualizado para ${ttlLabel}.`, 'success');
+        carregarSistema();
+    } catch (e) {
+        if (msg) { msg.style.color = '#dc2626'; msg.textContent = `Erro: ${e.message}`; }
+        showToast(`Erro ao salvar TTL: ${e.message}`, 'error');
+    }
+};
 
 window.salvarPuppeteerConcurrency = async function () {
     const el  = document.getElementById('puppeteer_concurrency_input');
