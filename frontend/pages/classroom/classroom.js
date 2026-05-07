@@ -852,8 +852,8 @@ function atualizarStats() {
     const total     = todasNotas.length;
     const entregues = todasNotas.filter(n => n.entregue || n.estado === 'RETURNED').length;
     const pendentes = todasNotas.filter(n => !n.entregue && n.estado !== 'RETURNED').length;
-    const comNota   = todasNotas.filter(n => n.nota !== null);
-    const media     = comNota.length ? rco(comNota.reduce((s, n) => s + n.nota, 0) / comNota.length) : '—';
+    const comNota   = todasNotas.filter(n => n.nota !== null || n.notaRascunho != null);
+    const media     = comNota.length ? rco(comNota.reduce((s, n) => s + (n.nota !== null ? n.nota : n.notaRascunho), 0) / comNota.length) : '—';
 
     document.getElementById('clStTotal').textContent     = total;
     document.getElementById('clStEntregues').textContent = entregues;
@@ -915,10 +915,16 @@ function renderNotaRow(n) {
     else if (n.entregue)           { statusLabel = 'Entregue';  statusCls = 'entregue'; }
     else                           { statusLabel = 'Pendente';  statusCls = 'pendente'; }
 
-    const inputVal     = n.nota !== null ? (n.nota / 10).toFixed(1) : '';
+    const isDraft      = n.nota === null && n.notaRascunho != null;
+    const inputVal     = n.nota !== null
+        ? (n.nota / 10).toFixed(1)
+        : (isDraft ? (n.notaRascunho / 10).toFixed(1) : '');
     const podeDevolver = n.entregue && n.estado !== 'RETURNED';
     const ausenteBadge = n.ausente
         ? `<span class="cl-ausente-badge" title="Aluno estava ausente neste dia — zero aplicado pela auditoria">AUSENTE</span>`
+        : '';
+    const rascunhoBadge = isDraft
+        ? `<span class="cl-rascunho-badge" title="Nota em rascunho — ainda não devolvida ao aluno">Rascunho</span>`
         : '';
 
     const numBadgeNota = a.numChamada ? `<span class="cl-num-chamada">${a.numChamada}</span>` : '';
@@ -928,10 +934,11 @@ function renderNotaRow(n) {
         <div style="text-align:center">
             <span class="cl-nota-status-badge cl-nota-status--${statusCls}">${statusLabel}</span>
         </div>
-        <div>
-            <input class="cl-nota-input" type="number" min="0" max="${ativAtiva?.pontos != null ? (ativAtiva.pontos / 10).toFixed(1) : 10}"
+        <div style="display:flex;align-items:center;gap:4px">
+            <input class="cl-nota-input${isDraft ? ' cl-nota-input--rascunho' : ''}" type="number" min="0" max="${ativAtiva?.pontos != null ? (ativAtiva.pontos / 10).toFixed(1) : 10}"
                 step="0.1" value="${inputVal}" placeholder="—"
-                data-sub="${n.id}" data-original="${inputVal}"/>
+                data-sub="${n.id}" data-original="${inputVal}"${isDraft ? ' data-rascunho="true"' : ''}/>
+            ${rascunhoBadge}
         </div>
         <div class="cl-nota-acao">
             ${podeDevolver
@@ -955,9 +962,13 @@ async function salvarNota(input) {
             method: 'PATCH', body: { nota: notaInterno },
         });
         input.classList.add('cl-nota-input--salva');
+        input.classList.remove('cl-nota-input--rascunho');
+        delete input.dataset.rascunho;
+        const badge = input.parentElement?.querySelector('.cl-rascunho-badge');
+        if (badge) badge.remove();
         input.dataset.original = nova;
         const sub = todasNotas.find(n => n.id === subId);
-        if (sub) sub.nota = notaInterno;   // mantém escala interna em todasNotas
+        if (sub) { sub.nota = notaInterno; sub.notaRascunho = null; }
         atualizarStats();
         toast('Nota salva!', 'ok');
         setTimeout(() => input.classList.remove('cl-nota-input--salva'), 2000);

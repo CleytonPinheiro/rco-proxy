@@ -861,6 +861,16 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-nota-input:focus { border-color: #4285F4; box-shadow: 0 0 0 2px rgba(66,133,244,.15); }
 .cl-nota-input:disabled { opacity: .5; cursor: not-allowed; }
 .cl-nota-input--salva { border-color: #10b981; }
+.cl-nota-input--rascunho {
+    border: 1.5px dashed #f59e0b !important;
+    color: #92400e;
+    background: color-mix(in srgb, #fef3c7 40%, var(--bg-card));
+}
+[data-theme="dark"] .cl-nota-input--rascunho {
+    border-color: #b45309 !important;
+    color: #fbbf24;
+    background: color-mix(in srgb, #f59e0b 10%, var(--bg-card));
+}
 
 .cl-nota-acao {
     display: flex;
@@ -2042,6 +2052,27 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-audit-badge--warn { background: #fee2e2; color: #991b1b; }
 .dark .cl-audit-badge--ok   { background: #14532d; color: #86efac; }
 .dark .cl-audit-badge--warn { background: #7f1d1d; color: #fca5a5; }
+
+/* ── Badge RASCUNHO (inline na nota row) ── */
+.cl-rascunho-badge {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px dashed #f59e0b;
+    border-radius: 4px;
+    padding: 1px 5px;
+    vertical-align: middle;
+    text-transform: uppercase;
+}
+.dark .cl-rascunho-badge {
+    background: color-mix(in srgb, #f59e0b 15%, #1e293b);
+    color: #fbbf24;
+    border-color: #b45309;
+}
 
 /* ── Badge AUSENTE (inline na nota row) ── */
 .cl-ausente-badge {
