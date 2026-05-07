@@ -21,6 +21,33 @@ const DEFAULTS = {
  */
 let _usuariosStale = [];
 
+/**
+ * Flag para evitar execuções simultâneas (agendada + manual).
+ */
+let _emVerificacao = false;
+
+export function isSyncStaleEmVerificacao() {
+    return _emVerificacao;
+}
+
+/**
+ * Tenta executar a verificação imediatamente.
+ * Retorna { ok: false, motivo } se outra verificação já estiver em andamento.
+ * Retorna { ok: true, resultado } após concluir.
+ */
+export async function tryVerificarSyncsStalent(pool) {
+    if (_emVerificacao) {
+        return { ok: false, motivo: 'Uma verificação de sync já está em andamento. Aguarde a conclusão antes de iniciar outra.' };
+    }
+    _emVerificacao = true;
+    try {
+        const resultado = await verificarSyncsStalent(pool);
+        return { ok: true, resultado };
+    } finally {
+        _emVerificacao = false;
+    }
+}
+
 /** Retorna snapshot imutável dos usuários stale detectados na última execução. */
 export function getUsuariosStale() {
     return [..._usuariosStale];
@@ -162,7 +189,10 @@ export async function verificarSyncsStalent(pool) {
 export function agendarSyncStaleAlert(pool) {
     async function rodar(contexto) {
         try {
-            await verificarSyncsStalent(pool);
+            const outcome = await tryVerificarSyncsStalent(pool);
+            if (!outcome.ok) {
+                console.warn(`[STALE-SYNC] Execução (${contexto}) ignorada — verificação já em andamento.`);
+            }
         } catch (e) {
             console.error(`[STALE-SYNC] Erro na execução (${contexto}):`, e.message);
         } finally {

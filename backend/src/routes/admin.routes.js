@@ -1806,6 +1806,32 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Disparar verificação manual de sync parado ── */
+    router.post('/admin/sync-stale/verificar', async (req, res) => {
+        try {
+            const { tryVerificarSyncsStalent } = await import('../services/syncStaleAlertJob.js');
+            const outcome = await tryVerificarSyncsStalent(pool);
+
+            if (!outcome.ok) {
+                return res.status(409).json({ erro: outcome.motivo });
+            }
+
+            await auditLogger.registrar({
+                usuarioId:   req.userSession.userId,
+                usuarioNome: req.userSession.nome,
+                acao:        'SYNC_STALE_VERIFICACAO_MANUAL',
+                modulo:      'admin',
+                detalhes:    outcome.resultado,
+                ip:          req.ip,
+            }).catch(() => {});
+
+            res.json({ ok: true, resultado: outcome.resultado });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao executar verificação manual de sync-stale:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Observabilidade Puppeteer ── */
     router.get('/admin/puppeteer-stats', async (req, res) => {
         const login   = getLoginQueueStats();

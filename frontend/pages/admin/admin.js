@@ -2835,6 +2835,11 @@ function renderSistema(d, cache, rl, historico) {
                     <span><span style="color:var(--text-muted)">Aproveitamento: </span><strong style="color:${pctSkip >= 50 ? '#16a34a' : '#d97706'}">${pctSkip}%</strong></span>
                     ${neverCount > 0 ? `<span title="${neverCount} usuário${neverCount !== 1 ? 's' : ''} que nunca realizou um sync RCO" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:6px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:700;font-size:.75rem">⛔ ${neverCount} nunca sincronizou${neverCount !== 1 ? 'ram' : ''}</span>` : ''}
                     ${veryStaleCount > 0 ? `<span title="${veryStaleCount} usuário${veryStaleCount !== 1 ? 's' : ''} sem sync há mais de 7 dias" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:6px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;font-weight:700;font-size:.75rem">⚠️ ${veryStaleCount} sem sync há +7 dias</span>` : ''}
+                    <button id="btnVerificarSyncStale" onclick="verificarSyncStaleAgora()"
+                        style="padding:3px 13px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid #6366f1;background:#eef2ff;color:#4338ca">
+                        🔍 Verificar agora
+                    </button>
+                    <span id="syncStaleVerificarMsg" style="font-size:.78rem"></span>
                 </div>
             </div>
             ${semDados}
@@ -3186,6 +3191,51 @@ async function executarPurgaAgora() {
         showToast(`Erro na purga: ${e.message}`, 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🗑️ Executar Purga Agora'; }
+    }
+}
+
+async function verificarSyncStaleAgora() {
+    const btn   = document.getElementById('btnVerificarSyncStale');
+    const msgEl = document.getElementById('syncStaleVerificarMsg');
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Verificando...'; }
+    if (msgEl) { msgEl.style.color = 'var(--text-muted)'; msgEl.textContent = 'Aguardando conclusão...'; }
+
+    try {
+        const res  = await api('/admin/sync-stale/verificar', { method: 'POST' });
+        const data = await res.json();
+        if (res.status === 409) {
+            if (msgEl) {
+                msgEl.style.color = '#d97706';
+                msgEl.textContent = data.erro || 'Verificação já em andamento.';
+                setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 5000);
+            }
+            showToast(data.erro || 'Verificação já em andamento.', 'warning');
+            return;
+        }
+        if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+
+        const r = data.resultado || {};
+        const staleStr = r.stale === 0
+            ? 'nenhum usuário com sync atrasado'
+            : `${r.stale} usuário${r.stale !== 1 ? 's' : ''} com sync atrasado`;
+
+        if (msgEl) {
+            msgEl.style.color = r.stale === 0 ? '#16a34a' : '#d97706';
+            msgEl.textContent = `Verificados: ${r.verificados} — ${staleStr}.`;
+            setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 7000);
+        }
+        showToast(`Verificação concluída: ${staleStr}.`, r.stale === 0 ? 'success' : 'warning');
+        carregarSistema();
+    } catch (e) {
+        if (msgEl) {
+            msgEl.style.color = '#dc2626';
+            msgEl.textContent = `Erro: ${e.message}`;
+            setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 6000);
+        }
+        showToast(`Erro na verificação: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔍 Verificar agora'; }
     }
 }
 
