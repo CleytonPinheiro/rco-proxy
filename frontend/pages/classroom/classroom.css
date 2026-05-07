@@ -890,6 +890,57 @@ body.cl-popout .logo-icon { font-size: 15px; }
 }
 .cl-btn-devolver:hover { background: #ede9fe; border-color: #a78bfa; color: #5b21b6; }
 
+/* ── Botão "Confirmar" por rascunho ── */
+.cl-btn-confirmar-rascunho {
+    background: none;
+    border: 1px dashed #f59e0b;
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: .7rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #92400e;
+    transition: all .15s;
+}
+.cl-btn-confirmar-rascunho:hover { background: #fef3c7; border-style: solid; color: #78350f; }
+.cl-btn-confirmar-rascunho:disabled { opacity: .5; cursor: not-allowed; }
+[data-theme="dark"] .cl-btn-confirmar-rascunho { color: #fbbf24; border-color: #b45309; }
+[data-theme="dark"] .cl-btn-confirmar-rascunho:hover { background: color-mix(in srgb, #f59e0b 15%, #1e293b); }
+
+/* ── Barra "Promover todos" ── */
+.cl-bulk-rascunho-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: color-mix(in srgb, #fef3c7 60%, var(--bg-card));
+    border: 1px dashed #f59e0b;
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-bottom: 8px;
+    font-size: .82rem;
+}
+.cl-bulk-rascunho-info { color: #92400e; font-weight: 600; }
+[data-theme="dark"] .cl-bulk-rascunho-bar {
+    background: color-mix(in srgb, #f59e0b 10%, var(--bg-card));
+    border-color: #b45309;
+}
+[data-theme="dark"] .cl-bulk-rascunho-info { color: #fbbf24; }
+.cl-btn--confirmar-todos {
+    background: #f59e0b;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 13px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+}
+.cl-btn--confirmar-todos:hover { background: #d97706; }
+.cl-btn--confirmar-todos:disabled { opacity: .6; cursor: not-allowed; }
+
 /* ── Toast ── */
 .cl-toast {
     position: fixed;

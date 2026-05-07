@@ -886,7 +886,16 @@ function renderNotas() {
         elNotasLista.innerHTML = '<div class="cl-empty-state"><p>Nenhum aluno com os filtros selecionados.</p></div>';
         return;
     }
+    const rascunhosVisiveis = lista.filter(n => n.nota === null && n.notaRascunho != null);
+    const bulkBar = rascunhosVisiveis.length > 0
+        ? `<div class="cl-bulk-rascunho-bar">
+            <span class="cl-bulk-rascunho-info">📝 ${rascunhosVisiveis.length} nota${rascunhosVisiveis.length !== 1 ? 's' : ''} em rascunho</span>
+            <button class="cl-btn cl-btn--sm cl-btn--confirmar-todos" id="clBtnPromoverTodos">Promover todos os rascunhos</button>
+           </div>`
+        : '';
+
     elNotasLista.innerHTML = `
+        ${bulkBar}
         <div class="cl-nota-row cl-nota-row--header">
             <span></span>
             <span>Aluno</span>
@@ -902,6 +911,11 @@ function renderNotas() {
     elNotasLista.querySelectorAll('.cl-btn-devolver').forEach(btn => {
         btn.addEventListener('click', () => devolverEntrega(btn));
     });
+    elNotasLista.querySelectorAll('.cl-btn-confirmar-rascunho').forEach(btn => {
+        btn.addEventListener('click', () => promoverRascunho(btn));
+    });
+    const bulkBtn = document.getElementById('clBtnPromoverTodos');
+    if (bulkBtn) bulkBtn.addEventListener('click', promoverTodosRascunhos);
 }
 
 function renderNotaRow(n) {
@@ -941,9 +955,12 @@ function renderNotaRow(n) {
             ${rascunhoBadge}
         </div>
         <div class="cl-nota-acao">
+            ${isDraft
+                ? `<button class="cl-btn-confirmar-rascunho" data-sub="${n.id}" data-nota="${n.notaRascunho}" title="Promover rascunho para nota oficial">Confirmar</button>`
+                : ''}
             ${podeDevolver
                 ? `<button class="cl-btn-devolver" data-sub="${n.id}" data-user="${n.userId}">Devolver</button>`
-                : '<span style="color:var(--text-muted);font-size:.7rem">—</span>'}
+                : (!isDraft ? '<span style="color:var(--text-muted);font-size:.7rem">—</span>' : '')}
         </div>
     </div>`;
 }
@@ -978,6 +995,76 @@ async function salvarNota(input) {
     } finally {
         input.disabled = false;
     }
+}
+
+/* ── Promover rascunho individual ── */
+async function promoverRascunho(btn) {
+    const subId        = btn.dataset.sub;
+    const notaRascunho = Number(btn.dataset.nota);
+    btn.disabled    = true;
+    btn.textContent = '…';
+    try {
+        await api(`/courses/${cursoAtivo.id}/coursework/${ativAtiva.id}/submissions/${subId}/grade`, {
+            method: 'PATCH', body: { nota: notaRascunho },
+        });
+        const sub = todasNotas.find(n => n.id === subId);
+        if (sub) { sub.nota = notaRascunho; sub.notaRascunho = null; }
+        const row = elNotasLista.querySelector(`.cl-nota-row[data-sub="${subId}"]`);
+        if (row) {
+            const input = row.querySelector('.cl-nota-input');
+            if (input) {
+                input.classList.remove('cl-nota-input--rascunho');
+                input.classList.add('cl-nota-input--salva');
+                delete input.dataset.rascunho;
+                input.dataset.original = (notaRascunho / 10).toFixed(1);
+                setTimeout(() => input.classList.remove('cl-nota-input--salva'), 2000);
+            }
+            row.querySelector('.cl-rascunho-badge')?.remove();
+            btn.remove();
+            const acaoDiv = row.querySelector('.cl-nota-acao');
+            if (acaoDiv && !acaoDiv.querySelector('button')) {
+                const dash = document.createElement('span');
+                dash.style.cssText = 'color:var(--text-muted);font-size:.7rem';
+                dash.textContent = '—';
+                acaoDiv.appendChild(dash);
+            }
+        }
+        atualizarStats();
+        const restantes = filtrarNotas().filter(n => n.nota === null && n.notaRascunho != null).length;
+        if (!restantes) document.querySelector('.cl-bulk-rascunho-bar')?.remove();
+        else {
+            const info = document.querySelector('.cl-bulk-rascunho-info');
+            if (info) info.textContent = `📝 ${restantes} nota${restantes !== 1 ? 's' : ''} em rascunho`;
+        }
+        toast('Nota promovida!', 'ok');
+    } catch (e) {
+        btn.disabled    = false;
+        btn.textContent = 'Confirmar';
+        toast('Erro ao promover: ' + e.message, 'erro');
+    }
+}
+
+/* ── Promover todos os rascunhos visíveis ── */
+async function promoverTodosRascunhos() {
+    const drafts = filtrarNotas().filter(n => n.nota === null && n.notaRascunho != null);
+    if (!drafts.length) return;
+    const bulkBtn = document.getElementById('clBtnPromoverTodos');
+    if (bulkBtn) { bulkBtn.disabled = true; bulkBtn.textContent = 'Promovendo…'; }
+    let ok = 0, fail = 0;
+    for (const n of drafts) {
+        try {
+            await api(`/courses/${cursoAtivo.id}/coursework/${ativAtiva.id}/submissions/${n.id}/grade`, {
+                method: 'PATCH', body: { nota: n.notaRascunho },
+            });
+            n.nota = n.notaRascunho;
+            n.notaRascunho = null;
+            ok++;
+        } catch { fail++; }
+    }
+    renderNotas();
+    atualizarStats();
+    if (fail) toast(`${ok} promovida${ok !== 1 ? 's' : ''}, ${fail} com erro`, 'erro');
+    else toast(`${ok} nota${ok !== 1 ? 's' : ''} promovida${ok !== 1 ? 's' : ''}!`, 'ok');
 }
 
 /* ── Devolver entrega ── */
