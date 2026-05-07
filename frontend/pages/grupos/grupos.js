@@ -317,8 +317,34 @@ async function toggleLock(id, bloquear) {
     renderGrupos();
 }
 
+function confirmar(titulo, mensagem) {
+    return new Promise(resolve => {
+        document.getElementById('modalConfirmarTitulo').textContent = '⚠️ ' + titulo;
+        document.getElementById('modalConfirmarMensagem').textContent = mensagem;
+        const modal = document.getElementById('modalConfirmar');
+        const btnOk = document.getElementById('btnConfirmarOk');
+        modal.style.display = 'flex';
+        function onOk() { cleanup(); resolve(true); }
+        function onCancel() { cleanup(); resolve(false); }
+        function cleanup() {
+            modal.style.display = 'none';
+            btnOk.removeEventListener('click', onOk);
+            modal._confirmarCancel = null;
+        }
+        btnOk.addEventListener('click', onOk, { once: true });
+        modal._confirmarCancel = onCancel;
+    });
+}
+
+function fecharModalConfirmar(e) {
+    const modal = document.getElementById('modalConfirmar');
+    if (e && e.target !== modal) return;
+    if (modal._confirmarCancel) modal._confirmarCancel();
+    else modal.style.display = 'none';
+}
+
 async function excluirGrupo(id) {
-    if (!confirm('Excluir este grupo? Os alunos voltarão ao pool.')) return;
+    if (!await confirmar('Excluir grupo?', 'Os alunos voltarão ao pool.')) return;
     const r = await fetch(`${API}/api/grupos/${id}`, { method: 'DELETE' });
     if (!r.ok) { const e = await r.json(); alert(e.erro); return; }
     await carregarGrupos(turmaAtual.codTurma);
@@ -421,7 +447,7 @@ function editarAtividade(grupoId, ativId, grupoNome) {
 }
 
 async function excluirAtividade(grupoId, ativId, grupoNome) {
-    if (!confirm('Excluir este registro de atividade?')) return;
+    if (!await confirmar('Excluir atividade?', 'Excluir este registro de atividade?')) return;
     await fetch(`${API}/api/grupos/${grupoId}/atividades/${ativId}`, { method: 'DELETE' });
     await carregarGrupos(turmaAtual.codTurma);
     renderGrupos();

@@ -435,6 +435,17 @@
     cursor: pointer;
 }
 .btn-salvar:hover { background: #3730a3; }
+.btn-excluir-confirmar {
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 9px;
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.btn-excluir-confirmar:hover { background: #b91c1c; }
 
 /* ── Histórico de atividades no modal ────────────────────────────────────── */
 .ativ-historico { margin-top: 20px; }
