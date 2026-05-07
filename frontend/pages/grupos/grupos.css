@@ -90,6 +90,39 @@
     padding: 2px 9px;
     font-weight: 700;
 }
+.btn-atualizar-pool {
+    background: transparent;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+}
+.btn-atualizar-pool:hover:not(:disabled) {
+    background: #e0e7ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+}
+.btn-atualizar-pool:disabled { opacity: .5; cursor: default; }
+.btn-atualizar-pool.atualizando { animation: pool-spin 0.8s linear infinite; }
+@keyframes pool-spin { to { transform: rotate(360deg); } }
+.dark .btn-atualizar-pool {
+    border-color: #374151;
+    color: #9ca3af;
+}
+.dark .btn-atualizar-pool:hover:not(:disabled) {
+    background: rgba(99,102,241,.15);
+    color: #818cf8;
+    border-color: #4338ca;
+}
 .pool-alunos {
     background: #f9fafb;
     border: 2px dashed #d1d5db;

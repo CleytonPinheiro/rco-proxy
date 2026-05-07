@@ -91,6 +91,51 @@ async function carregarAlunos(turma) {
     } catch { todosAlunos = []; }
 }
 
+// ── Botão de atualização manual da lista de alunos ───────────────────────────
+async function atualizarListaAlunos() {
+    if (!turmaAtual) return;
+    const btn = document.getElementById('btnAtualizarAlunos');
+    if (btn) { btn.disabled = true; btn.classList.add('atualizando'); }
+    const elPool = document.getElementById('poolAlunos');
+    if (elPool) elPool.style.opacity = '0.5';
+
+    const totalAntes = todosAlunos.length;
+    await carregarAlunos(turmaAtual);
+    const totalDepois = todosAlunos.length;
+    const diff = totalDepois - totalAntes;
+
+    renderPool();
+    if (elPool) elPool.style.opacity = '';
+    if (btn) { btn.disabled = false; btn.classList.remove('atualizando'); }
+
+    /* Aviso rápido inline sobre resultado */
+    const msg = diff > 0
+        ? `+${diff} aluno(s) encontrado(s)`
+        : diff < 0
+            ? `${Math.abs(diff)} aluno(s) removido(s) da turma`
+            : 'Lista atualizada';
+    mostrarAvisoPool(msg, diff !== 0 ? 'ok' : 'neutro');
+}
+
+function mostrarAvisoPool(texto, tipo) {
+    const el = document.getElementById('poolAlunos');
+    const aviso = document.createElement('div');
+    aviso.style.cssText = `
+        position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+        background:${tipo === 'ok' ? '#d1fae5' : '#f3f4f6'};
+        color:${tipo === 'ok' ? '#065f46' : '#374151'};
+        border:1px solid ${tipo === 'ok' ? '#6ee7b7' : '#d1d5db'};
+        border-radius:8px;padding:4px 14px;font-size:.78rem;font-weight:600;
+        white-space:nowrap;pointer-events:none;z-index:10;
+    `;
+    aviso.textContent = texto;
+    const col = el.closest('.pool-col');
+    if (!col) return;
+    col.style.position = 'relative';
+    col.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 2500);
+}
+
 // ── Carregar grupos do backend ────────────────────────────────────────────────
 async function carregarGrupos(codTurma) {
     try {
