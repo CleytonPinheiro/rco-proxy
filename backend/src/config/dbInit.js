@@ -366,6 +366,56 @@ export async function initializeDatabase() {
             CREATE INDEX IF NOT EXISTS idx_purga_log_iniciado ON edusync_purga_log(iniciado_em DESC)
         `);
 
+        /* ── Monitor de Projetos ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS grupo_projetos (
+                id            SERIAL       PRIMARY KEY,
+                grupo_id      TEXT         NOT NULL,
+                cod_turma     INT,
+                nome          VARCHAR(120) NOT NULL,
+                tipo          VARCHAR(20)  NOT NULL DEFAULT 'outro',
+                url           TEXT         NOT NULL,
+                github_owner  VARCHAR(100),
+                github_repo   VARCHAR(100),
+                ultimo_check  TIMESTAMPTZ,
+                ultimo_sha    TEXT,
+                ativo         BOOLEAN      NOT NULL DEFAULT true,
+                criado_em     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupo_projetos_grupo ON grupo_projetos(grupo_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupo_projetos_github ON grupo_projetos(tipo) WHERE tipo = 'github'`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS grupo_projeto_eventos (
+                id           SERIAL       PRIMARY KEY,
+                projeto_id   INT          NOT NULL REFERENCES grupo_projetos(id) ON DELETE CASCADE,
+                tipo         VARCHAR(30)  NOT NULL DEFAULT 'commit',
+                titulo       VARCHAR(255) NOT NULL,
+                autor        VARCHAR(100),
+                url_evento   TEXT,
+                sha          VARCHAR(40),
+                detectado_em TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupo_proj_eventos ON grupo_projeto_eventos(projeto_id, detectado_em DESC)`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS aluno_projeto_sugestoes (
+                id                SERIAL       PRIMARY KEY,
+                aluno_email       TEXT         NOT NULL,
+                aluno_nome        TEXT,
+                nome              VARCHAR(120) NOT NULL,
+                tipo              VARCHAR(20)  NOT NULL DEFAULT 'outro',
+                url               TEXT         NOT NULL,
+                status            VARCHAR(20)  NOT NULL DEFAULT 'pendente',
+                grupo_id_destino  TEXT,
+                criado_em         TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_aluno_proj_sugest_email ON aluno_projeto_sugestoes(aluno_email)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_aluno_proj_sugest_status ON aluno_projeto_sugestoes(status)`);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

@@ -207,6 +207,35 @@
             <div id="paSolicitaLista" class="pa-solicita-lista"></div>
         </div>
 
+        <!-- ── Meus Projetos do Grupo ────────────────────────────────────── -->
+        <div id="paProjetosSection" style="display:none;margin-top:28px">
+            <div class="pa-aguardando-titulo" style="background:#fff7ed;border-left:4px solid #f59e0b">
+                <span class="pa-aguardando-icon">📂</span>
+                <div>
+                    <strong>Projetos do meu grupo</strong>
+                    <span class="pa-aguardando-desc">Submeta o link do seu projeto para o professor acompanhar.</span>
+                </div>
+            </div>
+
+            <!-- Formulário de submissão -->
+            <div id="paProjetosForm" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin:12px 0 16px">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+                    <input id="paProjetoUrl"  type="url"  placeholder="URL do projeto (GitHub, Replit, Vercel...)"
+                           style="flex:2;min-width:200px;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;outline:none" autocomplete="off">
+                    <input id="paProjetoNome" type="text" placeholder="Nome do projeto" maxlength="80"
+                           style="flex:1;min-width:140px;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;outline:none">
+                    <button onclick="submeterProjetoAluno()"
+                            style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                        Enviar
+                    </button>
+                </div>
+                <p id="paProjetoMsg" style="font-size:12px;margin:0;color:#6b7280"></p>
+            </div>
+
+            <!-- Lista das minhas sugestões -->
+            <div id="paProjetosLista"></div>
+        </div>
+
     </main>
 
     <!-- LOADING OVERLAY -->

@@ -936,5 +936,36 @@ export function createAlunosPortalRouter() {
         }
     });
 
+    /* ── Projetos: aluno submete link ──────────────────────────────────── */
+
+    router.post('/alunos-portal/projetos/sugerir', async (req, res) => {
+        const session = await getAlunoSession(req);
+        if (!session) return res.status(401).json({ erro: 'Não autenticado' });
+        const { nome, url } = req.body;
+        if (!nome || !url) return res.status(400).json({ erro: 'nome e url são obrigatórios' });
+        try {
+            const { inferirTipo } = await import('../services/projectMonitorService.js');
+            const tipo = inferirTipo(url);
+            await pool.query(
+                `INSERT INTO aluno_projeto_sugestoes (aluno_email, aluno_nome, nome, tipo, url)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [session.email, session.nome || '', nome.slice(0, 120), tipo, url]
+            );
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    router.get('/alunos-portal/projetos/minhas-sugestoes', async (req, res) => {
+        const session = await getAlunoSession(req);
+        if (!session) return res.status(401).json({ erro: 'Não autenticado' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT * FROM aluno_projeto_sugestoes WHERE aluno_email = $1 ORDER BY criado_em DESC`,
+                [session.email]
+            );
+            res.json(rows);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
     return router;
 }

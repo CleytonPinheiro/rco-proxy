@@ -696,6 +696,301 @@
     .print-grupos-grid.cols-1 { grid-template-columns: 1fr; }
 }
 
+/* ── Modal XL ────────────────────────────────────────────────────────────── */
+.modal-box-xl {
+    width: min(860px, 96vw);
+    max-height: 88vh;
+    overflow-y: auto;
+}
+
+/* ── Botão Projetos (card do grupo) ──────────────────────────────────────── */
+.btn-proj {
+    background: transparent;
+    border: 1.5px solid #d1d5db;
+    color: #6b7280;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.btn-proj:hover { background: #fef3c7; color: #92400e; border-color: #fbbf24; }
+.proj-count {
+    font-size: 11px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* ── Botão Monitor Geral ─────────────────────────────────────────────────── */
+.btn-monitor {
+    background: #fff7ed;
+    color: #92400e;
+    border: 1.5px solid #fbbf24;
+    border-radius: 10px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-monitor:hover { background: #fef3c7; transform: translateY(-1px); }
+
+/* ── Formulário de adição de projeto ─────────────────────────────────────── */
+.proj-add-form {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+}
+.proj-add-inputs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 8px;
+}
+.proj-add-inputs .form-input {
+    flex: 1;
+    min-width: 160px;
+}
+.proj-add-hint {
+    font-size: 11px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* ── Card de projeto ─────────────────────────────────────────────────────── */
+.proj-lista { display: flex; flex-direction: column; gap: 14px; }
+.proj-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fff;
+}
+.proj-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+.proj-card-title {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.proj-nome-link {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1a1a2e;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.proj-nome-link:hover { text-decoration: underline; color: #4338ca; }
+.proj-commits-badge {
+    font-size: 11px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.proj-card-actions { display: flex; gap: 6px; margin-left: auto; }
+.proj-btn-sync, .proj-btn-del {
+    background: transparent;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.proj-btn-sync:hover:not(:disabled) { background: #dbeafe; border-color: #93c5fd; }
+.proj-btn-del:hover  { background: #fee2e2; border-color: #fca5a5; }
+.proj-btn-sync:disabled { opacity: .45; cursor: default; }
+.proj-ultimo-check {
+    font-size: 11px;
+    color: #9ca3af;
+    margin: 0 0 8px;
+}
+
+/* ── Badge de tipo ───────────────────────────────────────────────────────── */
+.proj-tipo-badge {
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 3px 9px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.proj-tipo-github   { background: #f3f4f6; color: #374151; }
+.proj-tipo-replit   { background: #ede9fe; color: #5b21b6; }
+.proj-tipo-supabase { background: #d1fae5; color: #065f46; }
+.proj-tipo-vercel   { background: #f1f5f9; color: #0f172a; }
+.proj-tipo-netlify  { background: #d1fae5; color: #065f46; }
+.proj-tipo-deploy   { background: #e0f2fe; color: #0369a1; }
+.proj-tipo-outro    { background: #f3f4f6; color: #4b5563; }
+
+/* ── Timeline de commits ─────────────────────────────────────────────────── */
+.proj-timeline {
+    border-left: 2px solid #e5e7eb;
+    margin-left: 4px;
+    padding-left: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+.proj-timeline-sm { margin-top: 8px; }
+.proj-evento {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    position: relative;
+}
+.proj-evento-dot {
+    position: absolute;
+    left: -19px;
+    top: 5px;
+    width: 8px;
+    height: 8px;
+    background: #6366f1;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #c7d2fe;
+    flex-shrink: 0;
+}
+.proj-evento-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.proj-evento-titulo {
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    max-width: 560px;
+}
+.proj-evento-meta {
+    font-size: 11px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.proj-evento-link {
+    color: #4338ca;
+    text-decoration: none;
+    font-weight: 600;
+}
+.proj-evento-link:hover { text-decoration: underline; }
+.proj-evento-sha {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+.proj-vazio, .proj-sem-eventos {
+    font-size: 12px;
+    color: #9ca3af;
+    font-style: italic;
+    margin: 4px 0;
+}
+.proj-loading { padding: 20px; text-align: center; color: #6b7280; }
+
+/* ── Monitor Geral ───────────────────────────────────────────────────────── */
+.monitor-group-section {
+    margin-bottom: 22px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+}
+.monitor-group-nome {
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.monitor-proj-item {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #f3f4f6;
+}
+.monitor-proj-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.monitor-proj-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+/* ── Sugestões de Links ──────────────────────────────────────────────────── */
+.sugestao-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.sugestao-info { flex: 1; min-width: 200px; }
+.sugestao-nome { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.sugestao-aluno { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+.sugestao-url { font-size: 12px; color: #4338ca; word-break: break-all; }
+.sugestao-url a { color: #4338ca; }
+.sugestao-status-aprovado { color: #065f46; font-weight: 700; }
+.sugestao-status-rejeitado { color: #991b1b; font-weight: 700; }
+.sugestao-status-pendente  { color: #92400e; font-weight: 700; }
+.sugestao-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.sugestao-grupo-sel {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    background: #fff;
+}
+.btn-aprovar  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.btn-rejeitar { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.btn-aprovar:hover  { background: #a7f3d0; }
+.btn-rejeitar:hover { background: #fecaca; }
+
 /* ── Tema Escuro ─────────────────────────────────────────────────────────── */
 [data-theme="dark"] .grupos-titulo { color: var(--text-primary); }
 [data-theme="dark"] .turma-tab { background: var(--tab-bg); color: var(--tab-color); }

@@ -1,13 +1,14 @@
 // ── Grupos de Trabalho ────────────────────────────────────────────────────────
 
 const API = '';
-let turmaAtual    = null;   // { codTurma, nomeTurma, codClasse }
-let todosAlunos   = [];     // todos os alunos da turma
-let todosGrupos   = [];     // grupos da turma
-let ativGrupoId   = null;   // id do grupo para modal de atividade
-let ativEditId    = null;   // id da atividade sendo editada (null = nova)
-let verAtivGrupoId = null;  // id do grupo para modal de ver atividades
-let dragAluno     = null;   // { codMatrizAluno, nome, numChamada, fromGrupoId }
+let turmaAtual     = null;   // { codTurma, nomeTurma, codClasse }
+let todosAlunos    = [];     // todos os alunos da turma
+let todosGrupos    = [];     // grupos da turma
+let ativGrupoId    = null;   // id do grupo para modal de atividade
+let ativEditId     = null;   // id da atividade sendo editada (null = nova)
+let verAtivGrupoId = null;   // id do grupo para modal de ver atividades
+let dragAluno      = null;   // { codMatrizAluno, nome, numChamada, fromGrupoId }
+let projetosGrupoId = null;  // id do grupo para modal de projetos
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -218,6 +219,10 @@ function renderCardGrupo(g) {
                     <button class="btn-ativ" title="Ver / registrar atividades (${numAtiv})"
                             onclick="abrirModalAtividade('${g.id}', '${escHtml(g.nome)}')">
                         📋<span class="ativ-count">${numAtiv}</span>
+                    </button>
+                    <button class="btn-proj" title="Projetos monitorados deste grupo"
+                            onclick="abrirModalProjetos('${g.id}', '${escHtml(g.nome)}')">
+                        📂 Projetos
                     </button>
                     ${locked ? '' : `<button class="btn-excluir-grupo" title="Excluir grupo" onclick="excluirGrupo('${g.id}')">🗑</button>`}
                 </div>
@@ -517,6 +522,320 @@ function imprimirGrupos() {
 
     // Oculta novamente após o diálogo de impressão fechar
     setTimeout(() => { area.style.display = 'none'; }, 500);
+}
+
+// ── Projetos do Grupo ─────────────────────────────────────────────────────────
+
+const TIPO_ICON = { github:'🐙', replit:'🔷', supabase:'⚡', vercel:'▲', netlify:'🌿', deploy:'🚀', outro:'🔗' };
+
+async function abrirModalProjetos(grupoId, grupoNome) {
+    projetosGrupoId = grupoId;
+    document.getElementById('modalProjetosTitulo').textContent = `Projetos — ${grupoNome}`;
+    document.getElementById('modalProjetos').style.display = 'flex';
+    document.getElementById('modalProjetosBody').innerHTML = '<div class="proj-loading">Carregando projetos...</div>';
+    const projetos = await carregarProjetos(grupoId);
+    document.getElementById('modalProjetosBody').innerHTML = renderProjetosHtml(projetos, grupoId);
+}
+
+function fecharModalProjetos(e) {
+    if (e && e.target !== document.getElementById('modalProjetos')) return;
+    document.getElementById('modalProjetos').style.display = 'none';
+    projetosGrupoId = null;
+}
+
+async function carregarProjetos(grupoId) {
+    try {
+        const r = await fetch(`${API}/api/grupos/${grupoId}/projetos`);
+        return r.ok ? await r.json() : [];
+    } catch { return []; }
+}
+
+function renderProjetosHtml(projetos, grupoId) {
+    const listaHtml = projetos.length
+        ? projetos.map(p => renderProjetoCard(p, grupoId)).join('')
+        : '<p class="proj-vazio">Nenhum projeto cadastrado ainda. Adicione um link abaixo.</p>';
+
+    return `
+        <div class="proj-add-form">
+            <div class="proj-add-inputs">
+                <input id="projUrlInput" class="form-input" type="url"
+                       placeholder="URL do projeto (GitHub, Replit, Supabase...)" autocomplete="off">
+                <input id="projNomeInput" class="form-input" type="text"
+                       placeholder="Nome do projeto" maxlength="80">
+                <button class="btn-salvar" onclick="adicionarProjeto('${grupoId}')">Adicionar</button>
+            </div>
+            <p class="proj-add-hint">
+                Para repositórios GitHub públicos, commits são monitorados automaticamente a cada hora.
+                Repositórios privados requerem GITHUB_TOKEN configurado no servidor.
+            </p>
+        </div>
+        <div class="proj-lista">${listaHtml}</div>`;
+}
+
+function renderProjetoCard(p, grupoId) {
+    const icon        = TIPO_ICON[p.tipo] || '🔗';
+    const totalEvt    = parseInt(p.total_eventos) || 0;
+    const ultimoCheck = p.ultimo_check
+        ? new Date(p.ultimo_check).toLocaleString('pt-BR')
+        : 'Nunca verificado';
+
+    const eventosHtml = (p.eventos || []).length
+        ? `<div class="proj-timeline">${p.eventos.map(e => renderEvento(e)).join('')}</div>`
+        : p.tipo === 'github'
+            ? '<p class="proj-sem-eventos">Sem commits detectados. Clique em ↻ para sincronizar agora.</p>'
+            : '';
+
+    return `
+        <div class="proj-card" id="proj-card-${p.id}">
+            <div class="proj-card-header">
+                <span class="proj-tipo-badge proj-tipo-${p.tipo}">${icon} ${p.tipo}</span>
+                <div class="proj-card-title">
+                    <a href="${escHtml(p.url)}" target="_blank" rel="noopener" class="proj-nome-link"
+                       title="${escHtml(p.url)}">${escHtml(p.nome)}</a>
+                    ${p.tipo === 'github' ? `<span class="proj-commits-badge">${totalEvt} commit${totalEvt !== 1 ? 's' : ''}</span>` : ''}
+                </div>
+                <div class="proj-card-actions">
+                    ${p.tipo === 'github'
+                        ? `<button class="proj-btn-sync" title="Sincronizar agora"
+                                   onclick="sincronizarProjeto(${p.id}, '${grupoId}')">↻</button>`
+                        : ''}
+                    <button class="proj-btn-del" title="Remover projeto"
+                            onclick="removerProjeto(${p.id}, '${grupoId}')">🗑</button>
+                </div>
+            </div>
+            ${p.tipo === 'github' ? `<p class="proj-ultimo-check">Última verificação: ${ultimoCheck}</p>` : ''}
+            ${eventosHtml}
+        </div>`;
+}
+
+function renderEvento(e) {
+    const sha  = e.sha  ? `<span class="proj-evento-sha">${e.sha.slice(0, 7)}</span>` : '';
+    const link = e.url_evento
+        ? `<a href="${escHtml(e.url_evento)}" target="_blank" rel="noopener" class="proj-evento-link">↗</a>`
+        : '';
+    return `
+        <div class="proj-evento">
+            <span class="proj-evento-dot"></span>
+            <div class="proj-evento-info">
+                <span class="proj-evento-titulo">${escHtml(e.titulo)}</span>
+                <span class="proj-evento-meta">
+                    ${escHtml(e.autor)} · ${formatarDataHora(e.detectado_em)} ${link} ${sha}
+                </span>
+            </div>
+        </div>`;
+}
+
+async function adicionarProjeto(grupoId) {
+    const url  = document.getElementById('projUrlInput').value.trim();
+    const nome = document.getElementById('projNomeInput').value.trim();
+    if (!url || !nome) { alert('Informe a URL e o nome do projeto.'); return; }
+    const btn = document.querySelector('#modalProjetosBody .btn-salvar');
+    if (btn) btn.disabled = true;
+    const r = await fetch(`${API}/api/grupos/${grupoId}/projetos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, nome, codTurma: turmaAtual?.codTurma }),
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.erro); if (btn) btn.disabled = false; return; }
+    const projetos = await carregarProjetos(grupoId);
+    document.getElementById('modalProjetosBody').innerHTML = renderProjetosHtml(projetos, grupoId);
+}
+
+async function removerProjeto(projId, grupoId) {
+    if (!confirm('Remover este projeto do grupo?')) return;
+    await fetch(`${API}/api/grupos/${grupoId}/projetos/${projId}`, { method: 'DELETE' });
+    const projetos = await carregarProjetos(grupoId);
+    document.getElementById('modalProjetosBody').innerHTML = renderProjetosHtml(projetos, grupoId);
+}
+
+async function sincronizarProjeto(projId, grupoId) {
+    const card = document.getElementById(`proj-card-${projId}`);
+    const btn  = card?.querySelector('.proj-btn-sync');
+    if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
+
+    const r = await fetch(`${API}/api/grupos/${grupoId}/projetos/${projId}/sync`, { method: 'POST' });
+    const d = await r.json();
+
+    const projetos = await carregarProjetos(grupoId);
+    document.getElementById('modalProjetosBody').innerHTML = renderProjetosHtml(projetos, grupoId);
+
+    if (d.novos > 0) mostrarAvisoPool(`+${d.novos} commit(s) detectado(s)`, 'ok');
+    else             mostrarAvisoPool('Nenhum commit novo', 'neutro');
+}
+
+// ── Monitor Geral de Projetos ─────────────────────────────────────────────────
+
+async function abrirMonitorGeral() {
+    document.getElementById('modalMonitor').style.display = 'flex';
+    document.getElementById('modalMonitorBody').innerHTML = '<div class="proj-loading">Carregando atividade recente...</div>';
+    await carregarMonitor();
+}
+
+function fecharModalMonitor(e) {
+    if (e && e.target !== document.getElementById('modalMonitor')) return;
+    document.getElementById('modalMonitor').style.display = 'none';
+}
+
+async function carregarMonitor() {
+    try {
+        const qs = turmaAtual ? `?codTurma=${turmaAtual.codTurma}` : '';
+        const r  = await fetch(`${API}/api/grupos/monitor-projetos${qs}`);
+        const projetos = r.ok ? await r.json() : [];
+        document.getElementById('modalMonitorBody').innerHTML = renderMonitorHtml(projetos);
+    } catch (e) {
+        document.getElementById('modalMonitorBody').innerHTML =
+            `<p style="color:red">Erro ao carregar monitor: ${e.message}</p>`;
+    }
+}
+
+function renderMonitorHtml(projetos) {
+    if (!projetos.length)
+        return '<p class="proj-vazio">Nenhum projeto monitorado ainda. Abra um grupo, clique em "Projetos" e adicione um link.</p>';
+
+    /* Agrupar por grupo_id */
+    const porGrupo = {};
+    for (const p of projetos) {
+        if (!porGrupo[p.grupo_id]) porGrupo[p.grupo_id] = [];
+        porGrupo[p.grupo_id].push(p);
+    }
+
+    const grupoNomes = Object.fromEntries(todosGrupos.map(g => [g.id, g.nome]));
+
+    /* Ordenar grupos: primeiro os com eventos mais recentes */
+    const gruposSorted = Object.entries(porGrupo).sort(([, psA], [, psB]) => {
+        const lastA = psA.flatMap(p => p.eventos_recentes || [])
+                         .map(e => e.detectado_em).sort().reverse()[0] || '';
+        const lastB = psB.flatMap(p => p.eventos_recentes || [])
+                         .map(e => e.detectado_em).sort().reverse()[0] || '';
+        return lastB.localeCompare(lastA);
+    });
+
+    return gruposSorted.map(([grupoId, ps]) => {
+        const nomeGrupo = grupoNomes[grupoId] || `Grupo ${grupoId}`;
+        const projetosHtml = ps.map(p => {
+            const icon     = TIPO_ICON[p.tipo] || '🔗';
+            const totalEvt = parseInt(p.total_eventos) || 0;
+            const eventos  = p.eventos_recentes || [];
+            const evtHtml  = eventos.length
+                ? `<div class="proj-timeline proj-timeline-sm">${eventos.map(e => renderEvento(e)).join('')}</div>`
+                : '<p class="proj-sem-eventos">Sem atividade recente.</p>';
+            return `
+                <div class="monitor-proj-item">
+                    <div class="monitor-proj-header">
+                        <span class="proj-tipo-badge proj-tipo-${p.tipo}">${icon} ${p.tipo}</span>
+                        <a href="${escHtml(p.url)}" target="_blank" rel="noopener" class="proj-nome-link">
+                            ${escHtml(p.nome)}</a>
+                        ${p.tipo === 'github'
+                            ? `<span class="proj-commits-badge">${totalEvt} commit${totalEvt !== 1 ? 's' : ''}</span>`
+                            : ''}
+                    </div>
+                    ${evtHtml}
+                </div>`;
+        }).join('');
+
+        return `
+            <div class="monitor-group-section">
+                <h4 class="monitor-group-nome">👥 ${escHtml(nomeGrupo)}</h4>
+                ${projetosHtml}
+            </div>`;
+    }).join('');
+}
+
+// ── Sugestões de Links dos Alunos ─────────────────────────────────────────────
+
+async function abrirSugestoes() {
+    document.getElementById('modalSugestoes').style.display = 'flex';
+    document.getElementById('modalSugestoesBody').innerHTML = '<div class="proj-loading">Carregando sugestões...</div>';
+    await carregarSugestoes();
+}
+
+function fecharModalSugestoes(e) {
+    if (e && e.target !== document.getElementById('modalSugestoes')) return;
+    document.getElementById('modalSugestoes').style.display = 'none';
+}
+
+async function carregarSugestoes() {
+    try {
+        const r = await fetch(`${API}/api/grupos/projetos-sugestoes`);
+        const sugestoes = r.ok ? await r.json() : [];
+        document.getElementById('modalSugestoesBody').innerHTML = renderSugestoesHtml(sugestoes);
+    } catch (e) {
+        document.getElementById('modalSugestoesBody').innerHTML =
+            `<p style="color:red">Erro: ${e.message}</p>`;
+    }
+}
+
+function renderSugestoesHtml(sugestoes) {
+    if (!sugestoes.length)
+        return '<p class="proj-vazio">Nenhum link submetido pelos alunos ainda.</p>' +
+               '<p style="font-size:12px;color:#6b7280;margin-top:8px">Alunos podem submeter links no Portal do Aluno após fazer login com o Google.</p>';
+
+    const grupoOptions = todosGrupos.map(g =>
+        `<option value="${g.id}">${escHtml(g.nome)}</option>`
+    ).join('');
+
+    return sugestoes.map(s => {
+        const statusClass = `sugestao-status-${s.status}`;
+        const acoes = s.status === 'pendente' ? `
+            <div class="sugestao-actions">
+                <select class="sugestao-grupo-sel" id="sel-grupo-${s.id}">
+                    <option value="">— Escolher grupo —</option>
+                    ${grupoOptions}
+                </select>
+                <button class="btn-aprovar"  onclick="aprovarSugestao(${s.id})">✓ Aprovar</button>
+                <button class="btn-rejeitar" onclick="rejeitarSugestao(${s.id})">✕ Rejeitar</button>
+            </div>` : `<span class="${statusClass}">${s.status.toUpperCase()}</span>`;
+
+        return `
+            <div class="sugestao-card">
+                <div class="sugestao-info">
+                    <div class="sugestao-nome">${escHtml(s.nome)}
+                        <span class="proj-tipo-badge proj-tipo-${s.tipo}" style="font-size:10px;margin-left:6px">
+                            ${TIPO_ICON[s.tipo] || '🔗'} ${s.tipo}</span>
+                    </div>
+                    <div class="sugestao-aluno">👤 ${escHtml(s.aluno_nome || '')} (${escHtml(s.aluno_email)})
+                        · ${formatarDataHora(s.criado_em)}</div>
+                    <div class="sugestao-url">
+                        <a href="${escHtml(s.url)}" target="_blank" rel="noopener">${escHtml(s.url)}</a>
+                    </div>
+                </div>
+                ${acoes}
+            </div>`;
+    }).join('');
+}
+
+async function aprovarSugestao(id) {
+    const sel    = document.getElementById(`sel-grupo-${id}`);
+    const grupoId = sel?.value;
+    if (!grupoId) { alert('Selecione um grupo para aprovar.'); return; }
+    await fetch(`${API}/api/grupos/projetos-sugestoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'aprovado', grupoId, codTurma: turmaAtual?.codTurma }),
+    });
+    await carregarSugestoes();
+    mostrarAvisoPool('Projeto aprovado e adicionado ao grupo', 'ok');
+}
+
+async function rejeitarSugestao(id) {
+    if (!confirm('Rejeitar esta sugestão?')) return;
+    await fetch(`${API}/api/grupos/projetos-sugestoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'rejeitado' }),
+    });
+    await carregarSugestoes();
+}
+
+// ── Utilitário de data/hora ───────────────────────────────────────────────────
+
+function formatarDataHora(iso) {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+        });
+    } catch { return iso; }
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────

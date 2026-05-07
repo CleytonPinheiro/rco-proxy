@@ -220,6 +220,7 @@ async function verificarStatus() {
             carregarTarefasCorretor();
             carregarReputacao();
             carregarVoluntariar();
+            carregarProjetosAluno();
             iniciarPollingNotificacoes();
             /* Conquistas: verifica silenciosamente após atividades carregarem */
             setTimeout(verificarConquistas, 3000);
@@ -1305,4 +1306,82 @@ function lancarConfetti(canvas) {
         if (viva && elapsed < DUR) requestAnimationFrame(frame);
         else ctx.clearRect(0, 0, W, H);
     })(performance.now());
+}
+
+/* ── Projetos do Grupo ───────────────────────────────── */
+const PA_TIPO_ICON = { github:'🐙', replit:'🔷', supabase:'⚡', vercel:'▲', netlify:'🌿', deploy:'🚀', outro:'🔗' };
+const PA_STATUS_LABEL = { pendente:'⏳ Aguardando aprovação', aprovado:'✅ Aprovado', rejeitado:'❌ Rejeitado' };
+const PA_STATUS_COLOR = { pendente:'#92400e', aprovado:'#065f46', rejeitado:'#991b1b' };
+
+async function carregarProjetosAluno() {
+    const sec = $('paProjetosSection');
+    if (!sec) return;
+    try {
+        const r = await fetch('/api/alunos-portal/projetos/minhas-sugestoes', { credentials: 'include' });
+        if (!r.ok) return;
+        const sugestoes = await r.json();
+        sec.style.display = '';
+        const lista = $('paProjetosLista');
+        if (!lista) return;
+        if (!sugestoes.length) {
+            lista.innerHTML = '<p style="font-size:13px;color:#9ca3af;font-style:italic;margin:4px 0">Você ainda não submeteu nenhum projeto.</p>';
+            return;
+        }
+        lista.innerHTML = sugestoes.map(s => {
+            const icon  = PA_TIPO_ICON[s.tipo]  || '🔗';
+            const label = PA_STATUS_LABEL[s.status] || s.status;
+            const color = PA_STATUS_COLOR[s.status] || '#374151';
+            return `
+                <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+                    <div style="flex:1;min-width:180px">
+                        <div style="font-weight:600;font-size:14px;margin-bottom:2px">${icon} ${escapeHtmlPA(s.nome)}</div>
+                        <div style="font-size:12px;color:#4338ca;word-break:break-all;margin-bottom:4px">
+                            <a href="${escapeAttr(s.url)}" target="_blank" rel="noopener" style="color:#4338ca">${escapeHtmlPA(s.url)}</a>
+                        </div>
+                        <div style="font-size:11px;color:#6b7280">
+                            Enviado em ${new Date(s.criado_em).toLocaleDateString('pt-BR')}
+                        </div>
+                    </div>
+                    <span style="font-size:12px;font-weight:700;color:${color};white-space:nowrap;padding-top:2px">${label}</span>
+                </div>`;
+        }).join('');
+    } catch (_) { /* silencioso */ }
+}
+
+async function submeterProjetoAluno() {
+    const urlEl  = $('paProjetoUrl');
+    const nomeEl = $('paProjetoNome');
+    const msg    = $('paProjetoMsg');
+    const url    = urlEl?.value?.trim();
+    const nome   = nomeEl?.value?.trim();
+    if (!url || !nome) {
+        if (msg) { msg.textContent = 'Informe a URL e o nome do projeto.'; msg.style.color = '#dc2626'; }
+        return;
+    }
+    if (msg) { msg.textContent = 'Enviando…'; msg.style.color = '#6b7280'; }
+    try {
+        const r = await fetch('/api/alunos-portal/projetos/sugerir', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ url, nome }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            if (msg) { msg.textContent = d.erro || 'Erro ao enviar.'; msg.style.color = '#dc2626'; }
+            return;
+        }
+        if (urlEl)  urlEl.value  = '';
+        if (nomeEl) nomeEl.value = '';
+        if (msg) { msg.textContent = '✅ Enviado! O professor será notificado.'; msg.style.color = '#065f46'; }
+        await carregarProjetosAluno();
+        setTimeout(() => { if (msg) msg.textContent = ''; }, 5000);
+    } catch (_) {
+        if (msg) { msg.textContent = 'Erro de rede. Tente novamente.'; msg.style.color = '#dc2626'; }
+    }
+}
+
+function escapeHtmlPA(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }

@@ -198,6 +198,10 @@ async function initializeApp() {
         const { agendarSyncStaleAlert } = await import('./src/services/syncStaleAlertJob.js');
         agendarSyncStaleAlert(localPool);
 
+        // Monitor de projetos dos grupos (rastreia commits GitHub a cada hora)
+        const { iniciarMonitorProjetos } = await import('./src/services/projectMonitorService.js');
+        iniciarMonitorProjetos();
+
     } catch (error) {
         console.error('Erro ao inicializar aplicação:', error.message);
     }
