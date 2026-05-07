@@ -1698,6 +1698,114 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Alertas de sync parado ── */
+    router.get('/admin/sync-stale', async (_req, res) => {
+        try {
+            const { getUsuariosStale } = await import('../services/syncStaleAlertJob.js');
+
+            const [configResult, cacheResult] = await Promise.all([
+                pool.query(
+                    `SELECT chave, valor FROM edusync_config
+                      WHERE chave = ANY($1)`,
+                    [['sync_stale_alert_days', 'sync_stale_alert_interval_horas']]
+                ),
+                pool.query(`
+                    SELECT
+                        u.id,
+                        u.nome,
+                        u.perfil,
+                        c.ultimo_sync
+                    FROM edusync_usuarios u
+                    LEFT JOIN edusync_sync_cache c ON c.usuario_id = u.id
+                    WHERE u.ativo = true
+                    ORDER BY u.nome
+                `),
+            ]);
+
+            const cfgMap = Object.fromEntries(configResult.rows.map(r => [r.chave, r.valor]));
+            const alertDias = parseInt(cfgMap['sync_stale_alert_days'], 10) || 7;
+            const intervalHoras = parseInt(cfgMap['sync_stale_alert_interval_horas'], 10) || 24;
+
+            const limiteData = new Date(Date.now() - alertDias * 24 * 60 * 60 * 1000);
+
+            const todosUsuarios = cacheResult.rows;
+            const staleUsuarios = todosUsuarios.filter(r => {
+                if (!r.ultimo_sync) return true;
+                return new Date(r.ultimo_sync) < limiteData;
+            }).map(r => ({
+                id:         r.id,
+                nome:       r.nome,
+                perfil:     r.perfil,
+                ultimoSync: r.ultimo_sync ? new Date(r.ultimo_sync).toISOString() : null,
+            }));
+
+            const ultimaExecucaoCache = getUsuariosStale();
+
+            res.json({
+                config: { alertDias, intervalHoras },
+                totalAtivos: todosUsuarios.length,
+                totalStale:  staleUsuarios.length,
+                usuarios:    staleUsuarios,
+                cacheMemoria: ultimaExecucaoCache,
+            });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao buscar sync-stale:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar alertas de sync parado.' });
+        }
+    });
+
+    /* ── Salvar configuração de alerta de sync parado ── */
+    router.put('/admin/sync-stale/config', async (req, res) => {
+        const CAMPOS = {
+            sync_stale_alert_days:           { min: 1, max: 365 },
+            sync_stale_alert_interval_horas: { min: 1, max: 720 },
+        };
+
+        const atualizacoes = [];
+        const erros = [];
+
+        for (const [chave, { min, max }] of Object.entries(CAMPOS)) {
+            if (!(chave in req.body)) continue;
+            const v = parseInt(req.body[chave], 10);
+            if (!Number.isFinite(v) || v < min || v > max) {
+                erros.push(`${chave}: valor inválido. Deve ser inteiro entre ${min} e ${max}.`);
+            } else {
+                atualizacoes.push({ chave, valor: String(v) });
+            }
+        }
+
+        if (erros.length) return res.status(400).json({ erro: erros.join(' | ') });
+        if (!atualizacoes.length) return res.status(400).json({ erro: 'Nenhum campo válido enviado.' });
+
+        try {
+            for (const { chave, valor } of atualizacoes) {
+                await pool.query(
+                    `INSERT INTO edusync_config (chave, valor)
+                     VALUES ($1, $2)
+                     ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+                    [chave, valor]
+                );
+            }
+
+            await pool.query(
+                `INSERT INTO edusync_audit_log
+                    (usuario_id, usuario_nome, acao, modulo, detalhes, ip)
+                 VALUES ($1, $2, 'CONFIG_ALTERADA', 'admin', $3, $4)`,
+                [
+                    req.userSession.userId,
+                    req.userSession.nome,
+                    JSON.stringify({ chaves: atualizacoes }),
+                    req.ip,
+                ]
+            ).catch(() => {});
+
+            res.json({ ok: true, atualizados: atualizacoes.map(a => a.chave) });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao salvar config sync-stale:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao salvar configuração.' });
+        }
+    });
+
     /* ── Observabilidade Puppeteer ── */
     router.get('/admin/puppeteer-stats', async (req, res) => {
         const login   = getLoginQueueStats();

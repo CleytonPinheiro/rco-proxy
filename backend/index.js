@@ -194,6 +194,10 @@ async function initializeApp() {
         const { agendarPurga } = await import('./src/services/purgeJob.js');
         agendarPurga(localPool);
 
+        // Job de alerta de sync parado (verifica usuários sem RCO sync há > N dias)
+        const { agendarSyncStaleAlert } = await import('./src/services/syncStaleAlertJob.js');
+        agendarSyncStaleAlert(localPool);
+
     } catch (error) {
         console.error('Erro ao inicializar aplicação:', error.message);
     }

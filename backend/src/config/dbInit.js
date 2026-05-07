@@ -193,6 +193,14 @@ export async function initializeDatabase() {
                 ('rco_sync_ttl_hours', '4', 'Tempo mínimo entre sincronizações automáticas do RCO (em horas). Valores menores aumentam a frequência de sync; valores maiores reduzem o consumo de recursos.')
             ON CONFLICT (chave) DO NOTHING
         `);
+
+        /* ── Alerta de sync parado ── */
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('sync_stale_alert_days',           '7',  'Dias sem sincronização RCO para disparar alerta de sync parado. Usuários sem sync há mais desse número de dias aparecem no painel admin e geram entradas no log de auditoria.'),
+                ('sync_stale_alert_interval_horas', '24', 'Intervalo entre verificações automáticas de sync parado (horas).')
+            ON CONFLICT (chave) DO NOTHING
+        `);
         await client.query(`
             INSERT INTO edusync_config (chave, valor, obs) VALUES
                 ('modulos_em_desenvolvimento', '["pedagogico","comunicados","retorno-pedagogico"]', 'Módulos exibidos como "🚧 em desenvolvimento" no menu (gerenciável pelo admin)')
