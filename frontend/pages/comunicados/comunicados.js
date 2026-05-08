@@ -288,7 +288,7 @@ async function enviarIds(ids) {
 async function reenviarSemResposta() {
     const semResposta = filtrados.filter(c => c.status === 'enviado');
     if (!semResposta.length) return mostrarToast('⚠️ Nenhum comunicado enviado sem resposta', 'warn');
-    if (!confirm(`Reenviar para ${semResposta.length} responsável(is) sem resposta?`)) return;
+    if (!await confirmar('Reenviar comunicados?', `Reenviar para ${semResposta.length} responsável(is) sem resposta?`)) return;
     await enviarIds(semResposta.map(c => c.id));
 }
 
@@ -310,7 +310,7 @@ async function validarDireto(id, valida) {
 // ── Excluir ───────────────────────────────────────────────────────────
 
 async function excluir(id) {
-    if (!confirm('Excluir este comunicado?')) return;
+    if (!await confirmar('Excluir comunicado?', 'Excluir este comunicado?', { confirmLabel: 'Excluir', tipo: 'danger' })) return;
     try {
         await fetch(`${API}/comunicados/${id}`, { method: 'DELETE' });
         mostrarToast('Excluído');

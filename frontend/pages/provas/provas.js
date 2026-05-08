@@ -233,7 +233,7 @@ function renderDetalhe(d) {
 }
 
 async function sortear(submissaoId) {
-    if (!confirm('Sortear um colega para 2ª correção desta prova?')) return;
+    if (!await confirmar('Sortear corretor?', 'Sortear um colega para 2ª correção desta prova?')) return;
     try {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/sortear-segundo`, {
             method: 'POST',
@@ -249,7 +249,7 @@ async function sortear(submissaoId) {
 }
 
 async function regabaritar() {
-    if (!confirm('Re-baixar o gabarito da GradePen? As notas calculadas serão refeitas se você efetivar de novo.')) return;
+    if (!await confirmar('Re-baixar gabarito?', 'Re-baixar o gabarito da GradePen? As notas calculadas serão refeitas se você efetivar de novo.')) return;
     try {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/regabaritar`, {
             method: 'POST', credentials: 'include',
@@ -263,7 +263,7 @@ async function regabaritar() {
 
 async function toggleEfetivar() {
     const acao = provaAberta.prova.efetivada ? 'reabrir' : 'efetivar';
-    if (!confirm(`${acao === 'efetivar' ? 'Efetivar' : 'Reabrir como rascunho'} esta prova?`)) return;
+    if (!await confirmar(`${acao === 'efetivar' ? 'Efetivar prova?' : 'Reabrir como rascunho?'}`, `${acao === 'efetivar' ? 'Efetivar' : 'Reabrir como rascunho'} esta prova?`)) return;
     try {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/${acao}`, {
             method: 'POST', credentials: 'include',
@@ -275,7 +275,7 @@ async function toggleEfetivar() {
 }
 
 async function excluirProva() {
-    if (!confirm('EXCLUIR esta prova? Todas as correções dos alunos serão apagadas. Não dá pra desfazer.')) return;
+    if (!await confirmar('Excluir prova?', 'EXCLUIR esta prova? Todas as correções dos alunos serão apagadas. Não dá pra desfazer.', { confirmLabel: 'Excluir', tipo: 'danger' })) return;
     try {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}`, {
             method: 'DELETE', credentials: 'include',
@@ -290,7 +290,7 @@ async function trocarVariante(submissaoId) {
     const sel = $(`prvVar_${submissaoId}`);
     if (!sel) return;
     const varianteId = sel.value;
-    if (!confirm('Trocar a variante desta submissão? A nota será recalculada com o novo gabarito. Se houver 2ª correção, ela será apagada (vai precisar ser sorteada de novo).')) return;
+    if (!await confirmar('Trocar variante?', 'Trocar a variante desta submissão? A nota será recalculada com o novo gabarito. Se houver 2ª correção, ela será apagada (vai precisar ser sorteada de novo).')) return;
     try {
         const r = await fetch(`/api/classroom/provas/submissoes/${submissaoId}/variante`, {
             method: 'PUT',
@@ -309,7 +309,7 @@ async function trocarVariante(submissaoId) {
 }
 
 async function apagarSubmissao(submissaoId, nomeAluno) {
-    if (!confirm(`Apagar a submissão de "${nomeAluno}"?\n\nIsso libera o aluno pra refazer a prova do zero (e remove qualquer 2ª correção vinculada).`)) return;
+    if (!await confirmar('Apagar submissão?', `Apagar a submissão de "${nomeAluno}"?\n\nIsso libera o aluno pra refazer a prova do zero (e remove qualquer 2ª correção vinculada).`, { confirmLabel: 'Apagar', tipo: 'danger' })) return;
     try {
         const r = await fetch(`/api/classroom/provas/submissoes/${submissaoId}`, {
             method: 'DELETE', credentials: 'include',
@@ -336,7 +336,7 @@ async function publicarNoClassroom() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
         const dt = d.dueDate ? `${String(d.dueDate.day).padStart(2,'0')}/${String(d.dueDate.month).padStart(2,'0')}/${d.dueDate.year}` : '—';
-        if (confirm(`Atividade publicada no Classroom!\n\n📅 Prazo: ${dt} 23:59\n💯 Vale: ${d.maxPoints} pts (Trim. ${d.trimestre}/${d.ano})\n✅ Grupo dedicado da avaliação criado/atualizado (id ${d.grupoAvaliacaoId}).\n\nLink: ${d.link}\n\nAbrir a atividade no Classroom agora?`)) {
+        if (await confirmar('Atividade publicada!', `Atividade publicada no Classroom!\n\n📅 Prazo: ${dt} 23:59\n💯 Vale: ${d.maxPoints} pts (Trim. ${d.trimestre}/${d.ano})\n✅ Grupo dedicado da avaliação criado/atualizado.\n\nAbrir a atividade no Classroom agora?`, { confirmLabel: 'Abrir no Classroom', cancelLabel: 'Fechar', icone: '✅' })) {
             if (d.alternateLink) window.open(d.alternateLink, '_blank');
         }
     } catch (e) { alert('Erro ao publicar: ' + e.message); }
@@ -358,7 +358,7 @@ window.regabaritar     = regabaritar;
 window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
 async function conferirFoto(submissaoId) {
-    const ok = confirm('A foto da folha BATE com as marcações que o aluno enviou?\n\nOK = ✅ Confere (aluno ganha XP)\nCancelar = ❌ Não confere (aluno perde XP, será sinalizado)');
+    const ok = await confirmar('Conferir foto?', 'A foto da folha BATE com as marcações que o aluno enviou?\n\nConfirmar = ✅ Confere (aluno ganha XP)\nCancelar = ❌ Não confere (aluno perde XP, será sinalizado)', { confirmLabel: '✅ Confere', cancelLabel: '❌ Não confere' });
     try {
         const r = await fetch(`/api/classroom/provas/submissoes/${submissaoId}/conferir-foto`, {
             method: 'POST', credentials: 'include',

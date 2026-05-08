@@ -137,7 +137,7 @@ async function devRapidoMonitor(id) {
     const e = emprestimos.find(x => x.id === id);
     const nome = e?.aluno?.nome?.split(' ')[0] || 'aluno';
     const mat  = e?.material?.codigo || '';
-    if (!confirm(`Confirmar devolução de ${mat} — ${nome}?`)) return;
+    if (!await confirmar('Confirmar devolução?', `Confirmar devolução de ${mat} — ${nome}?`, { confirmLabel: 'Confirmar devolução' })) return;
     await executarDevolucao(id, 'otimo', 'Devolução via quiosque');
 }
 

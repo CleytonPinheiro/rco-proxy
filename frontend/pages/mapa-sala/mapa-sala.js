@@ -204,7 +204,7 @@ async function onTurmaChange() {
 
     // Guardar valor anterior para poder reverter se usuário cancelar
     if (modificado) {
-        const ok = confirm('Há alterações não salvas no mapa atual.\nTrocar de turma irá descartar essas alterações.\n\nDeseja continuar sem salvar?');
+        const ok = await confirmar('Trocar de turma?', 'Há alterações não salvas no mapa atual.\nTrocar de turma irá descartar essas alterações.\n\nDeseja continuar sem salvar?', { confirmLabel: 'Trocar sem salvar' });
         if (!ok) {
             // Reverter seleção para a turma anterior
             sel.value = turmaAtual?.codturma || '';
@@ -617,13 +617,13 @@ function abrirConfirm({ titulo, mensagem, icone = '❓', confirmLabel = 'Confirm
 }
 
 // ── Excluir aluno (transferido) ───────────────────────────────
-function excluirAluno(codmatrizaluno) {
+async function excluirAluno(codmatrizaluno) {
     const aluno = alunosFora.find(a => a.codmatrizaluno === codmatrizaluno);
     if (!aluno) return;
-    const ok = confirm(
-        `Remover "${aluno.nome}" da lista de alunos?\n\n` +
-        `Use esta opção para alunos que foram transferidos ou que não fazem mais parte desta turma.\n\n` +
-        `O aluno pode ser restaurado a qualquer momento clicando em "Restaurar" no painel de alunos.`
+    const ok = await confirmar(
+        `Remover aluno?`,
+        `Remover "${aluno.nome}" da lista de alunos?\n\nUse esta opção para alunos que foram transferidos ou que não fazem mais parte desta turma.\n\nO aluno pode ser restaurado a qualquer momento clicando em "Restaurar" no painel de alunos.`,
+        { confirmLabel: 'Remover', tipo: 'danger' }
     );
     if (!ok) return;
     alunosExcluidos.push(aluno);
@@ -634,10 +634,10 @@ function excluirAluno(codmatrizaluno) {
 }
 
 // ── Restaurar excluídos ───────────────────────────────────────
-function restaurarExcluidos() {
+async function restaurarExcluidos() {
     if (!alunosExcluidos.length) return;
     const n = alunosExcluidos.length;
-    const ok = confirm(`Restaurar ${n} aluno${n !== 1 ? 's' : ''} excluído${n !== 1 ? 's' : ''} de volta para a lista de disponíveis?`);
+    const ok = await confirmar('Restaurar alunos?', `Restaurar ${n} aluno${n !== 1 ? 's' : ''} excluído${n !== 1 ? 's' : ''} de volta para a lista de disponíveis?`, { confirmLabel: 'Restaurar' });
     if (!ok) return;
     const ocupados = new Set(grade.filter(c => c.aluno).map(c => c.aluno.codmatrizaluno));
     alunosExcluidos.forEach(a => { if (!ocupados.has(a.codmatrizaluno)) alunosFora.push(a); });
@@ -755,11 +755,12 @@ document.addEventListener('click', e => {
     const href = link.getAttribute('href');
     if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('#')) return;
     e.preventDefault();
-    const ok = confirm('Há alterações não salvas no mapa.\nDeseja sair sem salvar?');
-    if (ok) {
-        modificado = false;
-        window.location.href = href;
-    }
+    confirmar('Sair sem salvar?', 'Há alterações não salvas no mapa.\nDeseja sair sem salvar?', { confirmLabel: 'Sair sem salvar' }).then(ok => {
+        if (ok) {
+            modificado = false;
+            window.location.href = href;
+        }
+    });
 }, true);
 
 // Impressão A4: expandir grade para largura total da folha

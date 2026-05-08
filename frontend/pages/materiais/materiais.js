@@ -203,7 +203,7 @@ async function excluirMaterial(id) {
         return;
     }
     
-    if (!confirm(`Deseja excluir o material ${material.codigo}?`)) return;
+    if (!await confirmar('Excluir material?', `Deseja excluir o material ${material.codigo}?`, { confirmLabel: 'Excluir', tipo: 'danger' })) return;
     
     try {
         const response = await fetch(`/api/materiais/${id}`, { method: 'DELETE' });

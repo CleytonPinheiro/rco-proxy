@@ -215,7 +215,7 @@ document.getElementById('formUsuario').addEventListener('submit', async (e) => {
 
 /* ── Desativar usuário ── */
 window.desativarUsuario = async function (id, nome) {
-    if (!confirm(`Desativar "${nome}"? O usuário não poderá mais fazer login.`)) return;
+    if (!await confirmar('Desativar usuário?', `Desativar "${nome}"? O usuário não poderá mais fazer login.`, { confirmLabel: 'Desativar', tipo: 'danger' })) return;
     try {
         const res = await api(`/admin/usuarios/${id}`, { method: 'DELETE' });
         if (res.ok) carregarUsuarios();
@@ -502,7 +502,7 @@ document.getElementById('formEscola').addEventListener('submit', async (e) => {
 });
 
 window.removerEscola = async function (id, nome) {
-    if (!confirm(`Remover "${nome}" da whitelist?\nProfessores desta escola não poderão mais se auto-cadastrar.`)) return;
+    if (!await confirmar('Remover escola?', `Remover "${nome}" da whitelist?\nProfessores desta escola não poderão mais se auto-cadastrar.`, { confirmLabel: 'Remover', tipo: 'danger' })) return;
     const res = await api(`/admin/escolas/${id}`, { method: 'DELETE' });
     if (res.ok) carregarEscolas();
     else { const d = await res.json(); alert(d.erro || 'Erro.'); }
@@ -1267,8 +1267,8 @@ window.importarConfig = function () {
             if (data.edusync_config?.length) resumo.push(`${data.edusync_config.length} configurações`);
             if (data.classroom_acesso_pedagogo?.length) resumo.push(`${data.classroom_acesso_pedagogo.length} acessos pedagógicos`);
 
-            const msg = `Importar configuração?\n\nArquivo: ${file.name}\nExportado em: ${data.exportadoEm || '?'}\n\nConteúdo:\n• ${resumo.join('\n• ') || 'Vazio'}\n\nDados existentes não serão sobrescritos (apenas novos serão adicionados).`;
-            if (!confirm(msg)) return;
+            const msg = `Arquivo: ${file.name}\nExportado em: ${data.exportadoEm || '?'}\n\nConteúdo:\n• ${resumo.join('\n• ') || 'Vazio'}\n\nDados existentes não serão sobrescritos (apenas novos serão adicionados).`;
+            if (!await confirmar('Importar configuração?', msg, { confirmLabel: 'Importar' })) return;
 
             const btn = document.getElementById('btnImportar');
             if (btn) { btn.disabled = true; btn.textContent = 'Importando...'; }
@@ -2445,7 +2445,7 @@ function renderPermissoes() {
     wrap.querySelectorAll('button[data-restaurar]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const perfil = btn.dataset.restaurar;
-            if (!confirm(`Restaurar permissões padrão para "${perfil}"?`)) return;
+            if (!await confirmar('Restaurar permissões?', `Restaurar permissões padrão para "${perfil}"?`, { confirmLabel: 'Restaurar' })) return;
             try {
                 const res = await api(`/admin/permissoes/${perfil}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
@@ -2591,7 +2591,7 @@ async function carregarSistema() {
 }
 
 window.resetarRateLimitCpf = async function (cpf) {
-    if (!confirm(`Resetar o contador de tentativas para o CPF ${cpf}?`)) return;
+    if (!await confirmar('Resetar contador?', `Resetar o contador de tentativas para o CPF ${cpf}?`, { confirmLabel: 'Resetar' })) return;
     try {
         const res = await api(`/admin/rate-limit/login/${cpf}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

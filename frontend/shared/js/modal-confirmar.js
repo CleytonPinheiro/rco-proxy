@@ -1,0 +1,183 @@
+/**
+ * modal-confirmar.js — Utilitário global de confirmação
+ *
+ * Substitui o confirm() nativo por um modal consistente com a identidade visual do EduSync.
+ * É auto-injetante: ao ser carregado, injeta o HTML e o CSS necessários no DOM.
+ *
+ * Uso:
+ *   const ok = await confirmar('Título', 'Mensagem de confirmação');
+ *   const ok = await confirmar('Título', 'Mensagem', { confirmLabel: 'Sim, excluir', tipo: 'danger' });
+ */
+(function () {
+    const MODAL_ID = 'mcModalConfirmar';
+
+    function injetarEstilos() {
+        if (document.getElementById('mcModalEstilos')) return;
+        const style = document.createElement('style');
+        style.id = 'mcModalEstilos';
+        style.textContent = `
+            #mcModalConfirmar {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                background: rgba(0,0,0,.45);
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+            }
+            #mcModalConfirmar.mc-visivel {
+                display: flex;
+            }
+            .mc-caixa {
+                background: #fff;
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0,0,0,.18);
+                max-width: 420px;
+                width: 100%;
+                padding: 1.5rem 1.75rem 1.25rem;
+                font-family: inherit;
+                animation: mcEntrar .15s ease;
+            }
+            @keyframes mcEntrar {
+                from { transform: scale(.95); opacity: 0; }
+                to   { transform: scale(1);  opacity: 1; }
+            }
+            .mc-icone {
+                font-size: 1.6rem;
+                margin-bottom: .5rem;
+            }
+            .mc-titulo {
+                margin: 0 0 .5rem;
+                font-size: 1rem;
+                font-weight: 700;
+                color: #111827;
+            }
+            .mc-mensagem {
+                margin: 0 0 1.25rem;
+                font-size: .875rem;
+                color: #374151;
+                line-height: 1.6;
+                white-space: pre-line;
+            }
+            .mc-rodape {
+                display: flex;
+                justify-content: flex-end;
+                gap: .6rem;
+            }
+            .mc-btn {
+                padding: .45rem 1.1rem;
+                border-radius: 8px;
+                font-size: .875rem;
+                font-weight: 600;
+                cursor: pointer;
+                border: none;
+                transition: background .15s;
+            }
+            .mc-btn-cancelar {
+                background: #f3f4f6;
+                color: #374151;
+            }
+            .mc-btn-cancelar:hover { background: #e5e7eb; }
+            .mc-btn-ok {
+                background: #2563eb;
+                color: #fff;
+            }
+            .mc-btn-ok:hover { background: #1d4ed8; }
+            .mc-caixa.mc-danger .mc-btn-ok {
+                background: #dc2626;
+            }
+            .mc-caixa.mc-danger .mc-btn-ok:hover { background: #b91c1c; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function injetarHTML() {
+        if (document.getElementById(MODAL_ID)) return;
+        const div = document.createElement('div');
+        div.id = MODAL_ID;
+        div.setAttribute('role', 'dialog');
+        div.setAttribute('aria-modal', 'true');
+        div.setAttribute('aria-labelledby', 'mcModalTitulo');
+        div.innerHTML = `
+            <div class="mc-caixa" id="mcModalCaixa">
+                <div class="mc-icone" id="mcModalIcone">⚠️</div>
+                <h3 class="mc-titulo" id="mcModalTitulo"></h3>
+                <p class="mc-mensagem" id="mcModalMensagem"></p>
+                <div class="mc-rodape">
+                    <button class="mc-btn mc-btn-cancelar" id="mcModalCancelar">Cancelar</button>
+                    <button class="mc-btn mc-btn-ok" id="mcModalOk">Confirmar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(div);
+    }
+
+    function injetar() {
+        injetarEstilos();
+        injetarHTML();
+    }
+
+    /**
+     * Exibe o modal de confirmação.
+     * @param {string} titulo - Título do modal.
+     * @param {string} mensagem - Mensagem de confirmação.
+     * @param {object} [opcoes]
+     * @param {string} [opcoes.confirmLabel='Confirmar'] - Texto do botão de confirmação.
+     * @param {string} [opcoes.cancelLabel='Cancelar'] - Texto do botão de cancelamento.
+     * @param {'info'|'danger'} [opcoes.tipo='info'] - Estilo do botão de confirmação.
+     * @param {string} [opcoes.icone] - Ícone exibido acima do título.
+     * @returns {Promise<boolean>}
+     */
+    window.confirmar = function confirmar(titulo, mensagem, opcoes) {
+        injetar();
+
+        const {
+            confirmLabel = 'Confirmar',
+            cancelLabel  = 'Cancelar',
+            tipo         = 'info',
+            icone,
+        } = opcoes || {};
+
+        const overlay  = document.getElementById(MODAL_ID);
+        const caixa    = document.getElementById('mcModalCaixa');
+        const elTitulo = document.getElementById('mcModalTitulo');
+        const elMsg    = document.getElementById('mcModalMensagem');
+        const elIcone  = document.getElementById('mcModalIcone');
+        const btnOk    = document.getElementById('mcModalOk');
+        const btnCan   = document.getElementById('mcModalCancelar');
+
+        elTitulo.textContent = titulo;
+        elMsg.textContent    = mensagem;
+        elIcone.textContent  = icone || (tipo === 'danger' ? '⚠️' : '❓');
+        btnOk.textContent    = confirmLabel;
+        btnCan.textContent   = cancelLabel;
+        caixa.classList.toggle('mc-danger', tipo === 'danger');
+
+        overlay.classList.add('mc-visivel');
+        btnOk.focus();
+
+        return new Promise(resolve => {
+            function fechar(resultado) {
+                overlay.classList.remove('mc-visivel');
+                btnOk.removeEventListener('click', onOk);
+                btnCan.removeEventListener('click', onCancel);
+                overlay.removeEventListener('click', onBackdrop);
+                document.removeEventListener('keydown', onKey);
+                resolve(resultado);
+            }
+            function onOk()      { fechar(true); }
+            function onCancel()  { fechar(false); }
+            function onBackdrop(e) { if (e.target === overlay) fechar(false); }
+            function onKey(e) {
+                if (e.key === 'Escape') { fechar(false); }
+                if (e.key === 'Enter' && document.activeElement === btnOk) { e.preventDefault(); fechar(true); }
+            }
+
+            btnOk.addEventListener('click', onOk);
+            btnCan.addEventListener('click', onCancel);
+            overlay.addEventListener('click', onBackdrop);
+            document.addEventListener('keydown', onKey);
+        });
+    };
+})();

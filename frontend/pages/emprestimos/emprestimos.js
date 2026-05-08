@@ -759,7 +759,7 @@ document.getElementById('formLivro').addEventListener('submit', async ev => {
 });
 
 window.excluirLivro = async function (id, titulo) {
-    if (!confirm(`Remover "${titulo}" do acervo? Empréstimos existentes não serão apagados.`)) return;
+    if (!await confirmar('Remover do acervo?', `Remover "${titulo}" do acervo? Empréstimos existentes não serão apagados.`, { confirmLabel: 'Remover', tipo: 'danger' })) return;
     try {
         await apiFetch(`/livros/${id}`, { method: 'DELETE' });
         toast('Livro removido.');

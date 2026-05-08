@@ -317,32 +317,6 @@ async function toggleLock(id, bloquear) {
     renderGrupos();
 }
 
-function confirmar(titulo, mensagem) {
-    return new Promise(resolve => {
-        document.getElementById('modalConfirmarTitulo').textContent = '⚠️ ' + titulo;
-        document.getElementById('modalConfirmarMensagem').textContent = mensagem;
-        const modal = document.getElementById('modalConfirmar');
-        const btnOk = document.getElementById('btnConfirmarOk');
-        modal.style.display = 'flex';
-        function onOk() { cleanup(); resolve(true); }
-        function onCancel() { cleanup(); resolve(false); }
-        function cleanup() {
-            modal.style.display = 'none';
-            btnOk.removeEventListener('click', onOk);
-            modal._confirmarCancel = null;
-        }
-        btnOk.addEventListener('click', onOk, { once: true });
-        modal._confirmarCancel = onCancel;
-    });
-}
-
-function fecharModalConfirmar(e) {
-    const modal = document.getElementById('modalConfirmar');
-    if (e && e.target !== modal) return;
-    if (modal._confirmarCancel) modal._confirmarCancel();
-    else modal.style.display = 'none';
-}
-
 async function excluirGrupo(id) {
     if (!await confirmar('Excluir grupo?', 'Os alunos voltarão ao pool.')) return;
     const r = await fetch(`${API}/api/grupos/${id}`, { method: 'DELETE' });
@@ -668,7 +642,7 @@ async function adicionarProjeto(grupoId) {
 }
 
 async function removerProjeto(projId, grupoId) {
-    if (!confirm('Remover este projeto do grupo?')) return;
+    if (!await confirmar('Remover projeto?', 'Remover este projeto do grupo?', { confirmLabel: 'Remover', tipo: 'danger' })) return;
     await fetch(`${API}/api/grupos/${grupoId}/projetos/${projId}`, { method: 'DELETE' });
     const projetos = await carregarProjetos(grupoId);
     document.getElementById('modalProjetosBody').innerHTML = renderProjetosHtml(projetos, grupoId);
@@ -844,7 +818,7 @@ async function aprovarSugestao(id) {
 }
 
 async function rejeitarSugestao(id) {
-    if (!confirm('Rejeitar esta sugestão?')) return;
+    if (!await confirmar('Rejeitar sugestão?', 'Rejeitar esta sugestão de projeto?', { confirmLabel: 'Rejeitar', tipo: 'danger' })) return;
     await fetch(`${API}/api/grupos/projetos-sugestoes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

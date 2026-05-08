@@ -418,7 +418,7 @@ async function adicionarAmbiente() {
 }
 
 async function desativarAmbiente(id) {
-    if (!confirm('Desativar este ambiente?')) return;
+    if (!await confirmar('Desativar ambiente?', 'Desativar este ambiente?', { confirmLabel: 'Desativar', tipo: 'danger' })) return;
     await fetch(`${API}/circulacao/ambientes/${id}`, { method: 'DELETE' });
     if (ambienteSel?.id === id) ambienteSel = null;
     await carregarAmbientes();

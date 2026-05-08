@@ -438,7 +438,7 @@ function registrarParaAluno() {
 }
 
 async function excluirOcorrencia(id, codMatrizAluno) {
-    if (!confirm('Excluir este registro?')) return;
+    if (!await confirmar('Excluir registro?', 'Excluir este registro de comportamento?', { confirmLabel: 'Excluir', tipo: 'danger' })) return;
     await fetch(`${API}/api/comportamento/${id}`, { method: 'DELETE' });
     await carregarOcorrencias(turmaAtual.codTurma);
     renderGrid();

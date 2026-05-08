@@ -247,7 +247,7 @@ async function bulkResponder(acao) {
         if (resposta === null) return;
         resposta = resposta.trim() || null;
     } else {
-        if (!confirm(`Aprovar ${ids.length} solicitação(ões) selecionada(s)?`)) return;
+        if (!await confirmar('Aprovar solicitações?', `Aprovar ${ids.length} solicitação(ões) selecionada(s)?`, { confirmLabel: 'Aprovar' })) return;
     }
 
     /* Marca cards com opacidade reduzida */

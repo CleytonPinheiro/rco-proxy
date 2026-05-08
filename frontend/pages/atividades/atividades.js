@@ -96,9 +96,9 @@ function renderThead() {
 }
 
 // ── Mudança de turma ──────────────────────────────────────────────────────
-function onTurmaChange() {
+async function onTurmaChange() {
     if (modificado) {
-        if (!confirm('Há alterações não salvas. Deseja trocar de turma sem salvar?')) {
+        if (!await confirmar('Trocar de turma?', 'Há alterações não salvas. Deseja trocar de turma sem salvar?', { confirmLabel: 'Trocar sem salvar' })) {
             document.getElementById('selTurma').value = codturmaAtual;
             return;
         }
