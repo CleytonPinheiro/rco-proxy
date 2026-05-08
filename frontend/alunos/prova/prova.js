@@ -181,7 +181,7 @@ async function enviarFotoOuSubmissao() {
             if (!r.ok) throw new Error(d.erro || 'Erro ao enviar foto.');
             renderResultado(estado.submissao);
         } catch (e) {
-            alert('Erro: ' + e.message);
+            notificar('Erro: ' + e.message, 'erro');
             $('ppBtnEnviar').disabled = false;
         }
         return;
@@ -216,7 +216,7 @@ async function enviarSubmissao() {
         }
         renderResultado(d);
     } catch (e) {
-        alert('Erro: ' + e.message);
+        notificar('Erro: ' + e.message, 'erro');
         $('ppBtnConfirmar') && ($('ppBtnConfirmar').disabled = false);
         $('ppBtnEnviar')    && ($('ppBtnEnviar').disabled = false);
     }
@@ -270,7 +270,7 @@ async function verResultado() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
         renderResultado({ nota: d.submissao.nota, total: d.total, detalhes: d.detalhes });
-    } catch (e) { alert('Erro: ' + e.message); }
+    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
 }
 
 async function iniciarSegundoCorretor(subRefId) {
@@ -332,15 +332,26 @@ async function enviarSegundo() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro');
         let msg = '✅ Correção enviada. Obrigado pela ajuda!';
-        if (d.xpGanho) msg += `\n\n🎮 +${d.xpGanho} XP ganho`;
-        if (d.badgesGanhas && d.badgesGanhas.length) msg += `\n🏆 Nova badge: ${d.badgesGanhas.map(b => b.emoji + ' ' + b.nome).join(', ')}`;
-        if (d.aviso) msg += `\n\nℹ️ ${d.aviso}`;
-        alert(msg);
-        location.href = '/alunos/';
+        if (d.xpGanho) msg += ` | +${d.xpGanho} XP ganho`;
+        if (d.badgesGanhas && d.badgesGanhas.length) msg += ` | Badge: ${d.badgesGanhas.map(b => b.emoji + ' ' + b.nome).join(', ')}`;
+        notificar(msg);
+        setTimeout(() => { location.href = '/alunos/'; }, 2000);
     } catch (e) {
-        alert('Erro: ' + e.message);
+        notificar('Erro: ' + e.message, 'erro');
         $('ppSegBtn').disabled = false;
     }
+}
+
+function notificar(msg, tipo = 'ok') {
+    const bg = tipo === 'erro' ? '#dc2626' : tipo === 'aviso' ? '#d97706' : '#16a34a';
+    const old = document.getElementById('_toast_notif');
+    if (old) old.remove();
+    const t = document.createElement('div');
+    t.id = '_toast_notif';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 4000);
 }
 
 window.enviarSegundo        = enviarSegundo;

@@ -191,11 +191,11 @@ async function voluntariar(provaId, btn) {
         const r = await fetch(`/api/alunos-portal/voluntariar/${provaId}`, { method: 'POST', credentials: 'include' });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro');
-        alert('🎉 Tarefa voluntária adicionada à sua lista! Vá em "Tarefas de correção pendentes" para começar.');
+        notificar('🎉 Tarefa voluntária adicionada! Veja em "Tarefas de correção pendentes".');
         await carregarTarefasCorretor();
         await carregarVoluntariar();
     } catch (e) {
-        alert('Erro: ' + e.message);
+        notificar('Erro: ' + e.message, 'erro');
         btn.disabled = false;
         btn.textContent = '+ Pegar uma';
     }
@@ -1384,4 +1384,16 @@ async function submeterProjetoAluno() {
 function escapeHtmlPA(s) {
     if (s == null) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function notificar(msg, tipo = 'ok') {
+    const bg = tipo === 'erro' ? '#dc2626' : tipo === 'aviso' ? '#d97706' : '#16a34a';
+    const old = document.getElementById('_toast_notif');
+    if (old) old.remove();
+    const t = document.createElement('div');
+    t.id = '_toast_notif';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 3500);
 }

@@ -291,7 +291,7 @@ function fecharModalNovoGrupo(e) {
 
 async function criarGrupo() {
     const nome = document.getElementById('novoGrupoNome').value.trim();
-    if (!nome) { alert('Informe o nome do grupo.'); return; }
+    if (!nome) { notificar('Informe o nome do grupo.', 'aviso'); return; }
     await fetch(`${API}/api/grupos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,7 +320,7 @@ async function toggleLock(id, bloquear) {
 async function excluirGrupo(id) {
     if (!await confirmar('Excluir grupo?', 'Os alunos voltarão ao pool.')) return;
     const r = await fetch(`${API}/api/grupos/${id}`, { method: 'DELETE' });
-    if (!r.ok) { const e = await r.json(); alert(e.erro); return; }
+    if (!r.ok) { const e = await r.json(); notificar(e.erro, 'erro'); return; }
     await carregarGrupos(turmaAtual.codTurma);
     renderPool();
     renderGrupos();
@@ -328,7 +328,7 @@ async function excluirGrupo(id) {
 
 async function removerAluno(grupoId, codMatrizAluno) {
     const grupo = todosGrupos.find(g => g.id === grupoId);
-    if (grupo && grupo.bloqueado) { alert('Grupo bloqueado. Desbloqueie antes de remover membros.'); return; }
+    if (grupo && grupo.bloqueado) { notificar('Grupo bloqueado. Desbloqueie antes de remover membros.', 'aviso'); return; }
     await fetch(`${API}/api/grupos/${grupoId}/alunos/${codMatrizAluno}`, { method: 'DELETE' });
     await carregarGrupos(turmaAtual.codTurma);
     renderPool();
@@ -384,7 +384,7 @@ function fecharModalAtividade(e) {
 async function salvarAtividade() {
     const data      = document.getElementById('ativData').value;
     const descricao = document.getElementById('ativDescricao').value.trim();
-    if (!descricao) { alert('Informe a descrição da atividade.'); return; }
+    if (!descricao) { notificar('Informe a descrição da atividade.', 'aviso'); return; }
 
     if (ativEditId) {
         await fetch(`${API}/api/grupos/${ativGrupoId}/atividades/${ativEditId}`, {
@@ -445,8 +445,8 @@ function formatarData(iso) {
 
 // ── Impressão / PDF ───────────────────────────────────────────────────────────
 function imprimirGrupos() {
-    if (!turmaAtual) { alert('Selecione uma turma antes de imprimir.'); return; }
-    if (!todosGrupos.length) { alert('Não há grupos para imprimir nesta turma.'); return; }
+    if (!turmaAtual) { notificar('Selecione uma turma antes de imprimir.', 'aviso'); return; }
+    if (!todosGrupos.length) { notificar('Não há grupos para imprimir nesta turma.', 'aviso'); return; }
 
     const agora  = new Date();
     const dataFmt = agora.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -628,7 +628,7 @@ function renderEvento(e) {
 async function adicionarProjeto(grupoId) {
     const url  = document.getElementById('projUrlInput').value.trim();
     const nome = document.getElementById('projNomeInput').value.trim();
-    if (!url || !nome) { alert('Informe a URL e o nome do projeto.'); return; }
+    if (!url || !nome) { notificar('Informe a URL e o nome do projeto.', 'aviso'); return; }
     const btn = document.querySelector('#modalProjetosBody .btn-salvar');
     if (btn) btn.disabled = true;
     const r = await fetch(`${API}/api/grupos/${grupoId}/projetos`, {
@@ -636,7 +636,7 @@ async function adicionarProjeto(grupoId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, nome, codTurma: turmaAtual?.codTurma }),
     });
-    if (!r.ok) { const e = await r.json(); alert(e.erro); if (btn) btn.disabled = false; return; }
+    if (!r.ok) { const e = await r.json(); notificar(e.erro, 'erro'); if (btn) btn.disabled = false; return; }
     const projetos = await carregarProjetos(grupoId);
     document.getElementById('modalProjetosBody').innerHTML = renderProjetosHtml(projetos, grupoId);
 }
@@ -807,7 +807,7 @@ function renderSugestoesHtml(sugestoes) {
 async function aprovarSugestao(id) {
     const sel    = document.getElementById(`sel-grupo-${id}`);
     const grupoId = sel?.value;
-    if (!grupoId) { alert('Selecione um grupo para aprovar.'); return; }
+    if (!grupoId) { notificar('Selecione um grupo para aprovar.', 'aviso'); return; }
     await fetch(`${API}/api/grupos/projetos-sugestoes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -836,6 +836,19 @@ function formatarDataHora(iso) {
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
         });
     } catch { return iso; }
+}
+
+// ── Notificações toast ────────────────────────────────────────────────────────
+function notificar(msg, tipo = 'ok') {
+    const bg = tipo === 'erro' ? '#dc2626' : tipo === 'aviso' ? '#d97706' : '#16a34a';
+    const old = document.getElementById('_toast_notif');
+    if (old) old.remove();
+    const t = document.createElement('div');
+    t.id = '_toast_notif';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 3500);
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────

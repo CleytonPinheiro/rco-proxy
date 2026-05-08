@@ -1159,7 +1159,7 @@ function imprimirGeralFreq() {
     });
 
     if (!ordenados.length) {
-        alert('Nenhum aluno na lista atual para imprimir.');
+        mostrarNotificacaoSync('Nenhum aluno na lista atual para imprimir.', true);
         return;
     }
 
@@ -1394,7 +1394,7 @@ function imprimirGeralFreq() {
     // ── Abre janela de impressão ─────────────────────────────────────────────
     const win = window.open('', '_blank', 'width=1100,height=800,scrollbars=yes');
     if (!win) {
-        alert('Permita pop-ups neste site para imprimir.');
+        mostrarNotificacaoSync('Permita pop-ups neste site para imprimir.', true);
         return;
     }
     win.document.open();

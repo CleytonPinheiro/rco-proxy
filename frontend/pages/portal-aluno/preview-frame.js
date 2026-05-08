@@ -107,7 +107,7 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
             } else {
                 reaberturaPart = `<button class="pa-solicita-btn pa-solicita-btn--destaque pa-solicita-btn--preview"
                     title="O aluno pode solicitar reabertura desta atividade"
-                    onclick="event.preventDefault();alert('Prévia: O aluno vê aqui o botão para solicitar reabertura.')">
+                    onclick="event.preventDefault();_previewToast('Prévia: o aluno vê aqui o botão para solicitar reabertura.')">
                     <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="flex-shrink:0">
                       <path d="M2 8a6 6 0 1 0 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                       <path d="M2 3v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -125,7 +125,7 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
             reaberturaPart = `<span class="pa-solicita-badge pa-solicita-badge--negada">❌ Reabertura negada</span>
                 <button class="pa-solicita-btn pa-solicita-btn--retry pa-solicita-btn--preview"
                     title="O aluno pode solicitar novamente"
-                    onclick="event.preventDefault();alert('Prévia: O aluno vê aqui o botão para solicitar novamente.')">
+                    onclick="event.preventDefault();_previewToast('Prévia: o aluno vê aqui o botão para solicitar novamente.')">
                     Solicitar novamente
                 </button>`;
         }
@@ -461,3 +461,15 @@ window.addEventListener('message', (ev) => {
 window.addEventListener('load', () => {
     window.parent.postMessage({ tipo: 'edusync:previa-pronto' }, '*');
 });
+
+/* ── Toast de prévia (substitui alert() nos botões de simulação) ── */
+function _previewToast(msg) {
+    const old = document.getElementById('_preview_toast');
+    if (old) old.remove();
+    const t = document.createElement('div');
+    t.id = '_preview_toast';
+    t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:8px;background:#1e40af;color:#fff;font-size:.82rem;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:320px;text-align:center;pointer-events:none;transition:opacity .3s';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 3000);
+}

@@ -221,9 +221,9 @@ window.desativarUsuario = async function (id, nome) {
         if (res.ok) carregarUsuarios();
         else {
             const d = await res.json();
-            alert(d.erro || 'Erro ao desativar.');
+            showToast(d.erro || 'Erro ao desativar.', 'error');
         }
-    } catch { alert('Erro de conexão.'); }
+    } catch { showToast('Erro de conexão.', 'error'); }
 };
 
 /* ── Reativar usuário ── */
@@ -237,9 +237,9 @@ window.reativarUsuario = async function (id) {
         if (res.ok) carregarUsuarios();
         else {
             const d = await res.json();
-            alert(d.erro || 'Erro ao reativar.');
+            showToast(d.erro || 'Erro ao reativar.', 'error');
         }
-    } catch { alert('Erro de conexão.'); }
+    } catch { showToast('Erro de conexão.', 'error'); }
 };
 
 /* ════════════════════════════════════════════════════════════
@@ -505,7 +505,7 @@ window.removerEscola = async function (id, nome) {
     if (!await confirmar('Remover escola?', `Remover "${nome}" da whitelist?\nProfessores desta escola não poderão mais se auto-cadastrar.`, { confirmLabel: 'Remover', tipo: 'danger' })) return;
     const res = await api(`/admin/escolas/${id}`, { method: 'DELETE' });
     if (res.ok) carregarEscolas();
-    else { const d = await res.json(); alert(d.erro || 'Erro.'); }
+    else { const d = await res.json(); showToast(d.erro || 'Erro.', 'error'); }
 };
 
 window.reativarEscola = async function (id) {
@@ -515,7 +515,7 @@ window.reativarEscola = async function (id) {
         body:    JSON.stringify({ ativo: true }),
     });
     if (res.ok) carregarEscolas();
-    else { const d = await res.json(); alert(d.erro || 'Erro.'); }
+    else { const d = await res.json(); showToast(d.erro || 'Erro.', 'error'); }
 };
 
 function mostrarFormEscolaMsg(txt, tipo) {
@@ -801,7 +801,7 @@ document.getElementById('formPlanoEscola').addEventListener('submit', async (e) 
 document.getElementById('btnImpersonar')?.addEventListener('click', async () => {
     const perfil = document.getElementById('selectPerfilImpersonar').value;
     if (!perfil) {
-        alert('Selecione um perfil antes de entrar na visualização.');
+        showToast('Selecione um perfil antes de entrar na visualização.', 'warning');
         return;
     }
 
@@ -821,7 +821,7 @@ document.getElementById('btnImpersonar')?.addEventListener('click', async () => 
         // Redireciona para o dashboard como o perfil simulado
         window.location.replace('/pages/dashboard/');
     } catch (e) {
-        alert(`Erro: ${e.message}`);
+        showToast(`Erro: ${e.message}`, 'error');
         btn.disabled    = false;
         btn.textContent = 'Entrar na visualização';
     }
@@ -902,12 +902,12 @@ window.responderSuporte = async function (id, acao) {
         });
         if (!res.ok) {
             const d = await res.json();
-            alert(d.erro || 'Erro ao responder.');
+            showToast(d.erro || 'Erro ao responder.', 'error');
             return;
         }
         carregarSuporte();
     } catch (e) {
-        alert('Erro: ' + e.message);
+        showToast('Erro: ' + e.message, 'error');
     }
 };
 
@@ -989,11 +989,11 @@ window.toggleConfig = async function (chave, ativo) {
         });
         if (!res.ok) {
             const d = await res.json();
-            alert(d.erro || 'Erro ao salvar.');
+            showToast(d.erro || 'Erro ao salvar.', 'error');
         }
         carregarConfig();
     } catch (e) {
-        alert('Erro: ' + e.message);
+        showToast('Erro: ' + e.message, 'error');
     }
 };
 
@@ -1007,11 +1007,11 @@ window.salvarConfig = async function (chave) {
         });
         if (!res.ok) {
             const d = await res.json();
-            alert(d.erro || 'Erro ao salvar.');
+            showToast(d.erro || 'Erro ao salvar.', 'error');
         }
         carregarConfig();
     } catch (e) {
-        alert('Erro: ' + e.message);
+        showToast('Erro: ' + e.message, 'error');
     }
 };
 

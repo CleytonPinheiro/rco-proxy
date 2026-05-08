@@ -14,7 +14,18 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 function toast(msg, tipo, dur) {
     const el = document.getElementById('solToast');
-    if (!el) { alert(msg); return; }
+    if (!el) {
+        const bg = tipo === 'erro' ? '#dc2626' : tipo === 'aviso' ? '#d97706' : '#16a34a';
+        const old = document.getElementById('_toast_notif');
+        if (old) old.remove();
+        const t = document.createElement('div');
+        t.id = '_toast_notif';
+        t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, dur || 3500);
+        return;
+    }
     clearTimeout(toast._t);
     el.textContent = msg;
     el.className = 'sol-toast sol-toast--visivel' + (tipo ? ' sol-toast--' + tipo : '');

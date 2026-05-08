@@ -170,7 +170,7 @@ async function iniciarCamera() {
         await video.play();
         loopScan();
     } catch (err) {
-        alert('Câmera indisponível: ' + err.message);
+        mostrarFeedback('⚠️', 'Câmera indisponível', err.message, 4000);
         cancelarFluxo();
     }
 }
@@ -304,7 +304,7 @@ async function confirmarEmprestimo() {
     } catch (err) {
         document.getElementById('btnConfirmarEmp').disabled = false;
         document.getElementById('btnConfirmarEmp').textContent = '✅ Confirmar Empréstimo';
-        alert('Erro: ' + err.message);
+        mostrarFeedback('⚠️', 'Erro', err.message, 4000);
     }
 }
 
