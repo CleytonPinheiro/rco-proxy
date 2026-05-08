@@ -144,7 +144,7 @@ function voltarVariante() {
 async function confirmarMarcacoes() {
     const marcadas = Object.keys(estado.marcacoes).length;
     if (marcadas < estado.qtdQuestoes) {
-        if (!confirm(`Você marcou ${marcadas} de ${estado.qtdQuestoes}. Enviar mesmo assim?`)) return;
+        if (!await confirmar('Enviar incompleto?', `Você marcou ${marcadas} de ${estado.qtdQuestoes}. Enviar mesmo assim?`, { confirmLabel: 'Enviar assim', tipo: 'danger' })) return;
     }
     /* Tentamos enviar SEM foto primeiro. Se backend disser que foto é obrigatória, redirecionamos pra etapa de foto. */
     if (estado.prova.foto_modo === 'sempre') {
