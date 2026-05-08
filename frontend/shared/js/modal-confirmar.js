@@ -189,6 +189,8 @@
      * @param {string} [opcoes.cancelLabel='Cancelar'] - Texto do botão cancelar.
      * @param {string} [opcoes.icone] - Ícone exibido acima do título.
      * @param {string} [opcoes.placeholder] - Placeholder do campo de texto.
+     * @param {string} [opcoes.inputType] - Valor do atributo type do <input> (ex: 'number').
+     * @param {string} [opcoes.inputMode] - Valor do atributo inputmode do <input> (ex: 'decimal').
      * @returns {Promise<string|null>} Texto digitado ou null se cancelado.
      */
     window.solicitarTexto = function solicitarTexto(titulo, mensagem, valorPadrao, opcoes) {
@@ -200,6 +202,8 @@
             cancelLabel  = 'Cancelar',
             icone        = '✏️',
             placeholder  = '',
+            inputType    = 'text',
+            inputMode    = '',
         } = opcoes || {};
 
         const overlay  = document.getElementById(INPUT_ID);
@@ -217,6 +221,12 @@
         btnCan.textContent      = cancelLabel;
         elInput.value           = valorPadrao != null ? String(valorPadrao) : '';
         elInput.placeholder     = placeholder;
+        elInput.type            = inputType;
+        if (inputMode) {
+            elInput.setAttribute('inputmode', inputMode);
+        } else {
+            elInput.removeAttribute('inputmode');
+        }
 
         overlay.classList.add('mc-visivel');
         elInput.focus();

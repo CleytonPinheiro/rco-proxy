@@ -327,10 +327,10 @@ async function publicarNoClassroom() {
         'Publicar no Classroom',
         'Quantos pontos vale esta avaliação?\n(será o valor do grupo de notas dedicado)',
         sugestao,
-        { confirmLabel: 'Publicar', icone: '📢', placeholder: 'Ex: 6' }
+        { confirmLabel: 'Publicar', icone: '📢', placeholder: 'Ex: 6', inputMode: 'decimal' }
     );
     if (txt === null) return;
-    const pontos = parseFloat(String(txt).replace(',', '.'));
+    const pontos = parseFloat(String(txt).replace(/,/g, '.'));
     if (!isFinite(pontos) || pontos <= 0) {
         await confirmar('Valor inválido', 'Informe um número válido maior que zero.', { confirmLabel: 'OK', cancelLabel: '', icone: '⚠️' });
         return;
