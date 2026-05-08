@@ -118,6 +118,130 @@
         injetarHTML();
     }
 
+    /* ── Input modal (solicitarTexto) ─────────────────────────────── */
+    const INPUT_ID = 'mcModalTexto';
+
+    function injetarHTMLTexto() {
+        if (document.getElementById(INPUT_ID)) return;
+        const div = document.createElement('div');
+        div.id = INPUT_ID;
+        div.setAttribute('role', 'dialog');
+        div.setAttribute('aria-modal', 'true');
+        div.setAttribute('aria-labelledby', 'mcTextoTitulo');
+        div.innerHTML = `
+            <div class="mc-caixa" id="mcTextoCaixa">
+                <div class="mc-icone" id="mcTextoIcone">✏️</div>
+                <h3 class="mc-titulo" id="mcTextoTitulo"></h3>
+                <p class="mc-mensagem" id="mcTextoMensagem"></p>
+                <input class="mc-input" id="mcTextoInput" type="text" autocomplete="off">
+                <div class="mc-rodape">
+                    <button class="mc-btn mc-btn-cancelar" id="mcTextoCancelar">Cancelar</button>
+                    <button class="mc-btn mc-btn-ok" id="mcTextoOk">Confirmar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(div);
+
+        /* Inject extra style for the input field (once) */
+        const existing = document.getElementById('mcModalEstilos');
+        if (existing && !existing.dataset.textoAdded) {
+            existing.textContent += `
+                #mcModalTexto {
+                    display: none;
+                    position: fixed;
+                    inset: 0;
+                    z-index: 9999;
+                    background: rgba(0,0,0,.45);
+                    align-items: center;
+                    justify-content: center;
+                    padding: 1rem;
+                }
+                #mcModalTexto.mc-visivel { display: flex; }
+                .mc-input {
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: .45rem .75rem;
+                    border: 1.5px solid #d1d5db;
+                    border-radius: 8px;
+                    font-size: .875rem;
+                    font-family: inherit;
+                    margin-bottom: 1.25rem;
+                    outline: none;
+                    transition: border-color .15s;
+                }
+                .mc-input:focus { border-color: #2563eb; }
+            `;
+            existing.dataset.textoAdded = '1';
+        }
+    }
+
+    /**
+     * Exibe um modal de entrada de texto (substitui prompt()).
+     * @param {string} titulo - Título do modal.
+     * @param {string} mensagem - Texto explicativo exibido acima do campo.
+     * @param {string} [valorPadrao=''] - Valor inicial do campo.
+     * @param {object} [opcoes]
+     * @param {string} [opcoes.confirmLabel='Confirmar'] - Texto do botão OK.
+     * @param {string} [opcoes.cancelLabel='Cancelar'] - Texto do botão cancelar.
+     * @param {string} [opcoes.icone] - Ícone exibido acima do título.
+     * @param {string} [opcoes.placeholder] - Placeholder do campo de texto.
+     * @returns {Promise<string|null>} Texto digitado ou null se cancelado.
+     */
+    window.solicitarTexto = function solicitarTexto(titulo, mensagem, valorPadrao, opcoes) {
+        injetarEstilos();
+        injetarHTMLTexto();
+
+        const {
+            confirmLabel = 'Confirmar',
+            cancelLabel  = 'Cancelar',
+            icone        = '✏️',
+            placeholder  = '',
+        } = opcoes || {};
+
+        const overlay  = document.getElementById(INPUT_ID);
+        const elTitulo = document.getElementById('mcTextoTitulo');
+        const elMsg    = document.getElementById('mcTextoMensagem');
+        const elIcone  = document.getElementById('mcTextoIcone');
+        const elInput  = document.getElementById('mcTextoInput');
+        const btnOk    = document.getElementById('mcTextoOk');
+        const btnCan   = document.getElementById('mcTextoCancelar');
+
+        elTitulo.textContent    = titulo;
+        elMsg.textContent       = mensagem;
+        elIcone.textContent     = icone;
+        btnOk.textContent       = confirmLabel;
+        btnCan.textContent      = cancelLabel;
+        elInput.value           = valorPadrao != null ? String(valorPadrao) : '';
+        elInput.placeholder     = placeholder;
+
+        overlay.classList.add('mc-visivel');
+        elInput.focus();
+        elInput.select();
+
+        return new Promise(resolve => {
+            function fechar(valor) {
+                overlay.classList.remove('mc-visivel');
+                btnOk.removeEventListener('click', onOk);
+                btnCan.removeEventListener('click', onCancel);
+                overlay.removeEventListener('click', onBackdrop);
+                document.removeEventListener('keydown', onKey);
+                resolve(valor);
+            }
+            function onOk()     { fechar(elInput.value); }
+            function onCancel() { fechar(null); }
+            function onBackdrop(e) { if (e.target === overlay) fechar(null); }
+            function onKey(e) {
+                if (e.key === 'Escape') { fechar(null); }
+                if (e.key === 'Enter' && document.activeElement !== btnCan) { e.preventDefault(); fechar(elInput.value); }
+            }
+
+            btnOk.addEventListener('click', onOk);
+            btnCan.addEventListener('click', onCancel);
+            overlay.addEventListener('click', onBackdrop);
+            document.addEventListener('keydown', onKey);
+        });
+    };
+
     /**
      * Exibe o modal de confirmação.
      * @param {string} titulo - Título do modal.
@@ -152,6 +276,7 @@
         elIcone.textContent  = icone || (tipo === 'danger' ? '⚠️' : '❓');
         btnOk.textContent    = confirmLabel;
         btnCan.textContent   = cancelLabel;
+        btnCan.style.display = cancelLabel ? '' : 'none';
         caixa.classList.toggle('mc-danger', tipo === 'danger');
 
         overlay.classList.add('mc-visivel');

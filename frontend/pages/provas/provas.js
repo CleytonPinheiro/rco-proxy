@@ -323,10 +323,18 @@ async function apagarSubmissao(submissaoId, nomeAluno) {
 async function publicarNoClassroom() {
     if (!provaAberta) return;
     const sugestao = provaAberta.prova.pontos_avaliacao || 6;
-    const txt = prompt(`Publicar no Google Classroom como atividade.\n\nQuantos pontos vale esta avaliação? (será o valor do grupo de notas dedicado)`, sugestao);
+    const txt = await solicitarTexto(
+        'Publicar no Classroom',
+        'Quantos pontos vale esta avaliação?\n(será o valor do grupo de notas dedicado)',
+        sugestao,
+        { confirmLabel: 'Publicar', icone: '📢', placeholder: 'Ex: 6' }
+    );
     if (txt === null) return;
     const pontos = parseFloat(String(txt).replace(',', '.'));
-    if (!isFinite(pontos) || pontos <= 0) return alert('Valor inválido.');
+    if (!isFinite(pontos) || pontos <= 0) {
+        await confirmar('Valor inválido', 'Informe um número válido maior que zero.', { confirmLabel: 'OK', cancelLabel: '', icone: '⚠️' });
+        return;
+    }
     try {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/publicar-classroom`, {
             method: 'POST', credentials: 'include',

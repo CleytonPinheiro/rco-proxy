@@ -243,7 +243,12 @@ async function bulkResponder(acao) {
     if (!ids.length) return;
     let resposta = null;
     if (acao === 'negar') {
-        resposta = prompt(`Motivo da negação para ${ids.length} solicitação(ões) (opcional):`, '');
+        resposta = await solicitarTexto(
+            'Negar solicitações',
+            `Motivo da negação para ${ids.length} solicitação(ões) (opcional):`,
+            '',
+            { confirmLabel: 'Negar', icone: '❌', placeholder: 'Deixe em branco para não informar motivo' }
+        );
         if (resposta === null) return;
         resposta = resposta.trim() || null;
     } else {
