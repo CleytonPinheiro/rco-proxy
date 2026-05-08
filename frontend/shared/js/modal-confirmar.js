@@ -88,6 +88,10 @@
                 background: #dc2626;
             }
             .mc-caixa.mc-danger .mc-btn-ok:hover { background: #b91c1c; }
+            .mc-caixa.mc-ok .mc-btn-ok {
+                background: #16a34a;
+            }
+            .mc-caixa.mc-ok .mc-btn-ok:hover { background: #15803d; }
         `;
         document.head.appendChild(style);
     }
@@ -243,13 +247,41 @@
     };
 
     /**
+     * Exibe um modal de notificação (substitui alert()).
+     * Não tem botão de cancelar — apenas um botão OK para fechar.
+     * @param {string} titulo - Título do modal.
+     * @param {string} [mensagem=''] - Mensagem exibida abaixo do título.
+     * @param {object} [opcoes]
+     * @param {'info'|'ok'|'danger'} [opcoes.tipo='info'] - Esquema de cor: info=azul, ok=verde, danger=vermelho.
+     * @param {string} [opcoes.icone] - Ícone exibido acima do título (emoji ou texto).
+     * @param {string} [opcoes.okLabel='OK'] - Texto do botão de fechamento.
+     * @returns {Promise<void>}
+     */
+    window.notificar = function notificar(titulo, mensagem, opcoes) {
+        const {
+            tipo     = 'info',
+            icone,
+            okLabel  = 'OK',
+        } = opcoes || {};
+
+        const iconeDefault = tipo === 'danger' ? '❌' : tipo === 'ok' ? '✅' : 'ℹ️';
+
+        return confirmar(titulo, mensagem || '', {
+            confirmLabel: okLabel,
+            cancelLabel:  '',
+            tipo,
+            icone: icone || iconeDefault,
+        });
+    };
+
+    /**
      * Exibe o modal de confirmação.
      * @param {string} titulo - Título do modal.
      * @param {string} mensagem - Mensagem de confirmação.
      * @param {object} [opcoes]
      * @param {string} [opcoes.confirmLabel='Confirmar'] - Texto do botão de confirmação.
      * @param {string} [opcoes.cancelLabel='Cancelar'] - Texto do botão de cancelamento.
-     * @param {'info'|'danger'} [opcoes.tipo='info'] - Estilo do botão de confirmação.
+     * @param {'info'|'ok'|'danger'} [opcoes.tipo='info'] - Estilo do botão de confirmação.
      * @param {string} [opcoes.icone] - Ícone exibido acima do título.
      * @returns {Promise<boolean>}
      */
@@ -273,11 +305,12 @@
 
         elTitulo.textContent = titulo;
         elMsg.textContent    = mensagem;
-        elIcone.textContent  = icone || (tipo === 'danger' ? '⚠️' : '❓');
+        elIcone.textContent  = icone || (tipo === 'danger' ? '⚠️' : tipo === 'ok' ? '✅' : '❓');
         btnOk.textContent    = confirmLabel;
         btnCan.textContent   = cancelLabel;
         btnCan.style.display = cancelLabel ? '' : 'none';
         caixa.classList.toggle('mc-danger', tipo === 'danger');
+        caixa.classList.toggle('mc-ok', tipo === 'ok');
 
         overlay.classList.add('mc-visivel');
         btnOk.focus();

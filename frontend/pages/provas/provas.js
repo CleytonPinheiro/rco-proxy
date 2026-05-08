@@ -126,7 +126,7 @@ async function salvarNova() {
         }
         fecharNova();
         await carregarProvas();
-        notificar(`Prova cadastrada! ${d.variantes_count} variante(s) baixadas da GradePen.`);
+        await notificar('Prova cadastrada', `${d.variantes_count} variante(s) baixadas da GradePen.`, {tipo: 'ok'});
     } catch (e) {
         mostraErro(e.message);
     } finally {
@@ -147,7 +147,7 @@ async function abrirDetalhe(id) {
         provaAberta = d;
         renderDetalhe(d);
         $('prvModalDet').style.display = '';
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 function renderDetalhe(d) {
@@ -243,9 +243,9 @@ async function sortear(submissaoId) {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
-        notificar(`2º corretor sorteado: ${d.sorteado}`);
+        await notificar('Corretor sorteado', `2º corretor: ${d.sorteado}`, {tipo: 'ok', icone: '🎲'});
         await abrirDetalhe(provaAberta.prova.id);
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function regabaritar() {
@@ -256,9 +256,9 @@ async function regabaritar() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
-        notificar('Gabarito atualizado: ' + d.variantes_count + ' variantes.');
+        await notificar('Gabarito atualizado', d.variantes_count + ' variantes.', {tipo: 'ok', icone: '📋'});
         await abrirDetalhe(provaAberta.prova.id);
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function toggleEfetivar() {
@@ -271,7 +271,7 @@ async function toggleEfetivar() {
         if (!r.ok) throw new Error('Falhou');
         await abrirDetalhe(provaAberta.prova.id);
         await carregarProvas();
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function excluirProva() {
@@ -283,7 +283,7 @@ async function excluirProva() {
         if (!r.ok) throw new Error('Falhou');
         fecharDet();
         await carregarProvas();
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function trocarVariante(submissaoId) {
@@ -300,12 +300,12 @@ async function trocarVariante(submissaoId) {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
-        if (d.semMudanca) { notificar('Já era essa variante. Nada mudou.', 'aviso'); return; }
+        if (d.semMudanca) { await notificar('Sem mudança', 'Já era essa variante. Nada mudou.', {tipo: 'info'}); return; }
         let msg = `Variante trocada. Nova nota: ${d.nota} / ${d.total_max}.`;
         if (d.segundasRemovidas) msg += ` ${d.segundasRemovidas} 2ª(s) correção(ões) foram apagadas.`;
-        notificar(msg);
+        await notificar('Variante trocada', msg, {tipo: 'ok'});
         await abrirDetalhe(provaAberta.prova.id);
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function apagarSubmissao(submissaoId, nomeAluno) {
@@ -317,7 +317,7 @@ async function apagarSubmissao(submissaoId, nomeAluno) {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
         await abrirDetalhe(provaAberta.prova.id);
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function publicarNoClassroom() {
@@ -347,25 +347,13 @@ async function publicarNoClassroom() {
         if (await confirmar('Atividade publicada!', `Atividade publicada no Classroom!\n\n📅 Prazo: ${dt} 23:59\n💯 Vale: ${d.maxPoints} pts (Trim. ${d.trimestre}/${d.ano})\n✅ Grupo dedicado da avaliação criado/atualizado.\n\nAbrir a atividade no Classroom agora?`, { confirmLabel: 'Abrir no Classroom', cancelLabel: 'Fechar', icone: '✅' })) {
             if (d.alternateLink) window.open(d.alternateLink, '_blank');
         }
-    } catch (e) { notificar('Erro ao publicar: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro ao publicar', e.message, {tipo: 'danger'}); }
 }
 
 function fecharDet() { $('prvModalDet').style.display = 'none'; provaAberta = null; }
 
 function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function notificar(msg, tipo = 'ok') {
-    const bg = tipo === 'erro' ? '#dc2626' : tipo === 'aviso' ? '#d97706' : '#16a34a';
-    const old = document.getElementById('_toast_notif');
-    if (old) old.remove();
-    const t = document.createElement('div');
-    t.id = '_toast_notif';
-    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, 3500);
 }
 
 window.onCursoChange   = onCursoChange;
@@ -388,7 +376,7 @@ async function conferirFoto(submissaoId) {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
         await abrirDetalhe(provaAberta.prova.id);
-    } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 window.conferirFoto    = conferirFoto;
 window.trocarVariante  = trocarVariante;
