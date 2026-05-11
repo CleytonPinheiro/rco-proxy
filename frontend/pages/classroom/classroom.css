@@ -3540,6 +3540,26 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .dark .cl-btn--tardias:hover {
     background: rgba(251,146,60,.25);
 }
+.cl-btn--confirmar-rasc-bulk {
+    background: #a78bfa;
+    color: #fff;
+    border: 1px solid #7c3aed;
+}
+.cl-btn--confirmar-rasc-bulk:hover {
+    background: #8b5cf6;
+}
+.cl-btn--confirmar-rasc-bulk:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+[data-theme="dark"] .cl-btn--confirmar-rasc-bulk {
+    background: rgba(167,139,250,.25);
+    color: #c4b5fd;
+    border-color: rgba(124,58,237,.5);
+}
+[data-theme="dark"] .cl-btn--confirmar-rasc-bulk:hover {
+    background: rgba(167,139,250,.4);
+}
 .cl-tardias-badge {
     position: absolute;
     top: -6px; right: -6px;

@@ -157,6 +157,7 @@ const elGrupoTrimestre = document.getElementById('clGrupoTrimestre');
 const elGrupoAno       = document.getElementById('clGrupoAno');
 const elSideNavSolitaBadge = document.getElementById('sideNavSolitaBadge');
 const elBtnNovoGrupo   = document.getElementById('clBtnNovoGrupo');
+const elBtnConfirmarTodosRasc = document.getElementById('clBtnConfirmarTodosRasc');
 const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
 const elNotasBreadcrumb = document.getElementById('clNotasBreadcrumb');
@@ -1468,6 +1469,7 @@ async function selecionarGrupo(grupo, itemEl) {
     elBtnLivro.style.display     = 'inline-flex';
     atualizarBtnLivro(grupo);
     elBtnRco.style.display       = grupo.codClasseRco ? 'inline-flex' : 'none';
+    elBtnConfirmarTodosRasc.style.display = 'none';
     /* Atalho "Criar Recuperação": só aparece para grupos normais sem recuperação vinculada */
     elBtnCriarRec.style.display = (grupo.tipo === 'normal' && !grupo.recuperacaoId) ? 'flex' : 'none';
     atualizarBtnFecharNota(grupo);
@@ -2518,6 +2520,13 @@ function renderListaFiltrada() {
     // Renderiza painel Quizizz com dados já em cache (se houver)
     const painel = document.getElementById('clQuizizzPainel');
     if (painel) renderQuizizzPainel(atividades, painel);
+
+    // Mostra o botão "Confirmar todos os rascunhos" somente quando há rascunhos pendentes
+    const totalDrafts = _coletarRascunhosGrupo().length;
+    if (elBtnConfirmarTodosRasc) {
+        elBtnConfirmarTodosRasc.style.display = totalDrafts > 0 ? 'inline-flex' : 'none';
+        elBtnConfirmarTodosRasc.textContent = `📝 Confirmar ${totalDrafts} rascunho${totalDrafts !== 1 ? 's' : ''}`;
+    }
 }
 
 function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis = ['aluno','soma','pendentes'], gridTpl = '36px 1fr 100px 90px', fontes = []) {
@@ -3218,6 +3227,68 @@ function refrescarDetalheAlunoAberto() {
     mostrarDetalheAluno(novo, grupoResumoData.atividades, grupoResumoData.meta, grupoResumoData.fontes || [], grupoResumoData.subgrupos || []);
 }
 
+/* Coleta todos os rascunhos pendentes do grupo ativo como lista de {cwId, subId}.
+   Usado pelo bulk-confirm e pelo botão de contagem no header. */
+function _coletarRascunhosGrupo() {
+    if (!grupoResumoData?.alunosResumo) return [];
+    const drafts = [];
+    for (const aluno of grupoResumoData.alunosResumo) {
+        for (const [atvId, atv] of Object.entries(aluno.atividades || {})) {
+            if (atv.nota === null && atv.notaRascunho != null && atv.submissionId) {
+                drafts.push({ cwId: atvId, subId: atv.submissionId });
+            }
+        }
+    }
+    return drafts;
+}
+
+/* Confirma (devolve) em massa todas as notas em rascunho do grupo ativo. */
+async function confirmarTodosRascunhos() {
+    const drafts = _coletarRascunhosGrupo();
+    if (!drafts.length) return;
+
+    const n = drafts.length;
+    const confirmado = await confirmar(
+        `Devolver ${n} nota${n !== 1 ? 's' : ''} em rascunho para os alunos no Google Classroom?\n\nAo confirmar, as notas passarão do estado de rascunho para notas oficiais e os alunos poderão visualizá-las.`,
+        {
+            titulo: 'Confirmar todos os rascunhos',
+            confirmLabel: `📝 Confirmar ${n} nota${n !== 1 ? 's' : ''}`,
+            tipo: 'info',
+            icone: '📝',
+        }
+    );
+    if (!confirmado) return;
+
+    elBtnConfirmarTodosRasc.disabled = true;
+    elBtnConfirmarTodosRasc.textContent = '⏳ Confirmando...';
+    try {
+        const data = await api(`/courses/${cursoAtivo.id}/coursework/bulk-return`, {
+            method: 'POST',
+            body: { submissions: drafts },
+        });
+        if (data.fail > 0) {
+            await notificar(
+                'Concluído com erros',
+                `${data.ok} nota${data.ok !== 1 ? 's' : ''} confirmada${data.ok !== 1 ? 's' : ''}, ${data.fail} com erro.`,
+                { tipo: 'danger' }
+            );
+        } else {
+            await notificar(
+                'Notas confirmadas',
+                `${data.ok} nota${data.ok !== 1 ? 's' : ''} devolvida${data.ok !== 1 ? 's' : ''} com sucesso!`,
+                { tipo: 'ok' }
+            );
+        }
+        await _refreshGrupoSilent();
+    } catch (e) {
+        await notificar('Erro ao confirmar notas', e.message, { tipo: 'danger' });
+    } finally {
+        elBtnConfirmarTodosRasc.disabled = false;
+    }
+}
+
+elBtnConfirmarTodosRasc.addEventListener('click', confirmarTodosRascunhos);
+
 /* Confirma (devolve) uma nota em rascunho para o aluno no Google Classroom.
    Após sucesso, re-busca o resumo do grupo silenciosamente e re-renderiza o detalhe. */
 async function confirmarNotaRascunho(btn, courseId, cwId, subId) {
@@ -3277,7 +3348,11 @@ async function _refreshGrupoSilent() {
             fontes:    resumo.fontes             || [],
             subgrupos: resumo.subgruposInjetados || [],
         };
-        refrescarDetalheAlunoAberto();
+        if (alunoDetalheAberto) {
+            refrescarDetalheAlunoAberto();
+        } else {
+            renderListaFiltrada();
+        }
     } catch (_) {
         refrescarDetalheAlunoAberto();
     }

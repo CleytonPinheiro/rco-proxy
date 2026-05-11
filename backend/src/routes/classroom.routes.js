@@ -527,6 +527,35 @@ export function createClassroomRouter(deps = {}) {
         }
     });
 
+    /* ── Devolver múltiplas entregas de uma vez (bulk return) ── */
+    router.post('/classroom/courses/:courseId/coursework/bulk-return', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+        const { courseId } = req.params;
+        const { submissions } = req.body;
+        if (!Array.isArray(submissions) || !submissions.length) {
+            return res.status(400).json({ erro: 'submissions deve ser um array não vazio' });
+        }
+        const auth = await getAuthenticatedClient(req);
+        if (!auth) {
+            return res.status(401).json({ erro: 'Token do Google Classroom expirado. Reconecte o Classroom.' });
+        }
+        const classroom = google.classroom({ version: 'v1', auth });
+        let ok = 0, fail = 0;
+        const erros = [];
+        for (const { cwId, subId } of submissions) {
+            try {
+                await classroom.courses.courseWork.studentSubmissions.return({
+                    courseId, courseWorkId: cwId, id: subId, requestBody: {},
+                });
+                ok++;
+            } catch (e) {
+                fail++;
+                erros.push({ cwId, subId, erro: e.message });
+                console.error(`[CLASSROOM] bulk-return falhou cwId=${cwId} subId=${subId}:`, e.message);
+            }
+        }
+        res.json({ ok, fail, erros });
+    });
+
     /* ════════════════════════════════════════════════════════════
        AUDITORIA DE FREQUÊNCIA
     ════════════════════════════════════════════════════════════ */
