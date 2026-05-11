@@ -3,6 +3,8 @@
 
 const $ = id => document.getElementById(id);
 
+const BADGE_POLL_MS = 3 * 60 * 1000; /* 3 minutes */
+
 let cursos = [];
 let cursoAtual = '';
 let provas = [];
@@ -12,9 +14,32 @@ let _colaExpandido = null;
 let _colaFlags = {};
 let _renderColaTabela = null;
 let _divergenciasCarregadas = false;
+let _badgePollTimer = null;
+
+function _iniciarPollBadge() {
+    _pararPollBadge();
+    _badgePollTimer = setInterval(atualizarResumoCurso, BADGE_POLL_MS);
+}
+
+function _pararPollBadge() {
+    if (_badgePollTimer !== null) {
+        clearInterval(_badgePollTimer);
+        _badgePollTimer = null;
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        _pararPollBadge();
+    } else if (cursos.length) {
+        atualizarResumoCurso();
+        _iniciarPollBadge();
+    }
+});
 
 async function init() {
     await carregarCursos();
+    if (cursos.length) _iniciarPollBadge();
     /* mostra/esconde % foto conforme modo */
     $('prvfFoto').addEventListener('change', () => {
         $('prvfFotoPctWrap').style.display = $('prvfFoto').value === 'sorteio' ? '' : 'none';
