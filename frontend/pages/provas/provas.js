@@ -7,6 +7,8 @@ let cursos = [];
 let cursoAtual = '';
 let provas = [];
 let provaAberta = null;
+let _colaCarregada = false;
+let _colaExpandido = null;
 
 async function init() {
     await carregarCursos();
@@ -160,6 +162,10 @@ function renderDetalhe(d) {
         <span>📷 Foto: ${p.foto_modo}${p.foto_modo === 'sorteio' ? ` (${p.foto_sorteio_pct}%)` : ''}</span>
         <span>👁 2º corretor: ${p.segundo_corretor_ativo ? 'ativo' : 'desativado'}${p.segundo_corretor_ativo && p.permitir_outra_turma ? ' (cross-turma ON)' : ''}</span>
     `;
+    $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Análise de Cola</strong> para carregar.</div>';
+    _colaCarregada = false;
+    _colaExpandido = null;
+    prvAtivarAba('gabarito');
 
     /* Gabarito */
     let gab = `<h3>Gabarito por variante</h3>`;
@@ -350,6 +356,164 @@ async function publicarNoClassroom() {
     } catch (e) { await notificar('Erro ao publicar', e.message, {tipo: 'danger'}); }
 }
 
+function prvAtivarAba(aba) {
+    const abas = ['gabarito', 'submissoes', 'cola'];
+    abas.forEach(a => {
+        const secEl  = $('prvDetSec_' + a);
+        const btnEl  = $('prvTabBtn_' + a);
+        if (secEl) secEl.style.display = a === aba ? '' : 'none';
+        if (btnEl) {
+            btnEl.classList.toggle('prv-tab-ativa', a === aba);
+        }
+    });
+    if (aba === 'cola' && !_colaCarregada) carregarColAnalise();
+}
+
+async function carregarColAnalise() {
+    if (!provaAberta) return;
+    const cont = $('prvDetCola');
+    cont.innerHTML = '<div class="prv-empty">Carregando análise…</div>';
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/analise-cola`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        _colaCarregada = true;
+        renderColAnalise(d);
+    } catch (e) {
+        $('prvDetCola').innerHTML = `<div class="prv-empty" style="color:#dc2626">Erro: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function renderColAnalise({ pares, temDiscursiva }) {
+    const cont = $('prvDetCola');
+
+    if (!pares || pares.length === 0) {
+        cont.innerHTML = `<div class="prv-empty">Sem dados suficientes para análise.<br><small>São necessárias ao menos 2 submissões na mesma variante.</small></div>`;
+        return;
+    }
+
+    const thresholdId = 'prvColaThreshold';
+
+    const html = `
+        <div class="prv-cola-controles">
+            <label>Similaridade mínima:
+                <input type="range" id="${thresholdId}" min="0" max="100" value="70" style="vertical-align:middle;width:120px">
+                <span id="prvColaThresholdVal">70</span>%
+            </label>
+            <span class="prv-cola-legenda">
+                <span class="prv-cola-badge prv-cola-alerta">≥70%</span> suspeito &nbsp;
+                <span class="prv-cola-badge prv-cola-critico">≥85%</span> alto risco
+            </span>
+        </div>
+        <div id="prvColaTabelaWrap"></div>
+        ${temDiscursiva ? '<p class="prv-cola-rodape">* Questões discursivas foram excluídas da comparação (apenas múltipla escolha e V/F são analisadas).</p>' : ''}
+    `;
+    cont.innerHTML = html;
+
+    const slider = document.getElementById(thresholdId);
+    const valSpan = document.getElementById('prvColaThresholdVal');
+    const wrap    = document.getElementById('prvColaTabelaWrap');
+
+    function renderTabela() {
+        const threshold = parseInt(slider.value, 10);
+        valSpan.textContent = threshold;
+        const filtrados = pares.filter(p => p.similaridade >= threshold);
+
+        if (filtrados.length === 0) {
+            wrap.innerHTML = '<div class="prv-empty">Nenhum par acima do threshold atual.</div>';
+            _colaExpandido = null;
+            return;
+        }
+
+        let rows = '';
+        for (const par of filtrados) {
+            const nivel = par.similaridade >= 85 ? 'critico' : (par.similaridade >= 70 ? 'alerta' : '');
+            const parKey = `${par.alunoA}|${par.alunoB}`;
+            const expandido = _colaExpandido === parKey;
+            rows += `
+                <tr class="prv-cola-row ${nivel ? 'prv-cola-row-' + nivel : ''}" data-par="${escapeHtml(parKey)}" style="cursor:pointer">
+                    <td><strong>${escapeHtml(par.nomeA)}</strong><br><small>${escapeHtml(par.alunoA)}</small></td>
+                    <td><strong>${escapeHtml(par.nomeB)}</strong><br><small>${escapeHtml(par.alunoB)}</small></td>
+                    <td style="text-align:center">.${escapeHtml(par.varianteCodigo)}</td>
+                    <td style="text-align:center">
+                        <span class="prv-cola-badge ${nivel === 'critico' ? 'prv-cola-critico' : nivel === 'alerta' ? 'prv-cola-alerta' : ''}">${par.similaridade}%</span>
+                    </td>
+                    <td style="text-align:center">${par.identicasErradas}</td>
+                    <td style="text-align:center">${par.total}</td>
+                </tr>
+            `;
+            if (expandido) {
+                rows += `<tr class="prv-cola-detalhe-row"><td colspan="6">${renderDetalhePar(par)}</td></tr>`;
+            }
+        }
+
+        wrap.innerHTML = `
+            <table class="prv-tabela prv-cola-tabela">
+                <thead><tr>
+                    <th>Aluno A</th><th>Aluno B</th>
+                    <th style="text-align:center">Variante</th>
+                    <th style="text-align:center">Similaridade</th>
+                    <th style="text-align:center">Erros coincidentes</th>
+                    <th style="text-align:center">Total questões</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+
+        wrap.querySelectorAll('.prv-cola-row').forEach(tr => {
+            tr.addEventListener('click', () => {
+                const key = tr.dataset.par;
+                _colaExpandido = _colaExpandido === key ? null : key;
+                renderTabela();
+            });
+        });
+    }
+
+    slider.addEventListener('input', renderTabela);
+    renderTabela();
+}
+
+function renderDetalhePar(par) {
+    let rows = '';
+    for (const q of par.detalhes) {
+        const fmtResp = v => {
+            if (v === null) return '<em style="color:#aaa">—</em>';
+            if (Array.isArray(v)) return escapeHtml(v.join(', '));
+            return escapeHtml(String(v).toUpperCase());
+        };
+        const fmtGab = v => {
+            if (v === null) return '—';
+            if (Array.isArray(v)) return escapeHtml(v.join(', '));
+            return escapeHtml(String(v).toUpperCase());
+        };
+        const cls = q.amboserram
+            ? 'prv-cola-q-erro'
+            : (q.igual ? 'prv-cola-q-igual' : '');
+        rows += `<tr class="${cls}">
+            <td style="text-align:center;font-weight:600">${q.questao}</td>
+            <td style="text-align:center">${fmtResp(q.respA)}</td>
+            <td style="text-align:center">${fmtResp(q.respB)}</td>
+            <td style="text-align:center;color:#166534;font-weight:600">${fmtGab(q.correta)}</td>
+            <td style="text-align:center">${q.amboserram ? '<span class="prv-cola-badge prv-cola-critico">erro coincidente</span>' : (q.igual ? '<span class="prv-cola-badge prv-cola-alerta">idêntica</span>' : '')}</td>
+        </tr>`;
+    }
+    return `
+        <div class="prv-cola-detalhe">
+            <strong>Detalhamento questão a questão — ${escapeHtml(par.nomeA)} × ${escapeHtml(par.nomeB)}</strong>
+            <table class="prv-tabela" style="margin-top:8px">
+                <thead><tr>
+                    <th style="text-align:center">Q</th>
+                    <th style="text-align:center">Aluno A</th>
+                    <th style="text-align:center">Aluno B</th>
+                    <th style="text-align:center">Gabarito</th>
+                    <th style="text-align:center">Status</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
 function fecharDet() { $('prvModalDet').style.display = 'none'; provaAberta = null; }
 
 function escapeHtml(s) {
@@ -383,5 +547,6 @@ window.trocarVariante  = trocarVariante;
 window.apagarSubmissao = apagarSubmissao;
 window.publicarNoClassroom = publicarNoClassroom;
 window.fecharDet       = fecharDet;
+window.prvAtivarAba    = prvAtivarAba;
 
 init();

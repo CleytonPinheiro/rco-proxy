@@ -98,8 +98,14 @@
                 <button class="prv-btn-icon" onclick="fecharDet()" title="Fechar">✕</button>
             </div>
             <div id="prvDetMeta" class="prv-det-meta"></div>
-            <div id="prvDetGabarito" class="prv-det-section"></div>
-            <div id="prvDetSubmissoes" class="prv-det-section"></div>
+            <div class="prv-tabs">
+                <button id="prvTabBtn_gabarito"   class="prv-tab-btn prv-tab-ativa" onclick="prvAtivarAba('gabarito')">📋 Gabarito</button>
+                <button id="prvTabBtn_submissoes" class="prv-tab-btn"               onclick="prvAtivarAba('submissoes')">👥 Submissões</button>
+                <button id="prvTabBtn_cola"       class="prv-tab-btn"               onclick="prvAtivarAba('cola')">🔍 Análise de Cola</button>
+            </div>
+            <div id="prvDetSec_gabarito"   class="prv-det-section"><div id="prvDetGabarito"></div></div>
+            <div id="prvDetSec_submissoes" class="prv-det-section" style="display:none"><div id="prvDetSubmissoes"></div></div>
+            <div id="prvDetSec_cola"       class="prv-det-section" style="display:none"><div id="prvDetCola"></div></div>
             <div class="prv-modal-actions">
                 <button class="prv-btn" onclick="regabaritar()">↻ Re-baixar gabarito</button>
                 <button class="prv-btn" onclick="publicarNoClassroom()" title="Publica um Material no Classroom com o link de correção">📢 Publicar no Classroom</button>

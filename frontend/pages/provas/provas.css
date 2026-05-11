@@ -125,3 +125,58 @@
 .prv-sel-variante { padding: 2px 4px; font-size: 0.9em; margin-right: 4px; }
 .prv-link-danger { color: #c0392b; }
 .prv-link-danger:hover { color: #e74c3c; }
+
+/* Tabs */
+.prv-tabs {
+    display: flex; gap: 4px; margin-bottom: 16px;
+    border-bottom: 2px solid var(--border, #e5e7eb);
+    padding-bottom: 0;
+}
+.prv-tab-btn {
+    padding: 7px 16px; border: none; background: none;
+    cursor: pointer; font-size: 13px; font-weight: 500;
+    color: var(--text-muted, #666); border-radius: 6px 6px 0 0;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: .15s;
+}
+.prv-tab-btn:hover { background: var(--bg, #f5f5f5); color: var(--text, #000); }
+.prv-tab-ativa { color: #4285F4 !important; border-bottom-color: #4285F4 !important; background: none !important; }
+
+/* Análise de Cola */
+.prv-cola-controles {
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 12px; padding: 10px 12px;
+    background: var(--bg, #f8fafc); border-radius: 8px;
+    border: 1px solid var(--border, #e5e7eb);
+    font-size: 13px;
+}
+.prv-cola-legenda { display:flex; gap:8px; align-items:center; color: var(--text-muted,#666); }
+.prv-cola-badge {
+    display:inline-block; padding:1px 7px; border-radius:999px;
+    font-size:11px; font-weight:700;
+}
+.prv-cola-alerta  { background:#fef3c7; color:#92400e; }
+.prv-cola-critico { background:#fee2e2; color:#991b1b; }
+
+.prv-cola-tabela tr.prv-cola-row:hover { background: var(--bg, #f5f5f5); }
+.prv-cola-row-alerta  td { background:#fffbeb; }
+.prv-cola-row-critico td { background:#fff1f2; }
+[data-theme="dark"] .prv-cola-row-alerta  td { background:#2d2000; }
+[data-theme="dark"] .prv-cola-row-critico td { background:#2d0000; }
+
+.prv-cola-detalhe-row td { padding: 0; }
+.prv-cola-detalhe {
+    padding: 12px 16px; margin: 0;
+    background: var(--bg-secondary, #fff);
+    border-top: 2px solid #4285F4;
+    font-size: 13px;
+}
+.prv-cola-q-igual  td { background: #fffbeb; }
+.prv-cola-q-erro   td { background: #fff1f2; font-weight: 600; }
+[data-theme="dark"] .prv-cola-q-igual td { background: #2d2000; }
+[data-theme="dark"] .prv-cola-q-erro  td { background: #2d0000; }
+
+.prv-cola-rodape {
+    margin-top: 10px; font-size: 11px;
+    color: var(--text-muted, #888); font-style: italic;
+}

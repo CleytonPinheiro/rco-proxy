@@ -1107,6 +1107,139 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* Análise de cola: comparação pairwise de marcações dentro da mesma variante */
+    router.get('/classroom/provas/:id/analise-cola', async (req, res) => {
+        try {
+            const provaId = req.params.id;
+
+            /* Carrega variantes com gabarito */
+            const { rows: variantes } = await pool.query(
+                `SELECT id, codigo, gabarito_json FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
+                [provaId]
+            );
+            if (variantes.length === 0) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            /* Carrega submissões primárias (não 2º corretores) */
+            const { rows: submissoes } = await pool.query(
+                `SELECT id, variante_id, aluno_email, aluno_nome, marcacoes_json
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_segundo_corretor = false
+                  ORDER BY variante_id, aluno_email`,
+                [provaId]
+            );
+
+            /* Monta mapa variante_id → gabarito_json */
+            const gabMap = {};
+            for (const v of variantes) gabMap[v.id] = { codigo: v.codigo, gabarito: v.gabarito_json };
+
+            /* Agrupa submissões por variante */
+            const porVariante = {};
+            for (const s of submissoes) {
+                if (!porVariante[s.variante_id]) porVariante[s.variante_id] = [];
+                porVariante[s.variante_id].push(s);
+            }
+
+            const pares = [];
+
+            for (const [varId, subs] of Object.entries(porVariante)) {
+                if (subs.length < 2) continue;
+                const { codigo, gabarito } = gabMap[varId] || {};
+                if (!gabarito) continue;
+
+                /* Filtra apenas questões comparáveis (multipla e vf) */
+                const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+                if (questoesComp.length === 0) continue;
+
+                /* Comparação pairwise */
+                for (let i = 0; i < subs.length; i++) {
+                    for (let j = i + 1; j < subs.length; j++) {
+                        const a = subs[i];
+                        const b = subs[j];
+                        const marcA = a.marcacoes_json || {};
+                        const marcB = b.marcacoes_json || {};
+
+                        let identicas = 0;
+                        let identicasErradas = 0;
+                        const detalhes = [];
+
+                        for (const q of questoesComp) {
+                            const qStr = String(q.questao);
+                            const respA = marcA[qStr] ?? null;
+                            const respB = marcB[qStr] ?? null;
+
+                            /* Normaliza para comparação */
+                            const normA = Array.isArray(respA) ? respA.map(x => String(x).toUpperCase()).join(',') : String(respA ?? '').toLowerCase();
+                            const normB = Array.isArray(respB) ? respB.map(x => String(x).toUpperCase()).join(',') : String(respB ?? '').toLowerCase();
+
+                            const igual = respA !== null && respB !== null && normA === normB;
+
+                            /* Verifica se a resposta é correta */
+                            let corrA = false;
+                            let corrB = false;
+                            if (q.tipo === 'multipla') {
+                                const correta = String(q.correta || '').toLowerCase();
+                                corrA = String(respA ?? '').toLowerCase() === correta;
+                                corrB = String(respB ?? '').toLowerCase() === correta;
+                            } else if (q.tipo === 'vf') {
+                                if (Array.isArray(q.correta)) {
+                                    corrA = Array.isArray(respA) && respA.length === q.correta.length &&
+                                            respA.every((v, k) => String(v).toUpperCase() === String(q.correta[k]).toUpperCase());
+                                    corrB = Array.isArray(respB) && respB.length === q.correta.length &&
+                                            respB.every((v, k) => String(v).toUpperCase() === String(q.correta[k]).toUpperCase());
+                                }
+                            }
+
+                            const amboserram = igual && !corrA && !corrB;
+                            if (igual) identicas++;
+                            if (amboserram) identicasErradas++;
+
+                            detalhes.push({
+                                questao:         q.questao,
+                                tipo:            q.tipo,
+                                correta:         q.correta,
+                                respA,
+                                respB,
+                                igual,
+                                amboserram,
+                            });
+                        }
+
+                        const total = questoesComp.length;
+                        const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
+
+                        pares.push({
+                            alunoA:           a.aluno_email,
+                            nomeA:            a.aluno_nome || a.aluno_email,
+                            alunoB:           b.aluno_email,
+                            nomeB:            b.aluno_nome || b.aluno_email,
+                            varianteCodigo:   codigo,
+                            total,
+                            identicas,
+                            identicasErradas,
+                            similaridade,
+                            detalhes,
+                        });
+                    }
+                }
+            }
+
+            /* Ordena por suspeita decrescente */
+            pares.sort((a, b) => {
+                if (b.identicasErradas !== a.identicasErradas) return b.identicasErradas - a.identicasErradas;
+                return b.similaridade - a.similaridade;
+            });
+
+            /* Informa se há questões discursivas na prova (para nota de rodapé) */
+            const temDiscursiva = variantes.some(v =>
+                (v.gabarito_json || []).some(q => q.tipo === 'discursiva')
+            );
+
+            res.json({ pares, temDiscursiva });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* Apagar a submissão de um aluno (libera ele para refazer do zero) */
     router.delete('/classroom/provas/submissoes/:subId', async (req, res) => {
         const cpfSessao = req.userSession?.cpf;
