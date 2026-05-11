@@ -3,7 +3,9 @@
  *   frontend/alunos/alunos.js         → frontend/alunos/alunos.min.js
  *   frontend/pedagogico-portal/pedagogico-portal.js → frontend/pedagogico-portal/pedagogico-portal.min.js
  *
- * Uso: node backend/scripts/build-portal.js
+ * Uso:
+ *   node backend/scripts/build-portal.js           # builds all portals
+ *   node backend/scripts/build-portal.js alunos    # builds only alunos.min.js
  */
 import { minify }  from 'terser';
 import { readFile, writeFile } from 'fs/promises';
@@ -18,7 +20,15 @@ const portais = [
     { nome: 'pedagogico-portal.min.js',   src: 'frontend/pedagogico-portal/pedagogico-portal.js',              dest: 'frontend/pedagogico-portal/pedagogico-portal.min.js' },
 ];
 
-for (const p of portais) {
+const filtro = process.argv[2];
+const alvo   = filtro ? portais.filter(p => p.nome.startsWith(filtro)) : portais;
+
+if (alvo.length === 0) {
+    console.error(`✖ Nenhum portal encontrado para o filtro "${filtro}". Opções: ${portais.map(p => p.nome).join(', ')}`);
+    process.exit(1);
+}
+
+for (const p of alvo) {
     try {
         const code = await readFile(path.join(ROOT, p.src), 'utf8');
 

@@ -4,7 +4,9 @@
   "description": "Este projeto Express consome a API do portal RCO Digital (Registro de Classe Online) do estado do Paraná.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:alunos": "node backend/scripts/build-portal.js alunos",
+    "build:portal": "node backend/scripts/build-portal.js"
   },
   "keywords": [],
   "author": "",
