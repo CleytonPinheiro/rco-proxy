@@ -764,9 +764,13 @@ async function salvarFlagNota(provaId, alunoA, alunoB, notaId) {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
+        const isNew = !existing;
         _colaFlags[`${ea}|${eb}`] = { status, nota_professor: notaProfessor };
         if (_renderColaTabela) _renderColaTabela();
         _atualizarBadgesCard(provaId);
+        if (isNew) {
+            await notificar('Decisão registrada', "Decisão registrada como 'Investigar'", { tipo: 'info', duracao: 3000 });
+        }
     } catch (e) {
         await notificar('Erro ao salvar nota', e.message, { tipo: 'danger' });
     }
