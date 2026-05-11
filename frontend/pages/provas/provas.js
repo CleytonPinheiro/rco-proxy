@@ -97,7 +97,7 @@ function renderBadgesProva(p) {
                 ? '<span class="prv-badge prv-badge-efetiva">Efetivada</span>'
                 : '<span class="prv-badge prv-badge-rascunho">Rascunho</span>'}
             ${p.segundo_corretor_ativo ? '<span class="prv-badge prv-badge-2cor">2º corretor</span>' : ''}
-            ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥70% de similaridade — abra a aba Análise de Cola para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
+            ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥${p.pares_suspeitos_threshold ?? 70}% de similaridade — abra a aba Análise de Cola para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
             ${p.pares_flagged_investigar > 0 ? `<span class="prv-badge prv-badge-flagged" title="Pares suspeitos ainda em investigação">🔍 ${p.pares_flagged_investigar} pendente${p.pares_flagged_investigar > 1 ? 's' : ''}</span>` : ''}
             ${p.pares_flagged_resolvido > 0 ? `<span class="prv-badge prv-badge-resolvido" title="Pares suspeitos já resolvidos pelo professor">✅ ${p.pares_flagged_resolvido} resolvido${p.pares_flagged_resolvido > 1 ? 's' : ''}</span>` : ''}`;
 }
@@ -599,6 +599,16 @@ function renderColAnalise({ pares, temDiscursiva }) {
         const threshold = parseInt(slider.value, 10);
         valSpan.textContent = threshold;
         const filtrados = pares.filter(p => p.similaridade >= threshold);
+
+        const provaId = provaAberta && provaAberta.prova && provaAberta.prova.id;
+        if (provaId) {
+            const prova = provas.find(p => p.id === provaId);
+            if (prova) {
+                prova.pares_suspeitos = filtrados.length;
+                prova.pares_suspeitos_threshold = threshold;
+                _atualizarBadgesCard(provaId);
+            }
+        }
 
         if (filtrados.length === 0) {
             wrap.innerHTML = '<div class="prv-empty">Nenhum par acima do threshold atual.</div>';
