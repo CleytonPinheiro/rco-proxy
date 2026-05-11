@@ -900,6 +900,9 @@ function renderNotas() {
     elNotasLista.querySelectorAll('.cl-btn-confirmar-rascunho').forEach(btn => {
         btn.addEventListener('click', () => promoverRascunho(btn));
     });
+    elNotasLista.querySelectorAll('.cl-btn-verificacao').forEach(btn => {
+        btn.addEventListener('click', () => abrirModalVerificacao(btn));
+    });
     const bulkBtn = document.getElementById('clBtnPromoverTodos');
     if (bulkBtn) bulkBtn.addEventListener('click', promoverTodosRascunhos);
 }
@@ -947,6 +950,7 @@ function renderNotaRow(n) {
             ${podeDevolver
                 ? `<button class="cl-btn-devolver" data-sub="${n.id}" data-user="${n.userId}">Devolver</button>`
                 : (!isDraft ? '<span style="color:var(--text-muted);font-size:.7rem">—</span>' : '')}
+            ${a.email ? `<button class="cl-btn-verificacao" data-email="${esc(a.email)}" data-nome="${esc(a.nome || '')}" title="Enviar orientação de verificação para este aluno">📋</button>` : ''}
         </div>
     </div>`;
 }
@@ -1083,6 +1087,78 @@ async function devolverEntrega(btn) {
         await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
         btn.disabled    = false;
         btn.textContent = 'Devolver';
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Modal de Verificação — orientação privada para aluno
+══════════════════════════════════════════════════════════════ */
+
+let _verificacaoEmailAtual = null;
+let _verificacaoNomeAtual  = null;
+
+function abrirModalVerificacao(btn) {
+    _verificacaoEmailAtual = btn.dataset.email || '';
+    _verificacaoNomeAtual  = btn.dataset.nome  || _verificacaoEmailAtual;
+
+    const modal   = document.getElementById('clVerificacaoModal');
+    const nomeEl  = document.getElementById('clVerificacaoNome');
+    const textoEl = document.getElementById('clVerificacaoTexto');
+    const erroEl  = document.getElementById('clVerificacaoErro');
+    const envBtn  = document.getElementById('clVerificacaoEnviar');
+
+    nomeEl.textContent   = _verificacaoNomeAtual;
+    textoEl.value        = '';
+    erroEl.style.display = 'none';
+    envBtn.disabled      = false;
+    envBtn.textContent   = 'Enviar orientação';
+    modal.style.display  = 'flex';
+    setTimeout(() => textoEl.focus(), 80);
+}
+
+function fecharModalVerificacao() {
+    document.getElementById('clVerificacaoModal').style.display = 'none';
+    _verificacaoEmailAtual = null;
+    _verificacaoNomeAtual  = null;
+}
+
+async function enviarNotifVerificacao() {
+    if (!_verificacaoEmailAtual) return;
+    const textoEl = document.getElementById('clVerificacaoTexto');
+    const erroEl  = document.getElementById('clVerificacaoErro');
+    const envBtn  = document.getElementById('clVerificacaoEnviar');
+    const mensagem = textoEl.value.trim();
+
+    if (!mensagem) {
+        erroEl.textContent   = 'Escreva as orientações antes de enviar.';
+        erroEl.style.display = '';
+        return;
+    }
+
+    erroEl.style.display = 'none';
+    envBtn.disabled      = true;
+    envBtn.textContent   = 'Enviando…';
+
+    try {
+        const resp = await fetch('/api/alunos-portal/notificar-verificacao', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                aluno_email: _verificacaoEmailAtual,
+                turma_id:    cursoAtivo?.id || null,
+                mensagem,
+            }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.erro || 'Erro ao enviar.');
+        const nomeParaToast = _verificacaoNomeAtual || _verificacaoEmailAtual;
+        fecharModalVerificacao();
+        await notificar('Orientação enviada', `Orientação enviada para ${nomeParaToast}.`, { tipo: 'ok' });
+    } catch (e) {
+        erroEl.textContent   = e.message;
+        erroEl.style.display = '';
+        envBtn.disabled      = false;
+        envBtn.textContent   = 'Enviar orientação';
     }
 }
 

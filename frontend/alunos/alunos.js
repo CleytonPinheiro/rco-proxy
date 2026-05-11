@@ -732,16 +732,18 @@ async function enviarSolicitacao() {
 /* ══ Sistema de Notificações Bloqueantes ════════════════════════════ */
 
 const NOTIF_ICONE = {
-    reabertura_aprovada: '✅',
-    reabertura_negada:   '❌',
-    prazo_proximo:       '⏰',
-    prazo_dias:          '📅',
+    reabertura_aprovada:  '✅',
+    reabertura_negada:    '❌',
+    prazo_proximo:        '⏰',
+    prazo_dias:           '📅',
+    verificacao_professor:'📋',
 };
 const NOTIF_COR = {
-    reabertura_aprovada: 'verde',
-    reabertura_negada:   'vermelho',
-    prazo_proximo:       'laranja',
-    prazo_dias:          'amarelo',
+    reabertura_aprovada:  'verde',
+    reabertura_negada:    'vermelho',
+    prazo_proximo:        'laranja',
+    prazo_dias:           'amarelo',
+    verificacao_professor:'azul',
 };
 
 function iniciarPollingNotificacoes() {
@@ -802,6 +804,22 @@ function mostrarProximaNotif() {
         btnAcao.style.display = '';
     } else {
         btnAcao.style.display = 'none';
+    }
+
+    /* Badge de privacidade para orientações de verificação */
+    const privBadgeId = 'paNotifPrivadaBadge';
+    let privBadge = document.getElementById(privBadgeId);
+    if (_notifAtual.tipo === 'verificacao_professor') {
+        if (!privBadge) {
+            privBadge = document.createElement('div');
+            privBadge.id        = privBadgeId;
+            privBadge.className = 'pa-notif-privada-badge';
+            privBadge.textContent = '🔒 Somente você pode ver esta mensagem';
+            msg.parentNode.insertBefore(privBadge, msg.nextSibling);
+        }
+        privBadge.style.display = '';
+    } else if (privBadge) {
+        privBadge.style.display = 'none';
     }
 
     /* Contador de fila */

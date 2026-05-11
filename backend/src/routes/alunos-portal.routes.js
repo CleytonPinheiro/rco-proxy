@@ -18,6 +18,7 @@ import pkg               from 'pg';
 import crypto            from 'crypto';
 import { auditLogger }   from '../services/AuditLogger.js';
 import { UAParser }      from 'ua-parser-js';
+import { requireAuth, requireFuncionalidade } from '../middleware/auth.middleware.js';
 
 const { Pool }   = pkg;
 const pool       = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -873,6 +874,118 @@ export function createAlunosPortalRouter() {
             res.status(500).json({ erro: 'Erro interno.' });
         }
     });
+
+    /* POST /api/alunos-portal/notificar-verificacao — professor envia orientação privada para aluno */
+    router.post('/alunos-portal/notificar-verificacao',
+        requireAuth,
+        requireFuncionalidade('classroom-escrita'),
+        async (req, res) => {
+            const { aluno_email, turma_id, mensagem } = req.body;
+
+            if (!aluno_email || !turma_id || !mensagem) {
+                return res.status(400).json({ erro: 'aluno_email, turma_id e mensagem são obrigatórios.' });
+            }
+            if (typeof mensagem !== 'string' || mensagem.trim().length === 0) {
+                return res.status(400).json({ erro: 'A mensagem não pode estar vazia.' });
+            }
+            if (mensagem.length > 1000) {
+                return res.status(400).json({ erro: 'Mensagem muito longa (máx 1000 caracteres).' });
+            }
+
+            try {
+                const cpf = req.userSession?.cpf;
+
+                /* ── Verificar que o professor logado é docente desta turma ── */
+                /* 1. Busca token Classroom do professor logado */
+                let token = null;
+                if (cpf) {
+                    try {
+                        const { rows } = await pool.query(
+                            `SELECT tokens FROM classroom_tokens WHERE cpf = $1`, [cpf]
+                        );
+                        if (rows[0]) token = rows[0].tokens;
+                    } catch (_) {}
+                }
+
+                if (!token) {
+                    return res.status(403).json({ erro: 'Você não tem uma conta Google Classroom conectada. Conecte sua conta antes de enviar orientações.' });
+                }
+
+                /* 2. Verifica no Classroom API que o professor é docente desta turma
+                      e que o aluno está matriculado — FAIL-CLOSED: qualquer erro bloqueia */
+                const id  = process.env.GOOGLE_CLIENT_ID;
+                const sec = process.env.GOOGLE_CLIENT_SECRET;
+                if (!id || !sec) {
+                    return res.status(503).json({ erro: 'Google Classroom não configurado no servidor.' });
+                }
+
+                let classroomClient;
+                try {
+                    classroomClient = new google.auth.OAuth2(id, sec);
+                    const tokenData = typeof token === 'string' ? JSON.parse(token) : token;
+                    classroomClient.setCredentials(tokenData);
+                    /* Renova token se necessário */
+                    if (tokenData.expiry_date && tokenData.expiry_date < Date.now()) {
+                        const { credentials } = await classroomClient.refreshAccessToken();
+                        classroomClient.setCredentials(credentials);
+                        /* Persiste token renovado */
+                        await pool.query(
+                            `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW() WHERE cpf = $2`,
+                            [JSON.stringify(credentials), cpf]
+                        ).catch(() => {});
+                    }
+                } catch (tokenErr) {
+                    console.error('[ALUNOS-PORTAL] Erro ao preparar token do professor:', tokenErr.message);
+                    return res.status(403).json({ erro: 'Token do Google Classroom inválido ou expirado. Reconecte sua conta.' });
+                }
+
+                const classroom = google.classroom({ version: 'v1', auth: classroomClient });
+
+                /* 2a. Professor é docente da turma? */
+                try {
+                    await classroom.courses.teachers.get({ courseId: String(turma_id), userId: 'me' });
+                } catch (teacherErr) {
+                    console.warn('[ALUNOS-PORTAL] Verificação de docência falhou:', teacherErr.message);
+                    return res.status(403).json({ erro: 'Você não é professor desta turma no Google Classroom.' });
+                }
+
+                /* 2b. Aluno está matriculado na turma? */
+                try {
+                    await classroom.courses.students.get({
+                        courseId: String(turma_id),
+                        userId:   aluno_email.trim().toLowerCase(),
+                    });
+                } catch (studentErr) {
+                    console.warn('[ALUNOS-PORTAL] Verificação de aluno na turma falhou:', studentErr.message);
+                    return res.status(403).json({ erro: 'Este aluno não está matriculado nesta turma no Google Classroom.' });
+                }
+
+                const professorNome = req.userSession?.nome || cpf || 'Professor';
+                await pool.query(
+                    `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                     VALUES ($1, 'verificacao_professor', $2, 'Orientação do Professor', $3, $4::jsonb)`,
+                    [
+                        aluno_email.trim().toLowerCase(),
+                        String(turma_id),
+                        mensagem.trim(),
+                        JSON.stringify({ turma_id: String(turma_id), professor: professorNome }),
+                    ]
+                );
+                auditLogger.registrar({
+                    usuarioId:   req.userSession?.id || null,
+                    usuarioNome: professorNome,
+                    acao:        'NOTIF_VERIFICACAO_ENVIADA',
+                    modulo:      'portal_aluno',
+                    detalhes:    { aluno_email, turma_id },
+                    ip:          req.ip,
+                }).catch(() => {});
+                res.json({ ok: true });
+            } catch (e) {
+                console.error('[ALUNOS-PORTAL] Erro ao enviar notificação de verificação:', e.message);
+                res.status(500).json({ erro: 'Erro interno ao enviar notificação.' });
+            }
+        }
+    );
 
     /* GET /api/alunos-portal/mural — nomes dos achievers por grupo (sem notas) */
     router.get('/alunos-portal/mural', async (req, res) => {

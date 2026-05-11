@@ -907,6 +907,22 @@ body.cl-popout .logo-icon { font-size: 15px; }
 [data-theme="dark"] .cl-btn-confirmar-rascunho { color: #fbbf24; border-color: #b45309; }
 [data-theme="dark"] .cl-btn-confirmar-rascunho:hover { background: color-mix(in srgb, #f59e0b 15%, #1e293b); }
 
+/* ── Botão "📋 Verificação" por aluno ── */
+.cl-btn-verificacao {
+    background: none;
+    border: 1px solid #bfdbfe;
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-size: .78rem;
+    cursor: pointer;
+    color: #1d4ed8;
+    transition: all .15s;
+    line-height: 1;
+}
+.cl-btn-verificacao:hover { background: #eff6ff; border-color: #1d4ed8; }
+[data-theme="dark"] .cl-btn-verificacao { color: #60a5fa; border-color: #1e40af; }
+[data-theme="dark"] .cl-btn-verificacao:hover { background: color-mix(in srgb, #3b82f6 15%, #1e293b); }
+
 /* ── Barra "Promover todos" ── */
 .cl-bulk-rascunho-bar {
     display: flex;

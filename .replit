@@ -10,10 +10,6 @@ packages = ["openssh", "glib", "nss", "nspr", "at-spi2-atk", "cups", "dbus", "li
 run = ["node", "backend/index.js"]
 deploymentTarget = "vm"
 
-[[ports]]
-localPort = 5000
-externalPort = 80
-
 [agent]
 expertMode = true
 

@@ -1219,6 +1219,27 @@ html, body {
     background: linear-gradient(135deg, #d97706, #92400e);
 }
 
+/* Variante azul — orientação privada do professor (verificacao_professor) */
+.pa-notif-overlay[data-cor="azul"] .pa-notif-head {
+    background: linear-gradient(135deg, #1a73e8, #1558b0);
+}
+
+/* Badge de privacidade exibido em notificações de verificação */
+.pa-notif-privada-badge {
+    display:       inline-flex;
+    align-items:   center;
+    gap:           5px;
+    margin-top:    10px;
+    padding:       4px 10px;
+    border-radius: 20px;
+    background:    #eff6ff;
+    border:        1px solid #bfdbfe;
+    color:         #1d4ed8;
+    font-size:     .75rem;
+    font-weight:   700;
+    letter-spacing: .3px;
+}
+
 /* ══ Tour Guiado ════════════════════════════════════════════════════ */
 
 /* Botão "?" no header */
