@@ -514,6 +514,12 @@ async function carregarColAnalise() {
             }
         }
         _colaCarregada = true;
+        const provaId = provaAberta.prova.id;
+        const prova = provas.find(p => p.id === provaId);
+        if (prova) {
+            prova.pares_suspeitos = (d.pares || []).filter(p => p.similaridade >= 70).length;
+        }
+        _atualizarBadgesCard(provaId);
         renderColAnalise(d);
     } catch (e) {
         $('prvDetCola').innerHTML = `<div class="prv-empty" style="color:#dc2626">Erro: ${escapeHtml(e.message)}</div>`;
