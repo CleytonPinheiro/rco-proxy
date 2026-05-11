@@ -625,6 +625,30 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* Contagem de flags 'investigar' agrupada por curso, restrita aos cursos do professor */
+    router.get('/classroom/provas/resumo-investigar', async (req, res) => {
+        const raw = (req.query.courseIds || '').trim();
+        if (!raw) return res.json({ resumo: {} });
+        const courseIds = raw.split(',').map(s => s.trim()).filter(Boolean);
+        if (courseIds.length === 0) return res.json({ resumo: {} });
+        try {
+            const { rows } = await pool.query(
+                `SELECT p.curso_id, COUNT(*)::int AS pendentes
+                   FROM classroom_prova_cola_flags f
+                   JOIN classroom_provas p ON p.id = f.prova_id
+                  WHERE f.status = 'investigar'
+                    AND p.curso_id = ANY($1)
+                  GROUP BY p.curso_id`,
+                [courseIds]
+            );
+            const resumo = {};
+            for (const r of rows) resumo[r.curso_id] = r.pendentes;
+            res.json({ resumo });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* Todas as flags 'investigar' de um curso (visão consolidada) */
     router.get('/classroom/provas/pendentes-investigar', async (req, res) => {
         const courseId = req.query.courseId;

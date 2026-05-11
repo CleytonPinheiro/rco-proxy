@@ -27,17 +27,54 @@ function prvToggleSegundo(ativo) {
     if (!ativo) $('prvfOutraTurma').checked = false;
 }
 
+function _resumoUrl(ids) {
+    return `/api/classroom/provas/resumo-investigar?courseIds=${encodeURIComponent(ids.join(','))}`;
+}
+
+async function atualizarResumoCurso() {
+    if (!cursos.length) return;
+    try {
+        const r = await fetch(_resumoUrl(cursos.map(c => c.id)), { credentials: 'include' });
+        if (!r.ok) return;
+        const resumo = (await r.json()).resumo || {};
+        const sel = $('prvCurso');
+        if (!sel) return;
+        for (const opt of sel.options) {
+            if (!opt.value) continue;
+            const n = resumo[opt.value] || 0;
+            const curso = cursos.find(c => c.id === opt.value);
+            if (!curso) continue;
+            const base = curso.nome + (curso.secao ? ' — ' + curso.secao : '');
+            opt.textContent = base + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
+        }
+    } catch (e) { /* silencia — é uma atualização visual opcional */ }
+}
+
 async function carregarCursos() {
     try {
-        const r = await fetch('/api/classroom/courses', { credentials: 'include' });
-        if (!r.ok) {
+        const rCursos = await fetch('/api/classroom/courses', { credentials: 'include' });
+        if (!rCursos.ok) {
             $('prvCurso').innerHTML = '<option>Erro — conecte o Classroom primeiro</option>';
             return;
         }
-        cursos = await r.json();
+        cursos = await rCursos.json();
         const sel = $('prvCurso');
         sel.innerHTML = '<option value="">Selecione um curso…</option>' +
             cursos.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}${c.secao ? ' — ' + escapeHtml(c.secao) : ''}</option>`).join('');
+        if (cursos.length > 0) {
+            const rResumo = await fetch(_resumoUrl(cursos.map(c => c.id)), { credentials: 'include' });
+            if (rResumo.ok) {
+                const resumo = (await rResumo.json()).resumo || {};
+                for (const opt of sel.options) {
+                    if (!opt.value) continue;
+                    const n = resumo[opt.value] || 0;
+                    if (n > 0) {
+                        const curso = cursos.find(c => c.id === opt.value);
+                        if (curso) opt.textContent = curso.nome + (curso.secao ? ' — ' + curso.secao : '') + ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}`;
+                    }
+                }
+            }
+        }
     } catch (e) {
         console.error(e);
     }
@@ -750,6 +787,7 @@ async function salvarFlag(provaId, alunoA, alunoB, status) {
         if (_renderColaTabela) _renderColaTabela();
         _atualizarBadgesCard(provaId);
         carregarFlagsPendentes();
+        atualizarResumoCurso();
     } catch (e) {
         await notificar('Erro ao salvar decisão', e.message, { tipo: 'danger' });
     }
