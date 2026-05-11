@@ -540,7 +540,68 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                   ORDER BY p.data_aplicacao DESC NULLS LAST, p.criada_em DESC`,
                 [cursoId]
             );
-            res.json({ provas: rows });
+
+            /* Calcula pares suspeitos (≥70% de similaridade) para cada prova.
+             * Apenas quando o cliente envia includeSuspiciousSummary=1 para evitar
+             * overhead desnecessário em integrações que não precisam do dado. */
+            const provaIds = rows.map(p => p.id);
+            let suspeitos = {};
+            const querySummary = req.query.includeSuspiciousSummary === '1';
+
+            if (querySummary && provaIds.length > 0) {
+                const { rows: subs } = await pool.query(
+                    `SELECT s.prova_id, s.variante_id, v.gabarito_json,
+                            s.aluno_email, s.marcacoes_json
+                       FROM classroom_prova_submissoes s
+                       JOIN classroom_prova_variantes v ON v.id = s.variante_id
+                      WHERE s.prova_id = ANY($1) AND s.eh_segundo_corretor = false`,
+                    [provaIds]
+                );
+
+                /* Agrupa por prova → variante */
+                const byProvaVariante = {};
+                for (const s of subs) {
+                    const key = `${s.prova_id}:${s.variante_id}`;
+                    if (!byProvaVariante[key]) {
+                        byProvaVariante[key] = { provaId: s.prova_id, gabarito: s.gabarito_json, alunos: [] };
+                    }
+                    byProvaVariante[key].alunos.push({ email: s.aluno_email, marcacoes: s.marcacoes_json || {} });
+                }
+
+                /* Conta pares suspeitos por prova */
+                for (const { provaId, gabarito, alunos } of Object.values(byProvaVariante)) {
+                    if (alunos.length < 2 || !gabarito) continue;
+
+                    const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+                    if (questoesComp.length === 0) continue;
+
+                    for (let i = 0; i < alunos.length; i++) {
+                        for (let j = i + 1; j < alunos.length; j++) {
+                            const marcA = alunos[i].marcacoes;
+                            const marcB = alunos[j].marcacoes;
+                            let identicas = 0;
+
+                            for (const q of questoesComp) {
+                                const qStr = String(q.questao);
+                                const respA = marcA[qStr] ?? null;
+                                const respB = marcB[qStr] ?? null;
+                                if (respA === null || respB === null) continue;
+                                const normA = Array.isArray(respA) ? respA.map(x => String(x).toUpperCase()).join(',') : String(respA).toLowerCase();
+                                const normB = Array.isArray(respB) ? respB.map(x => String(x).toUpperCase()).join(',') : String(respB).toLowerCase();
+                                if (normA === normB) identicas++;
+                            }
+
+                            const similaridade = Math.round((identicas / questoesComp.length) * 100);
+                            if (similaridade >= 70) {
+                                suspeitos[provaId] = (suspeitos[provaId] || 0) + 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            const provas = rows.map(p => ({ ...p, pares_suspeitos: suspeitos[p.id] || 0 }));
+            res.json({ provas });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

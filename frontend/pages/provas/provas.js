@@ -47,7 +47,7 @@ async function onCursoChange() {
 async function carregarProvas() {
     $('prvLista').innerHTML = '<div class="prv-empty">Carregando…</div>';
     try {
-        const r = await fetch(`/api/classroom/provas?courseId=${encodeURIComponent(cursoAtual)}`, { credentials: 'include' });
+        const r = await fetch(`/api/classroom/provas?courseId=${encodeURIComponent(cursoAtual)}&includeSuspiciousSummary=1`, { credentials: 'include' });
         const d = await r.json();
         provas = d.provas || [];
         if (provas.length === 0) {
@@ -62,6 +62,7 @@ async function carregarProvas() {
                             ? '<span class="prv-badge prv-badge-efetiva">Efetivada</span>'
                             : '<span class="prv-badge prv-badge-rascunho">Rascunho</span>'}
                         ${p.segundo_corretor_ativo ? '<span class="prv-badge prv-badge-2cor">2º corretor</span>' : ''}
+                        ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥70% de similaridade — abra a aba Análise de Cola para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
                     </div>
                     <div class="prv-card-meta">
                         <span>GradePen #${escapeHtml(p.gradepen_id)}</span>
