@@ -12,25 +12,6 @@ const selecionados    = new Set();
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-function toast(msg, tipo, dur) {
-    const el = document.getElementById('solToast');
-    if (!el) {
-        const bg = tipo === 'erro' ? '#dc2626' : tipo === 'aviso' ? '#d97706' : '#16a34a';
-        const old = document.getElementById('_toast_notif');
-        if (old) old.remove();
-        const t = document.createElement('div');
-        t.id = '_toast_notif';
-        t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;background:${bg};color:#fff;font-size:.9rem;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:360px;word-break:break-word;transition:opacity .3s`;
-        t.textContent = msg;
-        document.body.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 350); }, dur || 3500);
-        return;
-    }
-    clearTimeout(toast._t);
-    el.textContent = msg;
-    el.className = 'sol-toast sol-toast--visivel' + (tipo ? ' sol-toast--' + tipo : '');
-    toast._t = setTimeout(() => el.classList.remove('sol-toast--visivel'), dur || 3500);
-}
 
 async function carregar() {
     elLista.innerHTML = '<div class="sol-empty">Carregando…</div>';
@@ -293,16 +274,16 @@ async function bulkResponder(acao) {
 
         const aprovadasCR = (data.resultados || []).filter(r => r.classroomReaberto).length;
         if (acao === 'aprovar') {
-            toast(`✅ ${data.total} aprovada(s)${aprovadasCR ? ` — ${aprovadasCR} reaberta(s) no Classroom` : ''}.`, 'ok', 4500);
+            await notificar('Aprovadas', `✅ ${data.total} aprovada(s)${aprovadasCR ? ` — ${aprovadasCR} reaberta(s) no Classroom` : ''}.`, { tipo: 'ok' });
         } else {
-            toast(`❌ ${data.total} solicitação(ões) negada(s).`, 'ok');
+            await notificar('Negadas', `❌ ${data.total} solicitação(ões) negada(s).`, { tipo: 'ok' });
         }
     } catch (e) {
         ids.forEach(id => {
             const card = elLista.querySelector(`[data-id="${id}"] .sol-card`);
             if (card) card.style.opacity = '';
         });
-        toast('Erro: ' + e.message, 'erro', 8000);
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -398,19 +379,19 @@ async function executarResposta(id, acao, resposta) {
 
         if (acao === 'aprovar') {
             if (data.classroomReaberto) {
-                toast('✅ Aprovada e reaberta no Classroom!', 'ok', 4000);
+                await notificar('Aprovada', '✅ Aprovada e reaberta no Classroom!', { tipo: 'ok' });
             } else {
-                toast('✅ Aprovada! (verifique manualmente no Classroom)', 'ok', 5000);
+                await notificar('Aprovada', '✅ Aprovada! (verifique manualmente no Classroom)', { tipo: 'ok' });
             }
         } else {
-            toast('❌ Solicitação negada.', 'ok');
+            await notificar('Negada', '❌ Solicitação negada.', { tipo: 'ok' });
         }
 
         if (data.solicitacao) atualizarItem(data.solicitacao);
         else carregar();
     } catch (e) {
         if (card) card.style.opacity = '';
-        toast('Erro: ' + e.message, 'erro', 8000);
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     }
 }
 

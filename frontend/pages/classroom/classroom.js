@@ -145,7 +145,6 @@ const elTardiasFechar  = document.getElementById('clTardiasFechar');
 const elTardiasFecharBtn = document.getElementById('clTardiasFecharBtn');
 const elBusca          = document.getElementById('clBuscaAluno');
 const elFiltroStatus   = document.getElementById('clFiltroStatus');
-const elToast          = document.getElementById('clToast');
 const elTabs           = document.getElementById('clTabs');
 const elTabAtiv        = document.getElementById('clTabAtiv');
 const elTabSemGrupo    = document.getElementById('clTabSemGrupo');
@@ -163,19 +162,6 @@ const elNotasTitulo    = document.getElementById('clNotasTitulo');
 const elNotasBreadcrumb = document.getElementById('clNotasBreadcrumb');
 const elCorrecaoAviso  = document.getElementById('clCorrecaoAviso');
 
-/* ── Toast ── */
-let toastTimer;
-function toast(msg, tipo = '', duracao = 3500) {
-    clearTimeout(toastTimer);
-    elToast.textContent = msg;
-    elToast.className = `cl-toast cl-toast--visivel${tipo ? ' cl-toast--' + tipo : ''}`;
-    toastTimer = setTimeout(() => elToast.classList.remove('cl-toast--visivel'), duracao);
-}
-elToast.addEventListener('click', () => {
-    clearTimeout(toastTimer);
-    elToast.classList.remove('cl-toast--visivel');
-});
-
 /* ── Escala RCO: divide por 10, 1 casa decimal ── */
 const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
 
@@ -188,7 +174,7 @@ async function api(path, opts = {}) {
         body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
     if (r.status === 401) {
-        toast('Sessão expirada. Redirecionando para login...', 'erro');
+        notificar('Sessão expirada', 'Redirecionando para login...', { tipo: 'danger' });
         setTimeout(() => { window.location.href = '/login/'; }, 1500);
         throw new Error('Sessão expirada. Faça login novamente.');
     }
@@ -213,7 +199,7 @@ async function apiRaw(path, opts = {}) {
         body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
     if (r.status === 401) {
-        toast('Sessão expirada. Redirecionando para login...', 'erro');
+        notificar('Sessão expirada', 'Redirecionando para login...', { tipo: 'danger' });
         setTimeout(() => { window.location.href = '/login/'; }, 1500);
         throw new Error('Sessão expirada. Faça login novamente.');
     }
@@ -269,14 +255,14 @@ function auditMapKey(courseId) {
 ══════════════════════════════════════════════════════════════ */
 async function init() {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('sucesso')) toast('Conectado com sucesso ao Google Classroom!', 'ok');
+    if (params.has('sucesso')) await notificar('Conectado', 'Conectado com sucesso ao Google Classroom!', { tipo: 'ok' });
     if (params.has('erro')) {
         const erros = {
             acesso_negado:   'Acesso negado pelo Google.',
             sem_credenciais: 'Credenciais não configuradas.',
             falha_auth:      'Falha na autenticação Google.',
         };
-        toast(erros[params.get('erro')] || 'Erro desconhecido.', 'erro');
+        await notificar('Erro', erros[params.get('erro')] || 'Erro desconhecido.', { tipo: 'danger' });
     }
     if (params.has('sucesso') || params.has('erro')) {
         const keepTab = params.get('tab');
@@ -315,7 +301,7 @@ elBtnConectar.addEventListener('click', async () => {
         try { window.top.location.href = url; }
         catch (_) { window.open(url, '_blank', 'noopener'); }
     } catch (e) {
-        toast(e.message, 'erro');
+        await notificar('Erro', e.message, { tipo: 'danger' });
     }
 });
 
@@ -465,7 +451,7 @@ async function carregarCursos() {
         renderListaCursos(cursosComCor);
     } catch (e) {
         elCursoLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
-        toast(e.message, 'erro');
+        await notificar('Erro', e.message, { tipo: 'danger' });
     }
 }
 
@@ -625,7 +611,7 @@ async function selecionarCurso(curso, itemEl, cor) {
             elAtivLista.innerHTML   = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
             elAtivCount.textContent = 'Erro';
         }
-        toast(semPermissao ? 'Acesso bloqueado pelo Workspace.' : e.message, 'erro');
+        await notificar('Erro', semPermissao ? 'Acesso bloqueado pelo Workspace.' : e.message, { tipo: 'danger' });
     }
 
     // Se a aba auditoria estava ativa, preparar seletor
@@ -825,7 +811,7 @@ async function selecionarAtividade(ativ, itemEl) {
         }
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
-        toast(e.message, 'erro');
+        await notificar('Erro', e.message, { tipo: 'danger' });
     }
 }
 
@@ -987,11 +973,11 @@ async function salvarNota(input) {
         const sub = todasNotas.find(n => n.id === subId);
         if (sub) { sub.nota = notaInterno; sub.notaRascunho = null; }
         atualizarStats();
-        toast('Nota salva!', 'ok');
+        await notificar('Salvo', 'Nota salva!', { tipo: 'ok' });
         setTimeout(() => input.classList.remove('cl-nota-input--salva'), 2000);
     } catch (e) {
         input.value = original;
-        toast('Erro ao salvar nota: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao salvar nota: ' + e.message, { tipo: 'danger' });
     } finally {
         input.disabled = false;
     }
@@ -1036,11 +1022,11 @@ async function promoverRascunho(btn) {
             const info = document.querySelector('.cl-bulk-rascunho-info');
             if (info) info.textContent = `📝 ${restantes} nota${restantes !== 1 ? 's' : ''} em rascunho`;
         }
-        toast('Nota promovida!', 'ok');
+        await notificar('Promovida', 'Nota promovida!', { tipo: 'ok' });
     } catch (e) {
         btn.disabled    = false;
         btn.textContent = 'Confirmar';
-        toast('Erro ao promover: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao promover: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -1063,8 +1049,8 @@ async function promoverTodosRascunhos() {
     }
     renderNotas();
     atualizarStats();
-    if (fail) toast(`${ok} promovida${ok !== 1 ? 's' : ''}, ${fail} com erro`, 'erro');
-    else toast(`${ok} nota${ok !== 1 ? 's' : ''} promovida${ok !== 1 ? 's' : ''}!`, 'ok');
+    if (fail) await notificar('Erro', `${ok} promovida${ok !== 1 ? 's' : ''}, ${fail} com erro`, { tipo: 'danger' });
+    else await notificar('Promovidas', `${ok} nota${ok !== 1 ? 's' : ''} promovida${ok !== 1 ? 's' : ''}!`, { tipo: 'ok' });
 }
 
 /* ── Devolver entrega ── */
@@ -1080,9 +1066,9 @@ async function devolverEntrega(btn) {
         if (!r.ok) {
             const data = await r.json().catch(() => ({}));
             if (r.status === 403) {
-                toast(data.erro || 'Sem permissão para devolver. Faça a devolução pelo Google Classroom.', 'alerta');
+                await notificar('Sem permissão', data.erro || 'Sem permissão para devolver. Faça a devolução pelo Google Classroom.', { tipo: 'info' });
             } else {
-                toast('Erro: ' + (data.erro || r.statusText), 'erro');
+                await notificar('Erro', 'Erro: ' + (data.erro || r.statusText), { tipo: 'danger' });
             }
             btn.disabled    = false;
             btn.textContent = 'Devolver';
@@ -1090,11 +1076,11 @@ async function devolverEntrega(btn) {
         }
         const sub = todasNotas.find(n => n.id === subId);
         if (sub) sub.estado = 'RETURNED';
-        toast('Entrega devolvida!', 'ok');
+        await notificar('Devolvida', 'Entrega devolvida!', { tipo: 'ok' });
         atualizarStats();
         renderNotas();
     } catch (e) {
-        toast('Erro: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
         btn.disabled    = false;
         btn.textContent = 'Devolver';
     }
@@ -1117,9 +1103,9 @@ elBtnAtualizar.addEventListener('click', async () => {
     }
 });
 
-elBtnExportar.addEventListener('click', () => {
-    if (grupoAtivo)      { exportarGrupoCSV();  return; }
-    if (auditAtivAtiva)  { exportarAuditCSV();  return; }
+elBtnExportar.addEventListener('click', async () => {
+    if (grupoAtivo)      { await exportarGrupoCSV();  return; }
+    if (auditAtivAtiva)  { await exportarAuditCSV();  return; }
     const lista  = filtrarNotas();
     const titulo = ativAtiva?.titulo || 'atividade';
     const curso  = cursoAtivo?.nome  || 'disciplina';
@@ -1135,7 +1121,7 @@ elBtnExportar.addEventListener('click', () => {
     const a    = document.createElement('a');
     a.href = url; a.download = `${curso} – ${titulo}.csv`.replace(/[\\/:*?"<>|]/g,'_');
     a.click(); URL.revokeObjectURL(url);
-    toast('CSV exportado!', 'ok');
+    await notificar('Exportado', 'CSV exportado!', { tipo: 'ok' });
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -1234,8 +1220,8 @@ function renderSemGrupo() {
     });
     btnAdd.addEventListener('click', async () => {
         const grupoId = destEl.value;
-        if (!grupoId) { toast('Selecione um grupo de destino.', 'erro'); return; }
-        if (semGrupoSel.size === 0) { toast('Selecione ao menos uma atividade.', 'erro'); return; }
+        if (!grupoId) { await notificar('Atenção', 'Selecione um grupo de destino.', { tipo: 'danger' }); return; }
+        if (semGrupoSel.size === 0) { await notificar('Atenção', 'Selecione ao menos uma atividade.', { tipo: 'danger' }); return; }
         const ativs = semGrupoCache
             .filter(a => semGrupoSel.has(a.id))
             .map(a => ({ atividade_id: a.id, atividade_titulo: a.titulo, pontos_max: a.pontos ?? null }));
@@ -1244,14 +1230,14 @@ function renderSemGrupo() {
             const r = await api(`/groups/${grupoId}/activities`, { method: 'POST', body: { atividades: ativs } });
             const nIgn = (r.ignoradas || []).length;
             if (nIgn > 0) {
-                toast(`${r.inseridas} adicionada(s); ${nIgn} ignorada(s) — já estavam em outro grupo.`, nIgn === ativs.length ? 'erro' : 'ok', 5000);
+                await notificar('Adicionadas', `${r.inseridas} adicionada(s); ${nIgn} ignorada(s) — já estavam em outro grupo.`, { tipo: nIgn === ativs.length ? 'danger' : 'ok' });
             } else {
-                toast(`${r.inseridas} atividade(s) adicionada(s) ao grupo.`, 'ok');
+                await notificar('Adicionadas', `${r.inseridas} atividade(s) adicionada(s) ao grupo.`, { tipo: 'ok' });
             }
             semGrupoSel.clear();
             await Promise.all([carregarSemGrupo(), carregarGrupos()]);
         } catch (e) {
-            toast('Erro ao adicionar: ' + e.message, 'erro');
+            await notificar('Erro', 'Erro ao adicionar: ' + e.message, { tipo: 'danger' });
         } finally {
             btnAdd.disabled = false; btnAdd.textContent = 'Adicionar';
         }
@@ -1507,9 +1493,9 @@ elBtnLivro.addEventListener('click', async () => {
             if (Number(el.dataset.id) === grupoAtivo.id) el.classList.add('cl-grupo-item--ativo');
         });
 
-        toast(novoEstado ? 'Grupo marcado como lançado no livro!' : 'Marcação removida.', 'ok');
+        await notificar('Livro', novoEstado ? 'Grupo marcado como lançado no livro!' : 'Marcação removida.', { tipo: 'ok' });
     } catch (e) {
-        toast(e.message, 'erro');
+        await notificar('Erro', e.message, { tipo: 'danger' });
     } finally {
         elBtnLivro.disabled = false;
     }
@@ -1636,7 +1622,7 @@ elBtnFecharNota.addEventListener('click', async () => {
         const restaurarDueDate = document.getElementById('clAbrirRestaurarDueDate')?.checked ?? false;
         try {
             elBtnFecharNota.disabled = true;
-            if (restaurarDueDate) toast('Reabrindo notas e restaurando prazos no Classroom...', 'info');
+            if (restaurarDueDate) notificar('Aguarde', 'Reabrindo notas e restaurando prazos no Classroom...', { tipo: 'info' });
             const r = await api(`/groups/${grupoAtivo.id}/abrir`, { method: 'POST', body: { restaurarDueDate } });
             grupoAtivo.dataFechamento = null;
             atualizarBtnFecharNota(grupoAtivo);
@@ -1645,22 +1631,22 @@ elBtnFecharNota.addEventListener('click', async () => {
             if (r.classroomSync?.tentou) {
                 const { sucessos, erros } = r.classroomSync;
                 if (erros.length === 0) {
-                    toast(`Notas reabertas! Prazo restaurado em ${sucessos} atividade(s).`, 'ok');
+                    await notificar('Reabertas', `Notas reabertas! Prazo restaurado em ${sucessos} atividade(s).`, { tipo: 'ok' });
                 } else {
-                    toast(`Notas reabertas. ${sucessos} restaurada(s), ${erros.length} com erro.`, 'alerta');
+                    await notificar('Reabertas', `Notas reabertas. ${sucessos} restaurada(s), ${erros.length} com erro.`, { tipo: 'info' });
                 }
             } else {
-                toast('Notas reabertas!', 'ok');
+                await notificar('Reabertas', 'Notas reabertas!', { tipo: 'ok' });
             }
             elBtnFecharNota.disabled = false;
-        } catch (e) { elBtnFecharNota.disabled = false; toast('Erro ao reabrir: ' + e.message, 'erro'); }
+        } catch (e) { elBtnFecharNota.disabled = false; await notificar('Erro', 'Erro ao reabrir: ' + e.message, { tipo: 'danger' }); }
     } else {
-        toast('Recalculando dados do Classroom antes de fechar...', 'info');
+        notificar('Aguarde', 'Recalculando dados do Classroom antes de fechar...', { tipo: 'info' });
         elBtnFecharNota.disabled = true;
         try {
             await carregarResumoGrupo(grupoAtivo);
         } catch (e) {
-            toast('Erro ao recalcular: ' + e.message, 'erro');
+            await notificar('Erro', 'Erro ao recalcular: ' + e.message, { tipo: 'danger' });
             elBtnFecharNota.disabled = false;
             return;
         }
@@ -1885,7 +1871,7 @@ elBtnFecharNota.addEventListener('click', async () => {
                     const atvId = item?.dataset?.atvId;
                     if (!atvId) return;
                     const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
-                    if (!ativ) { toast('Atividade não encontrada.', 'erro'); return; }
+                    if (!ativ) { notificar('Erro', 'Atividade não encontrada.', { tipo: 'danger' }); return; }
                     document.getElementById('clConfirmCancelar').click();
                     if (viewMode !== 'atividades') elTabAtiv.click();
                     setTimeout(async () => {
@@ -1906,7 +1892,7 @@ elBtnFecharNota.addEventListener('click', async () => {
         const syncClassroom = document.getElementById('clFecharSyncClassroom')?.checked ?? false;
         try {
             elBtnFecharNota.disabled = true;
-            if (syncClassroom) toast('Fechando notas e sincronizando prazos com o Classroom...', 'info');
+            if (syncClassroom) notificar('Aguarde', 'Fechando notas e sincronizando prazos com o Classroom...', { tipo: 'info' });
             const r = await api(`/groups/${grupoAtivo.id}/fechar`, { method: 'POST', body: { syncClassroom } });
             grupoAtivo.dataFechamento = r.dataFechamento;
             atualizarBtnFecharNota(grupoAtivo);
@@ -1915,15 +1901,15 @@ elBtnFecharNota.addEventListener('click', async () => {
             if (r.classroomSync?.tentou) {
                 const { sucessos, erros } = r.classroomSync;
                 if (erros.length === 0) {
-                    toast(`Notas fechadas! Prazo atualizado em ${sucessos} atividade(s) no Classroom.`, 'ok');
+                    await notificar('Fechadas', `Notas fechadas! Prazo atualizado em ${sucessos} atividade(s) no Classroom.`, { tipo: 'ok' });
                 } else {
-                    toast(`Notas fechadas. ${sucessos} atividade(s) sincronizadas, ${erros.length} com erro.`, 'alerta');
+                    await notificar('Fechadas', `Notas fechadas. ${sucessos} atividade(s) sincronizadas, ${erros.length} com erro.`, { tipo: 'info' });
                 }
             } else {
-                toast('Notas fechadas! Entregas futuras serão registradas como tardias.', 'ok');
+                await notificar('Fechadas', 'Notas fechadas! Entregas futuras serão registradas como tardias.', { tipo: 'ok' });
             }
             elBtnFecharNota.disabled = false;
-        } catch (e) { elBtnFecharNota.disabled = false; toast('Erro ao fechar: ' + e.message, 'erro'); }
+        } catch (e) { elBtnFecharNota.disabled = false; await notificar('Erro', 'Erro ao fechar: ' + e.message, { tipo: 'danger' }); }
     }
 });
 
@@ -1977,12 +1963,12 @@ elTardiasDetectar.addEventListener('click', async () => {
             method: 'POST',
             body: { courseId: cursoAtivo.id },
         });
-        toast(`${r.total} entrega(s) tardia(s) detectada(s).`, r.total > 0 ? 'alerta' : 'ok');
+        await notificar('Tardias', `${r.total} entrega(s) tardia(s) detectada(s).`, { tipo: r.total > 0 ? 'info' : 'ok' });
         const tardias = await api(`/groups/${grupoAtivo.id}/tardias`);
         renderTardias(tardias);
         verificarTardiasExistentes(grupoAtivo.id);
     } catch (e) {
-        toast('Erro ao detectar tardias: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao detectar tardias: ' + e.message, { tipo: 'danger' });
     } finally {
         elTardiasDetectar.disabled = false;
         elTardiasDetectar.textContent = 'Verificar novas entregas tardias';
@@ -2115,7 +2101,7 @@ async function carregarResumoGrupo(grupo) {
             detectarTardiasBackground(grupo);
         }
 
-        toast('Dados atualizados do Classroom', 'ok');
+        await notificar('Atualizado', 'Dados atualizados do Classroom', { tipo: 'ok' });
 
         /* Sincroniza notas Quizizz (draftGrade → assignedGrade) em background */
         syncQuizizzBackground(grupo, resumo.atividades);
@@ -2125,7 +2111,7 @@ async function carregarResumoGrupo(grupo) {
 
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
-        toast(e.message, 'erro');
+        await notificar('Erro', e.message, { tipo: 'danger' });
     } finally {
         elBtnAtualizar.disabled = false;
         elBtnAtualizarIcon.style.animation = '';
@@ -2193,7 +2179,7 @@ function renderAvisoCorrecao() {
             const atvId = link.dataset.atvId;
             const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
             if (!ativ) {
-                toast('Atividade não encontrada. Navegue manualmente pela lista.', 'erro');
+                notificar('Erro', 'Atividade não encontrada. Navegue manualmente pela lista.', { tipo: 'danger' });
                 return;
             }
             if (grupoAtivo) _grupoAnterior = grupoAtivo;
@@ -2232,7 +2218,7 @@ async function syncQuizizzBackground(grupo, atividades = []) {
             body: { courseId: cursoAtivo.id },
         });
         if (r.sincronizados > 0) {
-            toast(`${r.sincronizados} nota(s) auto-corrigida(s) publicada(s).`, 'ok');
+            await notificar('Quizizz', `${r.sincronizados} nota(s) auto-corrigida(s) publicada(s).`, { tipo: 'ok' });
             await carregarResumoGrupo(grupo);
         }
     } catch (_) {} finally {
@@ -2602,7 +2588,7 @@ function bindColHeaders(container) {
     });
 }
 
-function exportarGrupoCSV() {
+async function exportarGrupoCSV() {
     const curso = cursoAtivo?.nome || 'disciplina';
     let csv = `Disciplina,Grupo,Meta de pontos (RCO)\n"${curso}","${grupoAtivo?.nome || ''}","${grupoAtivo?.pontosMeta ? rco(grupoAtivo.pontosMeta) : ''}"\n\n`;
     csv    += 'Nº,Aluno,Email,Soma,Pendentes\n';
@@ -2617,7 +2603,7 @@ function exportarGrupoCSV() {
     const a    = document.createElement('a');
     a.href = url; a.download = `${curso} – ${grupoAtivo?.nome || 'grupo'}.csv`.replace(/[\\/:*?"<>|]/g,'_');
     a.click(); URL.revokeObjectURL(url);
-    toast('CSV exportado!', 'ok');
+    await notificar('Exportado', 'CSV exportado!', { tipo: 'ok' });
 }
 
 function imprimirRelatorioGrupo() {
@@ -2761,7 +2747,7 @@ function imprimirRelatorioGrupo() {
     </body></html>`;
 
     const win = window.open('', '_blank');
-    if (!win) { toast('Permite pop-ups para imprimir.', 'erro'); return; }
+    if (!win) { notificar('Erro', 'Permite pop-ups para imprimir.', { tipo: 'danger' }); return; }
     win.document.write(html);
     win.document.close();
     win.focus();
@@ -3481,8 +3467,8 @@ const elCloneConfirmar = document.getElementById('clCloneConfirmar');
 function fecharCloneModal() { elCloneModal.classList.remove('cl-modal-overlay--visivel'); }
 
 function abrirCloneTrimestreModal() {
-    if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }
-    if (!gruposCache.length) { toast('Não há grupos para clonar.', 'erro'); return; }
+    if (!cursoAtivo) { notificar('Atenção', 'Selecione uma disciplina primeiro.', { tipo: 'danger' }); return; }
+    if (!gruposCache.length) { notificar('Atenção', 'Não há grupos para clonar.', { tipo: 'danger' }); return; }
 
     /* Origens disponíveis: períodos únicos com pelo menos 1 grupo NORMAL */
     const periodos = {};
@@ -3495,7 +3481,7 @@ function abrirCloneTrimestreModal() {
     const lista = Object.values(periodos).sort((a, b) =>
         b.ano !== a.ano ? b.ano - a.ano : b.trimestre - a.trimestre);
 
-    if (!lista.length) { toast('Não há grupos normais para clonar.', 'erro'); return; }
+    if (!lista.length) { notificar('Atenção', 'Não há grupos normais para clonar.', { tipo: 'danger' }); return; }
 
     elCloneOrigem.innerHTML = lista.map(p =>
         `<option value="${p.trimestre}|${p.ano}">${p.trimestre}º Trimestre — ${p.ano} (${p.n} grupo${p.n !== 1 ? 's' : ''})</option>`
@@ -3548,7 +3534,7 @@ elCloneConfirmar.addEventListener('click', async () => {
     const [tOrig, aOrig] = (elCloneOrigem.value || '|').split('|').map(Number);
     const tDest = Number(elCloneDestTri.value);
     const aDest = Number(elCloneDestAno.value);
-    if (!tOrig || !aOrig || !tDest || !aDest) { toast('Preencha origem e destino.', 'erro'); return; }
+    if (!tOrig || !aOrig || !tDest || !aDest) { await notificar('Atenção', 'Preencha origem e destino.', { tipo: 'danger' }); return; }
     elCloneConfirmar.disabled = true;
     elCloneConfirmar.textContent = 'Clonando...';
     try {
@@ -3556,12 +3542,12 @@ elCloneConfirmar.addEventListener('click', async () => {
             method: 'POST',
             body: { courseId: cursoAtivo.id, trimestreOrigem: tOrig, anoOrigem: aOrig, trimestreDestino: tDest, anoDestino: aDest },
         });
-        toast(`${r.grupos.length} grupo(s) clonado(s) para o ${tDest}º Trimestre/${aDest}.`, 'ok');
+        await notificar('Clonados', `${r.grupos.length} grupo(s) clonado(s) para o ${tDest}º Trimestre/${aDest}.`, { tipo: 'ok' });
         fecharCloneModal();
         _allGroupsCache = null;
         await carregarGrupos();
     } catch (e) {
-        toast('Erro ao clonar: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao clonar: ' + e.message, { tipo: 'danger' });
     } finally {
         elCloneConfirmar.disabled = false;
         elCloneConfirmar.textContent = 'Clonar grupos';
@@ -3668,7 +3654,7 @@ document.getElementById('clFontesModalCancelar').addEventListener('click', fecha
 elFontesModal.addEventListener('click', e => { if (e.target === elFontesModal) fecharFontesSelecaoModal(); });
 
 document.getElementById('clFontesModalConfirmar').addEventListener('click', () => {
-    if (!_fontesModalSelGid) { toast('Selecione um grupo.', 'alerta'); return; }
+    if (!_fontesModalSelGid) { notificar('Atenção', 'Selecione um grupo.', { tipo: 'info' }); return; }
     if (_fontesModalEditIdx >= 0) {
         _fontesModalData[_fontesModalEditIdx].fonteGrupoId = _fontesModalSelGid;
     } else {
@@ -3862,12 +3848,12 @@ elAtivLista.addEventListener('click', async e => {
                 const contemAtiv = grupoAtivo.atividades?.some(a => a.atividade_id === ativId);
                 if (contemAtiv) selecionarGrupo(grupoAtivo, document.querySelector('.cl-grupo-item--ativo'));
             }
-            toast(`Pontos atualizados em todos os grupos (${rco(valInterno)} pts)`, 'ok');
+            await notificar('Pontos', `Pontos atualizados em todos os grupos (${rco(valInterno)} pts)`, { tipo: 'ok' });
         } catch (err) {
             // Reverte o badge para o valor original
             newSpan.textContent = rco(currentInterno) + ' pts';
             if (cacheEntry) cacheEntry.pontos = currentInterno;
-            toast('Erro ao salvar pontos: ' + err.message, 'erro');
+            await notificar('Erro', 'Erro ao salvar pontos: ' + err.message, { tipo: 'danger' });
         }
     };
 
@@ -3890,15 +3876,15 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
         ? new Date(elRecDataInicio.value).toISOString()
         : null;
 
-    if (!nome) { elGrupoNome.focus(); toast('Informe o nome do grupo.', 'erro'); return; }
-    if (!cursoAtivo) { toast('Selecione uma disciplina primeiro.', 'erro'); return; }
+    if (!nome) { elGrupoNome.focus(); await notificar('Atenção', 'Informe o nome do grupo.', { tipo: 'danger' }); return; }
+    if (!cursoAtivo) { await notificar('Atenção', 'Selecione uma disciplina primeiro.', { tipo: 'danger' }); return; }
     if (tipo === 'recuperacao' && !grupoOrigemId) {
-        toast('Selecione o grupo de origem da recuperação.', 'erro');
+        await notificar('Atenção', 'Selecione o grupo de origem da recuperação.', { tipo: 'danger' });
         elRecOrigemSel.focus();
         return;
     }
     if (tipo === 'recuperacao' && !dataInicio) {
-        toast('Informe a data de início da recuperação.', 'erro');
+        await notificar('Atenção', 'Informe a data de início da recuperação.', { tipo: 'danger' });
         elRecDataInicio.focus();
         return;
     }
@@ -3946,7 +3932,7 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
 
         fecharModal();
         _allGroupsCache = null;
-        toast('Grupo salvo!', 'ok');
+        await notificar('Salvo', 'Grupo salvo!', { tipo: 'ok' });
         await carregarGrupos();
         if (viewMode === 'grupos') {
             elAtivCount.textContent = `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`;
@@ -3961,7 +3947,7 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
             }
         }
     } catch (e) {
-        toast('Erro ao salvar: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao salvar: ' + e.message, { tipo: 'danger' });
     } finally {
         btn.disabled    = false;
         btn.textContent = 'Salvar grupo';
@@ -3975,9 +3961,9 @@ async function excluirGrupo(grupo) {
         if (grupoAtivo?.id === grupo.id) { grupoAtivo = null; resetColuna3(); }
         await carregarGrupos();
         elAtivCount.textContent = `${gruposCache.length} grupo${gruposCache.length !== 1 ? 's' : ''}`;
-        toast('Grupo excluído.', 'ok');
+        await notificar('Excluído', 'Grupo excluído.', { tipo: 'ok' });
     } catch (e) {
-        toast('Erro ao excluir: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao excluir: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -4159,8 +4145,8 @@ document.getElementById('clAuditChipAlter').addEventListener('click', () => {
 document.getElementById('clBtnRodarAudit').addEventListener('click', rodarAuditoria);
 
 async function rodarAuditoria() {
-    if (!cursoAtivo) { toast('Selecione uma disciplina do Classroom primeiro.', 'erro'); return; }
-    if (!auditCodClasse) { toast('Selecione a turma/disciplina correspondente no RCO.', 'erro'); return; }
+    if (!cursoAtivo) { await notificar('Atenção', 'Selecione uma disciplina do Classroom primeiro.', { tipo: 'danger' }); return; }
+    if (!auditCodClasse) { await notificar('Atenção', 'Selecione a turma/disciplina correspondente no RCO.', { tipo: 'danger' }); return; }
 
     const btn = document.getElementById('clBtnRodarAudit');
     btn.disabled    = true;
@@ -4194,10 +4180,10 @@ async function rodarAuditoria() {
 
         elAtivCount.textContent = `${resultado.atividades.length} atividade${resultado.atividades.length !== 1 ? 's' : ''} auditadas`;
         renderAuditAtividades();
-        toast(`Auditoria concluída: ${totalAusencias} ausência${totalAusencias !== 1 ? 's' : ''} detectada${totalAusencias !== 1 ? 's' : ''}.`, totalAusencias > 0 ? '' : 'ok');
+        await notificar('Auditoria', `Auditoria concluída: ${totalAusencias} ausência${totalAusencias !== 1 ? 's' : ''} detectada${totalAusencias !== 1 ? 's' : ''}.`, { tipo: totalAusencias > 0 ? 'info' : 'ok' });
     } catch (e) {
         elAuditAtivLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
-        toast('Erro na auditoria: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro na auditoria: ' + e.message, { tipo: 'danger' });
     } finally {
         btn.disabled    = false;
         btn.textContent = 'Analisar frequência';
@@ -4293,7 +4279,7 @@ async function selecionarAuditAtiv(ativ, itemEl) {
         renderAuditDetalhe(lista, ativ, pendentes > 0);
     } catch (e) {
         elNotasLista.innerHTML = `<div class="cl-empty-state" style="color:#dc2626">${e.message}</div>`;
-        toast(e.message, 'erro');
+        await notificar('Erro', e.message, { tipo: 'danger' });
     }
 }
 
@@ -4393,16 +4379,16 @@ async function aplicarZeroIndividual(userId, subId, nome, ativ) {
             },
         });
 
-        toast(`Ausência registrada para ${nome}.`, 'ok');
+        await notificar('Ausência', `Ausência registrada para ${nome}.`, { tipo: 'ok' });
         await selecionarAuditAtiv(ativ, document.querySelector('.cl-audit-ativ-item--ativo'));
     } catch (e) {
-        toast('Erro ao registrar ausência: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao registrar ausência: ' + e.message, { tipo: 'danger' });
     }
 }
 
 async function aplicarZerosTodos(ausentesLista, ativ) {
     const pendentes = ausentesLista.filter(l => !l.sub?.ausente);
-    if (!pendentes.length) { toast('Todos os ausentes já foram registrados.', 'ok'); return; }
+    if (!pendentes.length) { await notificar('Pronto', 'Todos os ausentes já foram registrados.', { tipo: 'ok' }); return; }
     if (!await confirmar(`Registrar ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`, { titulo: 'Registrar todos os ausentes', confirmLabel: 'Registrar todos', icone: '📋' })) return;
 
     const btn = document.getElementById('clBtnAplicarTodos');
@@ -4429,11 +4415,11 @@ async function aplicarZerosTodos(ausentesLista, ativ) {
         }
     }
 
-    toast(`${ok} ausência${ok !== 1 ? 's' : ''} registrada${ok !== 1 ? 's' : ''}${erros > 0 ? ` (${erros} erro${erros !== 1 ? 's' : ''})` : ''}.`, erros > 0 ? '' : 'ok');
+    await notificar('Ausências', `${ok} ausência${ok !== 1 ? 's' : ''} registrada${ok !== 1 ? 's' : ''}${erros > 0 ? ` (${erros} erro${erros !== 1 ? 's' : ''})` : ''}.`, { tipo: erros > 0 ? 'info' : 'ok' });
     await selecionarAuditAtiv(ativ, document.querySelector('.cl-audit-ativ-item--ativo'));
 }
 
-function exportarAuditCSV() {
+async function exportarAuditCSV() {
     if (!auditAtivAtiva || !auditResultado) return;
     const curso = cursoAtivo?.nome || 'disciplina';
     const ativ  = auditAtivAtiva;
@@ -4450,7 +4436,7 @@ function exportarAuditCSV() {
     const a    = document.createElement('a');
     a.href = url; a.download = `Auditoria – ${curso} – ${ativ.titulo} – ${ativ.data.replace('/','.')}.csv`.replace(/[\\/:*?"<>|]/g,'_');
     a.click(); URL.revokeObjectURL(url);
-    toast('CSV exportado!', 'ok');
+    await notificar('Exportado', 'CSV exportado!', { tipo: 'ok' });
 }
 
 /* ── Filtro de status (adicionar opção "Ausente") ── */
@@ -4855,11 +4841,11 @@ elRcoModal.addEventListener('click', e => { if (e.target === elRcoModal) fecharM
 /* Abre o modal e carrega avaliações */
 async function abrirModalRco() {
     if (!grupoAtivo?.codClasseRco) {
-        toast('Este grupo não tem código de classe RCO configurado.', 'erro');
+        await notificar('Atenção', 'Este grupo não tem código de classe RCO configurado.', { tipo: 'danger' });
         return;
     }
     if (!grupoResumoData?.alunosResumo?.length) {
-        toast('Carregue as notas do grupo antes de lançar.', 'erro');
+        await notificar('Atenção', 'Carregue as notas do grupo antes de lançar.', { tipo: 'danger' });
         return;
     }
 
@@ -4976,7 +4962,7 @@ async function criarAvaliacaoRco() {
     const statusEl = document.getElementById('clRcoCriarStatus');
 
     if (!tipo || !data) {
-        toast('Selecione o tipo e a data da avaliação.', 'erro');
+        await notificar('Atenção', 'Selecione o tipo e a data da avaliação.', { tipo: 'danger' });
         return;
     }
 
@@ -4996,14 +4982,14 @@ async function criarAvaliacaoRco() {
 
         statusEl.textContent = 'Avaliação criada com sucesso! Recarregando lista…';
         statusEl.className   = 'cl-rco-criar-status cl-rco-criar-status--ok';
-        toast('Avaliação criada no RCO! Recarregando…', 'ok');
+        await notificar('Criada', 'Avaliação criada no RCO! Recarregando…', { tipo: 'ok' });
 
         await new Promise(r => setTimeout(r, 1500));
         await abrirModalRco();
     } catch (e) {
         statusEl.textContent = `Erro: ${e.message}`;
         statusEl.className   = 'cl-rco-criar-status cl-rco-criar-status--erro';
-        toast(`Erro ao criar avaliação: ${e.message}`, 'erro', 8000);
+        await notificar('Erro', `Erro ao criar avaliação: ${e.message}`, { tipo: 'danger' });
     } finally {
         btn.disabled    = false;
         btn.textContent = 'Criar no RCO';
@@ -5288,7 +5274,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         });
 
         if (resp.apenasLocal) {
-            toast(`💾 ${resp.msg}`, 'ok', 6000);
+            await notificar('Salvo localmente', `💾 ${resp.msg}`, { tipo: 'ok' });
             fecharModalRco();
             return;
         }
@@ -5302,11 +5288,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
             };
             elRcoModalSalvarDb.style.display  = '';   /* mostra botão de recuperação */
             elRcoModalConfirmar.style.display = 'none'; /* esconde o confirmar */
-            toast(
-                '⚠️ Notas enviadas ao RCO com sucesso, mas falha ao salvar no banco local. ' +
-                'Use o botão "Salvar no banco" para tentar novamente sem reenviar ao RCO.',
-                'alerta'
-            );
+            await notificar('Atenção', '⚠️ Notas enviadas ao RCO com sucesso, mas falha ao salvar no banco local. Use o botão "Salvar no banco" para tentar novamente sem reenviar ao RCO.', { tipo: 'info' });
             console.error('[CLASSROOM] Falha no banco após lançamento RCO:', resp.dbErro);
             return; /* mantém modal aberto */
         }
@@ -5315,14 +5297,14 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         const verMsg = resp.rcoVerificado
             ? ' ✓ valores confirmados no RCO.'
             : ' (verificação pós-lançamento indisponível).';
-        toast(`✅ Notas lançadas e salvas! (${mapeados}/${total} alunos)${verMsg}`, 'ok');
+        await notificar('Lançadas', `✅ Notas lançadas e salvas! (${mapeados}/${total} alunos)${verMsg}`, { tipo: 'ok' });
         fecharModalRco();
     } catch (e) {
         const msg = e.message || 'Erro desconhecido';
 
         /* Detecta erro de recuperação não suportada pelo RCO */
         if (/recupera[cç][aã]o.*n[aã]o.suportad/i.test(msg) || (e.body?.tipo === 'recuperacao_nao_suportada')) {
-            toast('⚠️ O RCO não permite lançar notas de recuperação via API. Lance manualmente no site do RCO Digital.', 'alerta', 10000);
+            await notificar('RCO', '⚠️ O RCO não permite lançar notas de recuperação via API. Lance manualmente no site do RCO Digital.', { tipo: 'info' });
             console.warn('[CLASSROOM] Recuperação não suportada pela API do RCO.');
             fecharModalRco();
             return;
@@ -5331,7 +5313,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         /* Detecta erro do RCO sobre conteúdos — abre modal de seleção */
         const erroConteudos = /conteúdos?\s*(vinculad|obrigat)|sem\s*conteúdos?|registrar.*conteúd|conteúd.*vinculad/i.test(msg);
         if (erroConteudos) {
-            toast('⚠️ Avaliação sem conteúdos. Selecione abaixo e tente novamente.', 'alerta', 6000);
+            await notificar('Conteúdos', '⚠️ Avaliação sem conteúdos. Selecione abaixo e tente novamente.', { tipo: 'info' });
             console.warn('[CLASSROOM] Erro de conteúdos — abrindo modal de seleção:', msg);
             await abrirModalConteudos();
             return; /* mantém modal RCO aberto atrás */
@@ -5339,7 +5321,7 @@ elRcoModalConfirmar.addEventListener('click', async () => {
         /* Outros erros */
         const isRcoErro = msg.length > 30;
         const prefixo   = isRcoErro ? '⚠️ RCO: ' : '❌ Erro: ';
-        toast(prefixo + msg, 'erro', 8000);
+        await notificar('Erro', prefixo + msg, { tipo: 'danger' });
         console.error('[CLASSROOM] Erro no lançamento:', msg);
     } finally {
         elRcoModalConfirmar.disabled    = false;
@@ -5366,15 +5348,15 @@ elRcoModalSalvarDb.addEventListener('click', async () => {
             const verMsg = resp.rcoVerificado
                 ? ' ✓ valores confirmados no RCO.'
                 : '';
-            toast(`✅ Banco sincronizado com sucesso!${verMsg}`, 'ok');
+            await notificar('Sincronizado', `✅ Banco sincronizado com sucesso!${verMsg}`, { tipo: 'ok' });
             lancamentoPendenteBd           = null;
             elRcoModalSalvarDb.style.display = 'none';
             fecharModalRco();
         } else {
-            toast('❌ Falha ao salvar no banco. Tente novamente.', 'erro');
+            await notificar('Erro', '❌ Falha ao salvar no banco. Tente novamente.', { tipo: 'danger' });
         }
     } catch (e) {
-        toast('Erro ao salvar no banco: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao salvar no banco: ' + e.message, { tipo: 'danger' });
         console.error('[CLASSROOM] Erro no salvar-db:', e);
     } finally {
         elRcoModalSalvarDb.disabled    = false;
@@ -5435,10 +5417,10 @@ elRcoModalZerar.addEventListener('click', async () => {
             method: 'POST',
             body: { meta, alunos: alunosPayload },
         });
-        toast(`🗑️ Avaliação zerada no RCO — ${total} alunos com nota vazia.`, 'ok');
+        await notificar('Zerada', `🗑️ Avaliação zerada no RCO — ${total} alunos com nota vazia.`, { tipo: 'ok' });
         fecharModalRco();
     } catch (e) {
-        toast('Erro ao zerar no RCO: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao zerar no RCO: ' + e.message, { tipo: 'danger' });
     } finally {
         elRcoModalZerar.disabled    = false;
         elRcoModalZerar.textContent = '🗑️ Zerar avaliação no RCO';
@@ -5632,7 +5614,7 @@ function popoutNotas() {
         'cl-notas-popout',
         'width=1100,height=780,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
     );
-    if (!w) toast('⚠ Popup bloqueado — permita popups para este site.', 'erro', 6000);
+    if (!w) notificar('Erro', '⚠ Popup bloqueado — permita popups para este site.', { tipo: 'danger' });
 }
 
 /* ── Modo popout: colapsa col1+col2, escuta broadcast ── */
@@ -5777,7 +5759,7 @@ async function carregarPedagogos() {
 async function adicionarPedagogo() {
     const input = document.getElementById('clPedagogoEmail');
     const email = input.value.trim().toLowerCase();
-    if (!email || !email.includes('@')) { toast('Informe um email válido.', 'erro'); return; }
+    if (!email || !email.includes('@')) { await notificar('Atenção', 'Informe um email válido.', { tipo: 'danger' }); return; }
     try {
         const resp = await fetch('/api/classroom/acesso-pedagogos', {
             method: 'POST',
@@ -5785,12 +5767,12 @@ async function adicionarPedagogo() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
         });
-        if (!resp.ok) { const d = await resp.json(); toast(d.erro || 'Erro', 'erro'); return; }
+        if (!resp.ok) { const d = await resp.json(); await notificar('Erro', d.erro || 'Erro', { tipo: 'danger' }); return; }
         input.value = '';
-        toast('Acesso concedido!', 'ok');
+        await notificar('Concedido', 'Acesso concedido!', { tipo: 'ok' });
         carregarPedagogos();
     } catch (e) {
-        toast('Erro: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -5801,10 +5783,10 @@ async function revogarPedagogo(id) {
             method: 'DELETE',
             credentials: 'include',
         });
-        toast('Acesso revogado.', 'ok');
+        await notificar('Revogado', 'Acesso revogado.', { tipo: 'ok' });
         carregarPedagogos();
     } catch (e) {
-        toast('Erro: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -5886,12 +5868,12 @@ async function responderSolicitacao(id, aceitar) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ aceitar }),
         });
-        if (!resp.ok) { const d = await resp.json(); toast(d.erro || 'Erro', 'erro'); return; }
-        toast(aceitar ? 'Acesso concedido!' : 'Solicitação recusada.', 'ok');
+        if (!resp.ok) { const d = await resp.json(); await notificar('Erro', d.erro || 'Erro', { tipo: 'danger' }); return; }
+        await notificar(aceitar ? 'Concedido' : 'Recusada', aceitar ? 'Acesso concedido!' : 'Solicitação recusada.', { tipo: 'ok' });
         carregarSolicitacoesAcesso();
         if (aceitar) carregarPedagogos();
     } catch (e) {
-        toast('Erro: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     }
 }
 

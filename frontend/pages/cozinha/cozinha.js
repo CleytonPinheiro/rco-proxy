@@ -36,13 +36,13 @@ async function carregarDados() {
         const resp = await fetch(`${API}/api/cozinha?data=${dataAtual}`);
         const json = await resp.json();
         if (!resp.ok || json.erro) {
-            toast('Tabela de presença não criada ainda. Execute setup_presenca.sql no Supabase.');
+            await notificar('Atenção', 'Tabela de presença não criada ainda. Execute setup_presenca.sql no Supabase.', { tipo: 'danger' });
             return;
         }
         dadosGlobais = json;
         renderizarTudo();
     } catch (e) {
-        toast('Erro ao carregar dados: ' + e.message);
+        await notificar('Erro', 'Erro ao carregar dados: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -146,7 +146,7 @@ async function confirmarCozinha() {
     const observacao = document.getElementById('inputObsCozinha').value.trim();
 
     if (isNaN(total_confirmado) || total_confirmado < 0) {
-        toast('Informe um número válido');
+        await notificar('Atenção', 'Informe um número válido.', { tipo: 'danger' });
         return;
     }
 
@@ -161,22 +161,14 @@ async function confirmarCozinha() {
 
         fecharModalCozinha();
         await carregarDados();
-        toast(`✅ ${nomePeriodo(periodoModalAtivo)}: ${total_confirmado} refeições confirmadas!`);
+        await notificar('Confirmado', `✅ ${nomePeriodo(periodoModalAtivo)}: ${total_confirmado} refeições confirmadas!`, { tipo: 'ok' });
     } catch (e) {
-        toast('Erro: ' + e.message);
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     }
 }
 
 // Auto-refresh (60s)
 setInterval(carregarDados, 60 * 1000);
-
-// Toast
-function toast(msg) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 // Data selector
 document.getElementById('inputData').addEventListener('change', (e) => {

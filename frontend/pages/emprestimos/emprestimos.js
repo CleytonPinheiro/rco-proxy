@@ -22,13 +22,6 @@ function labelStatus(s) {
     return { emprestado: '📖 Emprestado', devolvido: '✅ Devolvido', perdido: '❌ Perdido' }[s] || s;
 }
 
-function toast(msg, tipo) {
-    const el = document.getElementById('toastLivros');
-    el.textContent = msg;
-    el.className   = `toast-livros${tipo ? ' ' + tipo : ''}`;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 3200);
-}
 
 async function apiFetch(url, opts = {}) {
     const r = await fetch(`${API}/api${url}`, { credentials: 'include', ...opts });
@@ -72,7 +65,7 @@ async function init() {
             inputData.value = new Date().toISOString().slice(0, 10);
         }
     } catch (e) {
-        toast('Erro ao carregar dados: ' + e.message, 'erro');
+        await notificar('Erro', 'Erro ao carregar dados: ' + e.message, { tipo: 'danger' });
     }
 
     document.getElementById('loading').style.display = 'none';
@@ -318,7 +311,7 @@ function devolverEmprestimo(id, nome) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ obs }),
             });
-            toast(`${nome} — livro devolvido!`);
+            await notificar('Devolvido', `${nome} — livro devolvido!`, { tipo: 'ok' });
             await recarregarEmprestimos();
         },
     });
@@ -336,7 +329,7 @@ function marcarPerdido(id, nome) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ obs }),
             });
-            toast(`${nome} — livro marcado como perdido.`, 'aviso');
+            await notificar('Perdido', `${nome} — livro marcado como perdido.`, { tipo: 'info' });
             await recarregarEmprestimos();
         },
     });
@@ -476,7 +469,7 @@ document.getElementById('formEmprestimo').addEventListener('submit', async (ev) 
 
         const resumo = partes.join(' · ');
         if (ok > 0) {
-            toast(resumo);
+            await notificar('Empréstimos registrados', resumo, { tipo: 'ok' });
             fecharModalEmprestimo();
             livros = await apiFetch('/livros');
             await recarregarEmprestimos();
@@ -505,7 +498,7 @@ document.getElementById('formEmprestimo').addEventListener('submit', async (ev) 
                 obs:              obs || null,
             }),
         });
-        toast(`Empréstimo registrado para ${nome}!`);
+        await notificar('Registrado', `Empréstimo registrado para ${nome}!`, { tipo: 'ok' });
         fecharModalEmprestimo();
         livros      = await apiFetch('/livros');
         await recarregarEmprestimos();
@@ -744,7 +737,7 @@ document.getElementById('formLivro').addEventListener('submit', async ev => {
         } else {
             await apiFetch('/livros', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body) });
         }
-        toast(id ? 'Livro atualizado.' : 'Livro cadastrado!');
+        await notificar('Sucesso', id ? 'Livro atualizado.' : 'Livro cadastrado!', { tipo: 'ok' });
         document.getElementById('modalLivro').classList.remove('aberto');
         livros = await apiFetch('/livros');
         popularSelectLivros();
@@ -762,12 +755,12 @@ window.excluirLivro = async function (id, titulo) {
     if (!await confirmar('Remover do acervo?', `Remover "${titulo}" do acervo? Empréstimos existentes não serão apagados.`, { confirmLabel: 'Remover', tipo: 'danger' })) return;
     try {
         await apiFetch(`/livros/${id}`, { method: 'DELETE' });
-        toast('Livro removido.');
+        await notificar('Removido', 'Livro removido.', { tipo: 'ok' });
         livros = await apiFetch('/livros');
         popularSelectLivros();
         atualizarStats();
         renderAcervo();
-    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+    } catch (e) { await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' }); }
 };
 
 /* ─── Tab: IMPRIMIR ─────────────────────────────────────────────── */
@@ -781,7 +774,7 @@ function imprimirEtiquetas() {
     if (turmaFiltro) lista = lista.filter(e => e.turma === turmaFiltro);
     if (livroFiltro) lista = lista.filter(e => String(e.livro_id) === livroFiltro);
 
-    if (!lista.length) { toast('Nenhum empréstimo encontrado para os filtros selecionados.', 'aviso'); return; }
+    if (!lista.length) { notificar('Atenção', 'Nenhum empréstimo encontrado para os filtros selecionados.', { tipo: 'info' }); return; }
 
     const turmas     = [...new Set(lista.map(e => e.turma || ''))];
     const coresMap   = {};
@@ -914,7 +907,7 @@ function imprimirListaResponsabilidade() {
     if (turmaFiltro) lista = lista.filter(e => e.turma === turmaFiltro);
     if (livroFiltro) lista = lista.filter(e => String(e.livro_id) === livroFiltro);
 
-    if (!lista.length) { toast('Nenhum empréstimo encontrado para os filtros selecionados.', 'aviso'); return; }
+    if (!lista.length) { notificar('Atenção', 'Nenhum empréstimo encontrado para os filtros selecionados.', { tipo: 'info' }); return; }
 
     // Data de entrega selecionada (ou hoje como fallback)
     const dataEntregaObj  = dataInputVal ? new Date(dataInputVal + 'T12:00:00') : new Date();

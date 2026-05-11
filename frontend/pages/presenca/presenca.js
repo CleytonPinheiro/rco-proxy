@@ -34,11 +34,11 @@ async function carregarDados(data) {
         const json = await resp.json();
         todosRegistros = Array.isArray(json) ? json : [];
         if (!resp.ok && json.erro) {
-            toast('Atenção: tabela de presença ainda não criada no banco. Execute o SQL em backend/setup_presenca.sql no Supabase.', true);
+            await notificar('Atenção', 'Tabela de presença ainda não criada no banco. Execute o SQL em backend/setup_presenca.sql no Supabase.', { tipo: 'danger' });
         }
         renderizarTudo();
     } catch (e) {
-        toast('Erro ao carregar dados: ' + e.message, true);
+        await notificar('Erro', 'Erro ao carregar dados: ' + e.message, { tipo: 'danger' });
         document.getElementById('loading').style.display = 'none';
     }
 }
@@ -203,7 +203,7 @@ document.getElementById('btnConfirmarModal').addEventListener('click', async () 
     const observacao = document.getElementById('inputObs').value.trim();
 
     if (isNaN(total_presentes) || total_presentes < 0) {
-        toast('Informe um número válido de presentes', true);
+        await notificar('Atenção', 'Informe um número válido de presentes.', { tipo: 'danger' });
         return;
     }
 
@@ -230,9 +230,9 @@ document.getElementById('btnConfirmarModal').addEventListener('click', async () 
 
         fecharModal();
         renderizarTudo();
-        toast('✅ Presença confirmada com sucesso!');
+        await notificar('Sucesso', '✅ Presença confirmada com sucesso!', { tipo: 'ok' });
     } catch (e) {
-        toast('Erro: ' + e.message, true);
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     } finally {
         document.getElementById('btnConfirmarModal').textContent = '✅ Confirmar';
         document.getElementById('btnConfirmarModal').disabled = false;
@@ -254,16 +254,16 @@ document.getElementById('btnSyncRCO').addEventListener('click', async () => {
         const result = await resp.json();
 
         if (resp.status === 403 && result.semTokenRco) {
-            toast('⚠ Esta funcionalidade requer login via RCO. Entre em contato com o administrador.', true);
+            await notificar('Atenção', '⚠ Esta funcionalidade requer login via RCO. Entre em contato com o administrador.', { tipo: 'danger' });
             return;
         }
 
-        toast('🔄 ' + (result.msg || 'Sincronização iniciada! Aguarde e recarregue em 1-2 minutos.'));
+        await notificar('Sincronização', '🔄 ' + (result.msg || 'Sincronização iniciada! Aguarde e recarregue em 1-2 minutos.'), { tipo: 'info' });
 
         // Recarregar após delay
         setTimeout(() => carregarDados(dataAtual), 90000);
     } catch (e) {
-        toast('Erro ao iniciar sync: ' + e.message, true);
+        await notificar('Erro', 'Erro ao iniciar sync: ' + e.message, { tipo: 'danger' });
     } finally {
         setTimeout(() => {
             btn.classList.remove('loading');
@@ -285,10 +285,10 @@ document.getElementById('btnSeed').addEventListener('click', async () => {
             body: JSON.stringify({ data: dataAtual }),
         });
         const result = await resp.json();
-        toast(`📋 ${result.turmas} turma(s) preparada(s) para o dia.`);
+        await notificar('Turmas', `📋 ${result.turmas} turma(s) preparada(s) para o dia.`, { tipo: 'ok' });
         await carregarDados(dataAtual);
     } catch (e) {
-        toast('Erro: ' + e.message, true);
+        await notificar('Erro', 'Erro: ' + e.message, { tipo: 'danger' });
     } finally {
         btn.textContent = '📋 Carregar Turmas';
         btn.disabled = false;
@@ -315,16 +315,6 @@ document.querySelectorAll('.tab').forEach(btn => {
         renderizarGrid();
     });
 });
-
-// Toast
-function toast(msg, isErro = false) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.style.background = isErro ? '#dc2626' : '#1a1a2e';
-    el.style.color = 'white';
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 // Init
 document.getElementById('inputData').value = dataAtual;
