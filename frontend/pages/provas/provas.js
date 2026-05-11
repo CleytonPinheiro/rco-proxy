@@ -15,28 +15,6 @@ let _colaExpandido = null;
 let _colaFlags = {};
 let _renderColaTabela = null;
 let _divergenciasCarregadas = false;
-let _badgePollTimer = null;
-
-function _iniciarPollBadge() {
-    _pararPollBadge();
-    _badgePollTimer = setInterval(atualizarResumoCurso, _badgePollMs);
-}
-
-function _pararPollBadge() {
-    if (_badgePollTimer !== null) {
-        clearInterval(_badgePollTimer);
-        _badgePollTimer = null;
-    }
-}
-
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        _pararPollBadge();
-    } else if (cursos.length) {
-        atualizarResumoCurso();
-        _iniciarPollBadge();
-    }
-});
 
 async function init() {
     try {
@@ -50,7 +28,7 @@ async function init() {
         }
     } catch (_) { /* keep default */ }
     await carregarCursos();
-    if (cursos.length) _iniciarPollBadge();
+    if (cursos.length) startBadgePoll(cursos.map(c => c.id), _aplicarResumo, _badgePollMs);
     /* mostra/esconde % foto conforme modo */
     $('prvfFoto').addEventListener('change', () => {
         $('prvfFotoPctWrap').style.display = $('prvfFoto').value === 'sorteio' ? '' : 'none';
@@ -63,11 +41,18 @@ function prvToggleSegundo(ativo) {
     if (!ativo) $('prvfOutraTurma').checked = false;
 }
 
-function _resumoUrl(ids) {
-    return `/api/classroom/provas/resumo-investigar?courseIds=${encodeURIComponent(ids.join(','))}`;
-}
-
-function _atualizarBannerResumo(resumo) {
+function _aplicarResumo(resumo) {
+    const sel = $('prvCurso');
+    if (sel) {
+        for (const opt of sel.options) {
+            if (!opt.value) continue;
+            const n = resumo[opt.value] || 0;
+            const curso = cursos.find(c => c.id === opt.value);
+            if (!curso) continue;
+            const base = curso.nome + (curso.secao ? ' — ' + curso.secao : '');
+            opt.textContent = base + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
+        }
+    }
     const box = $('prvResumoPendentes');
     if (!box) return;
     const total = Object.values(resumo).reduce((s, n) => s + n, 0);
@@ -85,26 +70,6 @@ function _atualizarBannerResumo(resumo) {
     box.style.display = '';
 }
 
-async function atualizarResumoCurso() {
-    if (!cursos.length) return;
-    try {
-        const r = await fetch(_resumoUrl(cursos.map(c => c.id)), { credentials: 'include' });
-        if (!r.ok) return;
-        const resumo = (await r.json()).resumo || {};
-        const sel = $('prvCurso');
-        if (!sel) return;
-        for (const opt of sel.options) {
-            if (!opt.value) continue;
-            const n = resumo[opt.value] || 0;
-            const curso = cursos.find(c => c.id === opt.value);
-            if (!curso) continue;
-            const base = curso.nome + (curso.secao ? ' — ' + curso.secao : '');
-            opt.textContent = base + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
-        }
-        _atualizarBannerResumo(resumo);
-    } catch (e) { /* silencia — é uma atualização visual opcional */ }
-}
-
 async function carregarCursos() {
     try {
         const rCursos = await fetch('/api/classroom/courses', { credentials: 'include' });
@@ -117,18 +82,10 @@ async function carregarCursos() {
         sel.innerHTML = '<option value="">Selecione um curso…</option>' +
             cursos.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}${c.secao ? ' — ' + escapeHtml(c.secao) : ''}</option>`).join('');
         if (cursos.length > 0) {
-            const rResumo = await fetch(_resumoUrl(cursos.map(c => c.id)), { credentials: 'include' });
+            const ids = encodeURIComponent(cursos.map(c => c.id).join(','));
+            const rResumo = await fetch(`/api/classroom/provas/resumo-investigar?courseIds=${ids}`, { credentials: 'include' });
             if (rResumo.ok) {
-                const resumo = (await rResumo.json()).resumo || {};
-                for (const opt of sel.options) {
-                    if (!opt.value) continue;
-                    const n = resumo[opt.value] || 0;
-                    if (n > 0) {
-                        const curso = cursos.find(c => c.id === opt.value);
-                        if (curso) opt.textContent = curso.nome + (curso.secao ? ' — ' + curso.secao : '') + ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}`;
-                    }
-                }
-                _atualizarBannerResumo(resumo);
+                _aplicarResumo((await rResumo.json()).resumo || {});
             }
         }
     } catch (e) {
