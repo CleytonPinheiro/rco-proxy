@@ -549,7 +549,9 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         (SELECT COUNT(*) FROM classroom_prova_variantes v
                           WHERE v.prova_id = p.id) AS variantes_count,
                         (SELECT COUNT(*) FROM classroom_prova_cola_flags f
-                          WHERE f.prova_id = p.id) AS pares_flagged
+                          WHERE f.prova_id = p.id AND f.status = 'investigar') AS pares_flagged_investigar,
+                        (SELECT COUNT(*) FROM classroom_prova_cola_flags f
+                          WHERE f.prova_id = p.id AND f.status = 'resolvido') AS pares_flagged_resolvido
                    FROM classroom_provas p
                    LEFT JOIN classroom_grupos g ON g.id = p.grupo_destino_id
                   WHERE p.curso_id = $1
