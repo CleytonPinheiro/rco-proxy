@@ -225,6 +225,41 @@
 }
 [data-theme="dark"] .prv-cola-flag-nota { background: #1e1e2e; border-color: #444; }
 
+/* Banner global de pares pendentes (acima do seletor de curso) */
+.prv-resumo-pendentes {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 12px; padding: 9px 14px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    user-select: none;
+}
+.prv-resumo-pendentes:hover {
+    background: #ffedd5;
+    border-color: #fb923c;
+}
+[data-theme="dark"] .prv-resumo-pendentes {
+    background: #2d1600;
+    border-color: #7c3a00;
+}
+[data-theme="dark"] .prv-resumo-pendentes:hover {
+    background: #3d2000;
+    border-color: #c2410c;
+}
+.prv-resumo-icone { font-size: 15px; }
+.prv-resumo-texto {
+    font-weight: 700; font-size: 13px;
+    color: #c2410c;
+}
+[data-theme="dark"] .prv-resumo-texto { color: #fb923c; }
+.prv-resumo-dica {
+    margin-left: auto;
+    font-size: 11px; color: var(--text-muted, #888);
+    font-style: italic;
+}
+
 /* Painel de pendências consolidadas */
 .prv-pendentes-panel {
     margin-bottom: 16px;

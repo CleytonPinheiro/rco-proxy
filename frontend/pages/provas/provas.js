@@ -56,6 +56,24 @@ function _resumoUrl(ids) {
     return `/api/classroom/provas/resumo-investigar?courseIds=${encodeURIComponent(ids.join(','))}`;
 }
 
+function _atualizarBannerResumo(resumo) {
+    const box = $('prvResumoPendentes');
+    if (!box) return;
+    const total = Object.values(resumo).reduce((s, n) => s + n, 0);
+    const cursosAfetados = Object.values(resumo).filter(n => n > 0).length;
+    if (total === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+    box.innerHTML =
+        `<span class="prv-resumo-icone">🔍</span>` +
+        `<span class="prv-resumo-texto">${total} par${total !== 1 ? 'es' : ''} pendente${total !== 1 ? 's' : ''} ` +
+        `em ${cursosAfetados} curso${cursosAfetados !== 1 ? 's' : ''}</span>` +
+        `<span class="prv-resumo-dica">Clique para ir ao seletor de curso</span>`;
+    box.style.display = '';
+}
+
 async function atualizarResumoCurso() {
     if (!cursos.length) return;
     try {
@@ -72,6 +90,7 @@ async function atualizarResumoCurso() {
             const base = curso.nome + (curso.secao ? ' — ' + curso.secao : '');
             opt.textContent = base + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
         }
+        _atualizarBannerResumo(resumo);
     } catch (e) { /* silencia — é uma atualização visual opcional */ }
 }
 
@@ -98,6 +117,7 @@ async function carregarCursos() {
                         if (curso) opt.textContent = curso.nome + (curso.secao ? ' — ' + curso.secao : '') + ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}`;
                     }
                 }
+                _atualizarBannerResumo(resumo);
             }
         }
     } catch (e) {
