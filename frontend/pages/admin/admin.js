@@ -931,11 +931,61 @@ const CONFIG_LABELS = {
         nome: 'TTL de Sincronização RCO (horas)',
         desc: 'Tempo mínimo entre sincronizações automáticas do RCO. Após uma sincronização bem-sucedida, o sistema aguarda este período antes de sincronizar novamente. Valores menores aumentam a frequência; valores maiores reduzem o consumo de recursos. Padrão: 4.',
         tipo: 'text',
+        min: 0.5, max: 168, integer: false,
     },
     badge_poll_minutos: {
         nome: 'Intervalo de atualização do badge de Provas (minutos)',
-        desc: 'Com que frequência a tela de Provas consulta o servidor para atualizar o contador de pares pendentes de investigação. Valores menores deixam o badge mais atualizado, mas aumentam o tráfego de rede. Aceita de 1 a 60 minutos. Padrão: 3.',
+        desc: 'Com que frequência a tela de Provas consulta o servidor para atualizar o contador de pares pendentes de investigação. Valores menores deixam o badge mais atualizado, mas aumentam o tráfego de rede. Padrão: 3.',
         tipo: 'text',
+        min: 1, max: 60, integer: true,
+    },
+    purga_intervalo_horas: {
+        nome: 'Intervalo de Purga (horas)',
+        desc: 'Com que frequência o job de purga executa para remover registros antigos. Padrão: 24.',
+        tipo: 'text',
+        min: 1, max: 168, integer: true,
+    },
+    purga_audit_dias: {
+        nome: 'Retenção do Log de Auditoria (dias)',
+        desc: 'Registros de auditoria mais antigos que este valor serão removidos pelo job de purga. Padrão: 365.',
+        tipo: 'text',
+        min: 1, max: 3650, integer: true,
+    },
+    purga_reputacao_dias: {
+        nome: 'Retenção do Log de Reputação (dias)',
+        desc: 'Registros do log de reputação de alunos mais antigos que este valor serão removidos. Padrão: 365.',
+        tipo: 'text',
+        min: 1, max: 3650, integer: true,
+    },
+    purga_notif_lida_dias: {
+        nome: 'Retenção de Notificações Lidas (dias)',
+        desc: 'Notificações já lidas mais antigas que este valor serão removidas. Padrão: 90.',
+        tipo: 'text',
+        min: 1, max: 3650, integer: true,
+    },
+    purga_notif_nlida_dias: {
+        nome: 'Retenção de Notificações Não-lidas (dias)',
+        desc: 'Notificações não-lidas mais antigas que este valor serão removidas. Padrão: 365.',
+        tipo: 'text',
+        min: 1, max: 3650, integer: true,
+    },
+    purga_lote: {
+        nome: 'Tamanho do Lote de Purga',
+        desc: 'Número de registros removidos por iteração durante a purga, para evitar travamentos de tabela. Padrão: 1000.',
+        tipo: 'text',
+        min: 1, max: 10000, integer: true,
+    },
+    sync_stale_alert_days: {
+        nome: 'Dias para Alerta de Sync Parado',
+        desc: 'Se não houver sincronização RCO em X dias, um alerta é gerado. Padrão: 2.',
+        tipo: 'text',
+        min: 1, max: 365, integer: true,
+    },
+    sync_stale_alert_interval_horas: {
+        nome: 'Intervalo de Verificação de Sync Parado (horas)',
+        desc: 'Com que frequência o sistema verifica se o sync RCO está parado. Padrão: 6.',
+        tipo: 'text',
+        min: 1, max: 168, integer: true,
     },
 };
 
@@ -971,13 +1021,18 @@ async function carregarConfig() {
                     </label>
                 </div>`;
             }
+            const hasRange = meta.min !== undefined && meta.max !== undefined;
+            const rangeHint = hasRange ? `${meta.min}–${meta.max}` : '';
+            const placeholder = hasRange ? `${meta.min}–${meta.max}` : '';
             return `<div style="padding:16px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg-hover)">
                 <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">${meta.nome}</div>
                 <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:8px">${meta.desc}</div>
-                <div style="display:flex;gap:8px">
-                    <input type="text" value="${c.valor}" id="cfgVal_${c.chave}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg-input);color:var(--text-primary)" />
+                <div style="display:flex;gap:8px;align-items:center">
+                    <input type="text" value="${c.valor}" id="cfgVal_${c.chave}" placeholder="${placeholder}" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg-input);color:var(--text-primary)" />
+                    ${hasRange ? `<span style="font-size:.78rem;color:var(--text-secondary);white-space:nowrap;flex-shrink:0">${rangeHint}</span>` : ''}
                     <button onclick="salvarConfig('${c.chave}')" style="padding:7px 14px;background:var(--accent,#2563eb);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:.82rem;cursor:pointer">Salvar</button>
                 </div>
+                <div id="cfgErr_${c.chave}" style="display:none;margin-top:6px;font-size:.78rem;color:#dc2626"></div>
             </div>`;
         }).join('');
     } catch (e) {
@@ -1004,6 +1059,8 @@ window.toggleConfig = async function (chave, ativo) {
 
 window.salvarConfig = async function (chave) {
     const valor = document.getElementById(`cfgVal_${chave}`).value;
+    const errEl = document.getElementById(`cfgErr_${chave}`);
+    if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
     try {
         const res = await api(`/admin/config/${chave}`, {
             method: 'PATCH',
@@ -1012,7 +1069,14 @@ window.salvarConfig = async function (chave) {
         });
         if (!res.ok) {
             const d = await res.json();
-            showToast(d.erro || 'Erro ao salvar.', 'error');
+            const msg = d.erro || 'Erro ao salvar.';
+            if (errEl) {
+                errEl.textContent = msg;
+                errEl.style.display = 'block';
+            } else {
+                showToast(msg, 'error');
+            }
+            return;
         }
         carregarConfig();
     } catch (e) {
