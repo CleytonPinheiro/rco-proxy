@@ -162,6 +162,7 @@ const elColAtivTitulo  = document.getElementById('clColAtivTitulo');
 const elNotasTitulo    = document.getElementById('clNotasTitulo');
 const elNotasBreadcrumb = document.getElementById('clNotasBreadcrumb');
 const elCorrecaoAviso  = document.getElementById('clCorrecaoAviso');
+const elRascunhoAviso  = document.getElementById('clRascunhoAviso');
 
 /* ── Escala RCO: divide por 10, 1 casa decimal ── */
 const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
@@ -366,6 +367,7 @@ function resetColuna3() {
     elNotasFiltro.style.display   = 'none';
     elNotasActions.style.display  = 'none';
     if (elCorrecaoAviso) elCorrecaoAviso.style.display = 'none';
+    if (elRascunhoAviso) elRascunhoAviso.style.display = 'none';
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -775,6 +777,7 @@ async function selecionarAtividade(ativ, itemEl) {
     elNotasFiltro.style.display  = 'none';
     elNotasActions.style.display = 'none';
     if (elCorrecaoAviso) elCorrecaoAviso.style.display = 'none';
+    if (elRascunhoAviso) elRascunhoAviso.style.display = 'none';
     elNotasLista.innerHTML       = '<div class="cl-loading">Carregando entregas...</div>';
     elBusca.value                = '';
     elFiltroStatus.value         = '';
@@ -862,6 +865,7 @@ function filtrarNotas() {
         if (status === 'atrasado' && !n.atrasado) return false;
         if (status === 'ausente' && !n.ausente) return false;
         if (status === 'corrigir' && !(n.estado === 'TURNED_IN' && n.nota === null && (n.notaRascunho === undefined || n.notaRascunho === null))) return false;
+        if (status === 'rascunho' && !(n.nota === null && n.notaRascunho != null)) return false;
         return true;
     });
 }
@@ -2200,9 +2204,11 @@ function renderAvisoCorrecao() {
     if (!elCorrecaoAviso) return;
     if (!grupoResumoData?.alunosResumo) {
         elCorrecaoAviso.style.display = 'none';
+        if (elRascunhoAviso) elRascunhoAviso.style.display = 'none';
         return;
     }
 
+    /* ── Banner 1: entregas sem nenhuma nota (nem rascunho) ── */
     const porAtividade = {};
     grupoResumoData.alunosResumo.forEach(a => {
         Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
@@ -2219,40 +2225,113 @@ function renderAvisoCorrecao() {
     const atvIds = Object.keys(porAtividade);
     if (!atvIds.length) {
         elCorrecaoAviso.style.display = 'none';
+    } else {
+        const totalEntregas = atvIds.reduce((s, id) => s + porAtividade[id].count, 0);
+
+        let linksHtml = '';
+        atvIds.forEach(atvId => {
+            const info = grupoResumoData.atividades?.find(x => String(x.id) === String(atvId));
+            const titulo = info?.titulo || atvId;
+            const isQuizizz = !!info?.quizizzId;
+            const { count, alunos } = porAtividade[atvId];
+            const nomes = alunos.join(', ') + (count > 3 ? ` +${count - 3}` : '');
+            linksHtml += `
+                <div class="cl-correcao-link" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
+                    <span class="cl-correcao-link__icon">${isQuizizz ? '🎮' : '!'}</span>
+                    <span class="cl-correcao-link__ativ">${esc(titulo)}${isQuizizz ? ' <small style="opacity:.6">(Quizizz)</small>' : ''}</span>
+                    <span class="cl-correcao-link__qty">${count} entrega${count > 1 ? 's' : ''}</span>
+                    <span class="cl-correcao-link__arrow">→</span>
+                </div>`;
+        });
+
+        elCorrecaoAviso.innerHTML = `
+            <div class="cl-correcao-aviso__header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Correções pendentes
+                <span class="cl-correcao-aviso__count">${totalEntregas}</span>
+            </div>
+            <div class="cl-correcao-aviso__list">${linksHtml}</div>`;
+        elCorrecaoAviso.style.display = '';
+
+        elCorrecaoAviso.querySelectorAll('.cl-correcao-link').forEach(link => {
+            link.addEventListener('click', () => {
+                const atvId = link.dataset.atvId;
+                const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
+                if (!ativ) {
+                    notificar('Erro', 'Atividade não encontrada. Navegue manualmente pela lista.', { tipo: 'danger' });
+                    return;
+                }
+                if (grupoAtivo) _grupoAnterior = grupoAtivo;
+                if (viewMode !== 'atividades') {
+                    elTabAtiv.click();
+                }
+                setTimeout(async () => {
+                    const itemEl = document.querySelector(`.cl-ativ-item[data-ativ-id="${atvId}"]`);
+                    if (itemEl) {
+                        itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    await selecionarAtividade(ativ, itemEl || document.createElement('div'));
+                    elFiltroStatus.value = 'corrigir';
+                    renderNotas();
+                }, 100);
+            });
+        });
+    }
+
+    /* ── Banner 2: notas em rascunho aguardando devolução ── */
+    if (!elRascunhoAviso) return;
+
+    const porAtividadeRasc = {};
+    grupoResumoData.alunosResumo.forEach(a => {
+        Object.entries(a.atividades || {}).forEach(([atvId, atv]) => {
+            if (atv.nota === null && atv.notaRascunho != null && !atv.eDeRecuperacao) {
+                if (!porAtividadeRasc[atvId]) porAtividadeRasc[atvId] = { count: 0, alunos: [] };
+                porAtividadeRasc[atvId].count++;
+                if (porAtividadeRasc[atvId].alunos.length < 3) {
+                    porAtividadeRasc[atvId].alunos.push(a.aluno?.nome || a.userId);
+                }
+            }
+        });
+    });
+
+    const atvIdsRasc = Object.keys(porAtividadeRasc);
+    if (!atvIdsRasc.length) {
+        elRascunhoAviso.style.display = 'none';
         return;
     }
 
-    const totalEntregas = atvIds.reduce((s, id) => s + porAtividade[id].count, 0);
+    const totalRascunhos = atvIdsRasc.reduce((s, id) => s + porAtividadeRasc[id].count, 0);
 
-    let linksHtml = '';
-    atvIds.forEach(atvId => {
+    let linksRascHtml = '';
+    atvIdsRasc.forEach(atvId => {
         const info = grupoResumoData.atividades?.find(x => String(x.id) === String(atvId));
         const titulo = info?.titulo || atvId;
-        const isQuizizz = !!info?.quizizzId;
-        const { count, alunos } = porAtividade[atvId];
+        const { count, alunos } = porAtividadeRasc[atvId];
         const nomes = alunos.join(', ') + (count > 3 ? ` +${count - 3}` : '');
-        linksHtml += `
-            <div class="cl-correcao-link" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
-                <span class="cl-correcao-link__icon">${isQuizizz ? '🎮' : '!'}</span>
-                <span class="cl-correcao-link__ativ">${esc(titulo)}${isQuizizz ? ' <small style="opacity:.6">(Quizizz)</small>' : ''}</span>
-                <span class="cl-correcao-link__qty">${count} entrega${count > 1 ? 's' : ''}</span>
-                <span class="cl-correcao-link__arrow">→</span>
+        linksRascHtml += `
+            <div class="cl-rascunho-link" data-atv-id="${esc(atvId)}" title="${esc(nomes)}">
+                <span class="cl-rascunho-link__icon">📝</span>
+                <span class="cl-rascunho-link__ativ">${esc(titulo)}</span>
+                <span class="cl-rascunho-link__qty">${count} rascunho${count > 1 ? 's' : ''}</span>
+                <span class="cl-rascunho-link__arrow">→</span>
             </div>`;
     });
 
-    elCorrecaoAviso.innerHTML = `
-        <div class="cl-correcao-aviso__header">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    elRascunhoAviso.innerHTML = `
+        <div class="cl-rascunho-aviso__header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
             </svg>
-            Correções pendentes
-            <span class="cl-correcao-aviso__count">${totalEntregas}</span>
+            Rascunhos para devolver
+            <span class="cl-rascunho-aviso__count">${totalRascunhos}</span>
         </div>
-        <div class="cl-correcao-aviso__list">${linksHtml}</div>`;
-    elCorrecaoAviso.style.display = '';
+        <div class="cl-rascunho-aviso__list">${linksRascHtml}</div>`;
+    elRascunhoAviso.style.display = '';
 
-    elCorrecaoAviso.querySelectorAll('.cl-correcao-link').forEach(link => {
+    elRascunhoAviso.querySelectorAll('.cl-rascunho-link').forEach(link => {
         link.addEventListener('click', () => {
             const atvId = link.dataset.atvId;
             const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
@@ -2270,7 +2349,7 @@ function renderAvisoCorrecao() {
                     itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
                 await selecionarAtividade(ativ, itemEl || document.createElement('div'));
-                elFiltroStatus.value = 'corrigir';
+                elFiltroStatus.value = 'rascunho';
                 renderNotas();
             }, 100);
         });
