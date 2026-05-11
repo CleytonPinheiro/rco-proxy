@@ -218,6 +218,7 @@
                             <div class="drawer-nome" id="drawerNome">Nenhum aluno</div>
                             <div class="drawer-chamada" id="drawerChamada">selecionado</div>
                         </div>
+                        <button class="drawer-verif-btn" id="drawerVerifBtn" onclick="abrirModalVerificacaoFreq()" title="Enviar orientação de verificação" style="display:none">📋</button>
                         <button class="drawer-close-btn" onclick="fecharDrawerAluno()" title="Fechar painel">✕</button>
                     </div>
                     <div class="drawer-body" id="drawerBody">
@@ -235,6 +236,44 @@
             <span id="erroMsg"></span>
         </div>
     </main>
+
+    <!-- ── Modal: Orientação de Verificação (Frequências) ─────────────────── -->
+    <div class="freq-verif-overlay" id="freqVerifModal" onclick="if(event.target===this)fecharModalVerificacaoFreq()" style="display:none">
+        <div class="freq-verif-modal">
+            <div class="freq-verif-head">
+                <h3 class="freq-verif-titulo">📋 Orientação de Verificação</h3>
+                <button class="freq-verif-close" onclick="fecharModalVerificacaoFreq()">✕</button>
+            </div>
+            <div class="freq-verif-body">
+                <p class="freq-verif-desc">
+                    Escreva as orientações para <strong id="freqVerifNome"></strong>.
+                    Somente este aluno verá esta mensagem no Portal do Aluno.
+                </p>
+                <div id="freqVerifEmailWrap" style="margin-bottom:10px">
+                    <div id="freqVerifEmailBuscando" class="freq-verif-email-status">
+                        <span class="spinner-sm" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></span>
+                        Buscando e-mail do aluno no Classroom...
+                    </div>
+                    <div id="freqVerifEmailEncontrado" style="display:none">
+                        <label class="freq-verif-label">E-mail do aluno</label>
+                        <div class="freq-verif-email-val" id="freqVerifEmailVal"></div>
+                        <div class="freq-verif-turma-val" id="freqVerifTurmaVal"></div>
+                    </div>
+                    <div id="freqVerifEmailNaoEncontrado" style="display:none" class="freq-verif-nao-encontrado">
+                        ⚠ Aluno não encontrado no Google Classroom. Para enviar orientações, abra a página do Classroom e encontre o aluno pela lista de notas.
+                    </div>
+                </div>
+                <label class="freq-verif-label">Orientações</label>
+                <textarea id="freqVerifTexto" class="freq-verif-textarea" rows="5" maxlength="1000"
+                    placeholder="Descreva as orientações de verificação para este aluno..."></textarea>
+                <div id="freqVerifErro" style="display:none;color:#dc2626;font-size:.82rem;margin-top:6px"></div>
+            </div>
+            <div class="freq-verif-foot">
+                <button class="freq-verif-btn-cancel" onclick="fecharModalVerificacaoFreq()">Cancelar</button>
+                <button class="freq-verif-btn-send" id="freqVerifEnviar" onclick="enviarNotifVerificacaoFreq()">Enviar orientação</button>
+            </div>
+        </div>
+    </div>
 
     <script src="../../shared/js/sync-status.js"></script>
     <script src="./frequencias.js"></script>

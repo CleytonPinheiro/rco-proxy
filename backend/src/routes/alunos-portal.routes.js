@@ -1039,6 +1039,86 @@ export function createAlunosPortalRouter() {
         }
     );
 
+    /* GET /api/alunos-portal/buscar-email-aluno?nome=... — professor busca email de aluno pelo nome
+       via Classroom (correspondência EXATA de nome normalizado).
+       Retorna { email, courseId, courseName } quando encontrado, ou { email: null }.
+       O courseId é obrigatório para que o frontend use o endpoint validado /notificar-verificacao. */
+    router.get('/alunos-portal/buscar-email-aluno',
+        requireAuth,
+        async (req, res) => {
+            const nome = (req.query.nome || '').trim();
+            if (!nome) return res.status(400).json({ erro: 'nome é obrigatório.' });
+
+            const cpf = req.userSession?.cpf;
+            if (!cpf) return res.status(403).json({ erro: 'Sessão inválida.' });
+
+            const id  = process.env.GOOGLE_CLIENT_ID;
+            const sec = process.env.GOOGLE_CLIENT_SECRET;
+            if (!id || !sec) return res.json({ email: null });
+
+            let token = null;
+            try {
+                const { rows } = await pool.query(
+                    `SELECT tokens FROM classroom_tokens WHERE cpf = $1`, [cpf]
+                );
+                if (rows[0]) token = rows[0].tokens;
+            } catch (_) {}
+
+            if (!token) return res.json({ email: null });
+
+            try {
+                const client    = new google.auth.OAuth2(id, sec);
+                const tokenData = typeof token === 'string' ? JSON.parse(token) : token;
+                client.setCredentials(tokenData);
+                if (tokenData.expiry_date && tokenData.expiry_date < Date.now()) {
+                    const { credentials } = await client.refreshAccessToken();
+                    await pool.query(
+                        `UPDATE classroom_tokens SET tokens=$1, atualizado=NOW() WHERE cpf=$2`,
+                        [JSON.stringify(credentials), cpf]
+                    ).catch(() => {});
+                    client.setCredentials(credentials);
+                }
+
+                const classroom = google.classroom({ version: 'v1', auth: client });
+                const coursesRes = await classroom.courses.list({
+                    teacherId:    'me',
+                    courseStates: ['ACTIVE'],
+                    pageSize:     50,
+                });
+                const courses = coursesRes.data.courses || [];
+
+                /* Normaliza o nome exatamente como o RCO backend faz */
+                const nomeNorm = nome.toUpperCase().trim().replace(/\s+/g, ' ');
+
+                for (const course of courses) {
+                    try {
+                        const studentsRes = await classroom.courses.students.list({
+                            courseId: course.id,
+                            pageSize: 250,
+                        });
+                        const students = studentsRes.data.students || [];
+                        for (const s of students) {
+                            const sNome = (s.profile?.name?.fullName || '').toUpperCase().trim().replace(/\s+/g, ' ');
+                            /* Apenas correspondência EXATA — sem startsWith ou substrings */
+                            if (sNome === nomeNorm) {
+                                return res.json({
+                                    email:      s.profile?.emailAddress || null,
+                                    courseId:   course.id,
+                                    courseName: course.name || '',
+                                });
+                            }
+                        }
+                    } catch (_) { /* ignora erros por turma individualmente */ }
+                }
+
+                return res.json({ email: null });
+            } catch (e) {
+                console.error('[ALUNOS-PORTAL] Erro ao buscar email do aluno:', e.message);
+                return res.json({ email: null });
+            }
+        }
+    );
+
     /* GET /api/alunos-portal/mural — nomes dos achievers por grupo (sem notas) */
     router.get('/alunos-portal/mural', async (req, res) => {
         const aluno = await getAlunoSession(req);

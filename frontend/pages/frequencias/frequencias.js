@@ -388,6 +388,10 @@ async function abrirDrawerAluno(nome, numChamada) {
     document.getElementById('drawerNome').textContent    = nome;
     document.getElementById('drawerChamada').textContent = numChamada ? `Chamada nº ${numChamada}` : '';
 
+    // Exibir botão de orientação
+    const verifBtn = document.getElementById('drawerVerifBtn');
+    if (verifBtn) verifBtn.style.display = 'flex';
+
     // Abrir layout
     document.getElementById('freqLayout').classList.add('drawer-aberto');
 
@@ -464,6 +468,10 @@ function fecharDrawerAluno() {
     document.getElementById('drawerNome').textContent    = 'Nenhum aluno';
     document.getElementById('drawerChamada').textContent = 'selecionado';
     document.getElementById('drawerAvatar').textContent  = '?';
+
+    // Ocultar botão de orientação
+    const verifBtn = document.getElementById('drawerVerifBtn');
+    if (verifBtn) verifBtn.style.display = 'none';
     document.getElementById('drawerBody').innerHTML = `
         <div class="drawer-placeholder">
             <div class="drawer-placeholder-icon">👆</div>
@@ -1658,6 +1666,132 @@ function atualizarResumoDiario() {
         <div class="fd-dias-titulo">Por dia <span class="fd-dias-count">${datas.length}</span></div>
         ${diasHTML}`;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Modal de Verificação — orientação privada para aluno (a partir de Frequências)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _freqVerifEmailAtual    = null;
+let _freqVerifNomeAtual     = null;
+let _freqVerifCourseIdAtual = null;
+
+async function abrirModalVerificacaoFreq() {
+    const nome = alunoSelecionado?.nome;
+    if (!nome) return;
+
+    _freqVerifNomeAtual     = nome;
+    _freqVerifEmailAtual    = null;
+    _freqVerifCourseIdAtual = null;
+
+    const modal            = document.getElementById('freqVerifModal');
+    const nomeEl           = document.getElementById('freqVerifNome');
+    const textoEl          = document.getElementById('freqVerifTexto');
+    const erroEl           = document.getElementById('freqVerifErro');
+    const envBtn           = document.getElementById('freqVerifEnviar');
+    const buscandoEl       = document.getElementById('freqVerifEmailBuscando');
+    const encontradoEl     = document.getElementById('freqVerifEmailEncontrado');
+    const naoEncontradoEl  = document.getElementById('freqVerifEmailNaoEncontrado');
+    const emailValEl       = document.getElementById('freqVerifEmailVal');
+    const turmaValEl       = document.getElementById('freqVerifTurmaVal');
+
+    nomeEl.textContent            = nome;
+    textoEl.value                 = '';
+    erroEl.style.display          = 'none';
+    envBtn.disabled               = true;
+    envBtn.textContent            = 'Enviar orientação';
+    buscandoEl.style.display      = '';
+    encontradoEl.style.display    = 'none';
+    naoEncontradoEl.style.display = 'none';
+
+    modal.style.display = 'flex';
+
+    // Buscar email e courseId via Classroom (correspondência exata de nome)
+    try {
+        const r    = await fetch(`/api/alunos-portal/buscar-email-aluno?nome=${encodeURIComponent(nome)}`);
+        const data = await r.json();
+        buscandoEl.style.display = 'none';
+
+        if (data.email && data.courseId) {
+            _freqVerifEmailAtual       = data.email;
+            _freqVerifCourseIdAtual    = data.courseId;
+            emailValEl.textContent     = data.email;
+            turmaValEl.textContent     = data.courseName ? `Turma: ${data.courseName}` : '';
+            encontradoEl.style.display = '';
+            envBtn.disabled            = false;
+            setTimeout(() => textoEl.focus(), 80);
+        } else {
+            naoEncontradoEl.style.display = '';
+            // Botão fica desabilitado — não é possível enviar sem validação de turma
+        }
+    } catch {
+        buscandoEl.style.display = 'none';
+        naoEncontradoEl.style.display = '';
+    }
+}
+
+function fecharModalVerificacaoFreq() {
+    document.getElementById('freqVerifModal').style.display = 'none';
+    _freqVerifEmailAtual    = null;
+    _freqVerifNomeAtual     = null;
+    _freqVerifCourseIdAtual = null;
+}
+
+async function enviarNotifVerificacaoFreq() {
+    const textoEl = document.getElementById('freqVerifTexto');
+    const erroEl  = document.getElementById('freqVerifErro');
+    const envBtn  = document.getElementById('freqVerifEnviar');
+
+    const email    = _freqVerifEmailAtual;
+    const courseId = _freqVerifCourseIdAtual;
+    const mensagem = textoEl.value.trim();
+
+    if (!email || !courseId) {
+        erroEl.textContent   = 'Aluno não encontrado no Classroom. Não é possível enviar.';
+        erroEl.style.display = '';
+        return;
+    }
+    if (!mensagem) {
+        erroEl.textContent   = 'Escreva as orientações antes de enviar.';
+        erroEl.style.display = '';
+        return;
+    }
+
+    erroEl.style.display = 'none';
+    envBtn.disabled      = true;
+    envBtn.textContent   = 'Enviando…';
+
+    try {
+        // Reutiliza o mesmo endpoint validado do Classroom (valida docência + matrícula)
+        const resp = await fetch('/api/alunos-portal/notificar-verificacao', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ aluno_email: email, turma_id: courseId, mensagem }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.erro || 'Erro ao enviar.');
+
+        const nomeParaToast = _freqVerifNomeAtual || email;
+        fecharModalVerificacaoFreq();
+        // Toast de confirmação
+        const toast = document.createElement('div');
+        toast.className = 'freq-verif-toast';
+        toast.textContent = `✓ Orientação enviada para ${nomeParaToast}.`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+    } catch (e) {
+        erroEl.textContent   = e.message;
+        erroEl.style.display = '';
+        envBtn.disabled      = false;
+        envBtn.textContent   = 'Enviar orientação';
+    }
+}
+
+// Fechar modal com Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('freqVerifModal')?.style.display === 'flex') {
+        fecharModalVerificacaoFreq();
+    }
+});
 
 init();
 initSyncStatus();
