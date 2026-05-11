@@ -647,6 +647,19 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    const CONFIG_NUMERIC_RULES = {
+        badge_poll_minutos:           { min: 1,   max: 60,   integer: true,  label: 'Intervalo do badge de provas (badge_poll_minutos)' },
+        rco_sync_ttl_hours:           { min: 0.5, max: 168,  integer: false, label: 'TTL de sync RCO (rco_sync_ttl_hours)' },
+        purga_intervalo_horas:        { min: 1,   max: 168,  integer: true,  label: 'Intervalo de purga (purga_intervalo_horas)' },
+        purga_audit_dias:             { min: 1,   max: 3650, integer: true,  label: 'Retenção do audit log (purga_audit_dias)' },
+        purga_reputacao_dias:         { min: 1,   max: 3650, integer: true,  label: 'Retenção do log de reputação (purga_reputacao_dias)' },
+        purga_notif_lida_dias:        { min: 1,   max: 3650, integer: true,  label: 'Retenção de notificações lidas (purga_notif_lida_dias)' },
+        purga_notif_nlida_dias:       { min: 1,   max: 3650, integer: true,  label: 'Retenção de notificações não-lidas (purga_notif_nlida_dias)' },
+        purga_lote:                   { min: 1,   max: 10000,integer: true,  label: 'Tamanho do lote de purga (purga_lote)' },
+        sync_stale_alert_days:        { min: 1,   max: 365,  integer: true,  label: 'Dias para alerta de sync parado (sync_stale_alert_days)' },
+        sync_stale_alert_interval_horas: { min: 1, max: 168, integer: true, label: 'Intervalo de verificação de sync parado (sync_stale_alert_interval_horas)' },
+    };
+
     router.patch('/admin/config/:chave', async (req, res) => {
         const { chave } = req.params;
         const { valor } = req.body;
@@ -655,6 +668,17 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             const MAX_LOGO_B64_CHARS = Math.ceil(50 * 1024 * (4 / 3));
             if (String(valor).length > MAX_LOGO_B64_CHARS) {
                 return res.status(400).json({ erro: `Logo demasiado grande. Máximo ${Math.round(50)}KB após compressão.` });
+            }
+        }
+        const numRule = CONFIG_NUMERIC_RULES[chave];
+        if (numRule) {
+            const parsed = numRule.integer ? parseInt(valor, 10) : parseFloat(valor);
+            const typeOk = numRule.integer ? Number.isInteger(parsed) : Number.isFinite(parsed);
+            if (!typeOk || parsed < numRule.min || parsed > numRule.max) {
+                const typeLabel = numRule.integer ? 'inteiro' : 'número';
+                return res.status(400).json({
+                    erro: `${numRule.label}: deve ser um ${typeLabel} entre ${numRule.min} e ${numRule.max}.`,
+                });
             }
         }
         try {
