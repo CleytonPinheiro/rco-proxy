@@ -585,13 +585,15 @@ function renderColAnalise({ pares, temDiscursiva }) {
     }
 
     const flagCount = Object.keys(_colaFlags).length;
-    const thresholdId = 'prvColaThreshold';
-    const savedThreshold = parseInt(localStorage.getItem(thresholdId) || '70', 10);
+    const thresholdElemId = 'prvColaThreshold';
+    const provaIdAtual = provaAberta && provaAberta.prova && provaAberta.prova.id;
+    const thresholdStorageKey = provaIdAtual ? `prvColaThreshold_${provaIdAtual}` : 'prvColaThreshold';
+    const savedThreshold = parseInt(localStorage.getItem(thresholdStorageKey) || '70', 10);
 
     const html = `
         <div class="prv-cola-controles">
             <label>Similaridade mínima:
-                <input type="range" id="${thresholdId}" min="0" max="100" value="${savedThreshold}" style="vertical-align:middle;width:120px">
+                <input type="range" id="${thresholdElemId}" min="0" max="100" value="${savedThreshold}" style="vertical-align:middle;width:120px">
                 <span id="prvColaThresholdVal">${savedThreshold}</span>%
             </label>
             <span class="prv-cola-legenda">
@@ -605,7 +607,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
     `;
     cont.innerHTML = html;
 
-    const slider = document.getElementById(thresholdId);
+    const slider = document.getElementById(thresholdElemId);
     const valSpan = document.getElementById('prvColaThresholdVal');
     const wrap    = document.getElementById('prvColaTabelaWrap');
 
@@ -685,7 +687,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
 
     _renderColaTabela = renderTabela;
     slider.addEventListener('input', () => {
-        localStorage.setItem(thresholdId, slider.value);
+        localStorage.setItem(thresholdStorageKey, slider.value);
         renderTabela();
     });
     renderTabela();
