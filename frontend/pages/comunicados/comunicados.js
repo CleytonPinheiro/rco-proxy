@@ -644,8 +644,6 @@ function escHtml(s) {
 function escAttr(s) { return escHtml(s).replace(/'/g,'&#39;'); }
 
 function mostrarToast(msg, tipo) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast show ${tipo || ''}`;
-    setTimeout(() => t.classList.remove('show'), 3200);
+    const t = tipo === 'error' ? 'erro' : tipo === 'warn' ? 'aviso' : (tipo || 'ok');
+    notificar(msg, t);
 }

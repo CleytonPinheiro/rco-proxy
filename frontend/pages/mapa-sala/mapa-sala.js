@@ -729,11 +729,7 @@ function abreviarNomeTurma(nome) {
 }
 
 function mostrarToast(msg, tipo) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast show ${tipo || ''}`;
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+    notificar(msg, tipo || 'ok');
 }
 
 // Logout

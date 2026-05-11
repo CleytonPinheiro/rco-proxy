@@ -719,12 +719,8 @@ function corTurma(turma) {
     return corCache[turma];
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
 function mostrarToast(msg, tipo = 'ok') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast toast-${tipo} show`;
-    setTimeout(() => t.classList.remove('show'), 3000);
+    notificar(msg, tipo);
 }
 
 init();

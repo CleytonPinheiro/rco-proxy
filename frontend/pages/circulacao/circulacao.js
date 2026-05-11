@@ -525,8 +525,6 @@ function iniciais2(nome) {
     return p.length === 1 ? p[0].slice(0, 2).toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 function mostrarToast(msg, tipo) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast show ${tipo || ''}`;
-    setTimeout(() => t.classList.remove('show'), 3000);
+    const t = tipo === 'error' ? 'erro' : tipo === 'warn' ? 'aviso' : (tipo || 'ok');
+    notificar(msg, t);
 }
