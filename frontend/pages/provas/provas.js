@@ -48,9 +48,11 @@ async function onCursoChange() {
     $('prvBtnNova').disabled = !cursoAtual;
     if (!cursoAtual) {
         $('prvLista').innerHTML = '<div class="prv-empty">Selecione um curso acima para ver as provas.</div>';
+        const panel = $('prvFlagsPendentes');
+        if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
         return;
     }
-    await carregarProvas();
+    await Promise.all([carregarProvas(), carregarFlagsPendentes()]);
 }
 
 function renderBadgesProva(p) {
@@ -741,6 +743,7 @@ async function salvarFlag(provaId, alunoA, alunoB, status) {
         _colaFlags[`${ea}|${eb}`] = { status, nota_professor: notaProfessor };
         if (_renderColaTabela) _renderColaTabela();
         _atualizarBadgesCard(provaId);
+        carregarFlagsPendentes();
     } catch (e) {
         await notificar('Erro ao salvar decisão', e.message, { tipo: 'danger' });
     }
@@ -766,6 +769,67 @@ async function salvarFlagNota(provaId, alunoA, alunoB, notaId) {
         _atualizarBadgesCard(provaId);
     } catch (e) {
         await notificar('Erro ao salvar nota', e.message, { tipo: 'danger' });
+    }
+}
+
+async function irParaCola(provaId) {
+    await abrirDetalhe(provaId);
+    prvAtivarAba('cola');
+}
+
+async function carregarFlagsPendentes() {
+    if (!cursoAtual) return;
+    const panel = $('prvFlagsPendentes');
+    if (!panel) return;
+    try {
+        const r = await fetch(`/api/classroom/provas/pendentes-investigar?courseId=${encodeURIComponent(cursoAtual)}`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        const lista = d.pendentes || [];
+        if (lista.length === 0) {
+            panel.style.display = 'none';
+            panel.innerHTML = '';
+            return;
+        }
+        const linhas = lista.map(f => {
+            const dt = f.data_aplicacao ? new Date(f.data_aplicacao).toLocaleDateString('pt-BR') : '';
+            const flagDt = new Date(f.registrado_em).toLocaleDateString('pt-BR');
+            const nota = f.nota_professor ? `<span class="prv-pendente-nota" title="${escapeHtml(f.nota_professor)}">📝</span>` : '';
+            return `<tr>
+                <td>
+                    <span class="prv-pendente-prova-nome">${escapeHtml(f.prova_nome)}</span>
+                    ${dt ? `<span class="prv-pendente-prova-data">${dt}</span>` : ''}
+                </td>
+                <td>${escapeHtml(f.aluno_a)}</td>
+                <td>${escapeHtml(f.aluno_b)}</td>
+                <td style="text-align:center">${flagDt}${nota}</td>
+                <td style="text-align:center">
+                    <button class="prv-btn prv-pendente-link" onclick="irParaCola(${f.prova_id})">
+                        Ver análise →
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        panel.innerHTML = `
+            <div class="prv-pendentes-header">
+                <span class="prv-pendentes-titulo">🔍 ${lista.length} par${lista.length !== 1 ? 'es' : ''} pendente${lista.length !== 1 ? 's' : ''} de investigação</span>
+                <small class="prv-pendentes-sub">Pares marcados como "Investigar" neste curso — clique em "Ver análise" para abrir a prova correspondente.</small>
+            </div>
+            <table class="prv-tabela prv-pendentes-tabela">
+                <thead><tr>
+                    <th>Prova</th>
+                    <th>Aluno A</th>
+                    <th>Aluno B</th>
+                    <th style="text-align:center">Flagado em</th>
+                    <th style="text-align:center">Ação</th>
+                </tr></thead>
+                <tbody>${linhas}</tbody>
+            </table>
+        `;
+        panel.style.display = '';
+    } catch (e) {
+        panel.style.display = 'none';
     }
 }
 
@@ -806,6 +870,7 @@ window.salvarFlag      = salvarFlag;
 window.salvarFlagNota  = salvarFlagNota;
 window.fecharDet        = fecharDet;
 window.prvAtivarAba     = prvAtivarAba;
+window.irParaCola       = irParaCola;
 window.prvToggleSegundo = prvToggleSegundo;
 
 init();
