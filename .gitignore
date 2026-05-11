@@ -83,6 +83,10 @@ web_modules/
 backend/data/classroom_token.json
 backend/data/*.json
 
+# Minified portal bundles — gerados automaticamente pelo build:portal; nunca editar manualmente
+frontend/alunos/alunos.min.js
+frontend/pedagogico-portal/pedagogico-portal.min.js
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
