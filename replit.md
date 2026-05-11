@@ -5,6 +5,7 @@ EduSync is a school management system for Paraná teachers, focusing on synchron
 ## Run & Operate
 
 - **Run:** `cd backend && node index.js` (Backend listens on port 5000)
+- **Portal watcher (dev only):** Run `npm run dev:portal` (root) or `cd backend && npm run dev:portal` in a second terminal alongside the server. It watches `frontend/alunos/alunos.js` and `frontend/pedagogico-portal/pedagogico-portal.js` and rebuilds only the changed file's `.min.js` instantly — no server restart needed. Requires Node ≥ 20.19 (already the project runtime).
 - **Deploy target:** Reserved VM (`deploymentTarget = "vm"` in `.replit`). Chosen over autoscale because the app keeps Chromium/Puppeteer alive between requests (RCO browser singleton + GradePen cached page + 8-hour user sessions), so autoscale never reaches scale-zero and charges platform overhead without predictability. Reserved VM gives a fixed monthly cost. Recommended minimum: 2 vCPU / 4 GB RAM (each Chromium instance consumes 150–300 MB; RCO sync causes CPU spikes).
 - **Environment Variables (all stored in Replit Secrets vault — never in files):**
   - `RCO_CPF`, `RCO_SENHA` — RCO Digital credentials

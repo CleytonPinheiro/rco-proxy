@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:alunos": "node backend/scripts/build-portal.js alunos",
-    "build:portal": "node backend/scripts/build-portal.js"
+    "build:portal": "node backend/scripts/build-portal.js",
+    "dev:portal": "node backend/scripts/watch-portal.js"
   },
   "keywords": [],
   "author": "",

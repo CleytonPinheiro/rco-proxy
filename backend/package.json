@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node scripts/build-portal.js && node index.js",
     "dev": "node scripts/build-portal.js && node index.js",
-    "build:portal": "node scripts/build-portal.js"
+    "build:portal": "node scripts/build-portal.js",
+    "dev:portal": "node scripts/watch-portal.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -22,6 +23,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "chokidar": "^5.0.0",
     "terser": "^5.46.1"
   }
 }
