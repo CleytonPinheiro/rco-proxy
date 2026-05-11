@@ -932,6 +932,11 @@ const CONFIG_LABELS = {
         desc: 'Tempo mínimo entre sincronizações automáticas do RCO. Após uma sincronização bem-sucedida, o sistema aguarda este período antes de sincronizar novamente. Valores menores aumentam a frequência; valores maiores reduzem o consumo de recursos. Padrão: 4.',
         tipo: 'text',
     },
+    badge_poll_minutos: {
+        nome: 'Intervalo de atualização do badge de Provas (minutos)',
+        desc: 'Com que frequência a tela de Provas consulta o servidor para atualizar o contador de pares pendentes de investigação. Valores menores deixam o badge mais atualizado, mas aumentam o tráfego de rede. Aceita de 1 a 60 minutos. Padrão: 3.',
+        tipo: 'text',
+    },
 };
 
 async function carregarConfig() {

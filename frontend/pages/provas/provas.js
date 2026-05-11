@@ -3,7 +3,8 @@
 
 const $ = id => document.getElementById(id);
 
-const BADGE_POLL_MS = 3 * 60 * 1000; /* 3 minutes */
+const BADGE_POLL_MS_DEFAULT = 3 * 60 * 1000; /* 3 minutes fallback */
+let _badgePollMs = BADGE_POLL_MS_DEFAULT;
 
 let cursos = [];
 let cursoAtual = '';
@@ -18,7 +19,7 @@ let _badgePollTimer = null;
 
 function _iniciarPollBadge() {
     _pararPollBadge();
-    _badgePollTimer = setInterval(atualizarResumoCurso, BADGE_POLL_MS);
+    _badgePollTimer = setInterval(atualizarResumoCurso, _badgePollMs);
 }
 
 function _pararPollBadge() {
@@ -38,6 +39,16 @@ document.addEventListener('visibilitychange', () => {
 });
 
 async function init() {
+    try {
+        const cfgRes = await fetch('/api/classroom/provas/ui-config', { credentials: 'include' });
+        if (cfgRes.ok) {
+            const cfg = await cfgRes.json();
+            const mins = parseInt(cfg.badgePollMinutos, 10);
+            if (Number.isFinite(mins) && mins >= 1 && mins <= 60) {
+                _badgePollMs = mins * 60 * 1000;
+            }
+        }
+    } catch (_) { /* keep default */ }
     await carregarCursos();
     if (cursos.length) _iniciarPollBadge();
     /* mostra/esconde % foto conforme modo */

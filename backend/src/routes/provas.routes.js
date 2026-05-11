@@ -625,6 +625,20 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* Configurações de UI do módulo Provas (badge poll interval, etc.) */
+    router.get('/classroom/provas/ui-config', async (req, res) => {
+        try {
+            const { rows } = await pool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'badge_poll_minutos'`
+            );
+            const raw = rows.length ? parseInt(rows[0].valor, 10) : NaN;
+            const badgePollMinutos = Number.isFinite(raw) && raw >= 1 && raw <= 60 ? raw : 3;
+            res.json({ badgePollMinutos });
+        } catch (e) {
+            res.json({ badgePollMinutos: 3 });
+        }
+    });
+
     /* Contagem de flags 'investigar' agrupada por curso, restrita aos cursos do professor */
     router.get('/classroom/provas/resumo-investigar', async (req, res) => {
         const raw = (req.query.courseIds || '').trim();
