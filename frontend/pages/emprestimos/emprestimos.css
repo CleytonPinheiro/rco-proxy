@@ -529,27 +529,6 @@
 .empty-livros .ei { font-size: 48px; margin-bottom: 12px; }
 .empty-livros p   { font-size: 15px; }
 
-/* ── Toast ── */
-.toast-livros {
-    position: fixed;
-    bottom: 24px; right: 24px;
-    background: #1a1d27;
-    color: #f0f0f0;
-    padding: 12px 20px;
-    border-radius: 10px;
-    font-size: 13.5px;
-    font-weight: 600;
-    box-shadow: 0 4px 20px rgba(0,0,0,.25);
-    transform: translateY(80px);
-    opacity: 0;
-    transition: all .3s;
-    z-index: 9999;
-    max-width: 340px;
-}
-.toast-livros.show  { transform: translateY(0); opacity: 1; }
-.toast-livros.erro  { background: #dc2626; }
-.toast-livros.aviso { background: #d97706; }
-
 /* ── Responsivo ── */
 @media (max-width: 700px) {
     .livros-header  { flex-direction: column; }

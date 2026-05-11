@@ -941,37 +941,6 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-btn--confirmar-todos:hover { background: #d97706; }
 .cl-btn--confirmar-todos:disabled { opacity: .6; cursor: not-allowed; }
 
-/* ── Toast ── */
-.cl-toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: #1e293b;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 10px;
-    font-size: .85rem;
-    font-weight: 600;
-    box-shadow: 0 4px 16px rgba(0,0,0,.25);
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity .25s, transform .25s;
-    z-index: 500;
-    pointer-events: none;
-    max-width: 420px;
-    word-break: break-word;
-    line-height: 1.4;
-}
-.cl-toast--visivel {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto; /* permite clicar para fechar */
-    cursor: pointer;
-}
-.cl-toast--erro    { background: #dc2626; }
-.cl-toast--ok      { background: #059669; }
-.cl-toast--alerta  { background: #d97706; }
-
 /* ── Fontes de nota ── */
 .cl-fontes-container {
     background: var(--bg-alt, #1a1f2e);

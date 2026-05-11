@@ -383,25 +383,6 @@
 }
 .btn-confirmar:hover { opacity: 0.9; }
 
-/* ── Toast ───────────────────────────────────────────────────── */
-.toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: #1a1a2e;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 30px;
-    font-size: 14px;
-    font-weight: 600;
-    opacity: 0;
-    transition: all 0.3s;
-    z-index: 9999;
-    white-space: nowrap;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
 /* ── Responsivo ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .periodos-resumo { grid-template-columns: repeat(2, 1fr); }

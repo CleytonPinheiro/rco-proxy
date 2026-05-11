@@ -403,31 +403,6 @@
 }
 .sol-btn--cancel:hover { background: var(--bg-hover, rgba(255,255,255,.05)); }
 
-.sol-toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: #1e293b;
-    color: #fff;
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: .85rem;
-    font-weight: 500;
-    z-index: 9999;
-    opacity: 0;
-    pointer-events: none;
-    transition: transform .3s ease, opacity .3s ease;
-    box-shadow: 0 4px 20px rgba(0,0,0,.3);
-}
-.sol-toast--visivel {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto;
-}
-.sol-toast--ok   { background: #16a34a; }
-.sol-toast--erro { background: #dc2626; }
-
 /* ── Multi-seleção e barra de ações em lote ─────────────────────── */
 .sol-check {
     width: 16px;
