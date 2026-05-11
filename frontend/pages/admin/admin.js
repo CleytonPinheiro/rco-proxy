@@ -1058,9 +1058,38 @@ window.toggleConfig = async function (chave, ativo) {
 };
 
 window.salvarConfig = async function (chave) {
-    const valor = document.getElementById(`cfgVal_${chave}`).value;
-    const errEl = document.getElementById(`cfgErr_${chave}`);
-    if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+    const inputEl = document.getElementById(`cfgVal_${chave}`);
+    const valor   = inputEl ? inputEl.value.trim() : '';
+    const errEl   = document.getElementById(`cfgErr_${chave}`);
+
+    const clearErr = () => {
+        if (errEl)   { errEl.style.display = 'none'; errEl.textContent = ''; }
+        if (inputEl) inputEl.style.borderColor = '';
+    };
+    const showErr = (msg) => {
+        if (errEl)   { errEl.textContent = msg; errEl.style.display = 'block'; }
+        if (inputEl) inputEl.style.borderColor = '#dc2626';
+    };
+
+    clearErr();
+
+    const meta = CONFIG_LABELS[chave];
+    if (meta && meta.min !== undefined && meta.max !== undefined) {
+        const num = Number(valor);
+        if (valor === '' || !Number.isFinite(num)) {
+            showErr(`Por favor, insira um número válido (${meta.min}–${meta.max}).`);
+            return;
+        }
+        if (meta.integer && !Number.isInteger(num)) {
+            showErr(`O valor deve ser um número inteiro (${meta.min}–${meta.max}).`);
+            return;
+        }
+        if (num < meta.min || num > meta.max) {
+            showErr(`Valor fora do intervalo permitido: ${meta.min}–${meta.max}.`);
+            return;
+        }
+    }
+
     try {
         const res = await api(`/admin/config/${chave}`, {
             method: 'PATCH',
@@ -1069,13 +1098,7 @@ window.salvarConfig = async function (chave) {
         });
         if (!res.ok) {
             const d = await res.json();
-            const msg = d.erro || 'Erro ao salvar.';
-            if (errEl) {
-                errEl.textContent = msg;
-                errEl.style.display = 'block';
-            } else {
-                showToast(msg, 'error');
-            }
+            showErr(d.erro || 'Erro ao salvar.');
             return;
         }
         carregarConfig();
