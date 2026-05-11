@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /login/
+Allow: /alunos/
+Allow: /pedagogico-portal/
+Allow: /privacidade/
+Allow: /termos/
+Disallow: /pages/
+
+Sitemap: https://edusync.com.br/sitemap.xml
