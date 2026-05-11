@@ -73,7 +73,7 @@
                 <input id="prvfFotoPct" type="number" min="1" max="100" value="20">
             </label>
             <label class="prv-toggle">
-                <input id="prvfSegundo" type="checkbox" onchange="document.getElementById('prvfOutraTurmaWrap').style.display = this.checked ? '' : 'none'">
+                <input id="prvfSegundo" type="checkbox" onchange="prvToggleSegundo(this.checked)">
                 <span>Ativar 2º corretor cego (auditoria por outro aluno)</span>
             </label>
             <label class="prv-toggle" id="prvfOutraTurmaWrap" style="display:none;margin-left:24px">
@@ -81,6 +81,10 @@
                 <span>Permitir corretor de outra turma (mesmo professor)<br>
                     <small style="color:#666">Se faltar candidato na própria turma, sorteia entre alunos de outras provas suas.</small>
                 </span>
+            </label>
+            <label id="prvfSegundoPctWrap" style="display:none;margin-left:24px">% de alunos que recebem sorteio automático
+                <input id="prvfSegundoPct" type="number" min="1" max="100" value="15">
+                <small id="prvfSegundoPctDica" style="color:#666">15% = sorteio aleatório para ~1 em cada 7 alunos. <strong>100% = todos os alunos recebem 2ª correção automática.</strong></small>
             </label>
             <div class="prv-modal-actions">
                 <button class="prv-btn" onclick="fecharNova()">Cancelar</button>
@@ -99,13 +103,15 @@
             </div>
             <div id="prvDetMeta" class="prv-det-meta"></div>
             <div class="prv-tabs">
-                <button id="prvTabBtn_gabarito"   class="prv-tab-btn prv-tab-ativa" onclick="prvAtivarAba('gabarito')">📋 Gabarito</button>
-                <button id="prvTabBtn_submissoes" class="prv-tab-btn"               onclick="prvAtivarAba('submissoes')">👥 Submissões</button>
-                <button id="prvTabBtn_cola"       class="prv-tab-btn"               onclick="prvAtivarAba('cola')">🔍 Análise de Cola</button>
+                <button id="prvTabBtn_gabarito"      class="prv-tab-btn prv-tab-ativa" onclick="prvAtivarAba('gabarito')">📋 Gabarito</button>
+                <button id="prvTabBtn_submissoes"    class="prv-tab-btn"               onclick="prvAtivarAba('submissoes')">👥 Submissões</button>
+                <button id="prvTabBtn_divergencias"  class="prv-tab-btn"               onclick="prvAtivarAba('divergencias')" style="display:none">🎯 Divergências</button>
+                <button id="prvTabBtn_cola"          class="prv-tab-btn"               onclick="prvAtivarAba('cola')">🔍 Análise de Cola</button>
             </div>
-            <div id="prvDetSec_gabarito"   class="prv-det-section"><div id="prvDetGabarito"></div></div>
-            <div id="prvDetSec_submissoes" class="prv-det-section" style="display:none"><div id="prvDetSubmissoes"></div></div>
-            <div id="prvDetSec_cola"       class="prv-det-section" style="display:none"><div id="prvDetCola"></div></div>
+            <div id="prvDetSec_gabarito"     class="prv-det-section"><div id="prvDetGabarito"></div></div>
+            <div id="prvDetSec_submissoes"   class="prv-det-section" style="display:none"><div id="prvDetSubmissoes"></div></div>
+            <div id="prvDetSec_divergencias" class="prv-det-section" style="display:none"><div id="prvDetDivergencias"></div></div>
+            <div id="prvDetSec_cola"         class="prv-det-section" style="display:none"><div id="prvDetCola"></div></div>
             <div class="prv-modal-actions">
                 <button class="prv-btn" onclick="regabaritar()">↻ Re-baixar gabarito</button>
                 <button class="prv-btn" onclick="publicarNoClassroom()" title="Publica um Material no Classroom com o link de correção">📢 Publicar no Classroom</button>

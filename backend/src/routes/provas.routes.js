@@ -668,6 +668,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         if (!courseId || !nome || !gradepenId) {
             return res.status(400).json({ erro: 'courseId, nome e gradepenId são obrigatórios.' });
         }
+        const pct = Number(segundoCorretorPct);
+        if (segundoCorretorAtivo && (isNaN(pct) || pct < 1 || pct > 100)) {
+            return res.status(400).json({ erro: 'segundoCorretorPct deve ser entre 1 e 100.' });
+        }
 
         const client = await pool.connect();
         try {
@@ -898,75 +902,120 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         const { submissaoId } = req.body || {};
         if (!submissaoId) return res.status(400).json({ erro: 'submissaoId obrigatório.' });
         try {
-            const { rows: [sub] } = await pool.query(
-                `SELECT s.*, p.curso_id FROM classroom_prova_submissoes s
-                  JOIN classroom_provas p ON p.id = s.prova_id
-                 WHERE s.id = $1 AND s.prova_id = $2`,
-                [submissaoId, req.params.id]
-            );
-            if (!sub) return res.status(404).json({ erro: 'Submissão não encontrada nesta prova.' });
+            const result = await sortearSegundoCorretor(pool, { submissaoId, provaId: req.params.id });
+            logProvas(req, 'PROVA_SORTEIO_2COR', { submissaoId, sorteado: result.sorteado });
+            res.json({ ok: true, sorteado: result.sorteado });
+        } catch (e) {
+            if (e.message.includes('não encontrada nesta prova')) return res.status(404).json({ erro: e.message });
+            if (e.message.includes('Sem candidatos'))             return res.status(409).json({ erro: e.message });
+            res.status(500).json({ erro: e.message });
+        }
+    });
 
-            /* Carrega config de cross-turma da prova */
-            const { rows: [provaCfg] } = await pool.query(
-                `SELECT permitir_outra_turma, criada_por_cpf FROM classroom_provas WHERE id = $1`,
-                [sub.prova_id]
+    /* Divergências parciais (antes de efetivar): submissões com 2ª correção concluída */
+    router.get('/classroom/provas/:id/divergencias', async (req, res) => {
+        const cpfSessao = req.userSession?.cpf;
+        const perfil    = req.userSession?.perfil;
+        try {
+            const { rows: [prova] } = await pool.query(
+                `SELECT id, criada_por_cpf, segundo_corretor_ativo FROM classroom_provas WHERE id = $1`,
+                [req.params.id]
             );
-
-            /* Candidatos:
-             *  - sempre: alunos da MESMA prova com OUTRA variante (≠ do aluno auditado)
-             *  - se permitir_outra_turma: também alunos que submeteram QUALQUER outra prova
-             *    do MESMO professor (filtra por criada_por_cpf). Variante não importa pois
-             *    o gabarito que o corretor vê vem da prova original.
-             */
-            let candidatos;
-            if (provaCfg?.permitir_outra_turma && provaCfg?.criada_por_cpf) {
-                ({ rows: candidatos } = await pool.query(
-                    `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
-                       FROM classroom_prova_submissoes s
-                       JOIN classroom_provas p ON p.id = s.prova_id
-                      WHERE s.aluno_email <> $1
-                        AND s.eh_segundo_corretor = false
-                        AND p.criada_por_cpf = $2
-                        AND (s.prova_id <> $3 OR s.variante_id <> $4)
-                        AND NOT EXISTS (
-                            SELECT 1 FROM classroom_prova_submissoes c
-                             WHERE c.submissao_ref_id = $5
-                               AND c.eh_segundo_corretor = true
-                               AND c.aluno_email = s.aluno_email
-                        )`,
-                    [sub.aluno_email, provaCfg.criada_por_cpf, sub.prova_id, sub.variante_id, sub.id]
-                ));
-            } else {
-                ({ rows: candidatos } = await pool.query(
-                    `SELECT s.aluno_email, s.aluno_nome FROM classroom_prova_submissoes s
-                      WHERE s.prova_id = $1
-                        AND s.aluno_email <> $2
-                        AND s.eh_segundo_corretor = false
-                        AND s.variante_id <> $3
-                        AND NOT EXISTS (
-                            SELECT 1 FROM classroom_prova_submissoes c
-                             WHERE c.submissao_ref_id = s.id
-                               AND c.eh_segundo_corretor = true
-                        )`,
-                    [sub.prova_id, sub.aluno_email, sub.variante_id]
-                ));
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+            if (perfil !== 'admin') {
+                if (!cpfSessao || !prova.criada_por_cpf || prova.criada_por_cpf !== cpfSessao) {
+                    return res.status(403).json({ erro: 'Apenas o professor dono da prova pode ver as divergências.' });
+                }
             }
-            if (candidatos.length === 0) {
-                return res.status(409).json({ erro: 'Sem candidatos disponíveis (mesma variante, sem outras turmas elegíveis ou já corrigindo).' });
-            }
-            const escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
 
-            /* Cria notificação no portal aluno */
-            await pool.query(
-                `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
-                 VALUES ($1,'segundo_corretor',$2,$3,$4,$5)`,
-                [escolhido.aluno_email, String(sub.id),
-                 'Você foi sorteado para uma 2ª correção',
-                 'Ajude na verificação de uma prova (anônima). Acesse "Minhas tarefas de correção" no portal.',
-                 JSON.stringify({ submissaoRefId: sub.id, provaId: sub.prova_id })]
+            const { rows } = await pool.query(
+                `SELECT
+                    p.id           AS submissao_id,
+                    p.aluno_email,
+                    p.nota         AS nota_1,
+                    sc.nota        AS nota_2,
+                    sc.id          AS segunda_id
+                   FROM classroom_prova_submissoes p
+                   JOIN classroom_prova_submissoes sc
+                     ON sc.submissao_ref_id = p.id AND sc.eh_segundo_corretor = true
+                  WHERE p.prova_id = $1
+                    AND p.eh_segundo_corretor = false
+                  ORDER BY ABS(sc.nota - p.nota) DESC`,
+                [req.params.id]
             );
-            logProvas(req, 'PROVA_SORTEIO_2COR', { submissaoId: sub.id, sorteado: escolhido.aluno_email });
-            res.json({ ok: true, sorteado: escolhido.aluno_email });
+
+            function maskEmail(email) {
+                const [local = '', domain = ''] = String(email).split('@');
+                const vis = Math.min(2, local.length);
+                return local.slice(0, vis) + '**@' + domain;
+            }
+            function nivelDiv(div) {
+                if (div <= 0.3) return 'perfeita';
+                if (div <= 0.7) return 'precisa';
+                if (div <= 1.5) return 'ok';
+                if (div <= 3.0) return 'longe';
+                return 'desviante';
+            }
+
+            /* Tenta enriquecer com flags de cola/suspeita (risco_cola_nivel da Task #112 se existir) */
+            let flagsMap = {};
+            try {
+                /* Tenta ler risco_cola_nivel; se a coluna não existir no schema, cai no catch */
+                const emails = rows.map(r => r.aluno_email);
+                if (emails.length > 0) {
+                    let flagRows;
+                    try {
+                        ({ rows: flagRows } = await pool.query(
+                            `SELECT aluno_a, aluno_b, status, risco_cola_nivel
+                               FROM classroom_prova_cola_flags
+                              WHERE prova_id = $1`,
+                            [req.params.id]
+                        ));
+                    } catch (_colErr) {
+                        /* risco_cola_nivel column doesn't exist yet (Task #112 not done) */
+                        ({ rows: flagRows } = await pool.query(
+                            `SELECT aluno_a, aluno_b, status, NULL::text AS risco_cola_nivel
+                               FROM classroom_prova_cola_flags
+                              WHERE prova_id = $1`,
+                            [req.params.id]
+                        ));
+                    }
+                    for (const f of flagRows) {
+                        /* Mark both sides of each flagged pair */
+                        for (const email of [f.aluno_a, f.aluno_b]) {
+                            if (!flagsMap[email] || f.risco_cola_nivel) {
+                                flagsMap[email] = {
+                                    suspeito:        true,
+                                    status_flag:     f.status,
+                                    risco_cola_nivel: f.risco_cola_nivel || null,
+                                };
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                /* Enriquecimento é opcional — não quebra a resposta */
+                console.warn('[PROVAS] divergencias flag lookup falhou:', e.message);
+            }
+
+            const divergencias = rows.map(r => {
+                const nota1 = Number(r.nota_1 || 0);
+                const nota2 = Number(r.nota_2 || 0);
+                const div   = Math.abs(nota1 - nota2);
+                const flagInfo = flagsMap[r.aluno_email] || null;
+                return {
+                    submissao_id:     r.submissao_id,
+                    aluno_email:      maskEmail(r.aluno_email),
+                    nota_1:           nota1,
+                    nota_2:           nota2,
+                    divergencia:      Math.round(div * 100) / 100,
+                    nivel:            nivelDiv(div),
+                    suspeito:         flagInfo?.suspeito || false,
+                    risco_cola_nivel: flagInfo?.risco_cola_nivel || null,
+                };
+            });
+
+            res.json({ divergencias });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
@@ -1520,6 +1569,77 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 /* ════════════════════════════════════════════════════════════════════
  *  ROUTER PÚBLICO (alunos — exigem cookie aluno_sid)
  * ═══════════════════════════════════════════════════════════════════ */
+
+/* Helper reutilizável: sorteia um 2º corretor para uma submissão.
+ * Pode ser chamado pela rota manual e pelo gatilho automático pós-submissão.
+ * Lança Error se não houver candidatos ou submissão inválida.
+ */
+async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
+    const { rows: [sub] } = await pool.query(
+        `SELECT s.*, p.curso_id FROM classroom_prova_submissoes s
+          JOIN classroom_provas p ON p.id = s.prova_id
+         WHERE s.id = $1 AND s.prova_id = $2`,
+        [submissaoId, provaId]
+    );
+    if (!sub) throw new Error('Submissão não encontrada nesta prova.');
+
+    const { rows: [provaCfg] } = await pool.query(
+        `SELECT permitir_outra_turma, criada_por_cpf FROM classroom_provas WHERE id = $1`,
+        [sub.prova_id]
+    );
+
+    let candidatos;
+    if (provaCfg?.permitir_outra_turma && provaCfg?.criada_por_cpf) {
+        ({ rows: candidatos } = await pool.query(
+            `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
+               FROM classroom_prova_submissoes s
+               JOIN classroom_provas p ON p.id = s.prova_id
+              WHERE s.aluno_email <> $1
+                AND s.eh_segundo_corretor = false
+                AND p.criada_por_cpf = $2
+                AND (s.prova_id <> $3 OR s.variante_id <> $4)
+                AND NOT EXISTS (
+                    SELECT 1 FROM classroom_prova_submissoes c
+                     WHERE c.submissao_ref_id = $5
+                       AND c.eh_segundo_corretor = true
+                       AND c.aluno_email = s.aluno_email
+                )`,
+            [sub.aluno_email, provaCfg.criada_por_cpf, sub.prova_id, sub.variante_id, sub.id]
+        ));
+    } else {
+        ({ rows: candidatos } = await pool.query(
+            `SELECT s.aluno_email, s.aluno_nome FROM classroom_prova_submissoes s
+              WHERE s.prova_id = $1
+                AND s.aluno_email <> $2
+                AND s.eh_segundo_corretor = false
+                AND s.variante_id <> $3
+                AND NOT EXISTS (
+                    SELECT 1 FROM classroom_prova_submissoes c
+                     WHERE c.submissao_ref_id = s.id
+                       AND c.eh_segundo_corretor = true
+                )`,
+            [sub.prova_id, sub.aluno_email, sub.variante_id]
+        ));
+    }
+
+    if (candidatos.length === 0) {
+        throw new Error('Sem candidatos disponíveis (mesma variante, sem outras turmas elegíveis ou já corrigindo).');
+    }
+
+    const escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
+
+    await pool.query(
+        `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+         VALUES ($1,'segundo_corretor',$2,$3,$4,$5)`,
+        [escolhido.aluno_email, String(sub.id),
+         'Você foi sorteado para uma 2ª correção',
+         'Ajude na verificação de uma prova (anônima). Acesse "Minhas tarefas de correção" no portal.',
+         JSON.stringify({ submissaoRefId: sub.id, provaId: sub.prova_id })]
+    );
+
+    return { sorteado: escolhido.aluno_email };
+}
+
 export function createProvasPublicRouter() {
     const router = Router();
 
@@ -1673,6 +1793,20 @@ export function createProvasPublicRouter() {
                 fotoObrigatoria: fotoObrig,
                 fotoEntregue: !!fotoUrlSalva,
                 criada_em: sub.criada_em,
+            });
+
+            /* ── Sorteio automático de 2º corretor (fire-and-forget) ──
+             * Não bloqueia a resposta ao aluno. Erros apenas logados. */
+            setImmediate(async () => {
+                try {
+                    if (!prova.segundo_corretor_ativo) return;
+                    const pct = Number(prova.segundo_corretor_pct ?? 15);
+                    if (pct <= 0 || Math.random() * 100 >= pct) return;
+                    await sortearSegundoCorretor(pool, { submissaoId: sub.id, provaId: prova.id });
+                    console.log(`[PROVAS] Auto-sorteio 2º corretor OK: sub ${sub.id}, prova ${prova.id}`);
+                } catch (e) {
+                    console.warn(`[PROVAS] Auto-sorteio 2º corretor falhou (sub ${sub.id}): ${e.message}`);
+                }
             });
         } catch (e) {
             console.error('[PROVAS] Erro ao submeter:', e.message);

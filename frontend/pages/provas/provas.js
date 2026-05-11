@@ -11,6 +11,7 @@ let _colaCarregada = false;
 let _colaExpandido = null;
 let _colaFlags = {};
 let _renderColaTabela = null;
+let _divergenciasCarregadas = false;
 
 async function init() {
     await carregarCursos();
@@ -18,6 +19,12 @@ async function init() {
     $('prvfFoto').addEventListener('change', () => {
         $('prvfFotoPctWrap').style.display = $('prvfFoto').value === 'sorteio' ? '' : 'none';
     });
+}
+
+function prvToggleSegundo(ativo) {
+    $('prvfOutraTurmaWrap').style.display  = ativo ? '' : 'none';
+    $('prvfSegundoPctWrap').style.display  = ativo ? '' : 'none';
+    if (!ativo) $('prvfOutraTurma').checked = false;
 }
 
 async function carregarCursos() {
@@ -94,14 +101,20 @@ function abrirNova() {
     $('prvfFotoPct').value = 20;
     $('prvfFotoPctWrap').style.display = '';
     $('prvfSegundo').checked = false;
+    $('prvfSegundoPct').value = 15;
     $('prvfOutraTurma').checked = false;
     $('prvfOutraTurmaWrap').style.display = 'none';
+    $('prvfSegundoPctWrap').style.display = 'none';
     $('prvNovaErro').style.display = 'none';
     $('prvModalNova').style.display = '';
 }
 function fecharNova() { $('prvModalNova').style.display = 'none'; }
 
 async function salvarNova() {
+    const segundoPct = parseInt($('prvfSegundoPct').value, 10) || 15;
+    if ($('prvfSegundo').checked && (segundoPct < 1 || segundoPct > 100)) {
+        return mostraErro('O percentual do 2º corretor deve ser entre 1 e 100.');
+    }
     const body = {
         courseId:             cursoAtual,
         nome:                 $('prvfNome').value.trim(),
@@ -110,6 +123,7 @@ async function salvarNova() {
         fotoModo:             $('prvfFoto').value,
         fotoSorteioPct:       parseInt($('prvfFotoPct').value, 10) || 20,
         segundoCorretorAtivo: $('prvfSegundo').checked,
+        segundoCorretorPct:   segundoPct,
         permitirOutraTurma:   $('prvfOutraTurma').checked,
     };
     if (!body.nome || !body.gradepenId) {
@@ -164,13 +178,39 @@ function renderDetalhe(d) {
         <span>📅 ${p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : 'Sem data'}</span>
         <span>📊 ${d.variantes.length} variantes • ${d.submissoes.filter(s=>!s.eh_segundo_corretor).length} alunos corrigiram</span>
         <span>📷 Foto: ${p.foto_modo}${p.foto_modo === 'sorteio' ? ` (${p.foto_sorteio_pct}%)` : ''}</span>
-        <span>👁 2º corretor: ${p.segundo_corretor_ativo ? 'ativo' : 'desativado'}${p.segundo_corretor_ativo && p.permitir_outra_turma ? ' (cross-turma ON)' : ''}</span>
+        <span>👁 2º corretor: ${p.segundo_corretor_ativo
+            ? `ativo · ${p.segundo_corretor_pct === 100 ? '100% automático' : (p.segundo_corretor_pct || 15) + '% automático'}${p.permitir_outra_turma ? ' · cross-turma ON' : ''}`
+            : 'desativado'}</span>
     `;
     $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Análise de Cola</strong> para carregar.</div>';
+    $('prvDetDivergencias').innerHTML = '<div class="prv-empty">Carregando divergências…</div>';
     _colaCarregada = false;
     _colaExpandido = null;
     _colaFlags = {};
     _renderColaTabela = null;
+    _divergenciasCarregadas = false;
+
+    /* Oculta aba Divergências — só será exibida se houver dados reais */
+    const tabDiv = $('prvTabBtn_divergencias');
+    if (tabDiv) tabDiv.style.display = 'none';
+
+    /* Busca divergências em background se 2º corretor estiver ativo;
+       mostra a aba apenas quando confirmar que há pelo menos 1 resultado */
+    if (p.segundo_corretor_ativo) {
+        fetch(`/api/classroom/provas/${p.id}/divergencias`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => {
+                if (!provaAberta || provaAberta.prova.id !== p.id) return; /* modal fechado/trocado */
+                const divs = d.divergencias || [];
+                if (divs.length > 0) {
+                    if (tabDiv) tabDiv.style.display = '';
+                    renderDivergencias(divs);
+                    _divergenciasCarregadas = true;
+                }
+            })
+            .catch(() => { /* silencia — aba simplesmente permanece oculta */ });
+    }
+
     prvAtivarAba('gabarito');
 
     /* Gabarito */
@@ -363,16 +403,77 @@ async function publicarNoClassroom() {
 }
 
 function prvAtivarAba(aba) {
-    const abas = ['gabarito', 'submissoes', 'cola'];
+    const abas = ['gabarito', 'submissoes', 'divergencias', 'cola'];
     abas.forEach(a => {
-        const secEl  = $('prvDetSec_' + a);
-        const btnEl  = $('prvTabBtn_' + a);
+        const secEl = $('prvDetSec_' + a);
+        const btnEl = $('prvTabBtn_' + a);
         if (secEl) secEl.style.display = a === aba ? '' : 'none';
-        if (btnEl) {
-            btnEl.classList.toggle('prv-tab-ativa', a === aba);
-        }
+        if (btnEl) btnEl.classList.toggle('prv-tab-ativa', a === aba);
     });
-    if (aba === 'cola' && !_colaCarregada) carregarColAnalise();
+    if (aba === 'cola'         && !_colaCarregada)         carregarColAnalise();
+    if (aba === 'divergencias' && !_divergenciasCarregadas) carregarDivergencias();
+}
+
+async function carregarDivergencias() {
+    if (!provaAberta) return;
+    const cont = $('prvDetDivergencias');
+    cont.innerHTML = '<div class="prv-empty">Carregando divergências…</div>';
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/divergencias`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        _divergenciasCarregadas = true;
+        renderDivergencias(d.divergencias || []);
+    } catch (e) {
+        cont.innerHTML = `<div class="prv-empty" style="color:#dc2626">Erro: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function renderDivergencias(divergencias) {
+    const cont = $('prvDetDivergencias');
+    if (divergencias.length === 0) {
+        cont.innerHTML = '<div class="prv-empty">Nenhuma 2ª correção concluída ainda.<br><small>Esta seção será preenchida à medida que os alunos sorteados enviarem suas correções.</small></div>';
+        return;
+    }
+
+    const nivelCor = {
+        perfeita:  { bg: '#dcfce7', cor: '#166534', label: '⭐ Perfeita'  },
+        precisa:   { bg: '#d1fae5', cor: '#065f46', label: '🎯 Precisa'   },
+        ok:        { bg: '#fef9c3', cor: '#854d0e', label: '👍 Ok'        },
+        longe:     { bg: '#ffedd5', cor: '#9a3412', label: '🤔 Longe'     },
+        desviante: { bg: '#fee2e2', cor: '#991b1b', label: '❌ Desviante' },
+    };
+
+    const linhas = divergencias.map(d => {
+        const nc = nivelCor[d.nivel] || nivelCor.ok;
+        const suspeitoBadge = d.suspeito
+            ? `<span class="prv-flag prv-flag-2cor" style="background:#fef3c7;color:#92400e" title="${escapeHtml(d.risco_cola_nivel || 'Flag de cola registrada')}">⚠️${d.risco_cola_nivel ? ' ' + escapeHtml(d.risco_cola_nivel) : ''}</span>`
+            : '';
+        return `<tr>
+            <td>${escapeHtml(d.aluno_email)}${suspeitoBadge ? '<br>' + suspeitoBadge : ''}</td>
+            <td style="text-align:center">${d.nota_1}</td>
+            <td style="text-align:center">${d.nota_2}</td>
+            <td style="text-align:center">${d.divergencia}</td>
+            <td style="text-align:center">
+                <span class="prv-flag" style="background:${nc.bg};color:${nc.cor}">${nc.label}</span>
+            </td>
+        </tr>`;
+    }).join('');
+
+    cont.innerHTML = `
+        <h3>Divergências parciais <small style="font-weight:normal;color:#666">(${divergencias.length} par${divergencias.length !== 1 ? 'es' : ''})</small></h3>
+        <p style="color:#666;font-size:.85em;margin-bottom:8px">Mostra os pares 1ª correção / 2ª correção já submetidos. Emails mascarados para preservar o anonimato. XP definitivo é calculado apenas na efetivação.</p>
+        <table class="prv-tabela">
+            <thead><tr>
+                <th>Aluno (mascarado)</th>
+                <th style="text-align:center">Nota 1ª</th>
+                <th style="text-align:center">Nota 2ª</th>
+                <th style="text-align:center">Diferença</th>
+                <th style="text-align:center">Nível</th>
+            </tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    `;
 }
 
 async function carregarColAnalise() {
@@ -682,7 +783,8 @@ window.publicarNoClassroom = publicarNoClassroom;
 window.exportarFlags   = exportarFlags;
 window.salvarFlag      = salvarFlag;
 window.salvarFlagNota  = salvarFlagNota;
-window.fecharDet       = fecharDet;
-window.prvAtivarAba    = prvAtivarAba;
+window.fecharDet        = fecharDet;
+window.prvAtivarAba     = prvAtivarAba;
+window.prvToggleSegundo = prvToggleSegundo;
 
 init();
