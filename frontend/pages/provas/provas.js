@@ -353,7 +353,7 @@ async function sortear(submissaoId) {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
-        await notificar('Corretor sorteado', `2º corretor: ${d.sorteado}`, {tipo: 'ok', icone: '🎲'});
+        toast(`🎲 Corretor sorteado: ${d.sorteado}`, 'ok');
         await abrirDetalhe(provaAberta.prova.id);
     } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
@@ -410,10 +410,10 @@ async function trocarVariante(submissaoId) {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
-        if (d.semMudanca) { await notificar('Sem mudança', 'Já era essa variante. Nada mudou.', {tipo: 'info'}); return; }
+        if (d.semMudanca) { toast('Já era essa variante. Nada mudou.', 'info'); return; }
         let msg = `Variante trocada. Nova nota: ${d.nota} / ${d.total_max}.`;
         if (d.segundasRemovidas) msg += ` ${d.segundasRemovidas} 2ª(s) correção(ões) foram apagadas.`;
-        await notificar('Variante trocada', msg, {tipo: 'ok'});
+        toast(msg, 'ok');
         await abrirDetalhe(provaAberta.prova.id);
     } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
@@ -813,7 +813,7 @@ async function salvarFlagNota(provaId, alunoA, alunoB, notaId) {
         if (_renderColaTabela) _renderColaTabela();
         _atualizarBadgesCard(provaId);
         if (isNew) {
-            await notificar('Decisão registrada', "Decisão registrada como 'Investigar'", { tipo: 'info', duracao: 3000 });
+            toast("Decisão registrada como 'Investigar'", 'info');
         }
     } catch (e) {
         await notificar('Erro ao salvar nota', e.message, { tipo: 'danger' });

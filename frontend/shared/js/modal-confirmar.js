@@ -295,6 +295,104 @@
      * @param {string} [opcoes.icone] - Ícone exibido acima do título.
      * @returns {Promise<boolean>}
      */
+    /* ── Toast (auto-dismissing snackbar) ────────────────────────── */
+
+    function injetarEstilesToast() {
+        if (document.getElementById('mcToastEstilos')) return;
+        const style = document.createElement('style');
+        style.id = 'mcToastEstilos';
+        style.textContent = `
+            #mcToastContainer {
+                position: fixed;
+                bottom: 1.25rem;
+                right: 1.25rem;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: .5rem;
+                align-items: flex-end;
+                pointer-events: none;
+            }
+            .mc-toast {
+                display: flex;
+                align-items: center;
+                gap: .55rem;
+                background: #1f2937;
+                color: #f9fafb;
+                border-radius: 10px;
+                padding: .6rem 1rem;
+                font-size: .875rem;
+                font-family: inherit;
+                font-weight: 500;
+                box-shadow: 0 4px 16px rgba(0,0,0,.22);
+                max-width: 340px;
+                pointer-events: auto;
+                animation: mcToastEntrar .2s ease;
+                border-left: 4px solid #6b7280;
+            }
+            .mc-toast.mc-toast-ok     { border-left-color: #16a34a; }
+            .mc-toast.mc-toast-danger { border-left-color: #dc2626; }
+            .mc-toast.mc-toast-info   { border-left-color: #2563eb; }
+            .mc-toast.mc-toast-saindo {
+                animation: mcToastSair .25s ease forwards;
+            }
+            @keyframes mcToastEntrar {
+                from { transform: translateX(110%); opacity: 0; }
+                to   { transform: translateX(0);    opacity: 1; }
+            }
+            @keyframes mcToastSair {
+                from { transform: translateX(0);    opacity: 1; }
+                to   { transform: translateX(110%); opacity: 0; }
+            }
+            .mc-toast-icone { flex-shrink: 0; font-size: 1rem; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function injetarContainerToast() {
+        if (document.getElementById('mcToastContainer')) return;
+        const container = document.createElement('div');
+        container.id = 'mcToastContainer';
+        document.body.appendChild(container);
+    }
+
+    /**
+     * Exibe um toast auto-dismissível (snackbar) no canto inferior direito.
+     * @param {string} msg - Mensagem exibida no toast.
+     * @param {'info'|'ok'|'danger'} [tipo='info'] - Esquema de cor.
+     * @param {number} [duracao=3500] - Duração em ms antes de desaparecer.
+     */
+    window.toast = function toast(msg, tipo = 'info', duracao = 3500) {
+        injetarEstilesToast();
+        injetarContainerToast();
+
+        const icones = { ok: '✅', danger: '❌', info: 'ℹ️' };
+
+        const el = document.createElement('div');
+        el.className = `mc-toast mc-toast-${tipo}`;
+
+        const elIcone = document.createElement('span');
+        elIcone.className = 'mc-toast-icone';
+        elIcone.textContent = icones[tipo] || icones.info;
+
+        const elMsg = document.createElement('span');
+        elMsg.textContent = msg;
+
+        el.appendChild(elIcone);
+        el.appendChild(elMsg);
+
+        const container = document.getElementById('mcToastContainer');
+        container.appendChild(el);
+
+        function remover() {
+            el.classList.add('mc-toast-saindo');
+            el.addEventListener('animationend', () => el.remove(), { once: true });
+        }
+
+        const timer = setTimeout(remover, duracao);
+        el.addEventListener('click', () => { clearTimeout(timer); remover(); });
+    };
+
     window.confirmar = function confirmar(titulo, mensagem, opcoes) {
         injetar();
 
