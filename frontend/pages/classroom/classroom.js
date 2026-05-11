@@ -2801,7 +2801,16 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
             const pctAtv = ptMax > 0 ? ((notaEfetiva / ptMax) * 100).toFixed(0) : notaEfetiva;
             const ehRasc = nota === null && notaRasc !== null;
             if (ehRasc) {
-                statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%) — rascunho</span>`;
+                const _subId    = sub?.submissionId;
+                const _courseId = grupoAtivo?.curso_id;
+                const _btnConf  = _subId && _courseId
+                    ? `<button class="cl-btn-confirmar-rasc"
+                            data-course-id="${esc(String(_courseId))}"
+                            data-cw-id="${esc(String(atv.id))}"
+                            data-sub-id="${esc(String(_subId))}"
+                            title="Devolver esta nota para o aluno no Google Classroom">Confirmar nota</button>`
+                    : '';
+                statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%) — rascunho</span>${_btnConf}`;
             } else {
                 statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEfetiva)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
             }
@@ -2976,7 +2985,16 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
                     const pctAtv = ptMax > 0 ? ((notaEf / ptMax) * 100).toFixed(0) : notaEf;
                     const ehRasc = nota === null && rasc !== null;
                     if (ehRasc) {
-                        statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%) — rascunho</span>`;
+                        const _subId    = subm?.submissionId;
+                        const _courseId = grupoAtivo?.curso_id;
+                        const _btnConf  = _subId && _courseId
+                            ? `<button class="cl-btn-confirmar-rasc"
+                                    data-course-id="${esc(String(_courseId))}"
+                                    data-cw-id="${esc(String(satv.id))}"
+                                    data-sub-id="${esc(String(_subId))}"
+                                    title="Devolver esta nota para o aluno no Google Classroom">Confirmar nota</button>`
+                            : '';
+                        statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%) — rascunho</span>${_btnConf}`;
                     } else {
                         statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEf)} / ${rco(ptMax)} pts &nbsp;(${pctAtv}%)</span>`;
                     }
@@ -3092,6 +3110,16 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
         });
     });
 
+    // Confirmar rascunho
+    elNotasLista.querySelectorAll('.cl-btn-confirmar-rasc').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const courseId = btn.dataset.courseId;
+            const cwId     = btn.dataset.cwId;
+            const subId    = btn.dataset.subId;
+            await confirmarNotaRascunho(btn, courseId, cwId, subId);
+        });
+    });
+
     // Voltar
     document.getElementById('clDetalheVoltar').addEventListener('click', () => {
         alunoDetalheAberto = null;
@@ -3111,6 +3139,71 @@ function refrescarDetalheAlunoAberto() {
         return;
     }
     mostrarDetalheAluno(novo, grupoResumoData.atividades, grupoResumoData.meta, grupoResumoData.fontes || [], grupoResumoData.subgrupos || []);
+}
+
+/* Confirma (devolve) uma nota em rascunho para o aluno no Google Classroom.
+   Após sucesso, re-busca o resumo do grupo silenciosamente e re-renderiza o detalhe. */
+async function confirmarNotaRascunho(btn, courseId, cwId, subId) {
+    btn.disabled    = true;
+    btn.textContent = '⏳';
+    try {
+        await apiRaw(`/courses/${courseId}/coursework/${cwId}/submissions/${subId}/return`, { method: 'POST' });
+        await _refreshGrupoSilent();
+    } catch (e) {
+        btn.disabled    = false;
+        btn.textContent = 'Confirmar nota';
+        await notificar('Erro ao devolver nota', e.message, { tipo: 'danger' });
+    }
+}
+
+/* Re-busca o resumo do grupo ativo sem mostrar spinner nem destruir a view atual.
+   Atualiza grupoResumoData e re-renderiza o detalhe do aluno aberto. */
+async function _refreshGrupoSilent() {
+    if (!grupoAtivo || !cursoAtivo) return;
+    try {
+        const [resumo, resumoRec] = await Promise.all([
+            api(`/groups/${grupoAtivo.id}/summary?courseId=${cursoAtivo.id}`),
+            grupoAtivo.recuperacaoId
+                ? api(`/groups/${grupoAtivo.recuperacaoId}/summary?courseId=${cursoAtivo.id}`).catch(() => null)
+                : Promise.resolve(null),
+        ]);
+        const meta = grupoAtivo.pontosMeta;
+        let recMeta = meta;
+        const recMap = {};
+        if (resumoRec?.alunos) {
+            recMeta = gruposCache.find(g => String(g.id) === String(grupoAtivo.recuperacaoId))?.pontosMeta || meta;
+            resumoRec.alunos.forEach(a => {
+                recMap[a.userId] = { soma: ((a.mediaIndice ?? 0) / 100) * recMeta, pendentes: a.pendentes };
+            });
+        }
+        const isRec  = !!resumo.isRecuperacao;
+        const hasRec = Object.keys(recMap).length > 0;
+        const alunosResumo = resumo.alunos.map(a => ({
+            ...a,
+            aluno:       alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
+            soma:        ((a.mediaIndice        ?? 0) / 100) * meta,
+            somaInterna: ((a.mediaIndiceInterno ?? a.mediaIndice ?? 0) / 100) * meta,
+            somaPrevista:((a.mediaIndicePrevisto ?? a.mediaIndice ?? 0) / 100) * meta,
+            temEntrou:   Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
+            recData:     recMap[a.userId] ?? null,
+        })).sort((a, b) => {
+            const na = a.aluno.numChamada ?? 9999;
+            const nb = b.aluno.numChamada ?? 9999;
+            return na !== nb ? na - nb : (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR');
+        });
+        grupoResumoData = {
+            ...grupoResumoData,
+            atividades:  resumo.atividades,
+            alunosResumo,
+            isRec,
+            hasRec,
+            fontes:    resumo.fontes             || [],
+            subgrupos: resumo.subgruposInjetados || [],
+        };
+        refrescarDetalheAlunoAberto();
+    } catch (_) {
+        refrescarDetalheAlunoAberto();
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════

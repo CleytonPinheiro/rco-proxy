@@ -1481,7 +1481,7 @@ export function createClassroomRouter(deps = {}) {
 
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
                         nota, notaRascunho, estado: s.state, entregue, atrasado, updateTime,
-                        eDeRecuperacao, eTardia,
+                        eDeRecuperacao, eTardia, submissionId: s.id,
                     };
 
                     /* Inicializa contador de "ganho previsto" — soma assignedGrade + draftGrade.
@@ -1749,7 +1749,7 @@ export function createClassroomRouter(deps = {}) {
                                     const key = `s_${filho.id}_${fa.atividade_id}`;
                                     alunoMap[s.userId].subgruposAtividades[key] = {
                                         nota: grade, notaRascunho: rascGrad, entregue,
-                                        estado: s.state,
+                                        estado: s.state, submissionId: s.id,
                                     };
                                     if (grade !== null) {
                                         const valor = Math.min(grade, pm);
