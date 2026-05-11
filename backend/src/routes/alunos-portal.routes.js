@@ -968,7 +968,7 @@ export function createAlunosPortalRouter() {
                         aluno_email.trim().toLowerCase(),
                         String(turma_id),
                         mensagem.trim(),
-                        JSON.stringify({ turma_id: String(turma_id), professor: professorNome }),
+                        JSON.stringify({ turma_id: String(turma_id), professor: professorNome, professor_cpf: cpf || null }),
                     ]
                 );
                 auditLogger.registrar({
@@ -983,6 +983,58 @@ export function createAlunosPortalRouter() {
             } catch (e) {
                 console.error('[ALUNOS-PORTAL] Erro ao enviar notificação de verificação:', e.message);
                 res.status(500).json({ erro: 'Erro interno ao enviar notificação.' });
+            }
+        }
+    );
+
+    /* GET /api/alunos-portal/verificacoes-enviadas — professor consulta histórico de orientações enviadas */
+    router.get('/alunos-portal/verificacoes-enviadas',
+        requireAuth,
+        requireFuncionalidade('classroom-escrita'),
+        async (req, res) => {
+            const cpf = req.userSession?.cpf;
+            if (!cpf) return res.status(403).json({ erro: 'Sessão inválida.' });
+
+            const { turma_id, aluno_email, page = '1', limit: limitParam = '50' } = req.query;
+            const pageNum  = Math.max(1, parseInt(page,  10) || 1);
+            const pageSize = Math.min(200, Math.max(1, parseInt(limitParam, 10) || 50));
+            const offset   = (pageNum - 1) * pageSize;
+
+            try {
+                const conditions = [`tipo = 'verificacao_professor'`, `dados->>'professor_cpf' = $1`];
+                const params     = [cpf];
+
+                if (turma_id) {
+                    params.push(String(turma_id));
+                    conditions.push(`referencia = $${params.length}`);
+                }
+                if (aluno_email) {
+                    params.push(aluno_email.trim().toLowerCase());
+                    conditions.push(`aluno_email = $${params.length}`);
+                }
+
+                const where = conditions.join(' AND ');
+
+                const { rows: countRows } = await pool.query(
+                    `SELECT COUNT(*) AS total FROM notificacoes_aluno WHERE ${where}`,
+                    params
+                );
+                const total = parseInt(countRows[0].total, 10);
+
+                params.push(pageSize, offset);
+                const { rows } = await pool.query(
+                    `SELECT id, aluno_email, referencia AS turma_id, mensagem, lida, criado_em, dados
+                     FROM notificacoes_aluno
+                     WHERE ${where}
+                     ORDER BY criado_em DESC
+                     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+                    params
+                );
+
+                res.json({ total, page: pageNum, pageSize, items: rows });
+            } catch (e) {
+                console.error('[ALUNOS-PORTAL] Erro ao buscar histórico de verificações:', e.message);
+                res.status(500).json({ erro: 'Erro interno ao buscar histórico.' });
             }
         }
     );

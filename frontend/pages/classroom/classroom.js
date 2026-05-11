@@ -1167,6 +1167,103 @@ async function enviarNotifVerificacao() {
     }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Histórico de Orientações de Verificação — professor consulta envios
+══════════════════════════════════════════════════════════════ */
+
+let _histVerifPagAtual = 1;
+
+function abrirHistoricoVerificacoes() {
+    const modal = document.getElementById('clHistoricoVerificacaoModal');
+    if (!modal) return;
+    document.getElementById('clHistVerifFiltroAluno').value = '';
+    document.getElementById('clHistVerifFiltroTurma').value = cursoAtivo?.id ? String(cursoAtivo.id) : '';
+    modal.style.display = 'flex';
+    carregarHistoricoVerificacoes(1);
+}
+
+function fecharHistoricoVerificacoes() {
+    const modal = document.getElementById('clHistoricoVerificacaoModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function carregarHistoricoVerificacoes(page = 1) {
+    _histVerifPagAtual = page;
+    const corpo    = document.getElementById('clHistVerifCorpo');
+    const totalEl  = document.getElementById('clHistVerifTotal');
+    const pagDiv   = document.getElementById('clHistVerifPaginacao');
+    const filtAluno = (document.getElementById('clHistVerifFiltroAluno')?.value || '').trim();
+    const filtTurma = (document.getElementById('clHistVerifFiltroTurma')?.value || '').trim();
+
+    corpo.innerHTML = '<div class="cl-loading">Carregando…</div>';
+    totalEl.textContent = '';
+    pagDiv.style.display = 'none';
+
+    try {
+        const params = new URLSearchParams({ page, limit: 30 });
+        if (filtAluno) params.set('aluno_email', filtAluno);
+        if (filtTurma) params.set('turma_id', filtTurma);
+
+        const resp = await fetch(`/api/alunos-portal/verificacoes-enviadas?${params}`, { credentials: 'include' });
+        if (!resp.ok) {
+            const d = await resp.json().catch(() => ({}));
+            corpo.innerHTML = `<p class="cl-histverif-vazio">Erro: ${d.erro || 'Falha ao buscar histórico.'}</p>`;
+            return;
+        }
+        const { total, items, pageSize } = await resp.json();
+
+        totalEl.textContent = `${total} orientaç${total === 1 ? 'ão' : 'ões'} encontrada${total === 1 ? '' : 's'}`;
+
+        if (!items.length) {
+            corpo.innerHTML = '<p class="cl-histverif-vazio">Nenhuma orientação de verificação enviada ainda.</p>';
+            return;
+        }
+
+        const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const fmtData = iso => {
+            const d = new Date(iso);
+            return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        corpo.innerHTML = `
+            <table class="cl-histverif-tabela">
+                <thead>
+                    <tr>
+                        <th>Aluno</th>
+                        <th>Turma</th>
+                        <th>Mensagem</th>
+                        <th>Enviado em</th>
+                        <th>Lida?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(r => `
+                        <tr>
+                            <td class="cl-histverif-aluno">${esc(r.aluno_email)}</td>
+                            <td class="cl-histverif-turma">${esc(r.turma_id || '—')}</td>
+                            <td class="cl-histverif-msg" title="${esc(r.mensagem)}">${esc(r.mensagem)}</td>
+                            <td class="cl-histverif-data">${fmtData(r.criado_em)}</td>
+                            <td class="cl-histverif-lida">${r.lida
+                                ? '<span class="cl-histverif-badge cl-histverif-badge--lida">Lida</span>'
+                                : '<span class="cl-histverif-badge cl-histverif-badge--nlida">Não lida</span>'
+                            }</td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>`;
+
+        const totalPages = Math.ceil(total / pageSize);
+        if (totalPages > 1) {
+            pagDiv.style.display = 'flex';
+            pagDiv.innerHTML = `
+                <button class="cl-btn cl-btn--sm cl-btn--outline" ${page <= 1 ? 'disabled' : ''} onclick="carregarHistoricoVerificacoes(${page - 1})">‹ Anterior</button>
+                <span style="font-size:.82rem;color:var(--text-secondary)">Página ${page} de ${totalPages}</span>
+                <button class="cl-btn cl-btn--sm cl-btn--outline" ${page >= totalPages ? 'disabled' : ''} onclick="carregarHistoricoVerificacoes(${page + 1})">Próxima ›</button>`;
+        }
+    } catch (e) {
+        corpo.innerHTML = `<p class="cl-histverif-vazio">Erro ao carregar: ${e.message}</p>`;
+    }
+}
+
 /* ── Exportar CSV (atividade individual) ── */
 elBtnImprimir.addEventListener('click', () => {
     if (grupoAtivo) imprimirRelatorioGrupo();

@@ -4196,3 +4196,113 @@ body.cl-popout .logo-icon { font-size: 15px; }
     color: #a5b4fc;
     border-color: color-mix(in srgb, #6366f1 50%, transparent);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Modal Histórico de Orientações de Verificação
+══════════════════════════════════════════════════════════════ */
+.cl-modal--historico-verif {
+    max-width: 860px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+.cl-modal--historico-verif .cl-modal-body {
+    flex: 1;
+    overflow-y: auto;
+}
+.cl-histverif-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.cl-histverif-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .84rem;
+}
+.cl-histverif-tabela th,
+.cl-histverif-tabela td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+.cl-histverif-tabela th {
+    font-weight: 600;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--text-secondary);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.cl-histverif-tabela tr:hover td {
+    background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+.cl-histverif-aluno {
+    font-size: .8rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+    max-width: 200px;
+}
+.cl-histverif-turma {
+    font-size: .8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cl-histverif-msg {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
+}
+.cl-histverif-data {
+    white-space: nowrap;
+    font-size: .8rem;
+    color: var(--text-secondary);
+}
+.cl-histverif-lida {
+    white-space: nowrap;
+}
+.cl-histverif-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+.cl-histverif-badge--lida {
+    background: color-mix(in srgb, #22c55e 15%, transparent);
+    color: #15803d;
+    border: 1px solid color-mix(in srgb, #22c55e 35%, transparent);
+}
+.cl-histverif-badge--nlida {
+    background: color-mix(in srgb, #f59e0b 15%, transparent);
+    color: #b45309;
+    border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+}
+.dark .cl-histverif-badge--lida {
+    background: color-mix(in srgb, #22c55e 20%, #1e293b);
+    color: #4ade80;
+    border-color: color-mix(in srgb, #22c55e 45%, transparent);
+}
+.dark .cl-histverif-badge--nlida {
+    background: color-mix(in srgb, #f59e0b 20%, #1e293b);
+    color: #fbbf24;
+    border-color: color-mix(in srgb, #f59e0b 45%, transparent);
+}
+.cl-histverif-vazio {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: .9rem;
+    padding: 32px 0;
+}
