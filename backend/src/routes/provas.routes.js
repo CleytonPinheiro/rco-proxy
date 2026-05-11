@@ -100,7 +100,21 @@ async function migrarTabelas() {
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS xp_creditado_efetiv BOOLEAN NOT NULL DEFAULT false`);
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS voluntaria BOOLEAN NOT NULL DEFAULT false`);
         await reputacao.migrate();
-        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação)');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS classroom_prova_cola_flags (
+                id             SERIAL PRIMARY KEY,
+                prova_id       INTEGER NOT NULL REFERENCES classroom_provas(id) ON DELETE CASCADE,
+                aluno_a        TEXT    NOT NULL,
+                aluno_b        TEXT    NOT NULL,
+                status         TEXT    NOT NULL DEFAULT 'investigar'
+                                       CHECK (status IN ('investigar', 'resolvido')),
+                nota_professor TEXT,
+                registrado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                atualizado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(prova_id, aluno_a, aluno_b)
+            )
+        `);
+        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags)');
     } catch (e) {
         console.warn('[PROVAS] Erro na migração:', e.message);
     }
@@ -1295,11 +1309,49 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 (v.gabarito_json || []).some(q => q.tipo === 'discursiva')
             );
 
+            /* Carrega flags de cola existentes para esta prova */
+            const { rows: flagRows } = await pool.query(
+                `SELECT aluno_a, aluno_b, status, nota_professor FROM classroom_prova_cola_flags WHERE prova_id = $1`,
+                [provaId]
+            );
+            const flagMap = {};
+            for (const f of flagRows) flagMap[`${f.aluno_a}|${f.aluno_b}`] = f;
+
+            /* Anexa flag a cada par (normaliza a ordem para coincidir com o mapa) */
+            for (const par of pares) {
+                const [ea, eb] = [par.alunoA, par.alunoB].sort();
+                par.flag = flagMap[`${ea}|${eb}`] || null;
+            }
+
             res.json({ pares, temDiscursiva });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
     });
+
+    /* Criar / atualizar flag de suspeita de cola num par de alunos */
+    async function upsertColaFlag(req, res) {
+        try {
+            const provaId = req.params.id;
+            let { alunoA, alunoB, status, notaProfessor } = req.body;
+            if (!alunoA || !alunoB) return res.status(400).json({ erro: 'alunoA e alunoB são obrigatórios.' });
+            const VALID = ['investigar', 'resolvido'];
+            if (!VALID.includes(status)) return res.status(400).json({ erro: 'Status inválido. Use "investigar" ou "resolvido".' });
+            /* Normaliza ordem do par para garantir chave única */
+            if (alunoA > alunoB) { const tmp = alunoA; alunoA = alunoB; alunoB = tmp; }
+            await pool.query(`
+                INSERT INTO classroom_prova_cola_flags (prova_id, aluno_a, aluno_b, status, nota_professor, atualizado_em)
+                VALUES ($1, $2, $3, $4, $5, NOW())
+                ON CONFLICT (prova_id, aluno_a, aluno_b)
+                DO UPDATE SET status = $4, nota_professor = $5, atualizado_em = NOW()
+            `, [provaId, alunoA, alunoB, status, notaProfessor || null]);
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    }
+    router.post('/classroom/provas/:id/cola-flags', upsertColaFlag);
+    router.patch('/classroom/provas/:id/cola-flags', upsertColaFlag);
 
     /* Apagar a submissão de um aluno (libera ele para refazer do zero) */
     router.delete('/classroom/provas/submissoes/:subId', async (req, res) => {

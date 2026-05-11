@@ -181,3 +181,36 @@
     margin-top: 10px; font-size: 11px;
     color: var(--text-muted, #888); font-style: italic;
 }
+
+/* Flag badges */
+.prv-cola-flag-investigar { background:#fff7ed; color:#c2410c; }
+.prv-cola-flag-resolvido  { background:#dcfce7; color:#166534; }
+
+/* Flagged row subtle outline */
+.prv-cola-row-flagged td { outline: 1px solid #d1fae5; }
+
+/* Flag panel inside the expanded detail */
+.prv-cola-flag-wrap {
+    margin-top: 14px; padding: 12px 14px;
+    background: var(--bg, #f8fafc);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px; font-size: 13px;
+}
+.prv-cola-flag-title {
+    font-weight: 600; margin-bottom: 8px;
+    color: var(--text-muted, #555);
+}
+.prv-cola-flag-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.prv-cola-flag-btn { font-size: 13px; }
+.prv-cola-flag-btn-ativo {
+    background: #4285F4; color: #fff;
+    border-color: #4285F4; font-weight: 700;
+}
+.prv-cola-flag-nota-wrap { display: flex; gap: 8px; align-items: flex-start; }
+.prv-cola-flag-nota {
+    flex: 1; min-width: 0; resize: vertical;
+    padding: 6px 10px; border-radius: 6px; font-size: 13px;
+    border: 1px solid var(--border, #d1d5db);
+    background: var(--bg-secondary, #fff); color: var(--text, #000);
+}
+[data-theme="dark"] .prv-cola-flag-nota { background: #1e1e2e; border-color: #444; }

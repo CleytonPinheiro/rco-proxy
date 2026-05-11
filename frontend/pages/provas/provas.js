@@ -9,6 +9,8 @@ let provas = [];
 let provaAberta = null;
 let _colaCarregada = false;
 let _colaExpandido = null;
+let _colaFlags = {};
+let _renderColaTabela = null;
 
 async function init() {
     await carregarCursos();
@@ -166,6 +168,8 @@ function renderDetalhe(d) {
     $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Análise de Cola</strong> para carregar.</div>';
     _colaCarregada = false;
     _colaExpandido = null;
+    _colaFlags = {};
+    _renderColaTabela = null;
     prvAtivarAba('gabarito');
 
     /* Gabarito */
@@ -378,6 +382,14 @@ async function carregarColAnalise() {
         const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/analise-cola`, { credentials: 'include' });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro);
+        /* Constrói mapa de flags a partir dos dados já embutidos em cada par */
+        _colaFlags = {};
+        for (const par of (d.pares || [])) {
+            if (par.flag) {
+                const [ea, eb] = [par.alunoA, par.alunoB].sort();
+                _colaFlags[`${ea}|${eb}`] = par.flag;
+            }
+        }
         _colaCarregada = true;
         renderColAnalise(d);
     } catch (e) {
@@ -430,9 +442,16 @@ function renderColAnalise({ pares, temDiscursiva }) {
         for (const par of filtrados) {
             const nivel = par.similaridade >= 85 ? 'critico' : (par.similaridade >= 70 ? 'alerta' : '');
             const parKey = `${par.alunoA}|${par.alunoB}`;
+            const [ea, eb] = [par.alunoA, par.alunoB].sort();
+            const flag = _colaFlags[`${ea}|${eb}`] || null;
             const expandido = _colaExpandido === parKey;
+            const flagBadge = flag
+                ? (flag.status === 'resolvido'
+                    ? '<span class="prv-cola-badge prv-cola-flag-resolvido">✅ Resolvido</span>'
+                    : '<span class="prv-cola-badge prv-cola-flag-investigar">🔍 Investigar</span>')
+                : '';
             rows += `
-                <tr class="prv-cola-row ${nivel ? 'prv-cola-row-' + nivel : ''}" data-par="${escapeHtml(parKey)}" style="cursor:pointer">
+                <tr class="prv-cola-row ${nivel ? 'prv-cola-row-' + nivel : ''} ${flag ? 'prv-cola-row-flagged' : ''}" data-par="${escapeHtml(parKey)}" style="cursor:pointer">
                     <td><strong>${escapeHtml(par.nomeA)}</strong><br><small>${escapeHtml(par.alunoA)}</small></td>
                     <td><strong>${escapeHtml(par.nomeB)}</strong><br><small>${escapeHtml(par.alunoB)}</small></td>
                     <td style="text-align:center">.${escapeHtml(par.varianteCodigo)}</td>
@@ -441,10 +460,11 @@ function renderColAnalise({ pares, temDiscursiva }) {
                     </td>
                     <td style="text-align:center">${par.identicasErradas}</td>
                     <td style="text-align:center">${par.total}</td>
+                    <td style="text-align:center">${flagBadge}</td>
                 </tr>
             `;
             if (expandido) {
-                rows += `<tr class="prv-cola-detalhe-row"><td colspan="6">${renderDetalhePar(par)}</td></tr>`;
+                rows += `<tr class="prv-cola-detalhe-row"><td colspan="7">${renderDetalhePar(par, flag)}</td></tr>`;
             }
         }
 
@@ -456,6 +476,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
                     <th style="text-align:center">Similaridade</th>
                     <th style="text-align:center">Erros coincidentes</th>
                     <th style="text-align:center">Total questões</th>
+                    <th style="text-align:center">Status</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
@@ -470,11 +491,12 @@ function renderColAnalise({ pares, temDiscursiva }) {
         });
     }
 
+    _renderColaTabela = renderTabela;
     slider.addEventListener('input', renderTabela);
     renderTabela();
 }
 
-function renderDetalhePar(par) {
+function renderDetalhePar(par, flag) {
     let rows = '';
     for (const q of par.detalhes) {
         const fmtResp = v => {
@@ -498,6 +520,39 @@ function renderDetalhePar(par) {
             <td style="text-align:center">${q.amboserram ? '<span class="prv-cola-badge prv-cola-critico">erro coincidente</span>' : (q.igual ? '<span class="prv-cola-badge prv-cola-alerta">idêntica</span>' : '')}</td>
         </tr>`;
     }
+
+    /* Flag UI */
+    const safeA = escapeHtml(par.alunoA);
+    const safeB = escapeHtml(par.alunoB);
+    const notaId = `prvFlagNota-${par.alunoA.replace(/[^a-zA-Z0-9]/g, '-')}-${par.alunoB.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const currentStatus = flag ? flag.status : '';
+    const currentNota = flag ? (flag.nota_professor || '') : '';
+    const btnInvCls = currentStatus === 'investigar' ? 'prv-cola-flag-btn-ativo' : '';
+    const btnResCls = currentStatus === 'resolvido'  ? 'prv-cola-flag-btn-ativo' : '';
+
+    const flagHtml = `
+        <div class="prv-cola-flag-wrap">
+            <div class="prv-cola-flag-title">Decisão do professor</div>
+            <div class="prv-cola-flag-btns">
+                <button class="prv-btn prv-cola-flag-btn ${btnInvCls}"
+                    onclick="salvarFlag(${provaAberta.prova.id}, '${safeA}', '${safeB}', 'investigar')">
+                    🔍 Investigar
+                </button>
+                <button class="prv-btn prv-cola-flag-btn ${btnResCls}"
+                    onclick="salvarFlag(${provaAberta.prova.id}, '${safeA}', '${safeB}', 'resolvido')">
+                    ✅ Resolvido
+                </button>
+            </div>
+            <div class="prv-cola-flag-nota-wrap">
+                <textarea id="${notaId}" class="prv-cola-flag-nota" rows="2"
+                    placeholder="Anotação opcional (ex: conversa agendada, coincidência confirmada…)">${escapeHtml(currentNota)}</textarea>
+                <button class="prv-btn" onclick="salvarFlagNota(${provaAberta.prova.id}, '${safeA}', '${safeB}', '${notaId}')">
+                    Salvar nota
+                </button>
+            </div>
+        </div>
+    `;
+
     return `
         <div class="prv-cola-detalhe">
             <strong>Detalhamento questão a questão — ${escapeHtml(par.nomeA)} × ${escapeHtml(par.nomeB)}</strong>
@@ -511,8 +566,53 @@ function renderDetalhePar(par) {
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
+            ${flagHtml}
         </div>
     `;
+}
+
+async function salvarFlag(provaId, alunoA, alunoB, status) {
+    const notaIdSafe = `prvFlagNota-${alunoA.replace(/[^a-zA-Z0-9]/g, '-')}-${alunoB.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const notaEl = document.getElementById(notaIdSafe);
+    const notaProfessor = notaEl ? notaEl.value.trim() : '';
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaId}/cola-flags`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alunoA, alunoB, status, notaProfessor }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        /* Atualiza mapa local */
+        const [ea, eb] = [alunoA, alunoB].sort();
+        _colaFlags[`${ea}|${eb}`] = { status, nota_professor: notaProfessor };
+        if (_renderColaTabela) _renderColaTabela();
+    } catch (e) {
+        await notificar('Erro ao salvar decisão', e.message, { tipo: 'danger' });
+    }
+}
+
+async function salvarFlagNota(provaId, alunoA, alunoB, notaId) {
+    const [ea, eb] = [alunoA, alunoB].sort();
+    const existing = _colaFlags[`${ea}|${eb}`];
+    const status = existing ? existing.status : 'investigar';
+    const notaEl = document.getElementById(notaId);
+    const notaProfessor = notaEl ? notaEl.value.trim() : '';
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaId}/cola-flags`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alunoA, alunoB, status, notaProfessor }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro);
+        _colaFlags[`${ea}|${eb}`] = { status, nota_professor: notaProfessor };
+        if (_renderColaTabela) _renderColaTabela();
+    } catch (e) {
+        await notificar('Erro ao salvar nota', e.message, { tipo: 'danger' });
+    }
 }
 
 function fecharDet() { $('prvModalDet').style.display = 'none'; provaAberta = null; }
@@ -547,6 +647,8 @@ window.conferirFoto    = conferirFoto;
 window.trocarVariante  = trocarVariante;
 window.apagarSubmissao = apagarSubmissao;
 window.publicarNoClassroom = publicarNoClassroom;
+window.salvarFlag      = salvarFlag;
+window.salvarFlagNota  = salvarFlagNota;
 window.fecharDet       = fecharDet;
 window.prvAtivarAba    = prvAtivarAba;
 
