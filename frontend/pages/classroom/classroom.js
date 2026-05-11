@@ -2894,17 +2894,24 @@ function mostrarDetalheAluno(alunoData, atividades, meta, fontes = [], subgrupos
                 const key = `f_${fonte.fonteGrupoId}_${fatv.id}`;
                 const sub = alunoData.fontesAtividades?.[key];
                 const nota = sub?.nota ?? null;
+                const notaRasc = sub?.notaRascunho ?? null;
                 const entregue = sub?.entregue ?? false;
-                const entrou = nota === 0 && entregue;
+                const notaEfetiva = nota ?? notaRasc;
+                const entrou = notaEfetiva === 0 && entregue;
 
                 let statusHtml, tipo;
                 if (entrou) {
                     statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entrou">↩ Entrou (0 / ${rco(fatv.pontos)} pts)</span>`;
                     tipo = 'entrou';
                     fonteEntrou++;
-                } else if (nota !== null) {
-                    const pctAtv = fatv.pontos > 0 ? ((nota / fatv.pontos) * 100).toFixed(0) : nota;
-                    statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(nota)} / ${rco(fatv.pontos)} pts &nbsp;(${pctAtv}%)</span>`;
+                } else if (notaEfetiva !== null) {
+                    const pctAtv = fatv.pontos > 0 ? ((notaEfetiva / fatv.pontos) * 100).toFixed(0) : notaEfetiva;
+                    const ehRasc = nota === null && notaRasc !== null;
+                    if (ehRasc) {
+                        statusHtml = `<span class="cl-nota-status-badge cl-nota-status--rasc" title="Nota em rascunho — devolva no Classroom para entrar no cálculo oficial">📝 ${rco(notaEfetiva)} / ${rco(fatv.pontos)} pts &nbsp;(${pctAtv}%) — rascunho</span>`;
+                    } else {
+                        statusHtml = `<span class="cl-nota-status-badge cl-nota-status--entregue">${rco(notaEfetiva)} / ${rco(fatv.pontos)} pts &nbsp;(${pctAtv}%)</span>`;
+                    }
                     tipo = 'realizada';
                     fonteRealizadas++;
                 } else if (entregue) {

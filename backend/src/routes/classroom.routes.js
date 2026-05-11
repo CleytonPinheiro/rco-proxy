@@ -1494,7 +1494,12 @@ export function createClassroomRouter(deps = {}) {
                            não participa do cálculo de nota (ignorada no numerador e denominador) */
                     } else if (eDeRecuperacao) {
                         /* Submission pertence ao grupo de recuperação (updateTime >= dataCorteOriginal).
-                           Excluída do grupo original: nota intacta, calculada apenas no grupo de rec. */
+                           Excluída do grupo original: nota intacta, calculada apenas no grupo de rec.
+                           Rascunhos ainda contribuem para totalGanhoPrevisto no grupo principal,
+                           permitindo ao frontend exibir o "+X" de previsão mesmo para atividades de rec. */
+                        if (notaRascunho !== null) {
+                            alunoMap[s.userId].totalGanhoPrevisto += Math.min(notaRascunho, pontosMax);
+                        }
                     } else if (eTardia) {
                         /* Submission entregue após o fechamento da nota DESTE grupo:
                            não entra no cálculo — registrada como entrega tardia separadamente. */
@@ -1805,9 +1810,12 @@ export function createClassroomRouter(deps = {}) {
             const alunoFezRecuperacao = (a) => {
                 const atvs = Object.values(a.atividades);
                 if (dataInicio) {
-                    return atvs.some(atv => atv.entregue && atv.updateTime && atv.updateTime >= dataInicio);
+                    return atvs.some(atv =>
+                        (atv.entregue && atv.updateTime && atv.updateTime >= dataInicio) ||
+                        (atv.notaRascunho !== null && atv.updateTime && atv.updateTime >= dataInicio)
+                    );
                 }
-                return atvs.some(atv => atv.entregue);
+                return atvs.some(atv => atv.entregue || atv.notaRascunho !== null);
             };
 
             if (isRecuperacao) {
