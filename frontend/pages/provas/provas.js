@@ -53,6 +53,30 @@ async function onCursoChange() {
     await carregarProvas();
 }
 
+function renderBadgesProva(p) {
+    return `${p.efetivada
+                ? '<span class="prv-badge prv-badge-efetiva">Efetivada</span>'
+                : '<span class="prv-badge prv-badge-rascunho">Rascunho</span>'}
+            ${p.segundo_corretor_ativo ? '<span class="prv-badge prv-badge-2cor">2º corretor</span>' : ''}
+            ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥70% de similaridade — abra a aba Análise de Cola para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
+            ${p.pares_flagged_investigar > 0 ? `<span class="prv-badge prv-badge-flagged" title="Pares suspeitos ainda em investigação">🔍 ${p.pares_flagged_investigar} pendente${p.pares_flagged_investigar > 1 ? 's' : ''}</span>` : ''}
+            ${p.pares_flagged_resolvido > 0 ? `<span class="prv-badge prv-badge-resolvido" title="Pares suspeitos já resolvidos pelo professor">✅ ${p.pares_flagged_resolvido} resolvido${p.pares_flagged_resolvido > 1 ? 's' : ''}</span>` : ''}`;
+}
+
+function _atualizarBadgesCard(provaId) {
+    const prova = provas.find(p => p.id === provaId);
+    if (!prova) return;
+    const nInvestigar = Object.values(_colaFlags).filter(f => f.status === 'investigar').length;
+    const nResolvido  = Object.values(_colaFlags).filter(f => f.status === 'resolvido').length;
+    prova.pares_flagged_investigar = nInvestigar;
+    prova.pares_flagged_resolvido  = nResolvido;
+    const card = document.querySelector(`.prv-card[data-prova-id="${provaId}"]`);
+    if (!card) return;
+    const nomeEl = card.querySelector('.prv-card-nome');
+    if (!nomeEl) return;
+    nomeEl.innerHTML = escapeHtml(prova.nome) + ' ' + renderBadgesProva(prova);
+}
+
 async function carregarProvas() {
     $('prvLista').innerHTML = '<div class="prv-empty">Carregando…</div>';
     try {
@@ -64,16 +88,10 @@ async function carregarProvas() {
             return;
         }
         $('prvLista').innerHTML = provas.map(p => `
-            <div class="prv-card" onclick="abrirDetalhe(${p.id})">
+            <div class="prv-card" data-prova-id="${p.id}" onclick="abrirDetalhe(${p.id})">
                 <div class="prv-card-info">
                     <div class="prv-card-nome">${escapeHtml(p.nome)}
-                        ${p.efetivada
-                            ? '<span class="prv-badge prv-badge-efetiva">Efetivada</span>'
-                            : '<span class="prv-badge prv-badge-rascunho">Rascunho</span>'}
-                        ${p.segundo_corretor_ativo ? '<span class="prv-badge prv-badge-2cor">2º corretor</span>' : ''}
-                        ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥70% de similaridade — abra a aba Análise de Cola para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
-                        ${p.pares_flagged_investigar > 0 ? `<span class="prv-badge prv-badge-flagged" title="Pares suspeitos ainda em investigação">🔍 ${p.pares_flagged_investigar} pendente${p.pares_flagged_investigar > 1 ? 's' : ''}</span>` : ''}
-                        ${p.pares_flagged_resolvido > 0 ? `<span class="prv-badge prv-badge-resolvido" title="Pares suspeitos já resolvidos pelo professor">✅ ${p.pares_flagged_resolvido} resolvido${p.pares_flagged_resolvido > 1 ? 's' : ''}</span>` : ''}
+                        ${renderBadgesProva(p)}
                     </div>
                     <div class="prv-card-meta">
                         <span>GradePen #${escapeHtml(p.gradepen_id)}</span>
@@ -722,6 +740,7 @@ async function salvarFlag(provaId, alunoA, alunoB, status) {
         const [ea, eb] = [alunoA, alunoB].sort();
         _colaFlags[`${ea}|${eb}`] = { status, nota_professor: notaProfessor };
         if (_renderColaTabela) _renderColaTabela();
+        _atualizarBadgesCard(provaId);
     } catch (e) {
         await notificar('Erro ao salvar decisão', e.message, { tipo: 'danger' });
     }
@@ -744,6 +763,7 @@ async function salvarFlagNota(provaId, alunoA, alunoB, notaId) {
         if (!r.ok) throw new Error(d.erro);
         _colaFlags[`${ea}|${eb}`] = { status, nota_professor: notaProfessor };
         if (_renderColaTabela) _renderColaTabela();
+        _atualizarBadgesCard(provaId);
     } catch (e) {
         await notificar('Erro ao salvar nota', e.message, { tipo: 'danger' });
     }
