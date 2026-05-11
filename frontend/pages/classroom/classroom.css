@@ -1630,6 +1630,11 @@ body.cl-popout .logo-icon { font-size: 15px; }
     border-radius: 3px;
     flex-shrink: 0;
 }
+.cl-legenda-dot--rascunho {
+    background: transparent;
+    outline: 2px dotted #a78bfa;
+    outline-offset: 1px;
+}
 .cl-legenda-sep {
     font-size: .7rem;
     color: var(--text-muted);

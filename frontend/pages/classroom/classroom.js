@@ -2479,6 +2479,7 @@ function renderListaFiltrada() {
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#10b981"></span>Nota lançada</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#f97316"></span>Entrou (0 pts)</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:#4285F4"></span>Entregue s/ nota</span>
+            <span class="cl-legenda-item"><span class="cl-legenda-dot cl-legenda-dot--rascunho"></span>Rascunho (ainda não devolvida)</span>
             <span class="cl-legenda-item"><span class="cl-legenda-dot" style="background:var(--border)"></span>Pendente</span>
             ${fontes.length > 0 ? '<span class="cl-legenda-item"><span class="cl-legenda-sep">│</span>Fonte externa</span>' : ''}
             <span class="cl-legenda-hint">Clique no aluno para ver detalhes</span>
