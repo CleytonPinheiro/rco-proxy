@@ -2452,12 +2452,15 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
     const somaCor  = pct >= 100 ? '#10b981' : pct >= 60 ? '#4285F4' : '#f59e0b';
 
     const stepHtml = (atv, sub, prefixLabel = '') => {
-        const nota   = sub?.nota ?? null;
-        const ent    = sub?.entregue ?? false;
-        const fezRec = sub?.fezRec ?? false;
-        const entrou = nota === 0 && ent;
+        const nota         = sub?.nota ?? null;
+        const notaRascunho = sub?.notaRascunho ?? null;
+        const ent          = sub?.entregue ?? false;
+        const fezRec       = sub?.fezRec ?? false;
+        const isDraft      = nota === null && notaRascunho !== null;
+        const entrou       = nota === 0 && ent;
         const cor    = entrou             ? '#f97316'
                      : nota !== null      ? '#10b981'
+                     : isDraft           ? '#a78bfa'
                      : ent               ? '#4285F4'
                      : 'var(--border)';
         const label  = prefixLabel + (fezRec ? '🔄 Recuperação — ' : '')
@@ -2465,8 +2468,10 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
                 ? `${atv.titulo}: Entrou (0 pts) — não realizou`
                 : nota !== null
                     ? `${atv.titulo}: ${rco(nota)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts`
-                    : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`);
-        return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}${fezRec ? ' cl-passo--rec' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
+                    : isDraft
+                        ? `${atv.titulo}: Nota em rascunho: ${rco(notaRascunho)}${atv.pontos != null ? '/' + rco(atv.pontos) : ''} pts — ainda não devolvida`
+                        : ent ? `${atv.titulo}: Entregue` : `${atv.titulo}: Pendente`);
+        return `<span class="cl-passo${entrou ? ' cl-passo--entrou' : ''}${fezRec ? ' cl-passo--rec' : ''}${isDraft ? ' cl-passo--rascunho' : ''}" style="background:${cor}" title="${esc(label)}"></span>`;
     };
 
     let stepsHtml = atividades.map(atv => stepHtml(atv, a.atividades?.[atv.id])).join('');
