@@ -1353,6 +1353,137 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     router.post('/classroom/provas/:id/cola-flags', upsertColaFlag);
     router.patch('/classroom/provas/:id/cola-flags', upsertColaFlag);
 
+    /* Exportar pares flagados como CSV */
+    router.get('/classroom/provas/:id/cola-flags/export', async (req, res) => {
+        try {
+            const provaId = req.params.id;
+
+            /* Carrega flags existentes (apenas investigar / resolvido) */
+            const { rows: flagRows } = await pool.query(
+                `SELECT aluno_a, aluno_b, status, nota_professor, registrado_em
+                   FROM classroom_prova_cola_flags
+                  WHERE prova_id = $1
+                  ORDER BY registrado_em`,
+                [provaId]
+            );
+            if (flagRows.length === 0) {
+                return res.status(404).json({ erro: 'Nenhum par flagado nesta prova.' });
+            }
+
+            /* Monta conjunto de pares flagados para look-up rápido */
+            const flagMap = {};
+            for (const f of flagRows) flagMap[`${f.aluno_a}|${f.aluno_b}`] = f;
+
+            /* Recomputa análise para obter variante/similaridade/erros */
+            const { rows: variantes } = await pool.query(
+                `SELECT id, codigo, gabarito_json FROM classroom_prova_variantes WHERE prova_id = $1`,
+                [provaId]
+            );
+            const { rows: submissoes } = await pool.query(
+                `SELECT variante_id, aluno_email, aluno_nome, marcacoes_json
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_segundo_corretor = false`,
+                [provaId]
+            );
+
+            const gabMap = {};
+            for (const v of variantes) gabMap[v.id] = { codigo: v.codigo, gabarito: v.gabarito_json };
+
+            const porVariante = {};
+            for (const s of submissoes) {
+                if (!porVariante[s.variante_id]) porVariante[s.variante_id] = [];
+                porVariante[s.variante_id].push(s);
+            }
+
+            /* Mapa par → dados de análise */
+            const analiseMap = {};
+            for (const [varId, subs] of Object.entries(porVariante)) {
+                if (subs.length < 2) continue;
+                const { codigo, gabarito } = gabMap[varId] || {};
+                if (!gabarito) continue;
+                const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+                if (questoesComp.length === 0) continue;
+
+                for (let i = 0; i < subs.length; i++) {
+                    for (let j = i + 1; j < subs.length; j++) {
+                        const a = subs[i];
+                        const b = subs[j];
+                        const [ea, eb] = [a.aluno_email, b.aluno_email].sort();
+                        const pairKey = `${ea}|${eb}`;
+                        if (!flagMap[pairKey]) continue; /* só nos interessa pares flagados */
+
+                        const marcA = a.aluno_email <= b.aluno_email ? (a.marcacoes_json || {}) : (b.marcacoes_json || {});
+                        const marcB = a.aluno_email <= b.aluno_email ? (b.marcacoes_json || {}) : (a.marcacoes_json || {});
+                        const nomeA = a.aluno_email <= b.aluno_email ? (a.aluno_nome || a.aluno_email) : (b.aluno_nome || b.aluno_email);
+                        const nomeB = a.aluno_email <= b.aluno_email ? (b.aluno_nome || b.aluno_email) : (a.aluno_nome || a.aluno_email);
+
+                        let identicas = 0;
+                        let identicasErradas = 0;
+                        for (const q of questoesComp) {
+                            const qStr = String(q.questao);
+                            const respA = marcA[qStr] ?? null;
+                            const respB = marcB[qStr] ?? null;
+                            const normA = Array.isArray(respA) ? respA.map(x => String(x).toUpperCase()).join(',') : String(respA ?? '').toLowerCase();
+                            const normB = Array.isArray(respB) ? respB.map(x => String(x).toUpperCase()).join(',') : String(respB ?? '').toLowerCase();
+                            const igual = respA !== null && respB !== null && normA === normB;
+                            let corrA = false, corrB = false;
+                            if (q.tipo === 'multipla') {
+                                const correta = String(q.correta || '').toLowerCase();
+                                corrA = String(respA ?? '').toLowerCase() === correta;
+                                corrB = String(respB ?? '').toLowerCase() === correta;
+                            } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
+                                corrA = Array.isArray(respA) && respA.every((v, k) => String(v).toUpperCase() === String(q.correta[k]).toUpperCase());
+                                corrB = Array.isArray(respB) && respB.every((v, k) => String(v).toUpperCase() === String(q.correta[k]).toUpperCase());
+                            }
+                            if (igual) identicas++;
+                            if (igual && !corrA && !corrB) identicasErradas++;
+                        }
+                        const total = questoesComp.length;
+                        analiseMap[pairKey] = {
+                            nomeA,
+                            nomeB,
+                            varianteCodigo: codigo,
+                            similaridade: total > 0 ? Math.round((identicas / total) * 100) : 0,
+                            identicasErradas,
+                        };
+                    }
+                }
+            }
+
+            /* Monta CSV */
+            const esc = v => {
+                const s = String(v ?? '');
+                return s.includes(',') || s.includes('"') || s.includes('\n')
+                    ? `"${s.replace(/"/g, '""')}"` : s;
+            };
+            const fmt = d => d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '';
+
+            const header = 'Aluno A (nome),Aluno A (email),Aluno B (nome),Aluno B (email),Variante,Similaridade (%),Erros coincidentes,Status,Nota do professor,Data de registro';
+            const linhas = flagRows.map(f => {
+                const info = analiseMap[`${f.aluno_a}|${f.aluno_b}`] || {};
+                return [
+                    esc(info.nomeA ?? f.aluno_a),
+                    esc(f.aluno_a),
+                    esc(info.nomeB ?? f.aluno_b),
+                    esc(f.aluno_b),
+                    esc(info.varianteCodigo ?? ''),
+                    esc(info.similaridade ?? ''),
+                    esc(info.identicasErradas ?? ''),
+                    esc(f.status),
+                    esc(f.nota_professor ?? ''),
+                    esc(fmt(f.registrado_em)),
+                ].join(',');
+            });
+
+            const csv = [header, ...linhas].join('\r\n');
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="flags-cola-prova-${provaId}.csv"`);
+            res.send('\uFEFF' + csv); /* BOM para Excel abrir como UTF-8 */
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* Apagar a submissão de um aluno (libera ele para refazer do zero) */
     router.delete('/classroom/provas/submissoes/:subId', async (req, res) => {
         const cpfSessao = req.userSession?.cpf;

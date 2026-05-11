@@ -182,6 +182,14 @@
     color: var(--text-muted, #888); font-style: italic;
 }
 
+/* Export button in cola controls */
+.prv-cola-export-btn {
+    margin-left: auto;
+    background: #f0fdf4; color: #166534;
+    border-color: #bbf7d0; font-size: 13px;
+}
+.prv-cola-export-btn:hover { background: #dcfce7; border-color: #86efac; }
+
 /* Flag badges */
 .prv-cola-flag-investigar { background:#fff7ed; color:#c2410c; }
 .prv-cola-flag-resolvido  { background:#dcfce7; color:#166534; }

@@ -405,6 +405,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
         return;
     }
 
+    const flagCount = Object.keys(_colaFlags).length;
     const thresholdId = 'prvColaThreshold';
 
     const html = `
@@ -417,6 +418,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
                 <span class="prv-cola-badge prv-cola-alerta">≥70%</span> suspeito &nbsp;
                 <span class="prv-cola-badge prv-cola-critico">≥85%</span> alto risco
             </span>
+            ${flagCount > 0 ? `<button class="prv-btn prv-cola-export-btn" id="prvColaExportBtn" onclick="exportarFlags(${provaAberta.prova.id})">⬇️ Exportar flags (${flagCount})</button>` : ''}
         </div>
         <div id="prvColaTabelaWrap"></div>
         ${temDiscursiva ? '<p class="prv-cola-rodape">* Questões discursivas foram excluídas da comparação (apenas múltipla escolha e V/F são analisadas).</p>' : ''}
@@ -571,6 +573,35 @@ function renderDetalhePar(par, flag) {
     `;
 }
 
+async function exportarFlags(provaId) {
+    const btn = $('prvColaExportBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Exportando…'; }
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaId}/cola-flags/export`, { credentials: 'include' });
+        if (!r.ok) {
+            const d = await r.json().catch(() => ({}));
+            throw new Error(d.erro || 'Erro ao exportar.');
+        }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `flags-cola-prova-${provaId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        await notificar('Erro ao exportar flags', e.message, { tipo: 'danger' });
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            const flagCount = Object.keys(_colaFlags).length;
+            btn.textContent = `⬇️ Exportar flags (${flagCount})`;
+        }
+    }
+}
+
 async function salvarFlag(provaId, alunoA, alunoB, status) {
     const notaIdSafe = `prvFlagNota-${alunoA.replace(/[^a-zA-Z0-9]/g, '-')}-${alunoB.replace(/[^a-zA-Z0-9]/g, '-')}`;
     const notaEl = document.getElementById(notaIdSafe);
@@ -647,6 +678,7 @@ window.conferirFoto    = conferirFoto;
 window.trocarVariante  = trocarVariante;
 window.apagarSubmissao = apagarSubmissao;
 window.publicarNoClassroom = publicarNoClassroom;
+window.exportarFlags   = exportarFlags;
 window.salvarFlag      = salvarFlag;
 window.salvarFlagNota  = salvarFlagNota;
 window.fecharDet       = fecharDet;
