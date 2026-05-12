@@ -586,8 +586,10 @@ export function createPedagogicoPortalRouter() {
                         }
                     }
 
+                    const notaRascunho = s.draftGrade != null ? Number(s.draftGrade) : null;
+
                     alunoMap[s.userId].atividades[atividade.atividade_id] = {
-                        nota, estado: s.state, entregue, atrasado, updateTime,
+                        nota, notaRascunho, estado: s.state, entregue, atrasado, updateTime,
                         eDeRecuperacao, eTardia,
                     };
 

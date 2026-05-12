@@ -1747,6 +1747,15 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-resumo-fonte-add {
     font-size: .65rem; color: #10b981; font-weight: 600;
 }
+.cl-resumo-rasc {
+    font-size: .72rem;
+    color: #b45309;
+    font-weight: 600;
+    margin-top: 2px;
+    text-align: right;
+    white-space: nowrap;
+}
+[data-theme="dark"] .cl-resumo-rasc { color: #fbbf24; }
 .cl-detalhe-soma--total {
     font-size: .78rem; opacity: .85; margin-top: 1px;
 }

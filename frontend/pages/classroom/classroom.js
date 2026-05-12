@@ -2752,11 +2752,16 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
 
     const numBadge = al.numChamada ? `<span class="cl-num-chamada">${al.numChamada}</span>` : '';
 
-    const somaInt    = a.somaInterna ?? soma;
-    const hasFontes  = fontes.length > 0;
-    const pctInt     = meta > 0 ? Math.min(100, (somaInt / meta) * 100) : 0;
-    const somaIntCor = pctInt >= 100 ? '#10b981' : pctInt >= 60 ? '#4285F4' : '#f59e0b';
-    const fonteDiff  = hasFontes ? soma - somaInt : 0;
+    const somaInt      = a.somaInterna ?? soma;
+    const somaPrevista = a.somaPrevista ?? soma;
+    const hasFontes    = fontes.length > 0;
+    const pctInt       = meta > 0 ? Math.min(100, (somaInt / meta) * 100) : 0;
+    const somaIntCor   = pctInt >= 100 ? '#10b981' : pctInt >= 60 ? '#4285F4' : '#f59e0b';
+    const fonteDiff    = hasFontes ? soma - somaInt : 0;
+    const temRascunho  = somaPrevista > soma + 0.05;
+    const rascHtml     = temRascunho
+        ? `<div class="cl-resumo-rasc" title="Inclui rascunhos não devolvidos">📝 ${rco(somaPrevista)}</div>`
+        : '';
 
     /* Células indexadas por chave */
     const cells = {
@@ -2775,10 +2780,12 @@ function renderResumoRow(a, meta, atividades = [], hasRec = false, colsVisiveis 
                     <span style="color:${somaCor}">${rco(soma)}</span>
                     ${fonteDiff > 0 ? `<span class="cl-resumo-fonte-add">+${rco(fonteDiff)}</span>` : ''}
                 </div>
+                ${rascHtml}
             </div>`
             : `<div class="cl-resumo-soma">
                 <span class="cl-resumo-num" style="color:${somaCor}">${rco(soma)}</span>
                 <span class="cl-resumo-den">/${rco(meta)}</span>
+                ${rascHtml}
             </div>`,
         rec: hasRec
             ? (a.recData
