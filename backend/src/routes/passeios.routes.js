@@ -842,21 +842,24 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                 return { ...i, qrDataUrl: qr, cor, label, ini };
             }));
 
+            /* ── Escapar HTML para evitar injeção no template do PDF ── */
+            const esc2 = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
             /* ── Montar HTML A4 com 24 pulseiras (4×6) por página ── */
             const cardsHtml = items.map(i => `
-                <div class="pulseira" style="border-left:6px solid ${i.cor}">
+                <div class="pulseira" style="border-left:6px solid ${esc2(i.cor)}">
                     <div class="ps-foto-wrap">
                         ${i.foto_url
-                            ? `<img class="ps-foto" src="${i.foto_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                            ? `<img class="ps-foto" src="${esc2(i.foto_url)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
                             : ''}
-                        <div class="ps-ini" style="display:${i.foto_url ? 'none' : 'flex'};background:${i.cor}22;color:${i.cor}">${i.ini}</div>
+                        <div class="ps-ini" style="display:${i.foto_url ? 'none' : 'flex'};background:${esc2(i.cor)}22;color:${esc2(i.cor)}">${esc2(i.ini)}</div>
                     </div>
                     <div class="ps-info">
-                        <div class="ps-nome">${i.nome_aluno}</div>
-                        <div class="ps-turma">${i.turma || ''} &bull; ${i.label}</div>
-                        ${i.restricoes_medicas ? `<div class="ps-rest">⚠ ${i.restricoes_medicas}</div>` : ''}
+                        <div class="ps-nome">${esc2(i.nome_aluno)}</div>
+                        <div class="ps-turma">${esc2(i.turma || '')} &bull; ${esc2(i.label)}</div>
+                        ${i.restricoes_medicas ? `<div class="ps-rest">⚠ ${esc2(i.restricoes_medicas)}</div>` : ''}
                     </div>
-                    <div class="ps-qr"><img src="${i.qrDataUrl}" width="72" height="72" alt="QR"></div>
+                    <div class="ps-qr"><img src="${esc2(i.qrDataUrl)}" width="72" height="72" alt="QR"></div>
                 </div>`).join('');
 
             const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
