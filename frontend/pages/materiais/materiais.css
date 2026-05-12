@@ -307,3 +307,29 @@
 
 [data-theme="dark"] .btn-editar-mat { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border); }
 [data-theme="dark"] .btn-editar-mat:hover { background: var(--bg-hover); }
+
+/* ── Custom Select context — Materiais ───────────────────────────────────── */
+/* Filter bar dropdowns */
+.filtros .csel-trigger {
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 200px;
+}
+/* Modal form dropdowns */
+.form-group .csel {
+    display: flex;
+    width: 100%;
+}
+.form-group .csel-trigger {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+}
+.form-group .csel--open .csel-trigger,
+.form-group .csel-trigger:hover { border-color: #007bff; }
+[data-theme="dark"] .form-group .csel-trigger { background: var(--input-bg); color: var(--input-color); border-color: var(--input-border); }
+[data-theme="dark"] .filtros .csel-trigger { background: var(--input-bg); color: var(--input-color); border-color: var(--input-border); }

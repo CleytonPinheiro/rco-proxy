@@ -1,0 +1,140 @@
+/* ── Shared Custom Select ─────────────────────────────────────────────────────
+   Styles for the createCustomSelect() helper (shared/js/custom-select.js).
+   Uses the .csel- prefix. Import this file in any page that calls the helper.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.csel {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    vertical-align: middle;
+}
+
+.csel-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #ddd);
+    background: var(--bg-secondary, #fff);
+    color: var(--text, #000);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+    min-width: 160px;
+    transition: border-color .15s, background .15s;
+}
+.csel-trigger:hover,
+.csel--open .csel-trigger {
+    border-color: #4285F4;
+    background: var(--bg, #f5f5f5);
+}
+.csel-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.csel-arrow {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+    transition: transform .15s;
+    flex-shrink: 0;
+}
+.csel--open .csel-arrow { transform: rotate(180deg); }
+
+.csel-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--bg-secondary, #fff);
+    border: 1px solid var(--border, #ddd);
+    border-radius: 10px;
+    box-shadow: 0 6px 20px var(--shadow-md, rgba(0,0,0,.12));
+    z-index: 2000;
+    padding: 4px 0;
+}
+
+.csel-option {
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text, #000);
+    border-radius: 6px;
+    margin: 1px 4px;
+    transition: background .1s;
+}
+.csel-option:hover,
+.csel-option--focused {
+    background: var(--bg-hover, #e8f0ff);
+    color: #4285F4;
+}
+.csel-option--selected {
+    font-weight: 600;
+    color: #4285F4;
+}
+.csel-option--disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+/* Compact variant */
+.csel--compact .csel-trigger {
+    min-width: 0;
+    padding: 2px 8px 2px 6px;
+    font-size: 0.9em;
+    border-radius: 5px;
+}
+.csel--compact .csel-panel {
+    min-width: 100px;
+    border-radius: 8px;
+}
+.csel--compact .csel-option {
+    padding: 6px 10px;
+    font-size: 0.9em;
+}
+
+/* Block variant: stretches trigger to container width (useful inside modals) */
+.csel--block {
+    display: flex;
+    width: 100%;
+}
+.csel--block .csel-trigger {
+    width: 100%;
+    min-width: 0;
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+/* Dark theme */
+[data-theme="dark"] .csel-trigger {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+    color: var(--input-color, var(--text));
+}
+[data-theme="dark"] .csel-trigger:hover,
+[data-theme="dark"] .csel--open .csel-trigger {
+    border-color: var(--input-focus, #60a5fa);
+    background: var(--bg-hover);
+}
+[data-theme="dark"] .csel-panel {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+    box-shadow: 0 6px 24px var(--shadow-lg, rgba(0,0,0,.5));
+}
+[data-theme="dark"] .csel-option {
+    color: var(--input-color, var(--text));
+}
+[data-theme="dark"] .csel-option:hover,
+[data-theme="dark"] .csel-option--focused {
+    background: var(--bg-hover);
+    color: var(--input-focus, #60a5fa);
+}
+[data-theme="dark"] .csel-option--selected {
+    color: var(--input-focus, #60a5fa);
+}

@@ -623,3 +623,20 @@
 [data-theme="dark"] .hist-bar-bg { background: var(--border); }
 
 [data-theme="dark"] .ranking-pos { background: var(--bg-secondary); color: var(--text-secondary); }
+
+/* ── Custom Select context — Comportamento modal ─────────────────────────── */
+.modal-box .csel {
+    display: flex;
+    width: 100%;
+}
+.modal-box .csel-trigger {
+    width: 100%;
+    min-width: 0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+}
+.modal-box .csel-trigger:focus-within,
+.modal-box .csel--open .csel-trigger { border-color: #6366f1; }
+[data-theme="dark"] .modal-box .csel-trigger { border-color: var(--border); background: var(--bg-secondary); }

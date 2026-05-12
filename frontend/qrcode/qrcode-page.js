@@ -26,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
         onInputChange();
     }
     $('qrInput').focus();
+    /* Apply themed custom dropdowns to the option selects */
+    const selTamanho  = $('qrTamanho');
+    const selCorrecao = $('qrCorrecao');
+    if (selTamanho)  createCustomSelect(selTamanho,  { compact: true });
+    if (selCorrecao) createCustomSelect(selCorrecao, { compact: true });
 });
 
 /* ══════════════════════════════════════════════════════

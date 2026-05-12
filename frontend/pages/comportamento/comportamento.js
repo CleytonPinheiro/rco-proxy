@@ -247,6 +247,8 @@ function abrirModalOcorrencia(codMatrizAluno) {
     sel.innerHTML = todosAlunos.map(a =>
         `<option value="${a.codMatrizAluno}" ${a.codMatrizAluno === codMatrizAluno ? 'selected' : ''}>${a.numChamada || '?'} — ${escHtml(a.nome)}</option>`
     ).join('');
+    /* Apply styled dropdown once; MutationObserver keeps it in sync on re-opens */
+    createCustomSelect(sel);
 
     // Data de hoje
     document.getElementById('ocorrData').value = new Date().toISOString().split('T')[0];

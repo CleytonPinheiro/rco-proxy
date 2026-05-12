@@ -39,6 +39,7 @@ async function carregarTurmas() {
             op.textContent = t.turma;
             sel.appendChild(op);
         });
+        createCustomSelect(sel);
     } catch (e) { console.error('Erro ao carregar turmas:', e); }
 }
 
@@ -100,7 +101,9 @@ function renderThead() {
 async function onTurmaChange() {
     if (modificado) {
         if (!await confirmar('Trocar de turma?', 'Há alterações não salvas. Deseja trocar de turma sem salvar?', { confirmLabel: 'Trocar sem salvar' })) {
-            document.getElementById('selTurma').value = codturmaAtual;
+            const sel = document.getElementById('selTurma');
+            sel.value = codturmaAtual;
+            refreshCustomSelect(sel);
             return;
         }
     }

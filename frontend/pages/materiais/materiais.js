@@ -18,6 +18,11 @@ let materiais = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     carregarMateriais();
+    /* Apply custom selects to all native <select> elements on this page */
+    ['filtroTipo', 'filtroStatus', 'tipo', 'estado', 'status'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) createCustomSelect(el);
+    });
 });
 
 async function carregarMateriais() {
@@ -129,6 +134,12 @@ function abrirModalCadastro() {
     document.getElementById('modalTituloCadastro').textContent = 'Novo Material';
     document.getElementById('formMaterial').reset();
     document.getElementById('materialId').value = '';
+    /* Sync custom dropdown labels after form.reset() — form reset does not fire
+       a change event on individual selects, so we must explicitly refresh. */
+    ['tipo', 'estado', 'status'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) refreshCustomSelect(el);
+    });
     document.getElementById('modalCadastro').style.display = 'flex';
 }
 
@@ -190,6 +201,12 @@ function editarMaterial(id) {
     document.getElementById('localizacao').value = material.localizacao || '';
     document.getElementById('estado').value = material.estado;
     document.getElementById('status').value = material.status;
+
+    /* Sync custom dropdowns after programmatic value change */
+    ['tipo', 'estado', 'status'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.dispatchEvent(new Event('change')); }
+    });
 
     document.getElementById('modalCadastro').style.display = 'flex';
 }

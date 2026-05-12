@@ -2031,3 +2031,32 @@
 [data-theme="dark"] .fd-vazio         { color: var(--text-muted); }
 [data-theme="dark"] .fd-aside-body { scrollbar-color: var(--border) transparent; }
 [data-theme="dark"] .fd-aside-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ── Custom Select context — Frequências filter bar ──────────────────────── */
+.filtro-turma-ctrl .csel-trigger {
+    min-width: 180px;
+    max-width: 320px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border-width: 1.5px;
+}
+.filtro-sort .csel-trigger {
+    min-width: 160px;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+/* Active turma filter state */
+.csel.turma-ativa .csel-trigger {
+    border-color: #6366f1;
+    background-color: #eef2ff;
+    color: #4338ca;
+    font-weight: 600;
+}
+[data-theme="dark"] .csel.turma-ativa .csel-trigger {
+    background: rgba(99,102,241,0.15);
+    border-color: #818cf8;
+    color: #a5b4fc;
+}

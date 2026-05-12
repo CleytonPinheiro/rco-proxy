@@ -901,6 +901,10 @@ function atualizarEstadoSelectTurma() {
     const sel = document.getElementById('selectTurma');
     if (!sel) return;
     sel.classList.toggle('turma-ativa', !!filtroTurma);
+    // Also toggle on the custom-select wrapper so the active style is visible
+    const cselWrap = sel.closest('.csel');
+    if (cselWrap) cselWrap.classList.toggle('turma-ativa', !!filtroTurma);
+    refreshCustomSelect(sel);
     // Atualiza o badge de turma ativa na barra
     const badge = document.getElementById('turmaAtivaBadge');
     if (!badge) return;
@@ -1795,3 +1799,13 @@ document.addEventListener('keydown', e => {
 
 init();
 initSyncStatus();
+
+/* Apply custom selects to the Modo Geral filter bar.
+   These elements are in the DOM at parse time; the MutationObserver inside
+   createCustomSelect handles dynamic option additions from popularSelectTurma(). */
+(function () {
+    const selTurma = document.getElementById('selectTurma');
+    const selSort  = document.getElementById('selectSort');
+    if (selTurma) createCustomSelect(selTurma);
+    if (selSort)  createCustomSelect(selSort);
+})();

@@ -465,3 +465,10 @@
     /* Evitar quebra de linha no meio de um aluno */
     .atv-table tbody tr { page-break-inside: avoid; }
 }
+
+/* ── Custom Select context — Atividades toolbar ──────────────────────────── */
+.atv-controls .csel-trigger {
+    min-width: 220px;
+    font-size: .9rem;
+    border-radius: 8px;
+}
