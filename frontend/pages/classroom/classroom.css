@@ -270,6 +270,12 @@ body.cl-popout .logo-icon { font-size: 15px; }
 .cl-btn--outline:hover { background: var(--bg); }
 .cl-btn--danger { background: #dc2626; color: white; }
 .cl-btn--danger:hover { background: #b91c1c; }
+@keyframes cl-pulse-ring {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.6); }
+    70%  { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+.cl-btn--pulse { animation: cl-pulse-ring 1s ease-out infinite; }
 .cl-btn--livro {
     background: transparent;
     border: 1px solid #d97706;

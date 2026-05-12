@@ -16,6 +16,7 @@ const SCOPES = [
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.me',
     'https://www.googleapis.com/auth/classroom.coursework.students',
+    'https://www.googleapis.com/auth/classroom.grades',
     'https://www.googleapis.com/auth/classroom.rosters.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
@@ -181,6 +182,55 @@ function deleteToken() {
     try { fs.unlinkSync(TOKEN_FILE); } catch (_) {}
 }
 
+function isInsufficientScope(e) {
+    const msg = (e.message || '').toLowerCase();
+
+    if (
+        msg.includes('insufficient_scope') ||
+        msg.includes('insufficient authentication scopes') ||
+        msg.includes('projectpermissiondenied') ||
+        msg.includes('access_token_scope_insufficient')
+    ) return true;
+
+    const data = e?.response?.data;
+    if (!data) return false;
+
+    const errCode   = String(data.error || '');
+    const errStatus = String(data.status || '');
+    const dataMsg   = String(data.message || '').toLowerCase();
+    const errors    = Array.isArray(data.errors) ? data.errors
+                    : (Array.isArray(data.error?.errors) ? data.error.errors : []);
+
+    const INSUF_REASONS = new Set(['insufficientPermissions', 'ACCESS_TOKEN_SCOPE_INSUFFICIENT']);
+
+    if (errCode === 'insufficient_scope' || errCode === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT') return true;
+    if (errors.some(er => INSUF_REASONS.has(er.reason))) return true;
+    if (errStatus === 'PERMISSION_DENIED') {
+        if (dataMsg.includes('insufficient') || dataMsg.includes('scope')) return true;
+    }
+
+    return false;
+}
+
+function isInvalidGrant(e) {
+    const msg = (e.message || '').toLowerCase();
+    const code = e?.response?.data?.error || '';
+    return msg.includes('invalid_grant') || code === 'invalid_grant';
+}
+
+async function deleteTokenForUser(req) {
+    deleteToken();
+    const cpf = req.userSession?.cpf;
+    if (cpf) {
+        try {
+            await pool.query(`DELETE FROM classroom_tokens WHERE cpf = $1`, [cpf]);
+            console.log(`[CLASSROOM] Token removido para CPF ${cpf} por escopo insuficiente.`);
+        } catch (dbErr) {
+            console.warn('[CLASSROOM] Falha ao remover token do DB:', dbErr.message);
+        }
+    }
+}
+
 export async function getAuthenticatedClient(req) {
     const oauth2Client = getOAuth2Client(req);
     if (!oauth2Client) return null;
@@ -194,7 +244,7 @@ export async function getAuthenticatedClient(req) {
             oauth2Client.setCredentials(credentials);
         } catch (e) {
             console.error('[CLASSROOM] Erro ao renovar token:', e.message);
-            deleteToken();
+            await deleteTokenForUser(req);
             return null;
         }
     }
@@ -267,6 +317,12 @@ async function getAuthenticatedClientForCpf(req, cpf) {
             oauth2Client.setCredentials(credentials);
         } catch (e) {
             console.error('[CLASSROOM] Erro ao renovar token (DB):', e.message);
+            try {
+                await pool.query(`DELETE FROM classroom_tokens WHERE cpf = $1`, [cpf]);
+                console.log(`[CLASSROOM] Token DB removido para CPF ${cpf} após falha de refresh.`);
+            } catch (dbErr) {
+                console.warn('[CLASSROOM] Falha ao remover token DB:', dbErr.message);
+            }
             return null;
         }
     }
@@ -501,6 +557,10 @@ export function createClassroomRouter(deps = {}) {
             res.json({ ok: true, nota: resp.data.assignedGrade });
         } catch (e) {
             console.error('[CLASSROOM] Erro ao atualizar nota:', e.message);
+            if (isInsufficientScope(e) || isInvalidGrant(e)) {
+                await deleteTokenForUser(req);
+                return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
+            }
             res.status(500).json({ erro: e.message });
         }
     });
@@ -1936,6 +1996,10 @@ export function createClassroomRouter(deps = {}) {
                     } while (pageToken);
                 } catch (e) {
                     console.error(`[AUTO-GRADE] Erro ao listar subs de "${atv.atividade_titulo}":`, e.message);
+                    if (isInsufficientScope(e) || isInvalidGrant(e)) {
+                        await deleteTokenForUser(req);
+                        return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
+                    }
                     continue;
                 }
 
@@ -1965,6 +2029,10 @@ export function createClassroomRouter(deps = {}) {
                         sincronizados++;
                     } catch (e) {
                         console.error(`[AUTO-GRADE] Erro ao publicar nota ${s.id}:`, e.message);
+                        if (isInsufficientScope(e) || isInvalidGrant(e)) {
+                            await deleteTokenForUser(req);
+                            return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
+                        }
                     }
                 }
             }
@@ -1972,6 +2040,10 @@ export function createClassroomRouter(deps = {}) {
             res.json({ total: ativs.length, sincronizados, autoDetectados });
         } catch (e) {
             console.error('[AUTO-GRADE] Erro:', e.message);
+            if (isInsufficientScope(e) || isInvalidGrant(e)) {
+                await deleteTokenForUser(req);
+                return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
+            }
             res.status(500).json({ erro: e.message });
         }
     });

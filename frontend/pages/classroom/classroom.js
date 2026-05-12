@@ -186,10 +186,46 @@ async function api(path, opts = {}) {
     if (!r.ok) {
         const err = new Error(data.erro || 'Erro na requisição');
         err.status = r.status;
+        err.codigo = data.codigo || null;
         err.body   = data;
         throw err;
     }
     return data;
+}
+
+function isErroEscopo(e) {
+    return e?.status === 403 && e?.codigo === 'ESCOPO_INSUFICIENTE';
+}
+
+async function mostrarAvisoEscopo() {
+    const reconectar = await confirmar(
+        'Seu token do Google Classroom não inclui a permissão de gravar notas (escopo classroom.grades). ' +
+        'Isso acontece porque o escopo foi adicionado após a sua última autorização. ' +
+        'Reconecte agora para liberar a permissão.',
+        {
+            titulo: 'Permissão insuficiente — Reconexão necessária',
+            confirmLabel: 'Reconectar Google Classroom',
+            cancelLabel: 'Agora não',
+            tipo: 'danger',
+            icone: '🔑',
+        }
+    );
+    if (reconectar) {
+        try {
+            const { url } = await api('/auth-url');
+            try { window.top.location.href = url; }
+            catch (_) { window.open(url, '_blank', 'noopener'); }
+        } catch (e) {
+            await notificar('Erro', 'Não foi possível iniciar reconexão: ' + e.message, { tipo: 'danger' });
+        }
+    } else {
+        const btnConectar = document.getElementById('clBtnConectar');
+        if (btnConectar) {
+            btnConectar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            btnConectar.classList.add('cl-btn--pulse');
+            setTimeout(() => btnConectar.classList.remove('cl-btn--pulse'), 4000);
+        }
+    }
 }
 
 /* ── API raw (/api/...) ── */
@@ -986,6 +1022,7 @@ async function salvarNota(input) {
         setTimeout(() => input.classList.remove('cl-nota-input--salva'), 2000);
     } catch (e) {
         input.value = original;
+        if (isErroEscopo(e)) { await mostrarAvisoEscopo(); return; }
         await notificar('Erro', 'Erro ao salvar nota: ' + e.message, { tipo: 'danger' });
     } finally {
         input.disabled = false;
@@ -1035,6 +1072,7 @@ async function promoverRascunho(btn) {
     } catch (e) {
         btn.disabled    = false;
         btn.textContent = 'Confirmar';
+        if (isErroEscopo(e)) { await mostrarAvisoEscopo(); return; }
         await notificar('Erro', 'Erro ao promover: ' + e.message, { tipo: 'danger' });
     }
 }
@@ -1054,7 +1092,15 @@ async function promoverTodosRascunhos() {
             n.nota = n.notaRascunho;
             n.notaRascunho = null;
             ok++;
-        } catch { fail++; }
+        } catch (e) {
+            if (isErroEscopo(e)) {
+                renderNotas();
+                atualizarStats();
+                await mostrarAvisoEscopo();
+                return;
+            }
+            fail++;
+        }
     }
     renderNotas();
     atualizarStats();
@@ -2475,7 +2521,9 @@ async function syncQuizizzBackground(grupo, atividades = []) {
             await notificar('Quizizz', `${r.sincronizados} nota(s) auto-corrigida(s) publicada(s).`, { tipo: 'ok' });
             await carregarResumoGrupo(grupo);
         }
-    } catch (_) {} finally {
+    } catch (e) {
+        if (isErroEscopo(e)) await mostrarAvisoEscopo();
+    } finally {
         _syncQuizizzRunning = false;
     }
 }
