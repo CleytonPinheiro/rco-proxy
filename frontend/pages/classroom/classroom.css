@@ -2688,6 +2688,53 @@ body.cl-popout .logo-icon { font-size: 15px; }
     color: #fbbf24;
 }
 
+.cl-scope-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin: 0 0 14px;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 500;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    grid-column: 1 / -1;
+}
+.dark .cl-scope-banner {
+    background: rgba(245,158,11,.08);
+    border-color: rgba(245,158,11,.25);
+    color: #fbbf24;
+}
+.cl-scope-banner-icon { font-size: 1.1rem; flex-shrink: 0; }
+.cl-scope-banner-texto { flex: 1; }
+.cl-scope-banner-btn {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.cl-scope-banner-btn:hover { opacity: .75; }
+.cl-scope-banner-fechar {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    font-size: .9rem;
+    opacity: .65;
+    line-height: 1;
+    padding: 2px 4px;
+}
+.cl-scope-banner-fechar:hover { opacity: 1; }
+
 .cl-fechar-sync-opt {
     margin: 12px 0;
     padding: 10px 12px;

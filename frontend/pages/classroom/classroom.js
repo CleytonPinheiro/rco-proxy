@@ -325,6 +325,34 @@ async function init() {
     elConnectScreen.style.display = 'none';
     elWorkspace.style.display     = 'grid';
     if (status.email) elContaBadge.textContent = '🔗 ' + status.email;
+
+    if (status.scopesMissing) {
+        const banner = document.createElement('div');
+        banner.id        = 'clScopeWarningBanner';
+        banner.className = 'cl-scope-banner';
+        banner.innerHTML =
+            '<span class="cl-scope-banner-icon">⚠️</span>' +
+            '<span class="cl-scope-banner-texto">Sua conexão com o Google não tem todas as permissões necessárias. ' +
+            'Funções como lançamento de notas podem falhar.</span>' +
+            '<button class="cl-scope-banner-btn" id="clScopeBannerReconectar">Reconectar</button>' +
+            '<button class="cl-scope-banner-fechar" id="clScopeBannerFechar" title="Fechar">✕</button>';
+        const workspace = document.getElementById('clWorkspace');
+        workspace.insertBefore(banner, workspace.firstChild);
+
+        document.getElementById('clScopeBannerReconectar').addEventListener('click', async () => {
+            try {
+                const { url } = await api('/auth-url');
+                try { window.top.location.href = url; }
+                catch (_) { window.open(url, '_blank', 'noopener'); }
+            } catch (e) {
+                await notificar('Erro', e.message, { tipo: 'danger' });
+            }
+        });
+        document.getElementById('clScopeBannerFechar').addEventListener('click', () => {
+            banner.remove();
+        });
+    }
+
     carregarCursos();
     carregarSolicitacoesBadge();
     carregarSolicitacoesCache();

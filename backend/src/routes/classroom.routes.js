@@ -373,7 +373,14 @@ export function createClassroomRouter(deps = {}) {
     router.get('/classroom/status', (req, res) => {
         const hasCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
         const token = loadToken();
-        res.json({ hasCredentials, connected: !!token, email: token?.email || null });
+        let scopesMissing = false;
+        if (token) {
+            const granted = new Set(
+                (token.scope || '').split(/\s+/).filter(Boolean)
+            );
+            scopesMissing = SCOPES.some(s => !granted.has(s));
+        }
+        res.json({ hasCredentials, connected: !!token, email: token?.email || null, scopesMissing });
     });
 
     /* ── URL de autorização OAuth ── */
