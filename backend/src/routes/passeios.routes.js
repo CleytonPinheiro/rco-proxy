@@ -99,7 +99,7 @@ async function getConfig(chave) {
 }
 
 /* ── Router factory ──────────────────────────────────────────────────── */
-export function createPasseiosRouter({ supabase, supabaseAdmin }) {
+export function createPasseiosRouter({ supabase }) {
     const router = Router();
 
     /* ══════════════════════════════════════════════════════════════
@@ -613,9 +613,6 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
         async (req, res) => {
             const inscId = parseInt(req.params.inscId);
             if (!req.file) return res.status(400).json({ erro: 'Nenhum arquivo enviado ou tipo não permitido (jpg/png/webp/pdf, máx 8MB)' });
-            const baseUrl = process.env.REPLIT_DEV_DOMAIN
-                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-                : 'http://localhost:5000';
             const arquivoUrl = `/api/passeios/comprovante/${req.file.filename}`;
             try {
                 const { rows: [insc] } = await pool.query(`
