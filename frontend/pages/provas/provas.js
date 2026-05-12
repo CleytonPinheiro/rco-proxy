@@ -13,8 +13,11 @@ let provaAberta = null;
 let _colaCarregada = false;
 let _colaExpandido = null;
 let _colaFlags = {};
+let _colaParesMap = {};
 let _renderColaTabela = null;
 let _divergenciasCarregadas = false;
+let _conversaPar = null;
+let _conversaFoco = 'A';
 
 async function init() {
     try {
@@ -577,6 +580,7 @@ async function carregarColAnalise() {
 }
 
 function renderColAnalise({ pares, temDiscursiva }) {
+    _colaParesMap = {};
     const cont = $('prvDetCola');
 
     if (!pares || pares.length === 0) {
@@ -644,6 +648,8 @@ function renderColAnalise({ pares, temDiscursiva }) {
                     ? '<span class="prv-cola-badge prv-cola-flag-resolvido">✅ Resolvido</span>'
                     : '<span class="prv-cola-badge prv-cola-flag-investigar">🔍 Investigar</span>')
                 : '';
+            _colaParesMap[parKey] = par;
+            const parKeyJson = JSON.stringify(parKey);
             rows += `
                 <tr class="prv-cola-row ${nivel ? 'prv-cola-row-' + nivel : ''} ${flag ? 'prv-cola-row-flagged' : ''}" data-par="${escapeHtml(parKey)}" style="cursor:pointer">
                     <td><strong>${escapeHtml(par.nomeA)}</strong><br><small>${escapeHtml(par.alunoA)}</small></td>
@@ -655,10 +661,15 @@ function renderColAnalise({ pares, temDiscursiva }) {
                     <td style="text-align:center">${par.identicasErradas}</td>
                     <td style="text-align:center">${par.total}</td>
                     <td style="text-align:center">${flagBadge}</td>
+                    <td style="text-align:center">
+                        <button class="prv-btn prv-cola-conversa-btn"
+                            onclick="event.stopPropagation(); abrirConversaPedagogica(${parKeyJson})"
+                            title="Abrir Conversa Pedagógica">💬 Conversa</button>
+                    </td>
                 </tr>
             `;
             if (expandido) {
-                rows += `<tr class="prv-cola-detalhe-row"><td colspan="7">${renderDetalhePar(par, flag)}</td></tr>`;
+                rows += `<tr class="prv-cola-detalhe-row"><td colspan="8">${renderDetalhePar(par, flag)}</td></tr>`;
             }
         }
 
@@ -671,6 +682,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
                     <th style="text-align:center">Erros coincidentes</th>
                     <th style="text-align:center">Total questões</th>
                     <th style="text-align:center">Status</th>
+                    <th style="text-align:center">Conversa</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
@@ -849,6 +861,95 @@ async function salvarFlagNota(provaId, alunoA, alunoB, notaId) {
     }
 }
 
+function abrirConversaPedagogica(parKey) {
+    const par = _colaParesMap[parKey];
+    if (!par) return;
+    _conversaPar = par;
+    _conversaFoco = 'A';
+    _renderConversaCorpo();
+    const modal = document.getElementById('prvConversaModal');
+    const subtitulo = document.getElementById('prvConversaSubtitulo');
+    const provaNome = provaAberta && provaAberta.prova ? provaAberta.prova.nome : '';
+    if (subtitulo && provaNome) subtitulo.textContent = `Vamos conversar sobre suas respostas em "${provaNome}".`;
+    modal.style.display = 'flex';
+}
+
+function fecharConversaPedagogica() {
+    document.getElementById('prvConversaModal').style.display = 'none';
+    _conversaPar = null;
+}
+
+function switchFocoConversa(foco) {
+    _conversaFoco = foco;
+    _renderConversaCorpo();
+}
+
+function _renderConversaCorpo() {
+    const par = _conversaPar;
+    if (!par) return;
+    const focoA = _conversaFoco === 'A';
+    const focoNome = focoA ? par.nomeA : par.nomeB;
+
+    const fmtResp = v => {
+        if (v === null) return '<em style="color:#aaa">—</em>';
+        if (Array.isArray(v)) return escapeHtml(v.join(', '));
+        return escapeHtml(String(v).toUpperCase());
+    };
+    const fmtGab = v => {
+        if (v === null) return '—';
+        if (Array.isArray(v)) return escapeHtml(v.join(', '));
+        return escapeHtml(String(v).toUpperCase());
+    };
+
+    let rows = '';
+    for (const q of (par.detalhes || [])) {
+        const resp = focoA ? q.respA : q.respB;
+        const coincidenteErro = q.amboserram;
+        const coincidenteAcerto = q.igual && !q.amboserram;
+        let badge = '';
+        let rowCls = '';
+        if (coincidenteErro) {
+            badge = '<span class="prv-cola-badge prv-cola-critico prv-conversa-badge-erro">⚠️ erro coincidente com outro aluno</span>';
+            rowCls = 'prv-conversa-q-erro';
+        } else if (coincidenteAcerto) {
+            badge = '<span class="prv-cola-badge prv-cola-alerta prv-conversa-badge-igual">resposta igual à de outro aluno</span>';
+        }
+        rows += `<tr class="${rowCls}">
+            <td class="prv-conversa-q-num">${q.questao}</td>
+            <td class="prv-conversa-q-resp">${fmtResp(resp)}</td>
+            <td class="prv-conversa-q-gab">${fmtGab(q.correta)}</td>
+            <td>${badge}</td>
+        </tr>`;
+    }
+
+    const btnA = `<button class="prv-btn prv-conversa-foco-btn ${focoA ? 'prv-conversa-foco-ativo' : ''}" onclick="switchFocoConversa('A')">Aluno A</button>`;
+    const btnB = `<button class="prv-btn prv-conversa-foco-btn ${!focoA ? 'prv-conversa-foco-ativo' : ''}" onclick="switchFocoConversa('B')">Aluno B</button>`;
+
+    const errosCoincidentes = (par.detalhes || []).filter(q => q.amboserram).length;
+
+    document.getElementById('prvConversaCorpo').innerHTML = `
+        <div class="prv-conversa-switcher no-print">
+            <span class="prv-conversa-switcher-label">Aluno em foco:</span>
+            ${btnA}
+            ${btnB}
+        </div>
+        <div class="prv-conversa-aluno-info">
+            <span class="prv-conversa-aluno-nome">${escapeHtml(focoNome)}</span>
+            <span class="prv-conversa-aluno-meta">Variante .${escapeHtml(par.varianteCodigo)} &nbsp;·&nbsp; ${par.total} questões &nbsp;·&nbsp; ${errosCoincidentes} erro${errosCoincidentes !== 1 ? 's' : ''} coincidente${errosCoincidentes !== 1 ? 's' : ''} com outro aluno</span>
+        </div>
+        <table class="prv-tabela prv-conversa-tabela">
+            <thead><tr>
+                <th style="text-align:center;width:48px">Q</th>
+                <th style="text-align:center">Sua resposta</th>
+                <th style="text-align:center">Gabarito</th>
+                <th>Observação</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <p class="prv-conversa-rodape no-print">As identidades dos outros alunos não são exibidas nesta visualização.</p>
+    `;
+}
+
 async function irParaCola(provaId) {
     await abrirDetalhe(provaId);
     prvAtivarAba('cola');
@@ -945,9 +1046,12 @@ window.publicarNoClassroom = publicarNoClassroom;
 window.exportarFlags   = exportarFlags;
 window.salvarFlag      = salvarFlag;
 window.salvarFlagNota  = salvarFlagNota;
-window.fecharDet        = fecharDet;
-window.prvAtivarAba     = prvAtivarAba;
-window.irParaCola       = irParaCola;
-window.prvToggleSegundo = prvToggleSegundo;
+window.fecharDet              = fecharDet;
+window.prvAtivarAba           = prvAtivarAba;
+window.irParaCola             = irParaCola;
+window.prvToggleSegundo       = prvToggleSegundo;
+window.abrirConversaPedagogica = abrirConversaPedagogica;
+window.fecharConversaPedagogica = fecharConversaPedagogica;
+window.switchFocoConversa     = switchFocoConversa;
 
 init();

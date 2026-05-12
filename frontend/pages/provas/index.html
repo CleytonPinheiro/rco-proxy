@@ -126,6 +126,23 @@
         </div>
     </div>
 
+    <!-- Modal Conversa Pedagógica -->
+    <div id="prvConversaModal" class="prv-modal prv-conversa-modal" style="display:none" onclick="if(event.target===this)fecharConversaPedagogica()">
+        <div class="prv-conversa-card">
+            <div class="prv-conversa-header">
+                <div class="prv-conversa-header-text">
+                    <h2 class="prv-conversa-titulo">💬 Conversa Pedagógica</h2>
+                    <p class="prv-conversa-subtitulo" id="prvConversaSubtitulo">Vamos conversar sobre suas respostas nesta prova.</p>
+                </div>
+                <div class="prv-conversa-header-actions no-print">
+                    <button class="prv-btn prv-conversa-print-btn" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+                    <button class="prv-btn-icon" onclick="fecharConversaPedagogica()" title="Fechar">✕</button>
+                </div>
+            </div>
+            <div id="prvConversaCorpo"></div>
+        </div>
+    </div>
+
     <script src="../../shared/js/auth.js"></script>
     <script src="../../shared/js/modal-confirmar.js"></script>
     <script src="../../shared/js/badgePoll.js"></script>

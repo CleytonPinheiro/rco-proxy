@@ -290,3 +290,110 @@
     border-color: #bfdbfe;
 }
 .prv-pendente-link:hover { background: #dbeafe; }
+
+/* Conversa Pedagógica button in cola table */
+.prv-cola-conversa-btn {
+    padding: 4px 10px; font-size: 14px;
+    background: #f0f9ff; color: #0369a1;
+    border-color: #bae6fd;
+    white-space: nowrap;
+}
+.prv-cola-conversa-btn:hover { background: #e0f2fe; border-color: #7dd3fc; }
+
+/* Conversa Pedagógica Modal */
+.prv-conversa-modal {
+    align-items: flex-start;
+    padding: 0;
+}
+.prv-conversa-card {
+    background: var(--bg-secondary, #fff);
+    color: var(--text, #000);
+    width: 100%;
+    min-height: 100vh;
+    padding: 28px 36px 40px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    border-radius: 0;
+}
+.prv-conversa-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border, #e5e7eb);
+}
+.prv-conversa-header-text { flex: 1; min-width: 0; }
+.prv-conversa-titulo { margin: 0 0 6px; font-size: 22px; }
+.prv-conversa-subtitulo {
+    margin: 0; font-size: 15px;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 8px 14px;
+    display: inline-block;
+    font-style: italic;
+}
+[data-theme="dark"] .prv-conversa-subtitulo { background: #1e3a8a; color: #dbeafe; border-color: #3b82f6; }
+.prv-conversa-header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.prv-conversa-print-btn {
+    background: #f8fafc; color: #374151;
+    border-color: #d1d5db; font-size: 13px;
+}
+.prv-conversa-print-btn:hover { background: #f3f4f6; }
+
+.prv-conversa-switcher {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 16px; padding: 10px 14px;
+    background: var(--bg, #f8fafc);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+}
+.prv-conversa-switcher-label { font-size: 13px; font-weight: 600; color: var(--text-muted, #555); }
+.prv-conversa-foco-btn { font-size: 13px; padding: 6px 14px; }
+.prv-conversa-foco-ativo {
+    background: #4285F4; color: #fff;
+    border-color: #4285F4; font-weight: 700;
+}
+
+.prv-conversa-aluno-info {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.prv-conversa-aluno-nome { font-size: 20px; font-weight: 700; }
+.prv-conversa-aluno-meta { font-size: 13px; color: var(--text-muted, #666); }
+
+.prv-conversa-tabela { margin-bottom: 12px; }
+.prv-conversa-tabela td, .prv-conversa-tabela th { padding: 8px 10px; }
+.prv-conversa-q-num { text-align: center; font-weight: 700; font-size: 14px; width: 48px; }
+.prv-conversa-q-resp { text-align: center; font-size: 15px; font-weight: 600; }
+.prv-conversa-q-gab { text-align: center; font-size: 15px; font-weight: 700; color: #166534; }
+.prv-conversa-q-erro td { background: #fff1f2; }
+[data-theme="dark"] .prv-conversa-q-erro td { background: #2d0000; }
+.prv-conversa-badge-erro { font-size: 12px !important; padding: 2px 8px !important; }
+.prv-conversa-badge-igual { font-size: 12px !important; padding: 2px 8px !important; }
+
+.prv-conversa-rodape {
+    margin-top: 16px; font-size: 11px;
+    color: var(--text-muted, #999); font-style: italic;
+    text-align: center;
+}
+
+/* Print styles — only the conversa card is shown */
+@media print {
+    body > *:not(#prvConversaModal) { display: none !important; }
+    #prvConversaModal {
+        position: static !important;
+        background: none !important;
+        display: block !important;
+        padding: 0 !important;
+    }
+    .prv-conversa-card {
+        min-height: auto;
+        padding: 16px 24px;
+        box-shadow: none !important;
+    }
+    .no-print { display: none !important; }
+    .prv-conversa-header { border-bottom: 1px solid #ccc; }
+    .prv-conversa-q-erro td { background: #ffe4e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .prv-cola-badge { border: 1px solid #ccc; }
+}
