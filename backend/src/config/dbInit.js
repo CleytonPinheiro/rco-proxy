@@ -487,6 +487,8 @@ export async function initializeDatabase() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_token   ON evento_inscricoes(aluno_token)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_onibus  ON evento_inscricoes(onibus_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_payment ON evento_inscricoes(status_pagamento)`);
+        /* status_atual adicionado após criação inicial */
+        await client.query(`ALTER TABLE eventos ADD COLUMN IF NOT EXISTS status_atual TEXT DEFAULT 'planejando'`);
         /* foto_url e comprovante_arquivo_url adicionadas após criação inicial */
         await client.query(`ALTER TABLE evento_inscricoes ADD COLUMN IF NOT EXISTS foto_url TEXT`);
         await client.query(`ALTER TABLE evento_inscricoes ADD COLUMN IF NOT EXISTS comprovante_arquivo_url TEXT`);

@@ -608,7 +608,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
             const baseUrl = process.env.REPLIT_DEV_DOMAIN
                 ? `https://${process.env.REPLIT_DEV_DOMAIN}`
                 : 'http://localhost:5000';
-            const arquivoUrl = `${baseUrl}/uploads/comprovantes/${req.file.filename}`;
+            const arquivoUrl = `/api/passeios/comprovante/${req.file.filename}`;
             try {
                 const { rows: [insc] } = await pool.query(`
                     UPDATE evento_inscricoes SET
@@ -958,11 +958,11 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
 
             const { rows: geral } = await pool.query(`
                 SELECT
-                    COUNT(*)                                            AS total,
-                    COUNT(*) FILTER (WHERE status_pagamento='pago')    AS pagos,
-                    COUNT(*) FILTER (WHERE status_pagamento='pendente') AS pendentes,
-                    COUNT(*) FILTER (WHERE embarcou=true)              AS embarcados,
-                    COUNT(*) FILTER (WHERE desembarcou=true)           AS desembarcados
+                    COUNT(*)                                                                  AS total,
+                    COUNT(*) FILTER (WHERE status_pagamento IN ('pago','confirmado'))         AS pagos,
+                    COUNT(*) FILTER (WHERE status_pagamento='pendente')                       AS pendentes,
+                    COUNT(*) FILTER (WHERE embarcou=true)                                     AS embarcados,
+                    COUNT(*) FILTER (WHERE desembarcou=true)                                  AS desembarcados
                 FROM evento_inscricoes WHERE evento_id=$1
             `, [eventoId]);
 
@@ -979,6 +979,83 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
                 geral: geral[0],
                 ausentes_retorno,
             });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/passeios/comprovante/:filename — download autenticado de comprovante */
+    router.get('/passeios/comprovante/:filename', async (req, res) => {
+        const filename = path.basename(req.params.filename); // sanitize — no path traversal
+        const filePath = path.resolve(__dirname, '../../../uploads/comprovantes', filename);
+        res.sendFile(filePath, err => {
+            if (err) res.status(404).json({ erro: 'Arquivo não encontrado' });
+        });
+    });
+
+    /* POST /api/passeios/:id/status-evento — mudar estado do evento + auto-notificar responsáveis */
+    router.post('/passeios/:id/status-evento', guardPasseios, async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { status_atual } = req.body; // planejando | em_viagem | no_destino | retornando | encerrado
+        const estadosValidos = ['planejando','em_viagem','no_destino','retornando','encerrado'];
+        if (!estadosValidos.includes(status_atual)) {
+            return res.status(400).json({ erro: `status_atual inválido. Use: ${estadosValidos.join(', ')}` });
+        }
+
+        /* Mapa estado → tipo de notificação (undefined = sem auto-notif) */
+        const autoNotif = { em_viagem: 'saida', no_destino: 'chegada', retornando: 'retorno' };
+        const tipo = autoNotif[status_atual];
+
+        try {
+            const { rows: [ev] } = await pool.query(
+                `UPDATE eventos SET status_atual=$1 WHERE id=$2 RETURNING *`,
+                [status_atual, eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            let enviados = 0, sem_n8n = false;
+            if (tipo) {
+                /* Auto-despachar notificação para todos os responsáveis cadastrados */
+                const msgs = {
+                    saida:   '🚌 O ônibus saiu com os alunos! Acompanhe em tempo real.',
+                    chegada: '🎉 Chegamos ao destino com segurança!',
+                    retorno: '🏠 O ônibus está retornando. Aguardem no ponto de chegada.',
+                };
+                const { rows: inscritos } = await pool.query(`
+                    SELECT ei.*, eo.nome AS onibus_nome, eo.numero AS onibus_numero
+                    FROM evento_inscricoes ei
+                    LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                    WHERE ei.evento_id=$1 AND ei.contato_responsavel IS NOT NULL
+                      AND ei.status_pagamento IN ('pago','confirmado')
+                `, [eventoId]);
+
+                const webhookUrl = await getConfig('n8n_webhook_url');
+                const token      = await getConfig('comunicados_token');
+                const baseUrl    = process.env.REPLIT_DEV_DOMAIN
+                    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                    : 'http://localhost:5000';
+
+                sem_n8n = !webhookUrl;
+                for (const insc of inscritos) {
+                    const pagLink = `${baseUrl}/p/${eventoId}/${insc.aluno_token}`;
+                    const mensagem = [
+                        msgs[tipo],
+                        `👤 Aluno: ${insc.nome_aluno}`,
+                        `📅 Evento: ${ev.nome}`,
+                        `📎 Acompanhe: ${pagLink}`,
+                    ].join('\n');
+                    if (webhookUrl) {
+                        await fetch(webhookUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ telefone: insc.contato_responsavel, mensagem, token,
+                                aluno: insc.nome_aluno, evento: ev.nome, tipo }),
+                        }).catch(e => console.warn('[PASSEIOS-ESTADO-NOTIF]', e.message));
+                    } else {
+                        console.log(`[PASSEIOS-ESTADO-${tipo.toUpperCase()}] Sem N8n → ${insc.contato_responsavel}: ${mensagem.slice(0,60)}…`);
+                    }
+                    enviados++;
+                }
+            }
+
+            res.json({ ok: true, status_atual, notif_tipo: tipo || null, enviados, sem_n8n });
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 

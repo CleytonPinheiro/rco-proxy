@@ -273,7 +273,7 @@ function renderizarDetalhe() {
 /* ─────────────────────────────────────────────────────────────────── */
 function renderizarFinanceiro() {
     const inscs   = eventoAtual.inscricoes || [];
-    const pagos   = inscs.filter(i => i.status_pagamento === 'pago').length;
+    const pagos   = inscs.filter(i => i.status_pagamento === 'pago' || i.status_pagamento === 'confirmado').length;
     const pend    = inscs.filter(i => i.status_pagamento === 'pendente').length;
     const total   = inscs.length;
     const valor   = parseFloat(eventoAtual.valor_aluno) || 0;
@@ -453,6 +453,38 @@ async function enviarLembretes() {
     } catch (e) { toast('Erro: ' + e.message); }
 }
 
+async function mudarStatusEvento(statusAtual) {
+    const labels = {
+        em_viagem:  'Registrar Saída',
+        no_destino: 'Registrar Chegada',
+        retornando: 'Registrar Retorno',
+        encerrado:  'Encerrar Evento',
+        planejando: 'Resetar para Planejando',
+    };
+    const comNotif = ['em_viagem','no_destino','retornando'].includes(statusAtual);
+    const desc = comNotif
+        ? 'O estado será atualizado e uma notificação WhatsApp será enviada automaticamente para todos os responsáveis com telefone cadastrado.'
+        : 'O estado do evento será atualizado.';
+    const ok = await confirmar(labels[statusAtual] || statusAtual, desc, { confirmLabel: labels[statusAtual] || statusAtual });
+    if (!ok) return;
+    try {
+        const r = await fetch(`${API}/passeios/${eventoAtual.id}/status-evento`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status_atual: statusAtual }),
+        });
+        const d = await r.json();
+        if (!r.ok) { toast('Erro: ' + (d.erro || r.status), 'erro'); return; }
+        if (d.notif_tipo) {
+            toast(d.sem_n8n
+                ? `Estado atualizado — ${d.enviados} aluno(s) (WhatsApp não configurado)`
+                : `Estado atualizado! ${d.enviados} notificação(ões) enviada(s) automaticamente`, 'sucesso');
+        } else {
+            toast('Estado do evento atualizado!', 'sucesso');
+        }
+        await atualizarPainel();
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+}
+
 async function notificarOnibus(tipo) {
     const labels = { saida: 'Ônibus Saiu', chegada: 'Chegamos!', retorno: 'Estamos Retornando' };
     const msgs = {
@@ -474,6 +506,51 @@ async function notificarOnibus(tipo) {
         const d = await r.json();
         if (!r.ok) { toast('Erro: ' + (d.erro || r.status), 'erro'); return; }
         toast(d.sem_n8n ? `${labels[tipo]} — simulado (WhatsApp não configurado)` : `${d.enviados} notificação(ões) enviada(s)!`, 'sucesso');
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  Modal: Aluno Avulso                                                */
+/* ─────────────────────────────────────────────────────────────────── */
+async function abrirModalAvulso() {
+    const modalHtml = `
+        <div id="mdlAvulso" class="modal-overlay" style="z-index:3000">
+          <div class="modal-box" style="max-width:440px">
+            <h3 style="margin-bottom:14px">Adicionar Aluno Avulso</h3>
+            <label style="display:block;margin-bottom:8px;font-size:14px">Matrícula (codmatrizaluno) *
+              <input id="mdlAvulsoMatricula" type="number" class="ps-input-inline" placeholder="Ex: 123456" style="width:100%;margin-top:4px">
+            </label>
+            <label style="display:block;margin-bottom:8px;font-size:14px">Nome do Aluno *
+              <input id="mdlAvulsoNome" type="text" class="ps-input-inline" placeholder="Nome completo" style="width:100%;margin-top:4px">
+            </label>
+            <label style="display:block;margin-bottom:16px;font-size:14px">Turma
+              <input id="mdlAvulsoTurma" type="text" class="ps-input-inline" placeholder="Ex: 7ºA" style="width:100%;margin-top:4px">
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="ps-btn-action" onclick="document.getElementById('mdlAvulso').remove()">Cancelar</button>
+              <button class="ps-btn-action ps-btn-confirmar" onclick="_confirmarAvulso()">Inscrever</button>
+            </div>
+          </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('mdlAvulsoNome').focus();
+}
+
+async function _confirmarAvulso() {
+    const matricula = document.getElementById('mdlAvulsoMatricula')?.value?.trim();
+    const nome      = document.getElementById('mdlAvulsoNome')?.value?.trim();
+    const turma     = document.getElementById('mdlAvulsoTurma')?.value?.trim();
+    if (!matricula || !nome) { toast('Matrícula e nome são obrigatórios', 'erro'); return; }
+    document.getElementById('mdlAvulso')?.remove();
+    try {
+        const r = await fetch(`${API}/passeios/${eventoAtual.id}/inscrever-avulso`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codmatrizaluno: parseInt(matricula), nome_aluno: nome, turma: turma || '' }),
+        });
+        const d = await r.json();
+        if (!r.ok) { toast('Erro: ' + (d.erro || r.status), 'erro'); return; }
+        toast(`${nome} inscrito(a) com sucesso!`, 'sucesso');
+        await recarregarDetalhe();
     } catch (e) { toast('Erro: ' + e.message, 'erro'); }
 }
 
@@ -900,15 +977,16 @@ function renderizarPainel(d) {
             }).join('')}
         </div>
 
-        <!-- Notificações de momento -->
+        <!-- Estado do Evento + Auto-Notificação -->
         <div class="ps-painel-notif-moment">
-            <div class="ps-painel-notif-titulo">📢 Notificações de Momento</div>
+            <div class="ps-painel-notif-titulo">🚦 Estado do Evento</div>
             <div class="ps-painel-notif-btns">
-                <button class="ps-btn-notif-saida"   onclick="notificarOnibus('saida')">🚌 Ônibus Saiu</button>
-                <button class="ps-btn-notif-chegada" onclick="notificarOnibus('chegada')">🎉 Chegamos!</button>
-                <button class="ps-btn-notif-retorno" onclick="notificarOnibus('retorno')">🏠 Retornando</button>
+                <button class="ps-btn-notif-saida"   onclick="mudarStatusEvento('em_viagem')">🚌 Registrar Saída</button>
+                <button class="ps-btn-notif-chegada" onclick="mudarStatusEvento('no_destino')">🎉 Registrar Chegada</button>
+                <button class="ps-btn-notif-retorno" onclick="mudarStatusEvento('retornando')">🏠 Registrar Retorno</button>
+                <button class="ps-btn-notif-retorno" style="background:#64748b" onclick="mudarStatusEvento('encerrado')">✅ Encerrar</button>
             </div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:6px">Envia WhatsApp para responsáveis de todos os alunos inscritos com telefone cadastrado</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:6px">Ao registrar, o WhatsApp é enviado automaticamente para responsáveis de todos os alunos inscritos com telefone</div>
         </div>
 
         <!-- Ausentes no retorno -->
