@@ -1,11 +1,35 @@
 /**
  * Passeios e Eventos Externos — rotas protegidas + públicas
  */
-import { Router } from 'express';
-import crypto     from 'crypto';
-import QRCode     from 'qrcode';
-import pkg        from 'pg';
+import { Router }      from 'express';
+import crypto          from 'crypto';
+import QRCode          from 'qrcode';
+import pkg             from 'pg';
+import multer          from 'multer';
+import path            from 'path';
+import { fileURLToPath } from 'url';
+import { getBrowser }  from '../../auth-puppeteer.js';
 import { requireModulo } from '../middleware/auth.middleware.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/* ── Multer: upload de comprovantes ─────────────────────────────── */
+const _uploadStorage = multer.diskStorage({
+    destination: path.resolve(__dirname, '../../../uploads/comprovantes'),
+    filename: (req, file, cb) => {
+        const ext  = path.extname(file.originalname) || '.jpg';
+        const name = `comp_${req.params.inscId || 'x'}_${Date.now()}${ext}`;
+        cb(null, name);
+    },
+});
+const _upload = multer({
+    storage: _uploadStorage,
+    limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg','image/png','image/webp','application/pdf'];
+        cb(null, allowed.includes(file.mimetype));
+    },
+});
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -575,6 +599,33 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
+    /* POST /api/passeios/:id/inscricoes/:inscId/comprovante — upload de comprovante de pagamento */
+    router.post('/passeios/:id/inscricoes/:inscId/comprovante', guardPasseios,
+        _upload.single('comprovante'),
+        async (req, res) => {
+            const inscId = parseInt(req.params.inscId);
+            if (!req.file) return res.status(400).json({ erro: 'Nenhum arquivo enviado ou tipo não permitido (jpg/png/webp/pdf, máx 8MB)' });
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : 'http://localhost:5000';
+            const arquivoUrl = `${baseUrl}/uploads/comprovantes/${req.file.filename}`;
+            try {
+                const { rows: [insc] } = await pool.query(`
+                    UPDATE evento_inscricoes SET
+                        comprovante_arquivo_url = $1,
+                        status_pagamento = CASE WHEN status_pagamento='pendente' THEN 'pago' ELSE status_pagamento END,
+                        pago_em = CASE WHEN pago_em IS NULL THEN NOW() ELSE pago_em END,
+                        pago_por = COALESCE(pago_por, $2)
+                    WHERE id=$3 RETURNING *
+                `, [arquivoUrl, req.userSession?.nome || 'sistema', inscId]);
+                if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+                res.json({ ok: true, arquivoUrl, insc });
+            } catch (e) {
+                res.status(500).json({ erro: e.message });
+            }
+        }
+    );
+
     /* GET /api/passeios/:id/pix/:inscId — gerar PIX QR do aluno */
     router.get('/passeios/:id/pix/:inscId', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
@@ -718,7 +769,23 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                 }
             }
 
-            res.json({ ok: true, distribuidos: inscritos.length });
+            /* Contar apenas quem foi efetivamente atribuído a um ônibus */
+            const { rows: atribuidos } = await pool.query(
+                `SELECT COUNT(*) AS n FROM evento_inscricoes WHERE evento_id=$1 AND onibus_id IS NOT NULL AND status_pagamento IN ('pago','confirmado')`,
+                [eventoId]);
+            const totalAtribuidos  = parseInt(atribuidos[0].n) || 0;
+            const naoAtribuidos    = inscritos.length - totalAtribuidos;
+            const capacidadeTotal  = onibus.reduce((s, o) => s + (o.capacidade || 0), 0);
+
+            res.json({
+                ok:           naoAtribuidos === 0,
+                distribuidos: totalAtribuidos,
+                nao_atribuidos: naoAtribuidos,
+                capacidade_total: capacidadeTotal,
+                aviso: naoAtribuidos > 0
+                    ? `${naoAtribuidos} aluno(s) não atribuídos — capacidade total insuficiente (${capacidadeTotal} vagas para ${inscritos.length} alunos)`
+                    : null,
+            });
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
@@ -733,6 +800,100 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
             if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
             res.json(insc);
         } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/passeios/:id/pulseiras/pdf — PDF gerado pelo servidor (A4, 24 pulseiras/página) */
+    router.get('/passeios/:id/pulseiras/pdf', guardPasseios, async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { onibus_id } = req.query;
+        let page;
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            let q = `
+                SELECT ei.*, eo.numero AS onibus_numero, eo.nome AS onibus_nome, eo.cor AS onibus_cor
+                FROM evento_inscricoes ei
+                LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                WHERE ei.evento_id=$1
+            `;
+            const params = [eventoId];
+            if (onibus_id) { q += ` AND ei.onibus_id=$2`; params.push(parseInt(onibus_id)); }
+            q += ` ORDER BY eo.numero NULLS LAST, ei.turma, ei.nome_aluno`;
+            const { rows: inscricoes } = await pool.query(q, params);
+            if (!inscricoes.length) return res.status(404).json({ erro: 'Nenhuma inscrição encontrada' });
+
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : 'http://localhost:5000';
+
+            const items = await Promise.all(inscricoes.map(async (i) => {
+                const url = `${baseUrl}/p/${eventoId}/${i.aluno_token}`;
+                const qr  = await QRCode.toDataURL(url, { width: 100, margin: 1, errorCorrectionLevel: 'M' });
+                const cor  = i.onibus_cor || '#4a90d9';
+                const label = i.onibus_id ? (i.onibus_nome || `Ônibus ${i.onibus_numero}`) : 'Sem ônibus';
+                const ini   = (i.nome_aluno || '?').split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+                return { ...i, qrDataUrl: qr, cor, label, ini };
+            }));
+
+            /* ── Montar HTML A4 com 24 pulseiras (4×6) por página ── */
+            const cardsHtml = items.map(i => `
+                <div class="pulseira" style="border-left:6px solid ${i.cor}">
+                    <div class="ps-foto-wrap">
+                        ${i.foto_url
+                            ? `<img class="ps-foto" src="${i.foto_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                            : ''}
+                        <div class="ps-ini" style="display:${i.foto_url ? 'none' : 'flex'};background:${i.cor}22;color:${i.cor}">${i.ini}</div>
+                    </div>
+                    <div class="ps-info">
+                        <div class="ps-nome">${i.nome_aluno}</div>
+                        <div class="ps-turma">${i.turma || ''} &bull; ${i.label}</div>
+                        ${i.restricoes ? `<div class="ps-rest">⚠ ${i.restricoes}</div>` : ''}
+                    </div>
+                    <div class="ps-qr"><img src="${i.qrDataUrl}" width="72" height="72" alt="QR"></div>
+                </div>`).join('');
+
+            const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Pulseiras — ${ev.nome}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;background:#fff}
+.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm;padding:8mm;width:210mm}
+.pulseira{display:flex;align-items:center;gap:2mm;border:1px solid #ccc;border-radius:3mm;padding:2mm;height:44mm;overflow:hidden;background:#fff;page-break-inside:avoid}
+.ps-foto-wrap{flex-shrink:0;width:36px;height:36px;position:relative}
+.ps-foto{width:36px;height:36px;border-radius:50%;object-fit:cover}
+.ps-ini{width:36px;height:36px;border-radius:50%;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.ps-info{flex:1;min-width:0;overflow:hidden}
+.ps-nome{font-size:7.5pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-turma{font-size:6pt;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1mm}
+.ps-rest{font-size:5.5pt;color:#c0392b;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-qr{flex-shrink:0}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head><body>
+<div class="grade">${cardsHtml}</div>
+</body></html>`;
+
+            const browser = await getBrowser();
+            page = await browser.newPage();
+            await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+            const pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: { top: '0', right: '0', bottom: '0', left: '0' },
+            });
+            await page.close();
+            page = null;
+
+            const nomeArquivo = encodeURIComponent(`pulseiras-${ev.nome}-${eventoId}`);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.pdf"`);
+            res.send(Buffer.from(pdfBuffer));
+        } catch (e) {
+            if (page) { try { await page.close(); } catch {} }
+            console.error('[Passeios PDF]', e.message);
+            res.status(500).json({ erro: e.message });
+        }
     });
 
     /* GET /api/passeios/:id/pulseiras — dados para impressão de pulseiras */

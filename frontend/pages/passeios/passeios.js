@@ -357,17 +357,55 @@ async function marcarPago(inscId) {
 }
 
 async function confirmarPagamento(inscId) {
-    const insc = (eventoAtual?.inscricoes || []).find(i => i.id === inscId);
-    const obs   = await solicitarTexto('Observação do comprovante (opcional):', '', 'Confirmar Pagamento');
-    if (obs === null) return; // cancelado
+    /* Modal inline para obs + upload de comprovante */
+    const modalHtml = `
+        <div id="mdlConfPag" class="modal-overlay" style="z-index:3000">
+          <div class="modal-box" style="max-width:420px">
+            <h3 style="margin-bottom:12px">Confirmar Pagamento</h3>
+            <label style="display:block;margin-bottom:8px;font-size:14px">Observação (opcional)
+              <input id="mdlConfObs" type="text" class="ps-input-inline" placeholder="Pix recebido, boleto…" style="width:100%;margin-top:4px">
+            </label>
+            <label style="display:block;margin-bottom:16px;font-size:14px">Comprovante (opcional, jpg/png/pdf ≤8 MB)
+              <input id="mdlConfFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" style="margin-top:4px;display:block">
+            </label>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="ps-btn-action" onclick="document.getElementById('mdlConfPag').remove()">Cancelar</button>
+              <button class="ps-btn-action ps-btn-confirmar" onclick="_confirmarPagamentoSalvar(${inscId})">Confirmar ✅</button>
+            </div>
+          </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function _confirmarPagamentoSalvar(inscId) {
+    const obs   = document.getElementById('mdlConfObs')?.value?.trim();
+    const file  = document.getElementById('mdlConfFile')?.files?.[0];
+    document.getElementById('mdlConfPag')?.remove();
     try {
+        /* Primeiro confirma o status */
         const r = await fetch(`${API}/passeios/${eventoAtual.id}/inscricoes/${inscId}/confirmar`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ comprovante_obs: obs || undefined }),
         });
         const d = await r.json();
         if (!r.ok) { toast('Erro: ' + (d.erro || r.status), 'erro'); return; }
-        toast('Pagamento confirmado ✅', 'sucesso');
+
+        /* Se houver arquivo, faz upload separado */
+        if (file) {
+            const fd = new FormData();
+            fd.append('comprovante', file);
+            const ru = await fetch(`${API}/passeios/${eventoAtual.id}/inscricoes/${inscId}/comprovante`, {
+                method: 'POST', body: fd,
+            });
+            if (!ru.ok) {
+                const du = await ru.json().catch(() => ({}));
+                toast('Pagamento confirmado, mas erro no upload: ' + (du.erro || ru.status), 'aviso');
+            } else {
+                toast('Pagamento confirmado com comprovante ✅', 'sucesso');
+            }
+        } else {
+            toast('Pagamento confirmado ✅', 'sucesso');
+        }
         await recarregarDetalhe();
     } catch (e) { toast('Erro: ' + e.message, 'erro'); }
 }
@@ -627,10 +665,14 @@ async function distribuirOnibus() {
     try {
         const r = await fetch(`${API}/passeios/${eventoAtual.id}/distribuir`, { method: 'POST' });
         const d = await r.json();
-        if (!r.ok) { toast('Erro: ' + d.erro); return; }
-        toast(`${d.distribuidos} aluno(s) distribuídos!`, 'sucesso');
+        if (!r.ok) { toast('Erro: ' + d.erro, 'erro'); return; }
+        if (d.aviso) {
+            toast(`⚠ ${d.aviso}`, 'aviso');
+        } else {
+            toast(`${d.distribuidos} aluno(s) distribuídos com sucesso!`, 'sucesso');
+        }
         await recarregarDetalhe();
-    } catch (e) { toast('Erro: ' + e.message); }
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
 }
 
 async function moverOnibus(inscId, onibusId) {
@@ -714,6 +756,28 @@ async function imprimirPulseiras() {
     } catch (e) {
         preview.innerHTML = `<div class="ps-empty" style="color:#dc2626">Erro: ${esc(e.message)}</div>`;
     }
+}
+
+async function baixarPulseirasEmPDF() {
+    const onibusId = document.getElementById('filtroOnibusImpressao').value;
+    toast('Gerando PDF…');
+    try {
+        let url = `${API}/passeios/${eventoAtual.id}/pulseiras/pdf`;
+        if (onibusId) url += `?onibus_id=${onibusId}`;
+        const r = await fetch(url);
+        if (!r.ok) {
+            const d = await r.json().catch(() => ({}));
+            toast('Erro: ' + (d.erro || r.status), 'erro');
+            return;
+        }
+        const blob = await r.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `pulseiras-${esc(eventoAtual.nome || eventoAtual.id)}.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+        toast('PDF gerado com sucesso!', 'sucesso');
+    } catch (e) { toast('Erro ao gerar PDF: ' + e.message, 'erro'); }
 }
 
 function iniciais(nome) {

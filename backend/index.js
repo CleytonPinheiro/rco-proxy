@@ -76,6 +76,8 @@ app.get('/app', (_req, res) => res.redirect('/login/'));
 
 // Arquivos estáticos servidos ANTES do listen para evitar "Cannot GET" durante inicialização
 app.use(express.static(path.join(__dirname, '../frontend')));
+// Comprovantes de pagamento (passeios) — uploads do disco
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API router placeholder — preenchido após inicialização assíncrona
 import { Router } from 'express';
