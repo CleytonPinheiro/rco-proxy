@@ -19,7 +19,151 @@ let _divergenciasCarregadas = false;
 let _conversaPar = null;
 let _conversaFoco = 'A';
 
+/* ── Custom Dropdown Helper ─────────────────────────────────────── */
+
+const _cselMap = new WeakMap();
+
+function prvCreateCustomSelect(selectEl, { compact = false } = {}) {
+    if (_cselMap.has(selectEl)) return;
+
+    /* Hide native select — it stays in the DOM so JS can read/write .value */
+    selectEl.style.cssText += ';position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;overflow:hidden;';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'prv-csel' + (compact ? ' prv-csel--compact' : '');
+
+    selectEl.parentNode.insertBefore(wrap, selectEl);
+    wrap.appendChild(selectEl);
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'prv-csel-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+
+    const valSpan = document.createElement('span');
+    valSpan.className = 'prv-csel-value';
+    const arrow = document.createElement('span');
+    arrow.className = 'prv-csel-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = '▾';
+    trigger.appendChild(valSpan);
+    trigger.appendChild(arrow);
+    wrap.appendChild(trigger);
+
+    const panel = document.createElement('div');
+    panel.className = 'prv-csel-panel';
+    panel.setAttribute('role', 'listbox');
+    panel.hidden = true;
+    wrap.appendChild(panel);
+
+    function syncDisplay() {
+        const opt = selectEl.options[selectEl.selectedIndex];
+        valSpan.textContent = opt ? opt.textContent : '';
+    }
+
+    function buildPanel() {
+        panel.innerHTML = '';
+        Array.from(selectEl.options).forEach((o, i) => {
+            const item = document.createElement('div');
+            const selected = selectEl.selectedIndex === i;
+            item.className = 'prv-csel-option'
+                + (o.disabled ? ' prv-csel-option--disabled' : '')
+                + (selected   ? ' prv-csel-option--selected'  : '');
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', selected ? 'true' : 'false');
+            item.dataset.idx = i;
+            item.textContent = o.textContent;
+            if (!o.disabled) {
+                item.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    selectEl.selectedIndex = i;
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    close();
+                });
+            }
+            panel.appendChild(item);
+        });
+    }
+
+    function focusItem(item) {
+        panel.querySelectorAll('.prv-csel-option--focused').forEach(el => el.classList.remove('prv-csel-option--focused'));
+        if (item) { item.classList.add('prv-csel-option--focused'); item.scrollIntoView({ block: 'nearest' }); }
+    }
+
+    function open() {
+        buildPanel();
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        wrap.classList.add('prv-csel--open');
+        const sel = panel.querySelector('.prv-csel-option--selected');
+        if (sel) sel.scrollIntoView({ block: 'nearest' });
+    }
+
+    function close() {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        wrap.classList.remove('prv-csel--open');
+        syncDisplay();
+    }
+
+    trigger.addEventListener('click', e => {
+        e.stopPropagation();
+        wrap.classList.contains('prv-csel--open') ? close() : open();
+    });
+
+    trigger.addEventListener('keydown', e => {
+        const active = () => [...panel.querySelectorAll('.prv-csel-option:not(.prv-csel-option--disabled)')];
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (wrap.classList.contains('prv-csel--open')) {
+                const f = panel.querySelector('.prv-csel-option--focused');
+                if (f) f.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                else close();
+            } else { open(); }
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!wrap.classList.contains('prv-csel--open')) { open(); return; }
+            const items = active();
+            const cur = panel.querySelector('.prv-csel-option--focused') || panel.querySelector('.prv-csel-option--selected');
+            const idx = items.indexOf(cur);
+            const next = e.key === 'ArrowDown'
+                ? items[Math.min(idx + 1, items.length - 1)]
+                : items[Math.max(idx - 1, 0)];
+            if (next) focusItem(next);
+        } else if (e.key === 'Escape') {
+            e.preventDefault(); close(); trigger.focus();
+        }
+    });
+
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) close(); }, true);
+
+    /* Watch for dynamic option additions and text updates (_aplicarResumo, carregarCursos) */
+    const obs = new MutationObserver(() => {
+        syncDisplay();
+        if (!panel.hidden) buildPanel();
+    });
+    obs.observe(selectEl, { childList: true, subtree: true, characterData: true });
+
+    /* Sync if native value is changed programmatically (e.g. selectEl.value = 'x') */
+    selectEl.addEventListener('change', syncDisplay);
+
+    syncDisplay();
+    _cselMap.set(selectEl, { wrap, trigger, panel, obs, syncDisplay });
+}
+
+function prvRefreshCustomSelect(selectEl) {
+    const entry = _cselMap.get(selectEl);
+    if (entry) entry.syncDisplay();
+}
+
+/* ── /Custom Dropdown Helper ────────────────────────────────────── */
+
 async function init() {
+    /* Initialise custom selects early so observers are in place before data loads */
+    prvCreateCustomSelect($('prvCurso'));
+    prvCreateCustomSelect($('prvfFoto'));
+
     try {
         const cfgRes = await fetch('/api/classroom/provas/ui-config', { credentials: 'include' });
         if (cfgRes.ok) {
@@ -172,6 +316,7 @@ function abrirNova() {
     $('prvfAnsid').value = '';
     $('prvfData').value  = new Date().toISOString().slice(0,10);
     $('prvfFoto').value  = 'sorteio';
+    prvRefreshCustomSelect($('prvfFoto'));
     $('prvfFotoPct').value = 20;
     $('prvfFotoPctWrap').style.display = '';
     $('prvfSegundo').checked = false;
@@ -346,6 +491,9 @@ function renderDetalhe(d) {
         sub += `</tbody></table>`;
     }
     $('prvDetSubmissoes').innerHTML = sub;
+    /* Wrap variant selects with custom dropdown */
+    $('prvDetSubmissoes').querySelectorAll('.prv-sel-variante').forEach(sel =>
+        prvCreateCustomSelect(sel, { compact: true }));
     $('prvDetSubmissoes').querySelectorAll('.prv-act-trocar').forEach(b =>
         b.addEventListener('click', () => trocarVariante(parseInt(b.dataset.sub, 10))));
     $('prvDetSubmissoes').querySelectorAll('.prv-act-sortear').forEach(b =>
