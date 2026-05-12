@@ -15,15 +15,15 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'qrcode', 'suporte'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'qrcode', 'suporte', 'passeios'],
     },
     pedagogo: {
         nome: 'Pedagogo',
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'qrcode', 'suporte'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'qrcode', 'suporte', 'passeios'],
     },
     secretaria: {
         nome: 'Secretaria',
-        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'qrcode', 'suporte'],
+        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'qrcode', 'suporte', 'passeios'],
     },
     aux_turno: {
         nome: 'Aux. de Turno',

@@ -139,6 +139,10 @@
     </div>
 
     <script>
+    /* Outer scope so renderizarInfo and notificarEscola can reference them */
+    let _eventoId   = null;
+    let _alunoToken = null;
+
     (async () => {
         const path   = location.pathname; // /p/:eventoId/:alunoToken
         const parts  = path.split('/').filter(Boolean);
@@ -147,11 +151,11 @@
             mostrarErro('Link inválido.');
             return;
         }
-        const eventoId   = parts[1];
-        const alunoToken = parts[2];
+        _eventoId   = parts[1];
+        _alunoToken = parts[2];
 
         try {
-            const r = await fetch(`/api/public/passeios/${eventoId}/${alunoToken}`);
+            const r = await fetch(`/api/public/passeios/${_eventoId}/${_alunoToken}`);
             if (!r.ok) {
                 const d = await r.json().catch(() => ({}));
                 mostrarErro(d.erro || 'Aluno não encontrado neste evento.');
@@ -248,7 +252,7 @@
             </div>
             ` : ''}
 
-            <button class="btn-notificar" id="btnNotificar" onclick="notificarEscola('${eventoId}', '${alunoToken}')">
+            <button class="btn-notificar" id="btnNotificar" onclick="notificarEscola()">
                 📍 Notificar escola — Confirmar ciência
             </button>
         `;
@@ -258,13 +262,13 @@
         document.getElementById('content').innerHTML = html;
     }
 
-    async function notificarEscola(eventoId, token) {
+    async function notificarEscola() {
         const btn = document.getElementById('btnNotificar');
         if (!btn || btn.disabled) return;
         btn.disabled = true;
         btn.textContent = 'Enviando…';
         try {
-            await fetch(`/api/public/passeios/${eventoId}/${token}/notificar`, {
+            await fetch(`/api/public/passeios/${_eventoId}/${_alunoToken}/notificar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tipo: 'visualizou' }),
