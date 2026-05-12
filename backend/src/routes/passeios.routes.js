@@ -161,7 +161,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
      * ══════════════════════════════════════════════════════════════ */
 
     /* POST /api/passeios/scan — scan student token (board/disembark) */
-    router.post('/passeios/scan', async (req, res) => {
+    router.post('/passeios/scan', guardPasseios, async (req, res) => {
         const { token, acao = 'embarque' } = req.body; // acao: embarque | desembarque
         if (!token) return res.status(400).json({ erro: 'token obrigatório' });
         try {
