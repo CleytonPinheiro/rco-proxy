@@ -160,8 +160,10 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
      * SCANNER route (auth required, accessible by any logged-in role)
      * ══════════════════════════════════════════════════════════════ */
 
-    /* POST /api/passeios/scan — scan student token (board/disembark) */
-    router.post('/passeios/scan', guardPasseios, async (req, res) => {
+    /* POST /api/passeios/scan — scan student token (board/disembark)
+     * requireAuth only: any logged-in role (professor, aux_turno, motorista etc.) can scan
+     * guardPasseios is NOT applied here so monitors/drivers without the passeios module can operate */
+    router.post('/passeios/scan', async (req, res) => {
         const { token, acao = 'embarque' } = req.body; // acao: embarque | desembarque
         if (!token) return res.status(400).json({ erro: 'token obrigatório' });
         try {
