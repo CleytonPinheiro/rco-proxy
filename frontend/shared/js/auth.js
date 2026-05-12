@@ -41,6 +41,7 @@
         '/qrcode/':                       'qrcode',
         '/pages/solicitacoes/':           'solicitacoes',
         '/pages/portal-log/':             'portal-log',
+        '/pages/passeios/':               'passeios',
     };
 
     /* ── Dependência pai → filho. Espelha backend/src/config/permissions.js
@@ -845,6 +846,7 @@
             '/pages/admin/':                  '⚙️',
             '/pages/planos/':                 '💎',
             '/pages/suporte/':               '🎫',
+            '/pages/passeios/':              '🚌',
         };
         return m[href] || '🔗';
     }

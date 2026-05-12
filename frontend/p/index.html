@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e293b">
+    <title>EduSync — Informações do Aluno</title>
+    <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            color: #1e293b;
+        }
+        .top-bar {
+            background: #1e293b;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .top-bar .logo { font-weight: 800; font-size: 18px; }
+        .top-bar .logo span { color: #38bdf8; }
+        .container { max-width: 480px; margin: 0 auto; padding: 20px 16px 40px; }
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .card-header {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .avatar {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; font-weight: 700; color: #64748b;
+            flex-shrink: 0;
+        }
+        .aluno-nome { font-size: 20px; font-weight: 700; }
+        .aluno-turma { font-size: 14px; color: #64748b; margin-top: 2px; }
+        .card-body { padding: 16px 20px; }
+        .info-row {
+            display: flex; gap: 10px; align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+        .info-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+        .info-value { font-size: 15px; font-weight: 600; margin-top: 2px; }
+        .bus-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 10px;
+            font-size: 16px; font-weight: 700;
+            color: #fff;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 13px; font-weight: 600;
+        }
+        .status-pago    { background: #dcfce7; color: #166534; }
+        .status-pendente { background: #fef9c3; color: #854d0e; }
+        .status-isento  { background: #e0f2fe; color: #0369a1; }
+        .alert-box {
+            padding: 12px 16px; border-radius: 10px;
+            background: #fef2f2; border: 1px solid #fecaca;
+            color: #991b1b; font-size: 14px;
+        }
+        .loading {
+            text-align: center; padding: 60px 20px;
+            color: #94a3b8; font-size: 16px;
+        }
+        .spinner {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: 3px solid #e2e8f0; border-top-color: #3b82f6;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .event-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #fff;
+        }
+        .event-nome { font-size: 18px; font-weight: 700; }
+        .event-info { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+        .restricoes-box {
+            background: #fef9c3; border: 1px solid #fde68a;
+            border-radius: 10px; padding: 12px 14px;
+            font-size: 14px; color: #78350f;
+        }
+        .restricoes-box strong { display: block; margin-bottom: 4px; }
+        .embarcou-ok {
+            background: #dcfce7; border: 1px solid #86efac;
+            border-radius: 10px; padding: 10px 14px;
+            font-size: 14px; color: #166534; text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="logo">⚡ Edu<span>Sync</span></div>
+        <span style="font-size:13px;color:#94a3b8;margin-left:auto">Informações do Aluno</span>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            Carregando informações...
+        </div>
+        <div id="content" style="display:none"></div>
+        <div id="erro" style="display:none" class="alert-box"></div>
+    </div>
+
+    <script>
+    (async () => {
+        const path   = location.pathname; // /p/:eventoId/:alunoToken
+        const parts  = path.split('/').filter(Boolean);
+        // parts = ['p', eventoId, alunoToken]
+        if (parts.length < 3 || parts[0] !== 'p') {
+            mostrarErro('Link inválido.');
+            return;
+        }
+        const eventoId   = parts[1];
+        const alunoToken = parts[2];
+
+        try {
+            const r = await fetch(`/api/public/passeios/${eventoId}/${alunoToken}`);
+            if (!r.ok) {
+                const d = await r.json().catch(() => ({}));
+                mostrarErro(d.erro || 'Aluno não encontrado neste evento.');
+                return;
+            }
+            const data = await r.json();
+            renderizarInfo(data);
+        } catch (e) {
+            mostrarErro('Erro ao carregar informações: ' + e.message);
+        }
+    })();
+
+    function ini(nome) {
+        const p = nome.trim().split(/\s+/);
+        return ((p[0]?.[0] || '') + (p[p.length-1]?.[0] || '')).toUpperCase();
+    }
+
+    function fmtData(iso) {
+        if (!iso) return '—';
+        return new Date(iso + (iso.includes('T') ? '' : 'T12:00')).toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    }
+
+    function statusBadge(s) {
+        const labels = { pago: 'Pago ✓', pendente: 'Pendente', isento: 'Isento' };
+        return `<span class="status-badge status-${s}">${labels[s] || s}</span>`;
+    }
+
+    function renderizarInfo(d) {
+        const { aluno, evento, onibus, status_pagamento, embarcou, embarcou_em, desembarcou, desembarcou_em } = d;
+        const cor = onibus?.cor || '#64748b';
+
+        const embarqueInfo = embarcou
+            ? `<div class="embarcou-ok">✅ Embarcou${embarcou_em ? ' às ' + new Date(embarcou_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : ''}</div>`
+            : '';
+
+        const html = `
+            <div class="card">
+                <div class="event-header">
+                    <div class="event-nome">🚌 ${esc(evento.nome)}</div>
+                    <div class="event-info">📍 ${esc(evento.destino)} &nbsp;·&nbsp; 📅 ${fmtData(evento.data)}</div>
+                </div>
+                <div class="card-header">
+                    <div class="avatar">${ini(aluno.nome)}</div>
+                    <div>
+                        <div class="aluno-nome">${esc(aluno.nome)}</div>
+                        <div class="aluno-turma">${esc(aluno.turma || '')}</div>
+                        <div style="margin-top:6px">${statusBadge(status_pagamento)}</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    ${onibus ? `
+                    <div class="info-row">
+                        <div class="info-icon">🚌</div>
+                        <div>
+                            <div class="info-label">Ônibus</div>
+                            <div style="margin-top:6px">
+                                <span class="bus-badge" style="background:${esc(cor)}">
+                                    🚌 ${esc(onibus.nome)}
+                                </span>
+                            </div>
+                            ${onibus.monitor ? `<div style="font-size:13px;color:#64748b;margin-top:6px">Monitor: <strong>${esc(onibus.monitor)}</strong>${onibus.telefone ? ' · 📞 ' + esc(onibus.telefone) : ''}</div>` : ''}
+                        </div>
+                    </div>
+                    ` : '<div class="info-row"><div class="info-icon">🚌</div><div><div class="info-label">Ônibus</div><div class="info-value">Não atribuído ainda</div></div></div>'}
+
+                    ${aluno.nome_responsavel || aluno.contato_responsavel ? `
+                    <div class="info-row">
+                        <div class="info-icon">👤</div>
+                        <div>
+                            <div class="info-label">Responsável</div>
+                            <div class="info-value">${esc(aluno.nome_responsavel || '—')}</div>
+                            ${aluno.contato_responsavel ? `<div style="font-size:13px;color:#64748b">📞 ${esc(aluno.contato_responsavel)}</div>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${embarcou ? `
+                    <div class="info-row">
+                        <div class="info-icon">✅</div>
+                        <div>
+                            <div class="info-label">Embarque</div>
+                            <div class="info-value">Confirmado ${embarcou_em ? 'às ' + new Date(embarcou_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : ''}</div>
+                            ${desembarcou ? `<div style="font-size:13px;color:#64748b">Retornou ${desembarcou_em ? 'às ' + new Date(desembarcou_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : ''}</div>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+
+            ${aluno.restricoes ? `
+            <div class="restricoes-box">
+                <strong>⚠️ Restrições / Observações médicas</strong>
+                ${esc(aluno.restricoes)}
+            </div>
+            ` : ''}
+        `;
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = '';
+        document.getElementById('content').innerHTML = html;
+    }
+
+    function mostrarErro(msg) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('erro').style.display = '';
+        document.getElementById('erro').textContent = '⚠️ ' + msg;
+    }
+
+    function esc(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+</body>
+</html>

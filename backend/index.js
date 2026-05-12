@@ -88,6 +88,11 @@ apiRouter.use((req, res, next) => {
 });
 app.use('/api', apiRouter);
 
+// Página pública de aluno (Passeios) — /p/:eventoId/:alunoToken
+app.get('/p/*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/p/index.html'));
+});
+
 // SPA fallback (deve vir DEPOIS do static e API)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));

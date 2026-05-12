@@ -1,0 +1,768 @@
+/**
+ * Passeios e Eventos Externos — rotas protegidas + públicas
+ */
+import { Router } from 'express';
+import crypto     from 'crypto';
+import QRCode     from 'qrcode';
+import pkg        from 'pg';
+import { requireAuth } from '../middleware/auth.middleware.js';
+
+const { Pool } = pkg;
+const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
+
+/* ── PIX EMV QR Code generator ──────────────────────────────────────── */
+function crc16(str) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < str.length; i++) {
+        crc ^= str.charCodeAt(i) << 8;
+        for (let j = 0; j < 8; j++) {
+            if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
+            else crc <<= 1;
+            crc &= 0xFFFF;
+        }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function gerarPixPayload({ chave, nome, cidade, valor = 0, txid, descricao = '' }) {
+    const tlv = (id, val) => `${id}${String(val.length).padStart(2, '0')}${val}`;
+    const norm = (s, max) => s.slice(0, max).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Za-z0-9 ]/g, '').trim().toUpperCase();
+
+    const desc = descricao ? tlv('02', descricao.slice(0, 72)) : '';
+    const keyInfo = tlv('00', 'BR.GOV.BCB.PIX') + tlv('01', chave) + desc;
+    const merchantInfo = tlv('26', keyInfo);
+    const txidClean = (txid || 'EDUSYNC').replace(/\s/g, '').slice(0, 25);
+    const addDataField = tlv('62', tlv('05', txidClean));
+
+    let payload = '000201' +
+        '010212' +
+        merchantInfo +
+        '52040000' +
+        '5303986' +
+        (valor > 0 ? tlv('54', valor.toFixed(2)) : '') +
+        '5802BR' +
+        tlv('59', norm(nome, 25)) +
+        tlv('60', norm(cidade || 'CURITIBA', 15)) +
+        addDataField +
+        '6304';
+    return payload + crc16(payload);
+}
+
+/* ── Helpers ─────────────────────────────────────────────────────────── */
+function gerarToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+function gerarTxid(eventoId, inscricaoId) {
+    return `ES${eventoId}A${inscricaoId}`.slice(0, 25);
+}
+
+async function getConfig(chave) {
+    try {
+        const { rows } = await pool.query(
+            `SELECT valor FROM edusync_config WHERE chave = $1 LIMIT 1`,
+            [chave]
+        );
+        return rows[0]?.valor || null;
+    } catch { return null; }
+}
+
+/* ── Router factory ──────────────────────────────────────────────────── */
+export function createPasseiosRouter({ supabase, supabaseAdmin }) {
+    const router = Router();
+
+    /* ══════════════════════════════════════════════════════════════
+     * PUBLIC routes (no requireAuth) — mounted separately
+     * ══════════════════════════════════════════════════════════════ */
+    const publicRouter = Router();
+
+    /* GET /api/public/passeios/:eventoId/:alunoToken */
+    publicRouter.get('/public/passeios/:eventoId/:alunoToken', async (req, res) => {
+        const { eventoId, alunoToken } = req.params;
+        try {
+            const { rows: insc } = await pool.query(`
+                SELECT ei.*, e.nome AS evento_nome, e.destino, e.data_evento,
+                       eo.numero AS onibus_numero, eo.nome AS onibus_nome,
+                       eo.cor AS onibus_cor, eo.monitor_nome, eo.monitor_telefone
+                FROM evento_inscricoes ei
+                JOIN eventos e ON e.id = ei.evento_id
+                LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                WHERE ei.evento_id = $1 AND ei.aluno_token = $2
+            `, [eventoId, alunoToken]);
+
+            if (!insc.length) return res.status(404).json({ erro: 'Aluno não encontrado neste evento.' });
+            const i = insc[0];
+            res.json({
+                aluno: {
+                    nome:              i.nome_aluno,
+                    turma:             i.turma,
+                    restricoes:        i.restricoes_medicas || null,
+                    contato_responsavel: i.contato_responsavel,
+                    nome_responsavel:  i.nome_responsavel,
+                },
+                evento: {
+                    nome:       i.evento_nome,
+                    destino:    i.destino,
+                    data:       i.data_evento,
+                },
+                onibus: i.onibus_id ? {
+                    numero:   i.onibus_numero,
+                    nome:     i.onibus_nome || `Ônibus ${i.onibus_numero}`,
+                    cor:      i.onibus_cor,
+                    monitor:  i.monitor_nome,
+                    telefone: i.monitor_telefone,
+                } : null,
+                status_pagamento: i.status_pagamento,
+                embarcou:         i.embarcou,
+                embarcou_em:      i.embarcou_em,
+                desembarcou:      i.desembarcou,
+                desembarcou_em:   i.desembarcou_em,
+            });
+        } catch (e) {
+            console.error('[PASSEIOS-PUBLIC]', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ══════════════════════════════════════════════════════════════
+     * SCANNER route (auth required, accessible by any logged-in role)
+     * ══════════════════════════════════════════════════════════════ */
+
+    /* POST /api/passeios/scan — scan student token (board/disembark) */
+    router.post('/passeios/scan', async (req, res) => {
+        const { token, acao = 'embarque' } = req.body; // acao: embarque | desembarque
+        if (!token) return res.status(400).json({ erro: 'token obrigatório' });
+        try {
+            const { rows } = await pool.query(`
+                SELECT ei.*, e.nome AS evento_nome, e.data_evento,
+                       eo.numero AS onibus_numero, eo.nome AS onibus_nome
+                FROM evento_inscricoes ei
+                JOIN eventos e ON e.id = ei.evento_id
+                LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                WHERE ei.aluno_token = $1
+            `, [token]);
+
+            if (!rows.length) return res.status(404).json({ erro: 'Aluno não encontrado.' });
+            const i = rows[0];
+
+            if (acao === 'desembarque') {
+                if (!i.embarcou) return res.status(409).json({ erro: 'Aluno não embarcou ainda.', aluno: i.nome_aluno });
+                await pool.query(
+                    `UPDATE evento_inscricoes SET desembarcou=true, desembarcou_em=NOW() WHERE aluno_token=$1`,
+                    [token]
+                );
+                return res.json({ ok: true, acao: 'desembarque', aluno: i.nome_aluno, turma: i.turma,
+                    onibus: i.onibus_nome || `Ônibus ${i.onibus_numero}`, evento: i.evento_nome });
+            } else {
+                if (i.embarcou) return res.status(409).json({
+                    ok: true, repetido: true,
+                    acao: 'embarque', aluno: i.nome_aluno, turma: i.turma,
+                    onibus: i.onibus_nome || `Ônibus ${i.onibus_numero}`, evento: i.evento_nome,
+                });
+                await pool.query(
+                    `UPDATE evento_inscricoes SET embarcou=true, embarcou_em=NOW() WHERE aluno_token=$1`,
+                    [token]
+                );
+                return res.json({ ok: true, acao: 'embarque', aluno: i.nome_aluno, turma: i.turma,
+                    onibus: i.onibus_nome || `Ônibus ${i.onibus_numero}`, evento: i.evento_nome });
+            }
+        } catch (e) {
+            console.error('[PASSEIOS-SCAN]', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ══════════════════════════════════════════════════════════════
+     * CRUD de eventos
+     * ══════════════════════════════════════════════════════════════ */
+
+    /* GET /api/passeios — listar eventos */
+    router.get('/passeios', async (req, res) => {
+        try {
+            const { rows } = await pool.query(`
+                SELECT e.*,
+                    (SELECT COUNT(*) FROM evento_inscricoes WHERE evento_id = e.id) AS total_inscritos,
+                    (SELECT COUNT(*) FROM evento_inscricoes WHERE evento_id = e.id AND status_pagamento = 'pago') AS total_pagos,
+                    (SELECT COUNT(*) FROM evento_onibus WHERE evento_id = e.id) AS total_onibus
+                FROM eventos e
+                ORDER BY e.data_evento DESC, e.criado_em DESC
+            `);
+            res.json(rows);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/passeios — criar evento */
+    router.post('/passeios', async (req, res) => {
+        const {
+            nome, destino, data_evento, valor_aluno = 0, prazo_pagamento,
+            descricao, turmas = [], pix_chave, pix_nome, pix_cidade,
+            onibus = [], // array of { nome, capacidade, monitor_nome, monitor_telefone, cor }
+        } = req.body;
+
+        if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório' });
+        if (!destino?.trim()) return res.status(400).json({ erro: 'Destino é obrigatório' });
+        if (!data_evento) return res.status(400).json({ erro: 'Data é obrigatória' });
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const { rows: [ev] } = await client.query(`
+                INSERT INTO eventos (nome, destino, data_evento, valor_aluno, prazo_pagamento,
+                    descricao, turmas, pix_chave, pix_nome, pix_cidade, criado_por)
+                VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11)
+                RETURNING *
+            `, [nome.trim(), destino.trim(), data_evento,
+                parseFloat(valor_aluno) || 0,
+                prazo_pagamento || null, descricao || null,
+                JSON.stringify(turmas), pix_chave || null,
+                pix_nome || null, pix_cidade || null,
+                req.userSession?.id || null]);
+
+            /* Criar ônibus */
+            for (let i = 0; i < onibus.length; i++) {
+                const ob = onibus[i];
+                await client.query(`
+                    INSERT INTO evento_onibus (evento_id, numero, nome, capacidade, monitor_nome, monitor_telefone, cor)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7)
+                `, [ev.id, i + 1, ob.nome || null, parseInt(ob.capacidade) || 40,
+                    ob.monitor_nome || null, ob.monitor_telefone || null,
+                    ob.cor || '#3b82f6']);
+            }
+
+            await client.query('COMMIT');
+            res.status(201).json(ev);
+        } catch (e) {
+            await client.query('ROLLBACK');
+            res.status(500).json({ erro: e.message });
+        } finally { client.release(); }
+    });
+
+    /* GET /api/passeios/:id — detalhe do evento */
+    router.get('/passeios/:id', async (req, res) => {
+        const id = parseInt(req.params.id);
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [id]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            const { rows: onibus } = await pool.query(
+                `SELECT * FROM evento_onibus WHERE evento_id=$1 ORDER BY numero`, [id]);
+            const { rows: inscricoes } = await pool.query(`
+                SELECT ei.*, eo.numero AS onibus_numero, eo.nome AS onibus_nome, eo.cor AS onibus_cor
+                FROM evento_inscricoes ei
+                LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                WHERE ei.evento_id=$1
+                ORDER BY ei.turma, ei.nome_aluno
+            `, [id]);
+
+            res.json({ ...ev, onibus, inscricoes });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* PUT /api/passeios/:id — atualizar evento */
+    router.put('/passeios/:id', async (req, res) => {
+        const id = parseInt(req.params.id);
+        const {
+            nome, destino, data_evento, valor_aluno, prazo_pagamento,
+            descricao, turmas, pix_chave, pix_nome, pix_cidade, status,
+        } = req.body;
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const { rows: [ev] } = await client.query(`
+                UPDATE eventos SET
+                    nome            = COALESCE($1, nome),
+                    destino         = COALESCE($2, destino),
+                    data_evento     = COALESCE($3, data_evento),
+                    valor_aluno     = COALESCE($4, valor_aluno),
+                    prazo_pagamento = $5,
+                    descricao       = $6,
+                    turmas          = COALESCE($7::jsonb, turmas),
+                    pix_chave       = COALESCE($8, pix_chave),
+                    pix_nome        = COALESCE($9, pix_nome),
+                    pix_cidade      = COALESCE($10, pix_cidade),
+                    status          = COALESCE($11, status)
+                WHERE id=$12 RETURNING *
+            `, [nome || null, destino || null, data_evento || null,
+                valor_aluno != null ? parseFloat(valor_aluno) : null,
+                prazo_pagamento || null, descricao ?? null,
+                turmas ? JSON.stringify(turmas) : null,
+                pix_chave ?? null, pix_nome ?? null, pix_cidade ?? null,
+                status || null, id]);
+
+            if (!ev) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ erro: 'Evento não encontrado' });
+            }
+            await client.query('COMMIT');
+            res.json(ev);
+        } catch (e) {
+            await client.query('ROLLBACK');
+            res.status(500).json({ erro: e.message });
+        } finally { client.release(); }
+    });
+
+    /* DELETE /api/passeios/:id — remover evento */
+    router.delete('/passeios/:id', async (req, res) => {
+        const id = parseInt(req.params.id);
+        try {
+            await pool.query('DELETE FROM eventos WHERE id=$1', [id]);
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* ══════════════════════════════════════════════════════════════
+     * Ônibus CRUD
+     * ══════════════════════════════════════════════════════════════ */
+
+    /* POST /api/passeios/:id/onibus — adicionar ônibus */
+    router.post('/passeios/:id/onibus', async (req, res) => {
+        const id = parseInt(req.params.id);
+        const { nome, capacidade = 40, monitor_nome, monitor_telefone, cor = '#3b82f6' } = req.body;
+        try {
+            const { rows: [last] } = await pool.query(
+                `SELECT COALESCE(MAX(numero),0) AS mx FROM evento_onibus WHERE evento_id=$1`, [id]);
+            const numero = (last.mx || 0) + 1;
+            const { rows: [ob] } = await pool.query(`
+                INSERT INTO evento_onibus (evento_id, numero, nome, capacidade, monitor_nome, monitor_telefone, cor)
+                VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
+            `, [id, numero, nome || null, parseInt(capacidade) || 40,
+                monitor_nome || null, monitor_telefone || null, cor]);
+            res.status(201).json(ob);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* PUT /api/passeios/:id/onibus/:obId — editar ônibus */
+    router.put('/passeios/:id/onibus/:obId', async (req, res) => {
+        const obId = parseInt(req.params.obId);
+        const { nome, capacidade, monitor_nome, monitor_telefone, cor } = req.body;
+        try {
+            const { rows: [ob] } = await pool.query(`
+                UPDATE evento_onibus SET
+                    nome             = COALESCE($1, nome),
+                    capacidade       = COALESCE($2, capacidade),
+                    monitor_nome     = COALESCE($3, monitor_nome),
+                    monitor_telefone = COALESCE($4, monitor_telefone),
+                    cor              = COALESCE($5, cor)
+                WHERE id=$6 RETURNING *
+            `, [nome ?? null, capacidade ? parseInt(capacidade) : null,
+                monitor_nome ?? null, monitor_telefone ?? null,
+                cor ?? null, obId]);
+            if (!ob) return res.status(404).json({ erro: 'Ônibus não encontrado' });
+            res.json(ob);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* DELETE /api/passeios/:id/onibus/:obId — remover ônibus */
+    router.delete('/passeios/:id/onibus/:obId', async (req, res) => {
+        const obId = parseInt(req.params.obId);
+        try {
+            await pool.query(`UPDATE evento_inscricoes SET onibus_id=NULL WHERE onibus_id=$1`, [obId]);
+            await pool.query(`DELETE FROM evento_onibus WHERE id=$1`, [obId]);
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* ══════════════════════════════════════════════════════════════
+     * Inscrições
+     * ══════════════════════════════════════════════════════════════ */
+
+    /* POST /api/passeios/:id/inscrever — matricular alunos de turmas */
+    router.post('/passeios/:id/inscrever', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { codturmas = [] } = req.body; // array of codturma ints
+
+        if (!codturmas.length) return res.status(400).json({ erro: 'codturmas é obrigatório' });
+
+        try {
+            /* Busca dados do evento para o txid */
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            /* Busca alunos do Supabase */
+            let todosAlunos = [];
+            for (const ct of codturmas) {
+                const { data, error } = await supabase
+                    .from('alunos')
+                    .select('codmatrizaluno,nome,turma,codturma')
+                    .eq('codturma', ct)
+                    .order('nome');
+                if (!error && data) todosAlunos.push(...data);
+            }
+
+            /* Busca inscrições já existentes neste evento */
+            const { rows: jaInscritos } = await pool.query(
+                `SELECT codmatrizaluno FROM evento_inscricoes WHERE evento_id=$1`, [eventoId]);
+            const jaSet = new Set(jaInscritos.map(r => r.codmatrizaluno));
+
+            let inseridos = 0;
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                for (const a of todosAlunos) {
+                    if (jaSet.has(a.codmatrizaluno)) continue;
+                    const token = gerarToken();
+                    await client.query(`
+                        INSERT INTO evento_inscricoes
+                            (evento_id, codmatrizaluno, nome_aluno, turma, codturma, aluno_token)
+                        VALUES ($1,$2,$3,$4,$5,$6)
+                        ON CONFLICT (evento_id, codmatrizaluno) DO NOTHING
+                    `, [eventoId, a.codmatrizaluno, a.nome, a.turma || '', a.codturma || null, token]);
+                    inseridos++;
+                }
+
+                /* Gerar txid para cada inscrição sem um */
+                const { rows: semTxid } = await client.query(
+                    `SELECT id FROM evento_inscricoes WHERE evento_id=$1 AND txid IS NULL`, [eventoId]);
+                for (const r of semTxid) {
+                    const txid = gerarTxid(eventoId, r.id);
+                    await client.query(`UPDATE evento_inscricoes SET txid=$1 WHERE id=$2`, [txid, r.id]);
+                }
+
+                await client.query('COMMIT');
+            } catch (e) {
+                await client.query('ROLLBACK');
+                throw e;
+            } finally { client.release(); }
+
+            res.json({ ok: true, inseridos, total: todosAlunos.length });
+        } catch (e) {
+            console.error('[PASSEIOS-INSCREVER]', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* POST /api/passeios/:id/inscrever-avulso — inscrever aluno avulso por registro */
+    router.post('/passeios/:id/inscrever-avulso', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { codmatrizaluno, nome_aluno, turma, codturma } = req.body;
+        if (!codmatrizaluno || !nome_aluno) return res.status(400).json({ erro: 'codmatrizaluno e nome_aluno são obrigatórios' });
+        try {
+            const token = gerarToken();
+            const { rows: [insc] } = await pool.query(`
+                INSERT INTO evento_inscricoes (evento_id, codmatrizaluno, nome_aluno, turma, codturma, aluno_token)
+                VALUES ($1,$2,$3,$4,$5,$6)
+                ON CONFLICT (evento_id, codmatrizaluno) DO NOTHING RETURNING *
+            `, [eventoId, parseInt(codmatrizaluno), nome_aluno, turma || '', codturma || null, token]);
+            if (!insc) return res.status(409).json({ erro: 'Aluno já inscrito' });
+            /* Gerar txid */
+            const txid = gerarTxid(eventoId, insc.id);
+            await pool.query(`UPDATE evento_inscricoes SET txid=$1 WHERE id=$2`, [txid, insc.id]);
+            insc.txid = txid;
+            res.status(201).json(insc);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* DELETE /api/passeios/:id/inscricoes/:inscId — remover inscrição */
+    router.delete('/passeios/:id/inscricoes/:inscId', async (req, res) => {
+        const inscId = parseInt(req.params.inscId);
+        try {
+            await pool.query(`DELETE FROM evento_inscricoes WHERE id=$1`, [inscId]);
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* PUT /api/passeios/:id/inscricoes/:inscId — editar dados da inscrição */
+    router.put('/passeios/:id/inscricoes/:inscId', async (req, res) => {
+        const inscId = parseInt(req.params.inscId);
+        const { restricoes_medicas, contato_responsavel, nome_responsavel } = req.body;
+        try {
+            const { rows: [insc] } = await pool.query(`
+                UPDATE evento_inscricoes SET
+                    restricoes_medicas  = $1,
+                    contato_responsavel = $2,
+                    nome_responsavel    = $3
+                WHERE id=$4 RETURNING *
+            `, [restricoes_medicas ?? null, contato_responsavel ?? null, nome_responsavel ?? null, inscId]);
+            if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+            res.json(insc);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/passeios/:id/inscricoes/:inscId/pagar — confirmar pagamento */
+    router.post('/passeios/:id/inscricoes/:inscId/pagar', async (req, res) => {
+        const inscId = parseInt(req.params.inscId);
+        const { obs } = req.body;
+        const quem = req.userSession?.nome || 'sistema';
+        try {
+            const { rows: [insc] } = await pool.query(`
+                UPDATE evento_inscricoes SET
+                    status_pagamento = 'pago',
+                    pago_em          = NOW(),
+                    pago_por         = $1,
+                    comprovante_obs  = $2
+                WHERE id=$3 RETURNING *
+            `, [quem, obs || null, inscId]);
+            if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+            res.json(insc);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/passeios/:id/inscricoes/:inscId/reverter — reverter pagamento */
+    router.post('/passeios/:id/inscricoes/:inscId/reverter', async (req, res) => {
+        const inscId = parseInt(req.params.inscId);
+        try {
+            const { rows: [insc] } = await pool.query(`
+                UPDATE evento_inscricoes SET
+                    status_pagamento = 'pendente',
+                    pago_em          = NULL,
+                    pago_por         = NULL,
+                    comprovante_obs  = NULL
+                WHERE id=$1 RETURNING *
+            `, [inscId]);
+            if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+            res.json(insc);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/passeios/:id/pix/:inscId — gerar PIX QR do aluno */
+    router.get('/passeios/:id/pix/:inscId', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const inscId   = parseInt(req.params.inscId);
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+            if (!ev.pix_chave) return res.status(400).json({ erro: 'Chave PIX não configurada no evento' });
+
+            const { rows: [insc] } = await pool.query(
+                `SELECT * FROM evento_inscricoes WHERE id=$1 AND evento_id=$2`, [inscId, eventoId]);
+            if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+
+            const payload = gerarPixPayload({
+                chave:    ev.pix_chave,
+                nome:     ev.pix_nome || 'ESCOLA',
+                cidade:   ev.pix_cidade || 'CURITIBA',
+                valor:    parseFloat(ev.valor_aluno) || 0,
+                txid:     insc.txid || gerarTxid(eventoId, inscId),
+                descricao: `Passeio ${ev.nome}`.slice(0, 72),
+            });
+
+            const qrDataUrl = await QRCode.toDataURL(payload, {
+                width: 300, errorCorrectionLevel: 'M', margin: 2,
+            });
+
+            res.json({ payload, qrDataUrl, txid: insc.txid, valor: ev.valor_aluno });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/passeios/:id/lembrete — WhatsApp para pendentes */
+    router.post('/passeios/:id/lembrete', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { mensagem_extra } = req.body;
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            const { rows: pendentes } = await pool.query(`
+                SELECT * FROM evento_inscricoes
+                WHERE evento_id=$1 AND status_pagamento='pendente' AND contato_responsavel IS NOT NULL
+            `, [eventoId]);
+
+            const webhookUrl = await getConfig('n8n_webhook_url');
+            const token      = await getConfig('comunicados_token');
+            const baseUrl    = process.env.REPLIT_DEV_DOMAIN
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : 'http://localhost:5000';
+
+            const dataStr = new Date(ev.data_evento + 'T12:00').toLocaleDateString('pt-BR');
+            const resultados = [];
+
+            for (const insc of pendentes) {
+                const pagLink = `${baseUrl}/p/${eventoId}/${insc.aluno_token}`;
+                const pix = ev.pix_chave ? gerarPixPayload({
+                    chave: ev.pix_chave, nome: ev.pix_nome || 'ESCOLA',
+                    cidade: ev.pix_cidade || 'CURITIBA',
+                    valor: parseFloat(ev.valor_aluno) || 0,
+                    txid: insc.txid, descricao: `Passeio ${ev.nome}`.slice(0, 72),
+                }) : null;
+
+                const mensagem = [
+                    `Olá ${insc.nome_responsavel || 'Responsável'}! 👋`,
+                    `O pagamento do passeio *${ev.nome}* (${dataStr}) para ${insc.nome_aluno} está *pendente*.`,
+                    ev.valor_aluno > 0 ? `💰 Valor: R$ ${parseFloat(ev.valor_aluno).toFixed(2).replace('.', ',')}` : null,
+                    ev.prazo_pagamento ? `📅 Prazo: ${new Date(ev.prazo_pagamento + 'T12:00').toLocaleDateString('pt-BR')}` : null,
+                    pix ? `\n*PIX (copia e cola):*\n${pix}` : null,
+                    mensagem_extra || null,
+                    `\n📎 Detalhes: ${pagLink}`,
+                ].filter(Boolean).join('\n');
+
+                if (webhookUrl) {
+                    try {
+                        await fetch(webhookUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                telefone:  insc.contato_responsavel,
+                                mensagem,
+                                token,
+                                aluno:     insc.nome_aluno,
+                                evento:    ev.nome,
+                            }),
+                        });
+                        resultados.push({ id: insc.id, ok: true });
+                    } catch (err) {
+                        resultados.push({ id: insc.id, ok: false, erro: err.message });
+                    }
+                } else {
+                    console.log(`[PASSEIOS-LEMBRETE] Sem N8n. Para ${insc.contato_responsavel}: ${mensagem.slice(0, 80)}...`);
+                    resultados.push({ id: insc.id, ok: true, simulado: true });
+                }
+            }
+
+            res.json({ ok: true, enviados: resultados.length, sem_n8n: !webhookUrl, resultados });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/passeios/:id/distribuir — distribuir alunos nos ônibus */
+    router.post('/passeios/:id/distribuir', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        try {
+            const { rows: onibus } = await pool.query(
+                `SELECT * FROM evento_onibus WHERE evento_id=$1 ORDER BY numero`, [eventoId]);
+            if (!onibus.length) return res.status(400).json({ erro: 'Nenhum ônibus cadastrado' });
+
+            /* Pegar alunos pagos sem ônibus, depois pagos com ônibus, depois pendentes */
+            const { rows: inscritos } = await pool.query(`
+                SELECT * FROM evento_inscricoes
+                WHERE evento_id=$1 AND status_pagamento='pago'
+                ORDER BY turma, nome_aluno
+            `, [eventoId]);
+
+            if (!inscritos.length) return res.status(400).json({ erro: 'Nenhum aluno com pagamento confirmado' });
+
+            /* Limpa distribuição atual dos inscritos selecionados */
+            await pool.query(
+                `UPDATE evento_inscricoes SET onibus_id=NULL WHERE evento_id=$1 AND status_pagamento='pago'`,
+                [eventoId]);
+
+            /* Distribui round-robin respeitando capacidade */
+            let obIdx = 0;
+            const contadores = {};
+            onibus.forEach(o => { contadores[o.id] = 0; });
+
+            for (const a of inscritos) {
+                /* Avança para próximo ônibus com espaço */
+                let tentativas = 0;
+                while (tentativas < onibus.length) {
+                    const ob = onibus[obIdx % onibus.length];
+                    if (contadores[ob.id] < ob.capacidade) {
+                        await pool.query(
+                            `UPDATE evento_inscricoes SET onibus_id=$1 WHERE id=$2`,
+                            [ob.id, a.id]);
+                        contadores[ob.id]++;
+                        obIdx++;
+                        break;
+                    }
+                    obIdx++;
+                    tentativas++;
+                }
+            }
+
+            res.json({ ok: true, distribuidos: inscritos.length });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* PUT /api/passeios/:id/inscricoes/:inscId/onibus — mover aluno de ônibus */
+    router.put('/passeios/:id/inscricoes/:inscId/onibus', async (req, res) => {
+        const inscId = parseInt(req.params.inscId);
+        const { onibus_id } = req.body;
+        try {
+            const { rows: [insc] } = await pool.query(`
+                UPDATE evento_inscricoes SET onibus_id=$1 WHERE id=$2 RETURNING *
+            `, [onibus_id || null, inscId]);
+            if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+            res.json(insc);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/passeios/:id/pulseiras — dados para impressão de pulseiras */
+    router.get('/passeios/:id/pulseiras', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { onibus_id } = req.query;
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            let q = `
+                SELECT ei.*, eo.numero AS onibus_numero, eo.nome AS onibus_nome, eo.cor AS onibus_cor
+                FROM evento_inscricoes ei
+                LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                WHERE ei.evento_id=$1
+            `;
+            const params = [eventoId];
+            if (onibus_id) { q += ` AND ei.onibus_id=$2`; params.push(parseInt(onibus_id)); }
+            q += ` ORDER BY eo.numero NULLS LAST, ei.turma, ei.nome_aluno`;
+
+            const { rows: inscricoes } = await pool.query(q, params);
+
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : 'http://localhost:5000';
+
+            /* Gerar QR data-URL para cada aluno */
+            const items = await Promise.all(inscricoes.map(async (i) => {
+                const url = `${baseUrl}/p/${eventoId}/${i.aluno_token}`;
+                const qr  = await QRCode.toDataURL(url, { width: 120, margin: 1, errorCorrectionLevel: 'M' });
+                return {
+                    ...i,
+                    qrDataUrl: qr,
+                    pagLink:   url,
+                    onibus_label: i.onibus_id ? (i.onibus_nome || `Ônibus ${i.onibus_numero}`) : '—',
+                };
+            }));
+
+            res.json({ evento: ev, inscricoes: items });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/passeios/:id/painel — painel ao vivo do evento */
+    router.get('/passeios/:id/painel', async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            const { rows: onibus } = await pool.query(`
+                SELECT eo.*,
+                    COUNT(ei.id)                                          AS total,
+                    COUNT(ei.id) FILTER (WHERE ei.embarcou = true)        AS embarcados,
+                    COUNT(ei.id) FILTER (WHERE ei.desembarcou = true)     AS desembarcados,
+                    COUNT(ei.id) FILTER (WHERE ei.embarcou = false)       AS ausentes
+                FROM evento_onibus eo
+                LEFT JOIN evento_inscricoes ei ON ei.onibus_id = eo.id
+                WHERE eo.evento_id=$1
+                GROUP BY eo.id
+                ORDER BY eo.numero
+            `, [eventoId]);
+
+            const { rows: geral } = await pool.query(`
+                SELECT
+                    COUNT(*)                                            AS total,
+                    COUNT(*) FILTER (WHERE status_pagamento='pago')    AS pagos,
+                    COUNT(*) FILTER (WHERE status_pagamento='pendente') AS pendentes,
+                    COUNT(*) FILTER (WHERE embarcou=true)              AS embarcados,
+                    COUNT(*) FILTER (WHERE desembarcou=true)           AS desembarcados
+                FROM evento_inscricoes WHERE evento_id=$1
+            `, [eventoId]);
+
+            const { rows: ausentes_retorno } = await pool.query(`
+                SELECT nome_aluno, turma, onibus_id
+                FROM evento_inscricoes
+                WHERE evento_id=$1 AND embarcou=true AND desembarcou=false
+                ORDER BY nome_aluno
+            `, [eventoId]);
+
+            res.json({
+                evento: ev,
+                onibus,
+                geral: geral[0],
+                ausentes_retorno,
+            });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    return { router, publicRouter };
+}

@@ -421,6 +421,73 @@ export async function initializeDatabase() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_aluno_proj_sugest_email ON aluno_projeto_sugestoes(aluno_email)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_aluno_proj_sugest_status ON aluno_projeto_sugestoes(status)`);
 
+        /* ── Passeios e Eventos Externos ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS eventos (
+                id               SERIAL       PRIMARY KEY,
+                nome             VARCHAR(200) NOT NULL,
+                destino          VARCHAR(200) NOT NULL,
+                data_evento      DATE         NOT NULL,
+                valor_aluno      NUMERIC(10,2) NOT NULL DEFAULT 0,
+                prazo_pagamento  DATE,
+                descricao        TEXT,
+                turmas           JSONB        NOT NULL DEFAULT '[]',
+                pix_chave        VARCHAR(200),
+                pix_nome         VARCHAR(100),
+                pix_cidade       VARCHAR(50)  DEFAULT 'CURITIBA',
+                status           VARCHAR(20)  NOT NULL DEFAULT 'ativo',
+                criado_por       INTEGER      REFERENCES edusync_usuarios(id),
+                criado_em        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_eventos_status ON eventos(status)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_eventos_data   ON eventos(data_evento DESC)`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS evento_onibus (
+                id               SERIAL       PRIMARY KEY,
+                evento_id        INTEGER      NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+                numero           INTEGER      NOT NULL,
+                nome             VARCHAR(100),
+                capacidade       INTEGER      NOT NULL DEFAULT 40,
+                monitor_nome     VARCHAR(100),
+                monitor_telefone VARCHAR(20),
+                cor              VARCHAR(20)  NOT NULL DEFAULT '#3b82f6'
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_evento_onibus_evento ON evento_onibus(evento_id)`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS evento_inscricoes (
+                id                  SERIAL       PRIMARY KEY,
+                evento_id           INTEGER      NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+                codmatrizaluno      INTEGER      NOT NULL,
+                nome_aluno          VARCHAR(200) NOT NULL,
+                turma               VARCHAR(100),
+                codturma            INTEGER,
+                onibus_id           INTEGER      REFERENCES evento_onibus(id) ON DELETE SET NULL,
+                status_pagamento    VARCHAR(20)  NOT NULL DEFAULT 'pendente',
+                txid                VARCHAR(60)  UNIQUE,
+                aluno_token         VARCHAR(80)  NOT NULL UNIQUE,
+                comprovante_obs     TEXT,
+                pago_em             TIMESTAMPTZ,
+                pago_por            VARCHAR(100),
+                restricoes_medicas  TEXT,
+                contato_responsavel VARCHAR(30),
+                nome_responsavel    VARCHAR(100),
+                embarcou            BOOLEAN      NOT NULL DEFAULT false,
+                embarcou_em         TIMESTAMPTZ,
+                desembarcou         BOOLEAN      NOT NULL DEFAULT false,
+                desembarcou_em      TIMESTAMPTZ,
+                criado_em           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                UNIQUE(evento_id, codmatrizaluno)
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_evento  ON evento_inscricoes(evento_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_token   ON evento_inscricoes(aluno_token)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_onibus  ON evento_inscricoes(onibus_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_payment ON evento_inscricoes(status_pagamento)`);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

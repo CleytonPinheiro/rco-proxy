@@ -60,6 +60,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'solicitacoes',       nome: 'Solicitações (Classroom)' },
     { id: 'portal-log',         nome: 'Log Portal Aluno' },
     { id: 'planos',             nome: 'Planos' },
+    { id: 'passeios',           nome: 'Passeios e Eventos' },
 ];
 
 /**

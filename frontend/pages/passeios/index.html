@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EduSync — Passeios e Eventos Externos">
+    <title>EduSync — Passeios</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./passeios.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+        <div class="header-left">
+            <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+            <a href="/pages/dashboard/" class="logo-link" title="Início">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+            </a>
+        </div>
+        <div class="header-divider"></div>
+        <nav class="nav-menu">
+            <a href="/pages/dashboard/">Turmas</a>
+            <a href="/pages/frequencias/">Frequências</a>
+            <a href="/pages/comunicados/">Comunicados</a>
+            <a href="/pages/crachas/">Crachás</a>
+            <a href="/pages/emprestimos/">Livros</a>
+            <a href="/pages/circulacao/">Circulação</a>
+            <a href="/pages/comportamento/">Comportamento</a>
+            <a href="/pages/presenca/">Presença</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+            <button id="btnLogout" class="btn-logout">Sair</button>
+        </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="ps-topbar">
+            <div>
+                <h2 class="ps-titulo">🚌 Passeios e Eventos</h2>
+                <p class="ps-sub">Gerencie passeios escolares, pagamentos PIX e embarque de alunos</p>
+            </div>
+            <button class="ps-btn-novo" onclick="abrirModalNovoEvento()">+ Novo Evento</button>
+        </div>
+
+        <div id="listaEventos" class="ps-lista-eventos">
+            <div class="ps-empty" id="psLoading">
+                <div class="spinner"></div>
+                <p>Carregando eventos...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ── Modal: Criar / Editar Evento ─────────────────────────────── -->
+    <div id="modalEvento" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalEvento')">
+        <div class="ps-modal-box ps-modal-lg">
+            <div class="ps-modal-header">
+                <h3 id="modalEventoTitulo">Novo Evento</h3>
+                <button class="ps-modal-close" onclick="fecharModalEvento()">✕</button>
+            </div>
+            <div class="ps-modal-body">
+                <div class="ps-form-grid">
+                    <div class="ps-field ps-col-2">
+                        <label>Nome do Evento *</label>
+                        <input id="evNome" type="text" placeholder="Ex: Passeio ao Museu" class="ps-input">
+                    </div>
+                    <div class="ps-field ps-col-2">
+                        <label>Destino *</label>
+                        <input id="evDestino" type="text" placeholder="Ex: Museu Oscar Niemeyer" class="ps-input">
+                    </div>
+                    <div class="ps-field">
+                        <label>Data do Evento *</label>
+                        <input id="evData" type="date" class="ps-input">
+                    </div>
+                    <div class="ps-field">
+                        <label>Prazo de Pagamento</label>
+                        <input id="evPrazo" type="date" class="ps-input">
+                    </div>
+                    <div class="ps-field">
+                        <label>Valor por Aluno (R$)</label>
+                        <input id="evValor" type="number" min="0" step="0.01" placeholder="0,00" class="ps-input">
+                    </div>
+                    <div class="ps-field">
+                        <label>Chave PIX</label>
+                        <input id="evPixChave" type="text" placeholder="CPF, e-mail, telefone ou aleatória" class="ps-input">
+                    </div>
+                    <div class="ps-field">
+                        <label>Nome do Recebedor (PIX)</label>
+                        <input id="evPixNome" type="text" placeholder="Nome que aparece no PIX" class="ps-input">
+                    </div>
+                    <div class="ps-field">
+                        <label>Cidade (PIX)</label>
+                        <input id="evPixCidade" type="text" placeholder="Ex: CURITIBA" value="CURITIBA" class="ps-input">
+                    </div>
+                    <div class="ps-field ps-col-2">
+                        <label>Descrição (opcional)</label>
+                        <textarea id="evDescricao" class="ps-input ps-textarea" placeholder="Detalhes sobre o evento..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Ônibus -->
+                <div class="ps-section-title">🚌 Ônibus</div>
+                <div id="onibusContainer" class="ps-onibus-container"></div>
+                <button class="ps-btn-add-onibus" onclick="adicionarOnibusForm()">+ Adicionar Ônibus</button>
+            </div>
+            <div class="ps-modal-footer">
+                <button class="ps-btn-cancel" onclick="fecharModalEvento()">Cancelar</button>
+                <button class="ps-btn-save" onclick="salvarEvento()">Salvar Evento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Detalhe do Evento (inscricoes, pagamentos, ônibus) ── -->
+    <div id="modalDetalhe" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalDetalhe')">
+        <div class="ps-modal-box ps-modal-full">
+            <div class="ps-modal-header">
+                <div>
+                    <h3 id="detalheNome">Evento</h3>
+                    <div id="detalheInfo" class="ps-detalhe-info"></div>
+                </div>
+                <div class="ps-detalhe-actions">
+                    <button class="ps-btn-scanner" onclick="abrirScanner()">📷 Scanner</button>
+                    <button class="ps-btn-painel" onclick="abrirPainel()">📊 Painel ao Vivo</button>
+                    <button class="ps-btn-cancel" onclick="fecharModalDetalhe()">✕ Fechar</button>
+                </div>
+            </div>
+
+            <!-- Abas -->
+            <div class="ps-tabs">
+                <button class="ps-tab ativo" data-tab="financeiro" onclick="mudarAba('financeiro')">💰 Pagamentos</button>
+                <button class="ps-tab" data-tab="onibus" onclick="mudarAba('onibus')">🚌 Ônibus</button>
+                <button class="ps-tab" data-tab="pulseiras" onclick="mudarAba('pulseiras')">🏷️ Pulseiras</button>
+            </div>
+
+            <!-- Aba Financeiro -->
+            <div id="abaFinanceiro" class="ps-aba-content">
+                <div class="ps-fin-topbar">
+                    <div class="ps-fin-stats" id="finStats"></div>
+                    <div class="ps-fin-actions">
+                        <button class="ps-btn-inscrever" onclick="abrirInscricaoModal()">+ Inscrever Turmas</button>
+                        <button class="ps-btn-lembrete" onclick="enviarLembretes()">📲 Lembrete WhatsApp</button>
+                    </div>
+                </div>
+                <div class="ps-fin-filtros">
+                    <button class="ps-filtro ativo" data-filtro="todos" onclick="filtrarPagamentos('todos')">Todos</button>
+                    <button class="ps-filtro" data-filtro="pendente" onclick="filtrarPagamentos('pendente')">Pendentes</button>
+                    <button class="ps-filtro" data-filtro="pago" onclick="filtrarPagamentos('pago')">Pagos</button>
+                    <input type="text" id="buscarAluno" class="ps-search" placeholder="🔍 Buscar aluno..." oninput="filtrarPagamentos()">
+                </div>
+                <div class="ps-tabela-wrap">
+                    <table class="ps-tabela">
+                        <thead>
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Turma</th>
+                                <th>Status</th>
+                                <th>Pago em</th>
+                                <th>Ônibus</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaInscricoes"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Aba Ônibus -->
+            <div id="abaOnibus" class="ps-aba-content oculto">
+                <div class="ps-onibus-topbar">
+                    <button class="ps-btn-distribuir" onclick="distribuirOnibus()">🔀 Distribuir Automaticamente</button>
+                    <button class="ps-btn-add-onibus-detalhe" onclick="adicionarOnibusDetalhe()">+ Ônibus</button>
+                </div>
+                <div id="onibusDetalheGrid" class="ps-onibus-grid"></div>
+            </div>
+
+            <!-- Aba Pulseiras -->
+            <div id="abaPulseiras" class="ps-aba-content oculto">
+                <div class="ps-pulseiras-topbar">
+                    <div>
+                        <p style="color:var(--text-secondary);font-size:14px">Gera pulseiras para imprimir — 24 por folha A4. Cada pulseira tem nome, turma, ônibus e QR Code.</p>
+                    </div>
+                    <div class="ps-pulseiras-actions">
+                        <select id="filtroOnibusImpressao" class="ps-input" style="width:auto">
+                            <option value="">Todos os ônibus</option>
+                        </select>
+                        <button class="ps-btn-imprimir" onclick="imprimirPulseiras()">🖨 Imprimir Pulseiras</button>
+                    </div>
+                </div>
+                <div id="pulseirasPreview" class="ps-pulseiras-preview">
+                    <div class="ps-empty">Clique em "Imprimir Pulseiras" para gerar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Inscrever Turmas ──────────────────────────────────── -->
+    <div id="modalInscricao" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalInscricao')">
+        <div class="ps-modal-box">
+            <div class="ps-modal-header">
+                <h3>Inscrever Turmas</h3>
+                <button class="ps-modal-close" onclick="fecharModalInscricao()">✕</button>
+            </div>
+            <div class="ps-modal-body">
+                <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px">Selecione as turmas para inscrever no evento. Alunos já inscritos serão ignorados.</p>
+                <div id="listaTurmasModal" class="ps-turmas-lista">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            <div class="ps-modal-footer">
+                <button class="ps-btn-cancel" onclick="fecharModalInscricao()">Cancelar</button>
+                <button class="ps-btn-save" onclick="confirmarInscricao()">Inscrever Selecionadas</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: PIX QR Code ─────────────────────────────────────── -->
+    <div id="modalPix" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalPix')">
+        <div class="ps-modal-box ps-modal-sm">
+            <div class="ps-modal-header">
+                <h3>💰 PIX — <span id="pixAlunoNome"></span></h3>
+                <button class="ps-modal-close" onclick="document.getElementById('modalPix').classList.add('oculto')">✕</button>
+            </div>
+            <div class="ps-modal-body" style="text-align:center">
+                <div id="pixQrImg"></div>
+                <div id="pixValor" style="font-size:22px;font-weight:700;margin:12px 0;color:var(--accent)"></div>
+                <div class="ps-pix-copia" id="pixPayload" onclick="copiarPix()" title="Clique para copiar">
+                    <span id="pixPayloadText" style="font-size:11px;word-break:break-all;color:var(--text-secondary)"></span>
+                    <span style="font-size:11px;color:var(--accent);margin-top:6px;display:block">📋 Clique para copiar</span>
+                </div>
+                <div id="pixTxid" style="font-size:11px;color:var(--text-muted);margin-top:8px"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Editar inscrição ───────────────────────────────── -->
+    <div id="modalEditarInsc" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalEditarInsc')">
+        <div class="ps-modal-box ps-modal-sm">
+            <div class="ps-modal-header">
+                <h3>Editar Inscrição — <span id="editInscNome"></span></h3>
+                <button class="ps-modal-close" onclick="fecharModalEditarInsc()">✕</button>
+            </div>
+            <div class="ps-modal-body">
+                <div class="ps-field">
+                    <label>Nome do Responsável</label>
+                    <input id="editNomeResp" type="text" class="ps-input" placeholder="Nome do responsável">
+                </div>
+                <div class="ps-field">
+                    <label>Telefone do Responsável</label>
+                    <input id="editTelResp" type="tel" class="ps-input" placeholder="Ex: 41999990000">
+                </div>
+                <div class="ps-field">
+                    <label>Restrições / Obs. Médicas</label>
+                    <textarea id="editRestricoes" class="ps-input ps-textarea" placeholder="Alergias, medicamentos, etc."></textarea>
+                </div>
+            </div>
+            <div class="ps-modal-footer">
+                <button class="ps-btn-cancel" onclick="fecharModalEditarInsc()">Cancelar</button>
+                <button class="ps-btn-save" onclick="salvarEdicaoInsc()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Painel ao Vivo ─────────────────────────────────── -->
+    <div id="modalPainel" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalPainel')">
+        <div class="ps-modal-box ps-modal-full">
+            <div class="ps-modal-header">
+                <h3>📊 Painel ao Vivo — <span id="painelEventoNome"></span></h3>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <span id="painelAtualizado" style="font-size:12px;color:var(--text-muted)"></span>
+                    <button class="ps-btn-cancel" onclick="fecharPainel()">✕ Fechar</button>
+                </div>
+            </div>
+            <div class="ps-modal-body">
+                <div id="painelContent" class="ps-painel-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script src="../../shared/js/modal-confirmar.js"></script>
+    <script src="./passeios.js"></script>
+
+    <!-- Painel Lateral -->
+    <div class="side-overlay" id="sideOverlay" onclick="fecharSidePanel()"></div>
+    <nav class="side-panel" id="sidePanel" role="navigation" aria-label="Ferramentas">
+        <div class="side-panel-header">
+            <span class="side-panel-logo">⚡ EduSync</span>
+            <button class="side-close-btn" onclick="fecharSidePanel()" aria-label="Fechar menu">✕</button>
+        </div>
+        <div class="side-panel-section-label">Ferramentas</div>
+        <div class="side-panel-nav">
+            <a href="/pages/mapa-sala/" class="side-nav-item">
+                <span class="side-nav-icon">🗺️</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Mapa de Sala</span>
+                    <span class="side-nav-desc">Arranjo de carteiras por turma</span>
+                </div>
+            </a>
+            <a href="/pages/grupos/" class="side-nav-item">
+                <span class="side-nav-icon">👥</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Grupos</span>
+                    <span class="side-nav-desc">Organize alunos em equipes</span>
+                </div>
+            </a>
+            <a href="/pages/passeios/" class="side-nav-item active">
+                <span class="side-nav-icon">🚌</span>
+                <div class="side-nav-info">
+                    <span class="side-nav-nome">Passeios</span>
+                    <span class="side-nav-desc">Eventos externos e excursões</span>
+                </div>
+            </a>
+        </div>
+        <div class="side-panel-footer">EduSync © 2026</div>
+    </nav>
+    <script>
+    function abrirSidePanel() { document.body.setAttribute('data-side','open'); }
+    function fecharSidePanel() { document.body.removeAttribute('data-side'); }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') fecharSidePanel(); });
+    </script>
+</body>
+</html>

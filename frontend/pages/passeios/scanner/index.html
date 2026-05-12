@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>EduSync — Scanner de Embarque</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link rel="stylesheet" href="./scanner.css">
+</head>
+<body>
+    <div class="sc-header">
+        <a href="/pages/passeios/" class="sc-back">← Passeios</a>
+        <div class="sc-logo">⚡ Scanner de Embarque</div>
+        <div class="sc-acao-toggle">
+            <button id="btnEmbarque"   class="sc-acao-btn ativo" onclick="setAcao('embarque')">🚌 Embarque</button>
+            <button id="btnDesembarque" class="sc-acao-btn"     onclick="setAcao('desembarque')">🏠 Retorno</button>
+        </div>
+    </div>
+
+    <div class="sc-main">
+        <!-- Camera / Input area -->
+        <div class="sc-cam-area">
+            <div class="sc-cam-wrap" id="camWrap">
+                <video id="camVideo" autoplay playsinline muted class="sc-cam-video"></video>
+                <canvas id="camCanvas" style="display:none"></canvas>
+                <div class="sc-cam-overlay">
+                    <div class="sc-qr-frame">
+                        <div class="sc-corner tl"></div>
+                        <div class="sc-corner tr"></div>
+                        <div class="sc-corner bl"></div>
+                        <div class="sc-corner br"></div>
+                        <div class="sc-scan-line"></div>
+                    </div>
+                    <p class="sc-cam-dica">Aponte para o QR Code da pulseira</p>
+                </div>
+            </div>
+            <div class="sc-input-area">
+                <input type="text" id="inputManual" class="sc-input-manual"
+                    placeholder="Cole ou escaneie o token manualmente..."
+                    autocomplete="off" spellcheck="false">
+                <button onclick="processarManual()" class="sc-btn-confirmar">↵ Confirmar</button>
+            </div>
+            <div class="sc-cam-controls">
+                <button id="btnCamera" onclick="toggleCamera()" class="sc-btn-cam">📷 Câmera</button>
+            </div>
+        </div>
+
+        <!-- Feedback -->
+        <div class="sc-feedback-area">
+            <div id="feedbackPanel" class="sc-feedback oculto">
+                <div id="feedbackIcon" class="sc-feedback-icon"></div>
+                <div class="sc-feedback-info">
+                    <div id="feedbackNome" class="sc-feedback-nome"></div>
+                    <div id="feedbackTurma" class="sc-feedback-turma"></div>
+                    <div id="feedbackOnibus" class="sc-feedback-onibus"></div>
+                    <div id="feedbackEvento" class="sc-feedback-evento"></div>
+                    <div id="feedbackStatus" class="sc-feedback-status"></div>
+                </div>
+            </div>
+            <div id="feedbackIdle" class="sc-feedback-idle">
+                <div style="font-size:48px">📷</div>
+                <div>Aponte para o QR Code da pulseira</div>
+            </div>
+        </div>
+
+        <!-- Offline queue -->
+        <div id="offlineBar" class="sc-offline-bar oculto">
+            ⚠️ Sem conexão — <span id="offlineCount">0</span> scan(s) aguardando sync
+            <button onclick="sincronizarOffline()" class="sc-btn-sync">Sincronizar</button>
+        </div>
+
+        <!-- Log de scans da sessão -->
+        <div class="sc-log-section">
+            <div class="sc-log-header">
+                <span>📋 Scans desta sessão (<span id="logCount">0</span>)</span>
+                <button onclick="limparLog()" class="sc-btn-limpar-log">Limpar</button>
+            </div>
+            <div id="scanLog" class="sc-log"></div>
+        </div>
+    </div>
+
+    <script src="../../../shared/js/modal-confirmar.js"></script>
+    <script src="./scanner.js"></script>
+</body>
+</html>

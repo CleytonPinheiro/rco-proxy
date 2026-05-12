@@ -25,6 +25,7 @@ import { createRcoLancamentoRouter }     from './rco-lancamento.routes.js';
 import { createQRCodeRouter }            from './qrcode.routes.js';
 import { createSuporteRouter }          from './suporte.routes.js';
 import { createProvasRouter, createProvasPublicRouter } from './provas.routes.js';
+import { createPasseiosRouter } from './passeios.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -40,6 +41,10 @@ export function createApiRouter(deps) {
 
     /* ── Portal Pedagógico (público — sem sessão EduSync) ── */
     router.use('/', createPedagogicoPortalRouter());
+
+    /* ── Passeios — inicializar uma vez, usar routers públicos e protegidos ── */
+    const passeiosRouters = createPasseiosRouter(deps);
+    router.use('/', passeiosRouters.publicRouter);
 
     /* ── Gerador de QR Code (público) ── */
     router.use('/', createQRCodeRouter());
@@ -81,6 +86,9 @@ export function createApiRouter(deps) {
     router.use('/', createSuporteRouter());
     /* Provas: rotas do professor — restritas ao módulo 'provas' (admin/professor) */
     router.use('/', requireModulo('provas'), createProvasRouter({ getClassroomAuth }));
+
+    /* Passeios: rotas protegidas (scanner + CRUD — acessível a qualquer perfil logado) */
+    router.use('/', passeiosRouters.router);
 
     return router;
 }
