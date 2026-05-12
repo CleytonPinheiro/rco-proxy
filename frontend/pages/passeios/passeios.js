@@ -120,6 +120,7 @@ async function abrirModalEditarEvento(id) {
         const container = document.getElementById('onibusContainer');
         container.innerHTML = '';
         (ev.onibus || []).forEach(ob => adicionarOnibusForm({
+            id: ob.id,                         // ← preservar ID existente
             nome: ob.nome, capacidade: ob.capacidade,
             monitor_nome: ob.monitor_nome, monitor_telefone: ob.monitor_telefone,
             cor: ob.cor,
@@ -146,6 +147,7 @@ function adicionarOnibusForm(defaults = {}) {
     const num = container.children.length + 1;
     const div = document.createElement('div');
     div.className = 'ps-onibus-row';
+    if (defaults.id) div.dataset.obId = defaults.id; // ← preservar ID no DOM
     div.innerHTML = `
         <div class="ps-onibus-label">Ônibus ${num}</div>
         <input class="ps-input ob-nome" type="text" placeholder="Nome (ex: Azul)" value="${esc(defaults.nome || '')}">
@@ -167,6 +169,7 @@ function atualizarLabelsOnibus() {
 
 function coletarOnibusForm() {
     return [...document.querySelectorAll('.ps-onibus-row')].map(row => ({
+        id:               row.dataset.obId ? parseInt(row.dataset.obId) : undefined, // ← enviar ID existente
         nome:             row.querySelector('.ob-nome')?.value.trim()    || null,
         capacidade:       parseInt(row.querySelector('.ob-cap')?.value)  || 40,
         monitor_nome:     row.querySelector('.ob-monitor')?.value.trim() || null,
@@ -317,7 +320,12 @@ function renderizarTabelaInscricoes(inscs) {
 
         const btnPagar = i.status_pagamento === 'pendente'
             ? `<button class="ps-btn-action ps-btn-pagar" onclick="marcarPago(${i.id})">✓ Pago</button>`
-            : `<button class="ps-btn-action" onclick="reverterPagamento(${i.id})">↩ Reverter</button>`;
+            : i.status_pagamento === 'pago'
+                ? `<button class="ps-btn-action ps-btn-confirmar" onclick="confirmarPagamento(${i.id})">✅ Confirmar</button>
+                   <button class="ps-btn-action" onclick="reverterPagamento(${i.id})">↩ Reverter</button>`
+                : i.status_pagamento === 'confirmado'
+                    ? `<button class="ps-btn-action" onclick="reverterPagamento(${i.id})">↩ Reverter</button>`
+                    : `<button class="ps-btn-action" onclick="reverterPagamento(${i.id})">↩ Reverter</button>`;
 
         return `<tr>
             <td style="font-weight:600">${esc(i.nome_aluno)}</td>
@@ -346,6 +354,22 @@ async function marcarPago(inscId) {
         toast('Pagamento confirmado! ✓', 'sucesso');
         await recarregarDetalhe();
     } catch (e) { toast('Erro: ' + e.message); }
+}
+
+async function confirmarPagamento(inscId) {
+    const insc = (eventoAtual?.inscricoes || []).find(i => i.id === inscId);
+    const obs   = await solicitarTexto('Observação do comprovante (opcional):', '', 'Confirmar Pagamento');
+    if (obs === null) return; // cancelado
+    try {
+        const r = await fetch(`${API}/passeios/${eventoAtual.id}/inscricoes/${inscId}/confirmar`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comprovante_obs: obs || undefined }),
+        });
+        const d = await r.json();
+        if (!r.ok) { toast('Erro: ' + (d.erro || r.status), 'erro'); return; }
+        toast('Pagamento confirmado ✅', 'sucesso');
+        await recarregarDetalhe();
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
 }
 
 async function reverterPagamento(inscId) {
@@ -692,6 +716,12 @@ async function imprimirPulseiras() {
     }
 }
 
+function iniciais(nome) {
+    if (!nome) return '?';
+    const p = nome.trim().split(/\s+/);
+    return ((p[0]?.[0] || '') + (p[p.length - 1]?.[0] || '')).toUpperCase();
+}
+
 function renderizarFolhasPulseiras(inscricoes, evento) {
     const POR_PAGINA = 24;
     let html = '';
@@ -701,8 +731,12 @@ function renderizarFolhasPulseiras(inscricoes, evento) {
         html += `<div class="ps-pulseiras-sheet" style="page-break-after:always">`;
         html += lote.map(a => {
             const cor = a.onibus_cor || '#64748b';
+            const avatarHtml = a.foto_url
+                ? `<img src="${esc(a.foto_url)}" alt="" class="ps-pulseira-foto" onerror="this.outerHTML='<div class=ps-pulseira-ini>${iniciais(a.nome_aluno)}</div>'">`
+                : `<div class="ps-pulseira-ini">${iniciais(a.nome_aluno)}</div>`;
             return `
             <div class="ps-pulseira" style="border-color:${esc(cor)}">
+                ${avatarHtml}
                 <img src="${a.qrDataUrl}" alt="QR" style="width:70px;height:70px">
                 <div class="ps-pulseira-nome">${esc(a.nome_aluno)}</div>
                 <div class="ps-pulseira-turma">${esc(a.turma || '')}</div>
@@ -854,7 +888,7 @@ function fmtData(iso) {
 }
 
 function statusLabel(s) {
-    return { pago: 'Pago ✓', pendente: 'Pendente', isento: 'Isento' }[s] || s;
+    return { pago: 'Pago ✓', confirmado: 'Confirmado ✅', pendente: 'Pendente', isento: 'Isento' }[s] || s;
 }
 
 function esc(s) {

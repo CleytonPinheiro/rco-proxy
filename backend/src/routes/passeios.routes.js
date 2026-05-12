@@ -185,7 +185,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
             const { rows } = await pool.query(`
                 SELECT e.*,
                     (SELECT COUNT(*) FROM evento_inscricoes WHERE evento_id = e.id) AS total_inscritos,
-                    (SELECT COUNT(*) FROM evento_inscricoes WHERE evento_id = e.id AND status_pagamento = 'pago') AS total_pagos,
+                    (SELECT COUNT(*) FROM evento_inscricoes WHERE evento_id = e.id AND status_pagamento IN ('pago','confirmado')) AS total_pagos,
                     (SELECT COUNT(*) FROM evento_onibus WHERE evento_id = e.id) AS total_onibus
                 FROM eventos e
                 ORDER BY e.data_evento DESC, e.criado_em DESC
@@ -557,6 +557,24 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
+    /* POST /api/passeios/:id/inscricoes/:inscId/confirmar — elevar de pago → confirmado */
+    router.post('/passeios/:id/inscricoes/:inscId/confirmar', guardPasseios, async (req, res) => {
+        const inscId = parseInt(req.params.inscId);
+        const { comprovante_obs } = req.body;
+        const quem = req.userSession?.nome || 'sistema';
+        try {
+            const { rows: [insc] } = await pool.query(`
+                UPDATE evento_inscricoes SET
+                    status_pagamento = 'confirmado',
+                    comprovante_obs  = COALESCE($1, comprovante_obs),
+                    pago_por         = COALESCE(pago_por, $2)
+                WHERE id=$3 AND status_pagamento IN ('pago','confirmado') RETURNING *
+            `, [comprovante_obs || null, quem, inscId]);
+            if (!insc) return res.status(404).json({ erro: 'Inscrição não encontrada ou status inválido para confirmação' });
+            res.json(insc);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
     /* GET /api/passeios/:id/pix/:inscId — gerar PIX QR do aluno */
     router.get('/passeios/:id/pix/:inscId', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
@@ -663,10 +681,10 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                 `SELECT * FROM evento_onibus WHERE evento_id=$1 ORDER BY numero`, [eventoId]);
             if (!onibus.length) return res.status(400).json({ erro: 'Nenhum ônibus cadastrado' });
 
-            /* Pegar alunos pagos sem ônibus, depois pagos com ônibus, depois pendentes */
+            /* Pegar alunos pagos ou confirmados (ambos participam do passeio) */
             const { rows: inscritos } = await pool.query(`
                 SELECT * FROM evento_inscricoes
-                WHERE evento_id=$1 AND status_pagamento='pago'
+                WHERE evento_id=$1 AND status_pagamento IN ('pago','confirmado')
                 ORDER BY turma, nome_aluno
             `, [eventoId]);
 
@@ -674,7 +692,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
 
             /* Limpa distribuição atual dos inscritos selecionados */
             await pool.query(
-                `UPDATE evento_inscricoes SET onibus_id=NULL WHERE evento_id=$1 AND status_pagamento='pago'`,
+                `UPDATE evento_inscricoes SET onibus_id=NULL WHERE evento_id=$1 AND status_pagamento IN ('pago','confirmado')`,
                 [eventoId]);
 
             /* Distribui round-robin respeitando capacidade */
@@ -820,11 +838,12 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
             const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
             if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
 
-            /* Buscar alunos do ônibus especificado (ou todos com telefone) */
+            /* Buscar alunos do ônibus especificado (ou todos com telefone) — inclui pagos E confirmados */
             let q = `SELECT ei.*, eo.nome AS onibus_nome, eo.numero AS onibus_numero
                      FROM evento_inscricoes ei
                      LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
-                     WHERE ei.evento_id=$1 AND ei.contato_responsavel IS NOT NULL`;
+                     WHERE ei.evento_id=$1 AND ei.contato_responsavel IS NOT NULL
+                     AND ei.status_pagamento IN ('pago','confirmado')`;
             const params = [eventoId];
             if (onibus_id) { q += ` AND ei.onibus_id=$2`; params.push(parseInt(onibus_id)); }
 
@@ -870,20 +889,45 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
-    /* POST /api/public/passeios/:eventoId/:alunoToken/notificar — responsável notifica chegada/visualização (sem auth) */
+    /* POST /api/public/passeios/:eventoId/:alunoToken/notificar — responsável notifica escola (sem auth) */
     publicRouter.post('/public/passeios/:eventoId/:alunoToken/notificar', async (req, res) => {
         const { eventoId, alunoToken } = req.params;
         const { tipo = 'visualizou' } = req.body; // visualizou | confirmou
         try {
             const { rows } = await pool.query(
-                `SELECT ei.nome_aluno, e.nome AS evento_nome
+                `SELECT ei.nome_aluno, ei.turma, e.nome AS evento_nome
                  FROM evento_inscricoes ei JOIN eventos e ON e.id=ei.evento_id
                  WHERE ei.evento_id=$1 AND ei.aluno_token=$2`, [eventoId, alunoToken]);
             if (!rows.length) return res.status(404).json({ erro: 'Não encontrado' });
-            /* Log only — no sensitive action from public endpoint */
-            console.log(`[PASSEIOS-PUBLIC-NOTIF] ${tipo}: ${rows[0].nome_aluno} / ${rows[0].evento_nome}`);
+
+            const { nome_aluno, turma, evento_nome } = rows[0];
+            console.log(`[PASSEIOS-PUBLIC-NOTIF] ${tipo}: ${nome_aluno} / ${evento_nome}`);
+
+            /* Encaminhar via N8n webhook (se configurado) para notificar equipe escolar */
+            const webhookUrl = await getConfig('n8n_webhook_url');
+            const token      = await getConfig('comunicados_token');
+            if (webhookUrl) {
+                const tipoLabel = { visualizou: 'visualizou o link', confirmou: 'confirmou ciência' };
+                const mensagem = [
+                    `📱 *Notificação de Responsável — EduSync*`,
+                    `O responsável do aluno *${nome_aluno}* (${turma}) ${tipoLabel[tipo] || tipo} na página do passeio *${evento_nome}*.`,
+                ].join('\n');
+                /* Envia para contato de notificação escolar se configurado */
+                const escolaContato = await getConfig('notif_escola_telefone');
+                if (escolaContato) {
+                    await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ telefone: escolaContato, mensagem, token, tipo }),
+                    }).catch(err => console.warn('[PASSEIOS-PUBLIC-NOTIF] webhook error:', err.message));
+                }
+            }
+
             res.json({ ok: true });
-        } catch (e) { res.status(500).json({ erro: e.message }); }
+        } catch (e) {
+            console.error('[PASSEIOS-PUBLIC-NOTIF]', e.message);
+            res.status(500).json({ erro: e.message });
+        }
     });
 
     return { router, publicRouter };
