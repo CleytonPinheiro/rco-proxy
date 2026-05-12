@@ -152,15 +152,17 @@ async function processarToken(token) {
         });
         const d = await r.json();
 
-        if (r.ok) {
+        /* 200 OK or 409 with repetido:true are both treated as successes */
+        const isSuccess = r.ok || (r.status === 409 && d.repetido);
+        if (isSuccess) {
             const repetido = d.repetido;
             const tipo     = repetido ? 'repetido' : 'ok';
             const icon     = acaoAtual === 'embarque' ? (repetido ? '🔄' : '✅') : '🏠';
             const status   = repetido
                 ? 'Já registrado anteriormente'
                 : (acaoAtual === 'embarque' ? 'Embarcou!' : 'Retornou!');
-            mostrarFeedback(tipo, icon, d.aluno, d.turma, d.onibus || '', status);
-            adicionarLog(tipo, `${d.aluno} — ${d.onibus || 'sem ônibus'}`, acaoAtual);
+            mostrarFeedback(tipo, icon, d.aluno || '—', d.turma || '', d.onibus || '', status);
+            adicionarLog(tipo, `${d.aluno || 'Aluno'} — ${d.onibus || 'sem ônibus'}`, acaoAtual);
             tocarBeep(tipo === 'ok');
         } else {
             mostrarFeedback('erro', '❌', 'Erro', d.erro || 'Aluno não encontrado', '', '');
@@ -256,7 +258,9 @@ async function sincronizarOffline() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: item.token, acao: item.acao }),
             });
-            if (!r.ok) { falhas.push(item); }
+            /* 409 + repetido = já sincronizado antes → não retentar */
+            const d2 = await r.json().catch(() => ({}));
+            if (!r.ok && !(r.status === 409 && d2.repetido)) { falhas.push(item); }
         } catch { falhas.push(item); }
     }
 

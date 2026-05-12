@@ -62,9 +62,9 @@
          `permissoesPerfis`) — usamos cache em localStorage para flash-free.   ── */
     const PERFIL_MODULOS_DEFAULT = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','qrcode','suporte'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','qrcode','suporte'],
-        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','qrcode','suporte','passeios'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','qrcode','suporte','passeios'],
+        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte','passeios'],
         aux_turno:  ['circulacao','presenca','qrcode','suporte'],
         cozinha:    ['cozinha','qrcode','suporte'],
     };
