@@ -231,6 +231,45 @@ async function deleteTokenForUser(req) {
     }
 }
 
+/* ── Tratamento centralizado de erros de escopo/grant do Classroom ──
+   Retorna true se o erro foi tratado (resposta já enviada) e o route handler
+   deve apenas fazer `return`. Retorna false para erros genéricos. */
+async function handleClassroomError(e, req, res) {
+    if (isInsufficientScope(e) || isInvalidGrant(e)) {
+        await deleteTokenForUser(req);
+        res.status(403).json({
+            erro: 'Permissão insuficiente. Reconecte o Google Classroom.',
+            codigo: 'ESCOPO_INSUFICIENTE',
+        });
+        return true;
+    }
+    return false;
+}
+
+/* Wrapper for Classroom route handlers.
+   Any uncaught error propagates here; scope/grant errors trigger 403 ESCOPO_INSUFICIENTE
+   automatically, eliminating the need for per-route handleClassroomError calls.
+
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ CONTRIBUTOR RULE — every route that calls the Google Classroom API MUST │
+   │ wrap its handler with withClassroomErrorHandling(...).                  │
+   │                                                                         │
+   │ If the route has an inner try/catch for non-scope errors, re-throw      │
+   │ scope/grant failures so the outer wrapper handles them:                 │
+   │   if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;            │
+   └─────────────────────────────────────────────────────────────────────────┘ */
+function withClassroomErrorHandling(handler, label) {
+    return async (req, res, next) => {
+        try {
+            await handler(req, res, next);
+        } catch (e) {
+            if (label) console.error(`${label}:`, e.message);
+            if (await handleClassroomError(e, req, res)) return;
+            if (!res.headersSent) res.status(500).json({ erro: e.message });
+        }
+    };
+}
+
 export async function getAuthenticatedClient(req) {
     const oauth2Client = getOAuth2Client(req);
     if (!oauth2Client) return null;
@@ -405,85 +444,75 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Listar cursos ── */
-    router.get('/classroom/courses', async (req, res) => {
+    router.get('/classroom/courses', withClassroomErrorHandling(async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
-        try {
-            const classroom = google.classroom({ version: 'v1', auth });
-            const allCourses = [];
-            let pageToken;
-            do {
-                const resp = await classroom.courses.list({ teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken });
-                allCourses.push(...(resp.data.courses || []));
-                pageToken = resp.data.nextPageToken;
-            } while (pageToken);
-            res.json(allCourses.map(c => ({
-                id: c.id, nome: c.name, secao: c.section || '', descricao: c.description || '',
-                sala: c.room || '', turmaCode: c.enrollmentCode || '', link: c.alternateLink || '',
-            })));
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao listar cursos:', e.message);
-            res.status(500).json({ erro: e.message });
-        }
-    });
+        const classroom = google.classroom({ version: 'v1', auth });
+        const allCourses = [];
+        let pageToken;
+        do {
+            const resp = await classroom.courses.list({ teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken });
+            allCourses.push(...(resp.data.courses || []));
+            pageToken = resp.data.nextPageToken;
+        } while (pageToken);
+        res.json(allCourses.map(c => ({
+            id: c.id, nome: c.name, secao: c.section || '', descricao: c.description || '',
+            sala: c.room || '', turmaCode: c.enrollmentCode || '', link: c.alternateLink || '',
+        })));
+    }, '[CLASSROOM] Erro ao listar cursos'));
 
     /* ── Listar alunos de um curso ── */
-    router.get('/classroom/courses/:courseId/students', async (req, res) => {
+    router.get('/classroom/courses/:courseId/students', withClassroomErrorHandling(async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
-        try {
-            const classroom = google.classroom({ version: 'v1', auth });
-            const allStudents = [];
-            let pageToken;
-            do {
-                const resp = await classroom.courses.students.list({ courseId: req.params.courseId, pageSize: 100, pageToken });
-                allStudents.push(...(resp.data.students || []));
-                pageToken = resp.data.nextPageToken;
-            } while (pageToken);
+        const classroom = google.classroom({ version: 'v1', auth });
+        const allStudents = [];
+        let pageToken;
+        do {
+            const resp = await classroom.courses.students.list({ courseId: req.params.courseId, pageSize: 100, pageToken });
+            allStudents.push(...(resp.data.students || []));
+            pageToken = resp.data.nextPageToken;
+        } while (pageToken);
 
-            // Busca numChamada e codMatrizAluno do Supabase por nome normalizado
-            // A chave única é `registro` (= String(codMatrizAluno)), não `codmatrizaluno`
-            let numChamadaMap     = {};
-            let codMatrizAlunoMap = {};
-            if (supabaseAdmin) {
-                const { data: alunosRCO, error: eRCO } = await supabaseAdmin
-                    .from('alunos')
-                    .select('nome, numchamada, registro');
-                if (eRCO) console.warn('[CLASSROOM] Supabase alunos erro:', eRCO.message);
-                (alunosRCO || []).forEach(a => {
-                    const chave = normNome(a.nome);
-                    numChamadaMap[chave]     = a.numchamada;
-                    // registro é String(codMatrizAluno) — convertemos de volta para number
-                    codMatrizAlunoMap[chave] = a.registro ? Number(a.registro) : null;
-                });
-            }
-
-            res.json(allStudents.map(s => {
-                const nome  = s.profile?.name?.fullName || '—';
-                const chave = normNome(nome);
-                return {
-                    userId:         s.userId,
-                    nome,
-                    email:          s.profile?.emailAddress || '',
-                    foto:           s.profile?.photoUrl || null,
-                    numChamada:     numChamadaMap[chave]     ?? null,
-                    codMatrizAluno: codMatrizAlunoMap[chave] ?? null,
-                };
-            }));
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao listar alunos:', e.message);
-            res.status(500).json({ erro: e.message });
+        // Busca numChamada e codMatrizAluno do Supabase por nome normalizado
+        // A chave única é `registro` (= String(codMatrizAluno)), não `codmatrizaluno`
+        let numChamadaMap     = {};
+        let codMatrizAlunoMap = {};
+        if (supabaseAdmin) {
+            const { data: alunosRCO, error: eRCO } = await supabaseAdmin
+                .from('alunos')
+                .select('nome, numchamada, registro');
+            if (eRCO) console.warn('[CLASSROOM] Supabase alunos erro:', eRCO.message);
+            (alunosRCO || []).forEach(a => {
+                const chave = normNome(a.nome);
+                numChamadaMap[chave]     = a.numchamada;
+                // registro é String(codMatrizAluno) — convertemos de volta para number
+                codMatrizAlunoMap[chave] = a.registro ? Number(a.registro) : null;
+            });
         }
-    });
+
+        res.json(allStudents.map(s => {
+            const nome  = s.profile?.name?.fullName || '—';
+            const chave = normNome(nome);
+            return {
+                userId:         s.userId,
+                nome,
+                email:          s.profile?.emailAddress || '',
+                foto:           s.profile?.photoUrl || null,
+                numChamada:     numChamadaMap[chave]     ?? null,
+                codMatrizAluno: codMatrizAlunoMap[chave] ?? null,
+            };
+        }));
+    }, '[CLASSROOM] Erro ao listar alunos'));
 
     /* ── Listar atividades (courseWork) ── */
-    router.get('/classroom/courses/:courseId/coursework', async (req, res) => {
+    router.get('/classroom/courses/:courseId/coursework', withClassroomErrorHandling(async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
+        const classroom = google.classroom({ version: 'v1', auth });
+        const allWork = [];
+        let pageToken;
         try {
-            const classroom = google.classroom({ version: 'v1', auth });
-            const allWork = [];
-            let pageToken;
             do {
                 const resp = await classroom.courses.courseWork.list({
                     courseId: req.params.courseId, orderBy: 'dueDate desc', pageSize: 50, pageToken,
@@ -491,63 +520,59 @@ export function createClassroomRouter(deps = {}) {
                 allWork.push(...(resp.data.courseWork || []));
                 pageToken = resp.data.nextPageToken;
             } while (pageToken);
-            res.json(allWork.map(w => {
-                let prazo = null;
-                if (w.dueDate) {
-                    prazo = `${String(w.dueDate.day).padStart(2,'0')}/${String(w.dueDate.month).padStart(2,'0')}/${w.dueDate.year}`;
-                }
-                const materiais = (w.materials || [])
-                    .map(m => m.link?.url || m.driveFile?.alternateLink || null)
-                    .filter(Boolean);
-                return { id: w.id, titulo: w.title, descricao: w.description || '', tipo: w.workType,
-                    pontos: w.maxPoints ?? null, prazo, link: w.alternateLink || '', criadoEm: w.creationTime,
-                    materiais };
-            }));
         } catch (e) {
+            if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
             console.error('[CLASSROOM] Erro ao listar atividades:', e.message);
             const status = e.code === 403 || e.message?.includes('permission') ? 403 : 500;
-            res.status(status).json({ erro: e.message, tipo: status === 403 ? 'sem_permissao' : 'erro' });
+            return res.status(status).json({ erro: e.message, tipo: status === 403 ? 'sem_permissao' : 'erro' });
         }
-    });
+        res.json(allWork.map(w => {
+            let prazo = null;
+            if (w.dueDate) {
+                prazo = `${String(w.dueDate.day).padStart(2,'0')}/${String(w.dueDate.month).padStart(2,'0')}/${w.dueDate.year}`;
+            }
+            const materiais = (w.materials || [])
+                .map(m => m.link?.url || m.driveFile?.alternateLink || null)
+                .filter(Boolean);
+            return { id: w.id, titulo: w.title, descricao: w.description || '', tipo: w.workType,
+                pontos: w.maxPoints ?? null, prazo, link: w.alternateLink || '', criadoEm: w.creationTime,
+                materiais };
+        }));
+    }));
 
     /* ── Listar entregas/notas de uma atividade ── */
-    router.get('/classroom/courses/:courseId/coursework/:cwId/submissions', async (req, res) => {
+    router.get('/classroom/courses/:courseId/coursework/:cwId/submissions', withClassroomErrorHandling(async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
-        try {
-            const classroom = google.classroom({ version: 'v1', auth });
-            const allSubs = [];
-            let pageToken;
-            do {
-                const resp = await classroom.courses.courseWork.studentSubmissions.list({
-                    courseId: req.params.courseId, courseWorkId: req.params.cwId, pageSize: 100, pageToken,
-                });
-                allSubs.push(...(resp.data.studentSubmissions || []));
-                pageToken = resp.data.nextPageToken;
-            } while (pageToken);
+        const classroom = google.classroom({ version: 'v1', auth });
+        const allSubs = [];
+        let pageToken;
+        do {
+            const resp = await classroom.courses.courseWork.studentSubmissions.list({
+                courseId: req.params.courseId, courseWorkId: req.params.cwId, pageSize: 100, pageToken,
+            });
+            allSubs.push(...(resp.data.studentSubmissions || []));
+            pageToken = resp.data.nextPageToken;
+        } while (pageToken);
 
-            // Buscar ausências marcadas para esta atividade
-            const { rows: ausRows } = await pool.query(
-                `SELECT user_id FROM classroom_ausencias WHERE curso_id=$1 AND atividade_id=$2`,
-                [req.params.courseId, req.params.cwId]
-            );
-            const ausentes = new Set(ausRows.map(r => r.user_id));
+        // Buscar ausências marcadas para esta atividade
+        const { rows: ausRows } = await pool.query(
+            `SELECT user_id FROM classroom_ausencias WHERE curso_id=$1 AND atividade_id=$2`,
+            [req.params.courseId, req.params.cwId]
+        );
+        const ausentes = new Set(ausRows.map(r => r.user_id));
 
-            res.json(allSubs.map(s => ({
-                id: s.id, userId: s.userId, estado: s.state,
-                entregue: s.state === 'TURNED_IN' || s.state === 'RETURNED',
-                nota: s.assignedGrade ?? null, notaRascunho: s.draftGrade ?? null,
-                atrasado: s.late || false, atualizadoEm: s.updateTime,
-                ausente: ausentes.has(s.userId),
-            })));
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao listar entregas:', e.message);
-            res.status(500).json({ erro: e.message });
-        }
-    });
+        res.json(allSubs.map(s => ({
+            id: s.id, userId: s.userId, estado: s.state,
+            entregue: s.state === 'TURNED_IN' || s.state === 'RETURNED',
+            nota: s.assignedGrade ?? null, notaRascunho: s.draftGrade ?? null,
+            atrasado: s.late || false, atualizadoEm: s.updateTime,
+            ausente: ausentes.has(s.userId),
+        })));
+    }, '[CLASSROOM] Erro ao listar entregas'));
 
     /* ── Atualizar nota de uma entrega ── */
-    router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) {
             console.error('[CLASSROOM] Grade: token Classroom não encontrado ou expirado.');
@@ -555,47 +580,39 @@ export function createClassroomRouter(deps = {}) {
         }
         const { nota } = req.body;
         if (nota === undefined || nota === null) return res.status(400).json({ erro: 'Campo "nota" obrigatório.' });
-        try {
-            const classroom = google.classroom({ version: 'v1', auth });
-            const resp = await classroom.courses.courseWork.studentSubmissions.patch({
-                courseId: req.params.courseId, courseWorkId: req.params.cwId, id: req.params.subId,
-                updateMask: 'assignedGrade', requestBody: { assignedGrade: nota === '' ? null : Number(nota) },
-            });
-            res.json({ ok: true, nota: resp.data.assignedGrade });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao atualizar nota:', e.message);
-            if (isInsufficientScope(e) || isInvalidGrant(e)) {
-                await deleteTokenForUser(req);
-                return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
-            }
-            res.status(500).json({ erro: e.message });
-        }
-    });
+        const classroom = google.classroom({ version: 'v1', auth });
+        const resp = await classroom.courses.courseWork.studentSubmissions.patch({
+            courseId: req.params.courseId, courseWorkId: req.params.cwId, id: req.params.subId,
+            updateMask: 'assignedGrade', requestBody: { assignedGrade: nota === '' ? null : Number(nota) },
+        });
+        res.json({ ok: true, nota: resp.data.assignedGrade });
+    }, '[CLASSROOM] Erro ao atualizar nota'));
 
     /* ── Devolver entrega ── */
-    router.post('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/return', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const auth = await getAuthenticatedClient(req);
         if (!auth) {
             console.error('[CLASSROOM] Devolver: token Classroom não encontrado ou expirado (global token file).');
             return res.status(401).json({ erro: 'Token do Google Classroom expirado. Reconecte o Classroom.' });
         }
+        const classroom = google.classroom({ version: 'v1', auth });
         try {
-            const classroom = google.classroom({ version: 'v1', auth });
             await classroom.courses.courseWork.studentSubmissions.return({
                 courseId: req.params.courseId, courseWorkId: req.params.cwId, id: req.params.subId, requestBody: {},
             });
-            res.json({ ok: true });
         } catch (e) {
+            if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
             console.error('[CLASSROOM] Erro ao devolver entrega:', e.message);
             if (e.message?.includes('ProjectPermissionDenied') || e.code === 403) {
                 return res.status(403).json({ erro: 'O projeto Google Cloud não tem permissão para devolver entregas. A nota foi salva, mas a devolução precisa ser feita manualmente no Google Classroom.' });
             }
-            res.status(500).json({ erro: e.message });
+            throw e;
         }
-    });
+        res.json({ ok: true });
+    }));
 
     /* ── Devolver múltiplas entregas de uma vez (bulk return) ── */
-    router.post('/classroom/courses/:courseId/coursework/bulk-return', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/courses/:courseId/coursework/bulk-return', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { courseId } = req.params;
         const { submissions } = req.body;
         if (!Array.isArray(submissions) || !submissions.length) {
@@ -615,20 +632,21 @@ export function createClassroomRouter(deps = {}) {
                 });
                 ok++;
             } catch (e) {
+                if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                 fail++;
                 erros.push({ cwId, subId, erro: e.message });
                 console.error(`[CLASSROOM] bulk-return falhou cwId=${cwId} subId=${subId}:`, e.message);
             }
         }
         res.json({ ok, fail, erros });
-    });
+    }));
 
     /* ════════════════════════════════════════════════════════════
        AUDITORIA DE FREQUÊNCIA
     ════════════════════════════════════════════════════════════ */
 
     /* ── Executar auditoria: cruza faltas do RCO com atividades do Classroom ── */
-    router.get('/classroom/audit', async (req, res) => {
+    router.get('/classroom/audit', withClassroomErrorHandling(async (req, res) => {
         const { courseId, codClasse, codPeriodoAvaliacao = 9, codPeriodoLetivo = 261 } = req.query;
         if (!courseId || !codClasse) {
             return res.status(400).json({ erro: 'courseId e codClasse são obrigatórios' });
@@ -639,7 +657,7 @@ export function createClassroomRouter(deps = {}) {
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado com Google.' });
 
-        try {
+        {
             /* 1. Buscar frequências do RCO */
             const freqPath = `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodoAvaliacao}&codPeriodoLetivo=${codPeriodoLetivo}&page=1&perPage=200`;
             const freqResp = await rcoApiService.get(freqPath);
@@ -781,11 +799,8 @@ export function createClassroomRouter(deps = {}) {
             }
 
             res.json({ atividades, semCorrespondencia });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro na auditoria:', e.message);
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro na auditoria'));
 
     /* ── Registrar ausências (após aplicar zeros) ── */
     router.post('/classroom/ausencias', requireFuncionalidade('classroom-escrita'), async (req, res) => {
@@ -1000,12 +1015,12 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Atividades órfãs (sem grupo em nenhum período) de um curso ── */
-    router.get('/classroom/orphan-activities', async (req, res) => {
+    router.get('/classroom/orphan-activities', withClassroomErrorHandling(async (req, res) => {
         const { courseId } = req.query;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
-        try {
+        {
             const classroom = google.classroom({ version: 'v1', auth });
             /* Pagina TODAS as atividades do curso (não basta a primeira página) */
             const ativs = [];
@@ -1040,11 +1055,8 @@ export function createClassroomRouter(deps = {}) {
                     link:      a.alternateLink || null,
                 }));
             res.json({ total: orfas.length, atividades: orfas });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao listar atividades órfãs:', e.message);
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro ao listar atividades órfãs'));
 
     /* ── Adicionar uma ou mais atividades a um grupo (sem remover existentes) ──
        Mantém a invariante: cada atividade pode estar em no máximo UM grupo
@@ -1385,12 +1397,12 @@ export function createClassroomRouter(deps = {}) {
     });
 
     /* ── Resumo por grupo: soma de notas por aluno ── */
-    router.get('/classroom/groups/:id/summary', async (req, res) => {
+    router.get('/classroom/groups/:id/summary', withClassroomErrorHandling(async (req, res) => {
         const { courseId } = req.query;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
-        try {
+        {
             /* Carrega metadados do grupo para saber se é recuperação */
             const { rows: [grupoInfo] } = await pool.query(
                 `SELECT tipo, grupo_origem_id, data_inicio, data_fechamento FROM classroom_grupos WHERE id = $1`,
@@ -1478,7 +1490,7 @@ export function createClassroomRouter(deps = {}) {
                                 }
                             }
                         }
-                    } catch (_) { /* mantém valores já resolvidos */ }
+                    } catch (eCw) { if (isInsufficientScope(eCw) || isInvalidGrant(eCw)) throw eCw; /* mantém valores já resolvidos */ }
 
                     /* Fallback: detecta pelo título (ex: "Quizziz — Funções C") */
                     if (!quizizzId && /quiziz{1,2}/i.test(a.atividade_titulo)) {
@@ -1496,6 +1508,7 @@ export function createClassroomRouter(deps = {}) {
                     } while (pageToken);
                     return { atividade: { ...a, _pontosMaxReal: pontosMaxReal, _quizizzId: quizizzId }, submissions: allSubs };
                 } catch (e) {
+                    if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                     return { atividade: { ...a, _pontosMaxReal: null, _quizizzId: null }, submissions: [], erro: e.message };
                 }
             }));
@@ -1635,7 +1648,7 @@ export function createClassroomRouter(deps = {}) {
                     }
                     rosterToken = rosterResp.data.nextPageToken;
                 } while (rosterToken);
-            } catch (_) {}
+            } catch (eRoster) { if (isInsufficientScope(eRoster) || isInvalidGrant(eRoster)) throw eRoster; }
 
             const allAtvIds = results.map(r => r.atividade.atividade_id);
             for (const uid of Object.keys(alunoMap)) {
@@ -1716,6 +1729,7 @@ export function createClassroomRouter(deps = {}) {
                                     pt3 = resp3.data.nextPageToken;
                                 } while (pt3);
                             } catch (eSub) {
+                                if (isInsufficientScope(eSub) || isInvalidGrant(eSub)) throw eSub;
                                 console.error(`[FONTES] Erro subs atv ${fa.atividade_id} courseId=${fc.fonte_curso_id}:`, eSub.message);
                             }
                         }
@@ -1762,6 +1776,7 @@ export function createClassroomRouter(deps = {}) {
                             })),
                         });
                     } catch (e) {
+                        if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                         console.error(`[CLASSROOM] Erro ao carregar fonte ${fc.fonte_grupo_id}:`, e.message);
                     }
                 }
@@ -1861,6 +1876,7 @@ export function createClassroomRouter(deps = {}) {
                                 pt = r.data.nextPageToken;
                             } while (pt);
                         } catch (eSub) {
+                            if (isInsufficientScope(eSub) || isInvalidGrant(eSub)) throw eSub;
                             console.error(`[SUBGRUPO] Erro subs atv ${fa.atividade_id}:`, eSub.message);
                         }
                     }
@@ -1960,11 +1976,8 @@ export function createClassroomRouter(deps = {}) {
                 fontes: fontesInfo,
                 subgruposInjetados,
             });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro no resumo de grupo:', e.message);
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro no resumo de grupo'));
 
     /* ── Sincronizar notas automáticas (draftGrade → assignedGrade) ──
        Para cada atividade do grupo:
@@ -1973,10 +1986,10 @@ export function createClassroomRouter(deps = {}) {
        3. Para essas atividades: publica draftGrade como assignedGrade, e zera quem não tem nenhuma nota
        4. Atividades sem nenhum draftGrade em nenhuma submission → ignora (precisa correção manual)
     ── */
-    router.post('/classroom/groups/:id/sync-quizizz', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/groups/:id/sync-quizizz', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { courseId } = req.body;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório.' });
-        try {
+        {
             const auth = await getAuthenticatedClient(req);
             if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
             const classroom = google.classroom({ version: 'v1', auth });
@@ -2003,10 +2016,7 @@ export function createClassroomRouter(deps = {}) {
                     } while (pageToken);
                 } catch (e) {
                     console.error(`[AUTO-GRADE] Erro ao listar subs de "${atv.atividade_titulo}":`, e.message);
-                    if (isInsufficientScope(e) || isInvalidGrant(e)) {
-                        await deleteTokenForUser(req);
-                        return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
-                    }
+                    if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                     continue;
                 }
 
@@ -2036,29 +2046,19 @@ export function createClassroomRouter(deps = {}) {
                         sincronizados++;
                     } catch (e) {
                         console.error(`[AUTO-GRADE] Erro ao publicar nota ${s.id}:`, e.message);
-                        if (isInsufficientScope(e) || isInvalidGrant(e)) {
-                            await deleteTokenForUser(req);
-                            return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
-                        }
+                        if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                     }
                 }
             }
             console.log(`[AUTO-GRADE] Resultado: ${autoDetectados} auto-corrigidas, ${sincronizados} notas publicadas`);
             res.json({ total: ativs.length, sincronizados, autoDetectados });
-        } catch (e) {
-            console.error('[AUTO-GRADE] Erro:', e.message);
-            if (isInsufficientScope(e) || isInvalidGrant(e)) {
-                await deleteTokenForUser(req);
-                return res.status(403).json({ erro: 'Permissão insuficiente. Reconecte o Google Classroom.', codigo: 'ESCOPO_INSUFICIENTE' });
-            }
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[AUTO-GRADE] Erro'));
 
     /* ── Fechar/Abrir grupo (definir data_fechamento + sync dueDate no Classroom) ── */
-    router.post('/classroom/groups/:id/fechar', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/groups/:id/fechar', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { dataFechamento, syncClassroom } = req.body;
-        try {
+        {
             const { rows: [grupo] } = await pool.query(
                 `SELECT id, curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
             );
@@ -2126,6 +2126,7 @@ export function createClassroomRouter(deps = {}) {
                             console.log(`[CLASSROOM] dueDate definido para atividade ${a.atividade_id} → ${dt.toISOString()}`);
                         } catch (e) {
                             console.error(`[CLASSROOM] Erro ao definir dueDate da atividade ${a.atividade_id}:`, e.message);
+                            if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                             classroomSync.erros.push(`${a.atividade_id}: ${e.message}`);
                         }
                     }
@@ -2133,15 +2134,12 @@ export function createClassroomRouter(deps = {}) {
             }
 
             res.json({ ok: true, dataFechamento: dt.toISOString(), classroomSync });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao fechar grupo:', e.message);
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro ao fechar grupo'));
 
-    router.post('/classroom/groups/:id/abrir', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/groups/:id/abrir', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { restaurarDueDate } = req.body || {};
-        try {
+        {
             const { rows: [grupo] } = await pool.query(
                 `SELECT id, curso_id FROM classroom_grupos WHERE id = $1`, [req.params.id]
             );
@@ -2190,6 +2188,7 @@ export function createClassroomRouter(deps = {}) {
                             console.log(`[CLASSROOM] dueDate restaurado para atividade ${a.atividade_id}`);
                         } catch (e) {
                             console.error(`[CLASSROOM] Erro ao restaurar dueDate da atividade ${a.atividade_id}:`, e.message);
+                            if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                             classroomSync.erros.push(`${a.atividade_id}: ${e.message}`);
                         }
                     }
@@ -2204,20 +2203,17 @@ export function createClassroomRouter(deps = {}) {
             }
 
             res.json({ ok: true, classroomSync });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao abrir grupo:', e.message);
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro ao abrir grupo'));
 
     /* ── Detectar entregas tardias (após data_fechamento do grupo) ── */
-    router.post('/classroom/groups/:id/detectar-tardias', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/groups/:id/detectar-tardias', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { courseId } = req.body;
         if (!courseId) return res.status(400).json({ erro: 'courseId obrigatório' });
         const auth = await getAuthenticatedClient(req);
         if (!auth) return res.status(401).json({ erro: 'Não autenticado.' });
 
-        try {
+        {
             const { rows: [grupo] } = await pool.query(
                 `SELECT id, data_fechamento FROM classroom_grupos WHERE id = $1`, [req.params.id]
             );
@@ -2274,7 +2270,7 @@ export function createClassroomRouter(deps = {}) {
                         }
                         pageToken = studentsResp.data.nextPageToken;
                     } while (pageToken);
-                } catch (_) {}
+                } catch (eStudents) { if (isInsufficientScope(eStudents) || isInvalidGrant(eStudents)) throw eStudents; }
             }
 
             const tardiasComNomes = tardias.map(t => ({
@@ -2302,11 +2298,8 @@ export function createClassroomRouter(deps = {}) {
             }
 
             res.json({ tardias: tardiasComNomes, total: tardiasComNomes.length });
-        } catch (e) {
-            console.error('[CLASSROOM] Erro ao detectar tardias:', e.message);
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro ao detectar tardias'));
 
     /* ── Listar entregas tardias salvas ── */
     router.get('/classroom/groups/:id/tardias', async (req, res) => {
@@ -2399,14 +2392,15 @@ export function createClassroomRouter(deps = {}) {
             } while (pageToken);
             return ids;
         } catch (e) {
+            if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
             console.warn('[CLASSROOM] getCursosIdsDoProfessor falhou:', e.message);
             return null;
         }
     }
 
     /* GET /api/classroom/solicitacoes/badge — contagem de pendentes */
-    router.get('/classroom/solicitacoes/badge', async (req, res) => {
-        try {
+    router.get('/classroom/solicitacoes/badge', withClassroomErrorHandling(async (req, res) => {
+        {
             const isAdmin   = req.userSession?.perfil === 'admin';
             const cursosIds = await getCursosIdsDoProfessor(req);
 
@@ -2427,15 +2421,13 @@ export function createClassroomRouter(deps = {}) {
             }
             const { rows } = await pool.query(q, params);
             res.json({ total: rows[0]?.total ?? 0 });
-        } catch (e) {
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro no badge solicitações'));
 
     /* GET /api/classroom/solicitacoes — lista todas com filtros */
-    router.get('/classroom/solicitacoes', async (req, res) => {
+    router.get('/classroom/solicitacoes', withClassroomErrorHandling(async (req, res) => {
         const { status, cursoId } = req.query;
-        try {
+        {
             const isAdmin   = req.userSession?.perfil === 'admin';
             const cursosIds = await getCursosIdsDoProfessor(req);
 
@@ -2457,18 +2449,16 @@ export function createClassroomRouter(deps = {}) {
             q += ` ORDER BY criado_em DESC`;
             const { rows } = await pool.query(q, params);
             res.json({ solicitacoes: rows });
-        } catch (e) {
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro ao listar solicitações'));
 
     /* POST /api/classroom/solicitacoes/:id/responder */
-    router.post('/classroom/solicitacoes/:id/responder', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/solicitacoes/:id/responder', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { id } = req.params;
         const { acao, resposta } = req.body;  /* acao: 'aprovar' | 'negar' */
         if (!['aprovar', 'negar'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });
 
-        try {
+        {
             const novoStatus = acao === 'aprovar' ? 'aprovada' : 'negada';
             const { rows } = await pool.query(
                 `UPDATE reabertura_solicitacoes
@@ -2499,6 +2489,7 @@ export function createClassroomRouter(deps = {}) {
                             const subs = subsResp.data.studentSubmissions || [];
                             if (subs.length) targetSub = subs[0];
                         } catch (filterErr) {
+                            if (isInsufficientScope(filterErr) || isInvalidGrant(filterErr)) throw filterErr;
                             console.warn('[CLASSROOM] Busca por userId falhou, tentando listagem completa…');
                             const subsResp = await cl.courses.courseWork.studentSubmissions.list({
                                 courseId: sol.curso_id,
@@ -2513,7 +2504,7 @@ export function createClassroomRouter(deps = {}) {
                                         targetSub = s;
                                         break;
                                     }
-                                } catch (_) {}
+                                } catch (profErr) { if (isInsufficientScope(profErr) || isInvalidGrant(profErr)) throw profErr; }
                             }
                         }
 
@@ -2536,6 +2527,7 @@ export function createClassroomRouter(deps = {}) {
                         }
                     }
                 } catch (clErr) {
+                    if (isInsufficientScope(clErr) || isInvalidGrant(clErr)) throw clErr;
                     console.error('[CLASSROOM] Erro ao reabrir no Classroom:', clErr.message);
                 }
             }
@@ -2557,15 +2549,13 @@ export function createClassroomRouter(deps = {}) {
             ).catch(() => {});
 
             res.json({ ok: true, solicitacao: rows[0], classroomReaberto });
-        } catch (e) {
-            res.status(500).json({ erro: e.message });
         }
-    });
+    }, '[CLASSROOM] Erro ao responder solicitação'));
 
     /* POST /api/classroom/solicitacoes/bulk-responder
        Aprova ou nega várias solicitações de uma vez.
        Body: { ids: number[], acao: 'aprovar'|'negar', resposta?: string } */
-    router.post('/classroom/solicitacoes/bulk-responder', requireFuncionalidade('classroom-escrita'), async (req, res) => {
+    router.post('/classroom/solicitacoes/bulk-responder', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {
         const { ids, acao, resposta } = req.body;
         if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ erro: 'IDs inválidos.' });
         if (!['aprovar', 'negar'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });
@@ -2596,7 +2586,7 @@ export function createClassroomRouter(deps = {}) {
                             });
                             const subs = subsResp.data.studentSubmissions || [];
                             if (subs.length) targetSub = subs[0];
-                        } catch (_) {}
+                        } catch (eFilter) { if (isInsufficientScope(eFilter) || isInvalidGrant(eFilter)) throw eFilter; }
 
                         if (targetSub && targetSub.state === 'TURNED_IN') {
                             await cl.courses.courseWork.studentSubmissions.return({
@@ -2608,6 +2598,7 @@ export function createClassroomRouter(deps = {}) {
                             classroomReaberto = true;
                         }
                     } catch (clErr) {
+                        if (isInsufficientScope(clErr) || isInvalidGrant(clErr)) throw clErr;
                         console.error('[CLASSROOM] Bulk reabrir erro:', clErr.message);
                     }
                 }
@@ -2635,9 +2626,9 @@ export function createClassroomRouter(deps = {}) {
             res.json({ ok: true, total: resultados.length, resultados });
         } catch (e) {
             console.error('[CLASSROOM] Bulk responder erro:', e.message);
-            res.status(500).json({ erro: e.message });
+            throw e;
         }
-    });
+    }, '[CLASSROOM] Bulk responder erro'));
 
     /* ════════════════════════════════════════════════════════════
        ACESSO PEDAGOGO — professor concede/revoga acesso

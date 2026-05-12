@@ -101,6 +101,7 @@ async function carregarSolicitacoesCache() {
     } catch (_) {}
 }
 let solicitBadgeCount = 0;   // contagem de pendentes
+let _escopoAvisoAtivo = false; // evita exibir o modal de reconexão em duplicata
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -188,6 +189,10 @@ async function api(path, opts = {}) {
         err.status = r.status;
         err.codigo = data.codigo || null;
         err.body   = data;
+        if (err.status === 403 && err.codigo === 'ESCOPO_INSUFICIENTE' && !_escopoAvisoAtivo) {
+            _escopoAvisoAtivo = true;
+            mostrarAvisoEscopo().finally(() => { _escopoAvisoAtivo = false; });
+        }
         throw err;
     }
     return data;
@@ -1050,7 +1055,7 @@ async function salvarNota(input) {
         setTimeout(() => input.classList.remove('cl-nota-input--salva'), 2000);
     } catch (e) {
         input.value = original;
-        if (isErroEscopo(e)) { await mostrarAvisoEscopo(); return; }
+        if (isErroEscopo(e)) return;
         await notificar('Erro', 'Erro ao salvar nota: ' + e.message, { tipo: 'danger' });
     } finally {
         input.disabled = false;
@@ -1100,7 +1105,7 @@ async function promoverRascunho(btn) {
     } catch (e) {
         btn.disabled    = false;
         btn.textContent = 'Confirmar';
-        if (isErroEscopo(e)) { await mostrarAvisoEscopo(); return; }
+        if (isErroEscopo(e)) return;
         await notificar('Erro', 'Erro ao promover: ' + e.message, { tipo: 'danger' });
     }
 }
@@ -1124,7 +1129,6 @@ async function promoverTodosRascunhos() {
             if (isErroEscopo(e)) {
                 renderNotas();
                 atualizarStats();
-                await mostrarAvisoEscopo();
                 return;
             }
             fail++;
@@ -2550,7 +2554,7 @@ async function syncQuizizzBackground(grupo, atividades = []) {
             await carregarResumoGrupo(grupo);
         }
     } catch (e) {
-        if (isErroEscopo(e)) await mostrarAvisoEscopo();
+        if (isErroEscopo(e)) { /* modal já acionado pelo helper api() */ }
     } finally {
         _syncQuizizzRunning = false;
     }
