@@ -1,6 +1,13 @@
 /* ── EduSync Scanner de Embarque ─────────────────────────────────── */
 'use strict';
 
+/* Registrar Service Worker para suporte offline */
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/pages/passeios/scanner/sw.js', { scope: '/pages/passeios/scanner/' })
+        .then(reg => console.log('[SW] Registrado:', reg.scope))
+        .catch(err => console.warn('[SW] Erro:', err));
+}
+
 const API = '/api';
 const OFFLINE_KEY = 'edusync_scan_offline_queue';
 

@@ -1,0 +1,18 @@
+{
+  "name": "EduSync Scanner de Embarque",
+  "short_name": "EduSync Scanner",
+  "description": "Scanner de QR Code para embarque e desembarque de alunos em passeios escolares",
+  "start_url": "/pages/passeios/scanner/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/shared/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

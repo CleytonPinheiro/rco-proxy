@@ -487,6 +487,8 @@ export async function initializeDatabase() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_token   ON evento_inscricoes(aluno_token)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_onibus  ON evento_inscricoes(onibus_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_inscricoes_payment ON evento_inscricoes(status_pagamento)`);
+        /* foto_url adicionada após criação inicial */
+        await client.query(`ALTER TABLE evento_inscricoes ADD COLUMN IF NOT EXISTS foto_url TEXT`);
 
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {

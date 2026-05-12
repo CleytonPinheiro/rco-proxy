@@ -391,6 +391,30 @@ async function enviarLembretes() {
     } catch (e) { toast('Erro: ' + e.message); }
 }
 
+async function notificarOnibus(tipo) {
+    const labels = { saida: 'Ônibus Saiu', chegada: 'Chegamos!', retorno: 'Estamos Retornando' };
+    const msgs = {
+        saida:   'Notifica todos os responsáveis que o ônibus saiu com os alunos.',
+        chegada: 'Notifica todos os responsáveis que chegamos ao destino com segurança.',
+        retorno: 'Notifica todos os responsáveis que o ônibus está retornando.',
+    };
+    const comTel = (eventoAtual?.inscricoes || []).filter(i => i.contato_responsavel);
+    if (!comTel.length) { toast('Nenhum responsável com telefone cadastrado'); return; }
+
+    const ok = await confirmar(`📢 ${labels[tipo]}`, `${msgs[tipo]}\n\nEnvia WhatsApp para ${comTel.length} responsável(is).`, { confirmLabel: 'Enviar' });
+    if (!ok) return;
+
+    try {
+        const r = await fetch(`${API}/passeios/${eventoAtual.id}/notificar-onibus`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo }),
+        });
+        const d = await r.json();
+        if (!r.ok) { toast('Erro: ' + (d.erro || r.status), 'erro'); return; }
+        toast(d.sem_n8n ? `${labels[tipo]} — simulado (WhatsApp não configurado)` : `${d.enviados} notificação(ões) enviada(s)!`, 'sucesso');
+    } catch (e) { toast('Erro: ' + e.message, 'erro'); }
+}
+
 /* ─────────────────────────────────────────────────────────────────── */
 /*  Modal: PIX                                                         */
 /* ─────────────────────────────────────────────────────────────────── */
@@ -776,6 +800,17 @@ function renderizarPainel(d) {
                     </div>
                 </div>`;
             }).join('')}
+        </div>
+
+        <!-- Notificações de momento -->
+        <div class="ps-painel-notif-moment">
+            <div class="ps-painel-notif-titulo">📢 Notificações de Momento</div>
+            <div class="ps-painel-notif-btns">
+                <button class="ps-btn-notif-saida"   onclick="notificarOnibus('saida')">🚌 Ônibus Saiu</button>
+                <button class="ps-btn-notif-chegada" onclick="notificarOnibus('chegada')">🎉 Chegamos!</button>
+                <button class="ps-btn-notif-retorno" onclick="notificarOnibus('retorno')">🏠 Retornando</button>
+            </div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:6px">Envia WhatsApp para responsáveis de todos os alunos inscritos com telefone cadastrado</div>
         </div>
 
         <!-- Ausentes no retorno -->

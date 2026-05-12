@@ -107,6 +107,20 @@
             border-radius: 10px; padding: 10px 14px;
             font-size: 14px; color: #166534; text-align: center;
         }
+        .avatar img {
+            width: 64px; height: 64px; border-radius: 50%;
+            object-fit: cover;
+        }
+        .btn-notificar {
+            display: block; width: 100%; margin-top: 16px;
+            padding: 14px; border-radius: 12px;
+            background: #3b82f6; color: #fff;
+            font-size: 16px; font-weight: 700;
+            border: none; cursor: pointer;
+            text-align: center;
+        }
+        .btn-notificar:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-notificar.enviado { background: #22c55e; }
     </style>
 </head>
 <body>
@@ -180,7 +194,7 @@
                     <div class="event-info">📍 ${esc(evento.destino)} &nbsp;·&nbsp; 📅 ${fmtData(evento.data)}</div>
                 </div>
                 <div class="card-header">
-                    <div class="avatar">${ini(aluno.nome)}</div>
+                    <div class="avatar">${aluno.foto_url ? `<img src="${esc(aluno.foto_url)}" alt="" onerror="this.parentElement.innerHTML='${ini(aluno.nome)}'">` : ini(aluno.nome)}</div>
                     <div>
                         <div class="aluno-nome">${esc(aluno.nome)}</div>
                         <div class="aluno-turma">${esc(aluno.turma || '')}</div>
@@ -233,11 +247,34 @@
                 ${esc(aluno.restricoes)}
             </div>
             ` : ''}
+
+            <button class="btn-notificar" id="btnNotificar" onclick="notificarEscola('${eventoId}', '${alunoToken}')">
+                📍 Notificar escola — Confirmar ciência
+            </button>
         `;
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('content').style.display = '';
         document.getElementById('content').innerHTML = html;
+    }
+
+    async function notificarEscola(eventoId, token) {
+        const btn = document.getElementById('btnNotificar');
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Enviando…';
+        try {
+            await fetch(`/api/public/passeios/${eventoId}/${token}/notificar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo: 'visualizou' }),
+            });
+            btn.textContent = '✅ Ciência registrada';
+            btn.classList.add('enviado');
+        } catch {
+            btn.disabled = false;
+            btn.textContent = '📍 Notificar escola — Confirmar ciência';
+        }
     }
 
     function mostrarErro(msg) {

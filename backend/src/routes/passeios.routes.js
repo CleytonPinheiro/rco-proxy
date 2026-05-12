@@ -5,7 +5,7 @@ import { Router } from 'express';
 import crypto     from 'crypto';
 import QRCode     from 'qrcode';
 import pkg        from 'pg';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireModulo } from '../middleware/auth.middleware.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -97,6 +97,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                 aluno: {
                     nome:              i.nome_aluno,
                     turma:             i.turma,
+                    foto_url:          i.foto_url || null,
                     restricoes:        i.restricoes_medicas || null,
                     contato_responsavel: i.contato_responsavel,
                     nome_responsavel:  i.nome_responsavel,
@@ -174,11 +175,12 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* ══════════════════════════════════════════════════════════════
-     * CRUD de eventos
+     * CRUD de eventos — requer módulo 'passeios'
      * ══════════════════════════════════════════════════════════════ */
+    const guardPasseios = requireModulo('passeios');
 
     /* GET /api/passeios — listar eventos */
-    router.get('/passeios', async (req, res) => {
+    router.get('/passeios', guardPasseios, async (req, res) => {
         try {
             const { rows } = await pool.query(`
                 SELECT e.*,
@@ -193,7 +195,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* POST /api/passeios — criar evento */
-    router.post('/passeios', async (req, res) => {
+    router.post('/passeios', guardPasseios, async (req, res) => {
         const {
             nome, destino, data_evento, valor_aluno = 0, prazo_pagamento,
             descricao, turmas = [], pix_chave, pix_nome, pix_cidade,
@@ -240,7 +242,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* GET /api/passeios/:id — detalhe do evento */
-    router.get('/passeios/:id', async (req, res) => {
+    router.get('/passeios/:id', guardPasseios, async (req, res) => {
         const id = parseInt(req.params.id);
         try {
             const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [id]);
@@ -260,12 +262,13 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
-    /* PUT /api/passeios/:id — atualizar evento */
-    router.put('/passeios/:id', async (req, res) => {
+    /* PUT /api/passeios/:id — atualizar evento (inclui config de ônibus) */
+    router.put('/passeios/:id', guardPasseios, async (req, res) => {
         const id = parseInt(req.params.id);
         const {
             nome, destino, data_evento, valor_aluno, prazo_pagamento,
             descricao, turmas, pix_chave, pix_nome, pix_cidade, status,
+            onibus = null, // array de { id?, nome, capacidade, monitor_nome, monitor_telefone, cor }
         } = req.body;
 
         const client = await pool.connect();
@@ -297,6 +300,41 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                 await client.query('ROLLBACK');
                 return res.status(404).json({ erro: 'Evento não encontrado' });
             }
+
+            /* Sincronizar ônibus quando payload enviado */
+            if (Array.isArray(onibus)) {
+                /* IDs existentes no payload (com id) */
+                const enviados   = onibus.filter(o => o.id).map(o => parseInt(o.id));
+                /* Remover ônibus que não estão mais na lista */
+                const { rows: existentes } = await client.query(
+                    `SELECT id FROM evento_onibus WHERE evento_id=$1`, [id]);
+                for (const ex of existentes) {
+                    if (!enviados.includes(ex.id)) {
+                        await client.query(`UPDATE evento_inscricoes SET onibus_id=NULL WHERE onibus_id=$1`, [ex.id]);
+                        await client.query(`DELETE FROM evento_onibus WHERE id=$1`, [ex.id]);
+                    }
+                }
+                /* Upsert ônibus */
+                for (let i = 0; i < onibus.length; i++) {
+                    const ob = onibus[i];
+                    if (ob.id) {
+                        await client.query(`
+                            UPDATE evento_onibus SET
+                                nome=$1, capacidade=$2, monitor_nome=$3, monitor_telefone=$4, cor=$5, numero=$6
+                            WHERE id=$7 AND evento_id=$8
+                        `, [ob.nome || null, parseInt(ob.capacidade) || 40,
+                            ob.monitor_nome || null, ob.monitor_telefone || null,
+                            ob.cor || '#3b82f6', i + 1, parseInt(ob.id), id]);
+                    } else {
+                        await client.query(`
+                            INSERT INTO evento_onibus (evento_id, numero, nome, capacidade, monitor_nome, monitor_telefone, cor)
+                            VALUES ($1,$2,$3,$4,$5,$6,$7)
+                        `, [id, i + 1, ob.nome || null, parseInt(ob.capacidade) || 40,
+                            ob.monitor_nome || null, ob.monitor_telefone || null, ob.cor || '#3b82f6']);
+                    }
+                }
+            }
+
             await client.query('COMMIT');
             res.json(ev);
         } catch (e) {
@@ -306,7 +344,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* DELETE /api/passeios/:id — remover evento */
-    router.delete('/passeios/:id', async (req, res) => {
+    router.delete('/passeios/:id', guardPasseios, async (req, res) => {
         const id = parseInt(req.params.id);
         try {
             await pool.query('DELETE FROM eventos WHERE id=$1', [id]);
@@ -319,7 +357,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
      * ══════════════════════════════════════════════════════════════ */
 
     /* POST /api/passeios/:id/onibus — adicionar ônibus */
-    router.post('/passeios/:id/onibus', async (req, res) => {
+    router.post('/passeios/:id/onibus', guardPasseios, async (req, res) => {
         const id = parseInt(req.params.id);
         const { nome, capacidade = 40, monitor_nome, monitor_telefone, cor = '#3b82f6' } = req.body;
         try {
@@ -336,7 +374,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* PUT /api/passeios/:id/onibus/:obId — editar ônibus */
-    router.put('/passeios/:id/onibus/:obId', async (req, res) => {
+    router.put('/passeios/:id/onibus/:obId', guardPasseios, async (req, res) => {
         const obId = parseInt(req.params.obId);
         const { nome, capacidade, monitor_nome, monitor_telefone, cor } = req.body;
         try {
@@ -357,7 +395,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* DELETE /api/passeios/:id/onibus/:obId — remover ônibus */
-    router.delete('/passeios/:id/onibus/:obId', async (req, res) => {
+    router.delete('/passeios/:id/onibus/:obId', guardPasseios, async (req, res) => {
         const obId = parseInt(req.params.obId);
         try {
             await pool.query(`UPDATE evento_inscricoes SET onibus_id=NULL WHERE onibus_id=$1`, [obId]);
@@ -371,7 +409,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
      * ══════════════════════════════════════════════════════════════ */
 
     /* POST /api/passeios/:id/inscrever — matricular alunos de turmas */
-    router.post('/passeios/:id/inscrever', async (req, res) => {
+    router.post('/passeios/:id/inscrever', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         const { codturmas = [] } = req.body; // array of codturma ints
 
@@ -382,12 +420,12 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
             const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
             if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
 
-            /* Busca alunos do Supabase */
+            /* Busca alunos do Supabase (inclui foto se existir) */
             let todosAlunos = [];
             for (const ct of codturmas) {
                 const { data, error } = await supabase
                     .from('alunos')
-                    .select('codmatrizaluno,nome,turma,codturma')
+                    .select('codmatrizaluno,nome,turma,codturma,foto')
                     .eq('codturma', ct)
                     .order('nome');
                 if (!error && data) todosAlunos.push(...data);
@@ -407,10 +445,11 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                     const token = gerarToken();
                     await client.query(`
                         INSERT INTO evento_inscricoes
-                            (evento_id, codmatrizaluno, nome_aluno, turma, codturma, aluno_token)
-                        VALUES ($1,$2,$3,$4,$5,$6)
+                            (evento_id, codmatrizaluno, nome_aluno, turma, codturma, aluno_token, foto_url)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7)
                         ON CONFLICT (evento_id, codmatrizaluno) DO NOTHING
-                    `, [eventoId, a.codmatrizaluno, a.nome, a.turma || '', a.codturma || null, token]);
+                    `, [eventoId, a.codmatrizaluno, a.nome, a.turma || '', a.codturma || null, token,
+                        a.foto || null]);
                     inseridos++;
                 }
 
@@ -436,7 +475,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* POST /api/passeios/:id/inscrever-avulso — inscrever aluno avulso por registro */
-    router.post('/passeios/:id/inscrever-avulso', async (req, res) => {
+    router.post('/passeios/:id/inscrever-avulso', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         const { codmatrizaluno, nome_aluno, turma, codturma } = req.body;
         if (!codmatrizaluno || !nome_aluno) return res.status(400).json({ erro: 'codmatrizaluno e nome_aluno são obrigatórios' });
@@ -457,7 +496,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* DELETE /api/passeios/:id/inscricoes/:inscId — remover inscrição */
-    router.delete('/passeios/:id/inscricoes/:inscId', async (req, res) => {
+    router.delete('/passeios/:id/inscricoes/:inscId', guardPasseios, async (req, res) => {
         const inscId = parseInt(req.params.inscId);
         try {
             await pool.query(`DELETE FROM evento_inscricoes WHERE id=$1`, [inscId]);
@@ -466,7 +505,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* PUT /api/passeios/:id/inscricoes/:inscId — editar dados da inscrição */
-    router.put('/passeios/:id/inscricoes/:inscId', async (req, res) => {
+    router.put('/passeios/:id/inscricoes/:inscId', guardPasseios, async (req, res) => {
         const inscId = parseInt(req.params.inscId);
         const { restricoes_medicas, contato_responsavel, nome_responsavel } = req.body;
         try {
@@ -483,7 +522,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* POST /api/passeios/:id/inscricoes/:inscId/pagar — confirmar pagamento */
-    router.post('/passeios/:id/inscricoes/:inscId/pagar', async (req, res) => {
+    router.post('/passeios/:id/inscricoes/:inscId/pagar', guardPasseios, async (req, res) => {
         const inscId = parseInt(req.params.inscId);
         const { obs } = req.body;
         const quem = req.userSession?.nome || 'sistema';
@@ -502,7 +541,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* POST /api/passeios/:id/inscricoes/:inscId/reverter — reverter pagamento */
-    router.post('/passeios/:id/inscricoes/:inscId/reverter', async (req, res) => {
+    router.post('/passeios/:id/inscricoes/:inscId/reverter', guardPasseios, async (req, res) => {
         const inscId = parseInt(req.params.inscId);
         try {
             const { rows: [insc] } = await pool.query(`
@@ -519,7 +558,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* GET /api/passeios/:id/pix/:inscId — gerar PIX QR do aluno */
-    router.get('/passeios/:id/pix/:inscId', async (req, res) => {
+    router.get('/passeios/:id/pix/:inscId', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         const inscId   = parseInt(req.params.inscId);
         try {
@@ -549,7 +588,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* POST /api/passeios/:id/lembrete — WhatsApp para pendentes */
-    router.post('/passeios/:id/lembrete', async (req, res) => {
+    router.post('/passeios/:id/lembrete', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         const { mensagem_extra } = req.body;
         try {
@@ -617,7 +656,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* POST /api/passeios/:id/distribuir — distribuir alunos nos ônibus */
-    router.post('/passeios/:id/distribuir', async (req, res) => {
+    router.post('/passeios/:id/distribuir', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         try {
             const { rows: onibus } = await pool.query(
@@ -666,7 +705,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* PUT /api/passeios/:id/inscricoes/:inscId/onibus — mover aluno de ônibus */
-    router.put('/passeios/:id/inscricoes/:inscId/onibus', async (req, res) => {
+    router.put('/passeios/:id/inscricoes/:inscId/onibus', guardPasseios, async (req, res) => {
         const inscId = parseInt(req.params.inscId);
         const { onibus_id } = req.body;
         try {
@@ -679,7 +718,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* GET /api/passeios/:id/pulseiras — dados para impressão de pulseiras */
-    router.get('/passeios/:id/pulseiras', async (req, res) => {
+    router.get('/passeios/:id/pulseiras', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         const { onibus_id } = req.query;
         try {
@@ -719,7 +758,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
     });
 
     /* GET /api/passeios/:id/painel — painel ao vivo do evento */
-    router.get('/passeios/:id/painel', async (req, res) => {
+    router.get('/passeios/:id/painel', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         try {
             const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
@@ -761,6 +800,89 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                 geral: geral[0],
                 ausentes_retorno,
             });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/passeios/:id/notificar-onibus — notificações de momento: saída/chegada/retorno */
+    router.post('/passeios/:id/notificar-onibus', guardPasseios, async (req, res) => {
+        const eventoId = parseInt(req.params.id);
+        const { tipo, onibus_id, mensagem_extra } = req.body;
+        // tipo: saida | chegada | retorno
+
+        const msgs = {
+            saida:   '🚌 O ônibus *{onibus}* saiu com os alunos! Acompanhe em tempo real.',
+            chegada: '🎉 O ônibus *{onibus}* chegou ao destino com segurança!',
+            retorno: '🏠 O ônibus *{onibus}* está retornando. Aguardem no ponto de chegada.',
+        };
+        if (!msgs[tipo]) return res.status(400).json({ erro: 'tipo inválido. Use: saida, chegada, retorno' });
+
+        try {
+            const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
+            if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
+
+            /* Buscar alunos do ônibus especificado (ou todos com telefone) */
+            let q = `SELECT ei.*, eo.nome AS onibus_nome, eo.numero AS onibus_numero
+                     FROM evento_inscricoes ei
+                     LEFT JOIN evento_onibus eo ON eo.id = ei.onibus_id
+                     WHERE ei.evento_id=$1 AND ei.contato_responsavel IS NOT NULL`;
+            const params = [eventoId];
+            if (onibus_id) { q += ` AND ei.onibus_id=$2`; params.push(parseInt(onibus_id)); }
+
+            const { rows: inscritos } = await pool.query(q, params);
+
+            const webhookUrl = await getConfig('n8n_webhook_url');
+            const token      = await getConfig('comunicados_token');
+            const baseUrl    = process.env.REPLIT_DEV_DOMAIN
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : 'http://localhost:5000';
+
+            const resultados = [];
+            for (const insc of inscritos) {
+                const onibusLabel = insc.onibus_nome || `Ônibus ${insc.onibus_numero}` || 'Ônibus';
+                const pagLink = `${baseUrl}/p/${eventoId}/${insc.aluno_token}`;
+                const mensagem = [
+                    msgs[tipo].replace('{onibus}', onibusLabel),
+                    `👤 Aluno: ${insc.nome_aluno}`,
+                    `📅 Evento: ${ev.nome}`,
+                    mensagem_extra || null,
+                    `\n📎 Acompanhe: ${pagLink}`,
+                ].filter(Boolean).join('\n');
+
+                if (webhookUrl) {
+                    try {
+                        await fetch(webhookUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ telefone: insc.contato_responsavel, mensagem, token,
+                                aluno: insc.nome_aluno, evento: ev.nome, tipo }),
+                        });
+                        resultados.push({ id: insc.id, ok: true });
+                    } catch (err) {
+                        resultados.push({ id: insc.id, ok: false, erro: err.message });
+                    }
+                } else {
+                    console.log(`[PASSEIOS-NOTIF-${tipo.toUpperCase()}] Sem N8n. Para ${insc.contato_responsavel}: ${mensagem.slice(0,80)}...`);
+                    resultados.push({ id: insc.id, ok: true, simulado: true });
+                }
+            }
+
+            res.json({ ok: true, tipo, enviados: resultados.length, sem_n8n: !webhookUrl, resultados });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/public/passeios/:eventoId/:alunoToken/notificar — responsável notifica chegada/visualização (sem auth) */
+    publicRouter.post('/public/passeios/:eventoId/:alunoToken/notificar', async (req, res) => {
+        const { eventoId, alunoToken } = req.params;
+        const { tipo = 'visualizou' } = req.body; // visualizou | confirmou
+        try {
+            const { rows } = await pool.query(
+                `SELECT ei.nome_aluno, e.nome AS evento_nome
+                 FROM evento_inscricoes ei JOIN eventos e ON e.id=ei.evento_id
+                 WHERE ei.evento_id=$1 AND ei.aluno_token=$2`, [eventoId, alunoToken]);
+            if (!rows.length) return res.status(404).json({ erro: 'Não encontrado' });
+            /* Log only — no sensitive action from public endpoint */
+            console.log(`[PASSEIOS-PUBLIC-NOTIF] ${tipo}: ${rows[0].nome_aluno} / ${rows[0].evento_nome}`);
+            res.json({ ok: true });
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
