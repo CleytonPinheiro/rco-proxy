@@ -11,7 +11,13 @@ import { fileURLToPath } from 'url';
 import { getBrowser }  from '../../auth-puppeteer.js';
 import { requireModulo } from '../middleware/auth.middleware.js';
 
+import { mkdirSync } from 'fs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/* ── Garantir que o diretório de uploads exista ─────────────────── */
+const _uploadsDir = path.resolve(__dirname, '../../../uploads/comprovantes');
+mkdirSync(_uploadsDir, { recursive: true });
 
 /* ── Multer: upload de comprovantes ─────────────────────────────── */
 const _uploadStorage = multer.diskStorage({
@@ -848,7 +854,7 @@ export function createPasseiosRouter({ supabase, supabaseAdmin }) {
                     <div class="ps-info">
                         <div class="ps-nome">${i.nome_aluno}</div>
                         <div class="ps-turma">${i.turma || ''} &bull; ${i.label}</div>
-                        ${i.restricoes ? `<div class="ps-rest">⚠ ${i.restricoes}</div>` : ''}
+                        ${i.restricoes_medicas ? `<div class="ps-rest">⚠ ${i.restricoes_medicas}</div>` : ''}
                     </div>
                     <div class="ps-qr"><img src="${i.qrDataUrl}" width="72" height="72" alt="QR"></div>
                 </div>`).join('');
@@ -983,7 +989,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
     });
 
     /* GET /api/passeios/comprovante/:filename — download autenticado de comprovante */
-    router.get('/passeios/comprovante/:filename', async (req, res) => {
+    router.get('/passeios/comprovante/:filename', guardPasseios, async (req, res) => {
         const filename = path.basename(req.params.filename); // sanitize — no path traversal
         const filePath = path.resolve(__dirname, '../../../uploads/comprovantes', filename);
         res.sendFile(filePath, err => {
