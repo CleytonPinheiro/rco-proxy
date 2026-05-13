@@ -741,3 +741,127 @@
     font-size: 11px;
     color: var(--text-muted, #999);
 }
+
+/* ── GradePen Connect Banner ──────────────────────────────────────── */
+.gp-connect-banner {
+    margin: 12px 24px 0;
+    border-radius: 10px;
+    border: 1.5px solid var(--border, #e5e7eb);
+    background: var(--surface, #fff);
+    overflow: hidden;
+    transition: border-color .2s, background .2s;
+}
+.gp-connect-banner[data-estado="desconectado"] {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+.dark .gp-connect-banner[data-estado="desconectado"] {
+    background: #292310;
+    border-color: #b45309;
+}
+.gp-connect-banner[data-estado="conectado"] {
+    border-color: #22c55e;
+    background: #f0fdf4;
+}
+.dark .gp-connect-banner[data-estado="conectado"] {
+    background: #0b1f12;
+    border-color: #16a34a;
+}
+.gp-connect-banner[data-estado="conectando"] {
+    border-color: #6366f1;
+    background: #eef2ff;
+}
+.dark .gp-connect-banner[data-estado="conectando"] {
+    background: #1a1a3e;
+    border-color: #4f46e5;
+}
+.gp-connect-inner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+}
+.gp-connect-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+.gp-connect-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.gp-connect-info strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text, #111);
+}
+.gp-connect-info span {
+    font-size: 12px;
+    color: var(--text-muted, #666);
+}
+.gp-connect-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.gp-btn-conectar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #4285F4;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, transform .1s, box-shadow .15s;
+}
+.gp-btn-conectar:hover:not(:disabled) {
+    background: #2b6de4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66,133,244,.35);
+}
+.gp-btn-conectar:disabled { opacity: .6; cursor: default; }
+.gp-btn-desconectar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: transparent;
+    color: var(--text-muted, #666);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.gp-btn-desconectar:hover { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
+.gp-connect-spinner {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6366f1;
+    font-weight: 500;
+}
+.gp-spinner-anim {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #c7d2fe;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: gp-spin .7s linear infinite;
+}
+@keyframes gp-spin { to { transform: rotate(360deg); } }
+@media (max-width: 600px) {
+    .gp-connect-banner { margin: 8px 12px 0; }
+    .gp-connect-inner { flex-wrap: wrap; gap: 10px; }
+    .gp-connect-icon { display: none; }
+}

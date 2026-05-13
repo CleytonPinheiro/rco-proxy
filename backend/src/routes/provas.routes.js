@@ -779,6 +779,37 @@ async function podeAcessarCurso(email, cursoId, teacherAuth) {
 export function createProvasRouter({ getClassroomAuth } = {}) {
     const router = Router();
 
+    /* ── GradePen: status e conexão manual ───────────────────────────── */
+    router.get('/provas/gradepen/status', async (req, res) => {
+        if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
+        const s = getGradePenStats();
+        res.json({
+            conectado:  s.pageAtiva,
+            expira:     s.pageExpira,
+            conectando: s.loginEmAndamento,
+            pingOk:     s.ultimoPingOk,
+        });
+    });
+
+    router.post('/provas/gradepen/connect', async (req, res) => {
+        if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            await gpLogin();
+            const s = getGradePenStats();
+            res.json({ ok: true, expira: s.pageExpira });
+        } catch (e) {
+            res.status(500).json({ ok: false, erro: e.message });
+        }
+    });
+
+    router.delete('/provas/gradepen/connect', async (req, res) => {
+        if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
+        /* Invalida a sessão GradePen (força re-login na próxima requisição) */
+        _gpPage    = null;
+        _gpPageExp = 0;
+        res.json({ ok: true });
+    });
+
     /* Lista provas de um curso */
     router.get('/classroom/provas', async (req, res) => {
         const cursoId = req.query.courseId;

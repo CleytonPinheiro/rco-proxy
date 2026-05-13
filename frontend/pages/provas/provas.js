@@ -159,6 +159,102 @@ function prvRefreshCustomSelect(selectEl) {
 
 /* ── /Custom Dropdown Helper ────────────────────────────────────── */
 
+/* ════════════════════════════════════════════════════════════════════
+ *  GRADEPEN — CONEXÃO
+ * ═══════════════════════════════════════════════════════════════════ */
+let _gpStatusTimer = null;
+
+async function gpCheckStatus() {
+    try {
+        const r = await fetch('/api/provas/gradepen/status', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        gpUpdateBanner(await r.json());
+    } catch { /* silencioso */ }
+}
+
+function gpUpdateBanner(d) {
+    const banner   = $('gpConnectBanner');
+    const title    = $('gpConnectTitle');
+    const desc     = $('gpConnectDesc');
+    const btnCon   = $('gpBtnConectar');
+    const btnDes   = $('gpBtnDesconectar');
+    const spinner  = $('gpConnectSpinner');
+    if (!banner) return;
+    banner.style.display = '';
+
+    if (d.conectando) {
+        banner.dataset.estado = 'conectando';
+        title.textContent    = 'GradePen';
+        desc.textContent     = 'Conectando… aguarde o login via Google.';
+        btnCon.style.display = 'none';
+        btnDes.style.display = 'none';
+        spinner.style.display = '';
+    } else if (d.conectado) {
+        banner.dataset.estado = 'conectado';
+        const exp = d.expira
+            ? new Date(d.expira).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : '';
+        title.textContent    = 'GradePen: Conectado';
+        desc.textContent     = exp ? `Sessão válida até ${exp}` : 'Sessão ativa';
+        btnCon.style.display = 'none';
+        btnDes.style.display = '';
+        spinner.style.display = 'none';
+    } else {
+        banner.dataset.estado = 'desconectado';
+        title.textContent    = 'GradePen: Desconectado';
+        desc.textContent     = 'Conecte com sua conta Google para importar gabaritos automaticamente.';
+        btnCon.style.display = '';
+        btnCon.disabled      = false;
+        btnDes.style.display = 'none';
+        spinner.style.display = 'none';
+    }
+}
+
+async function gpConectar() {
+    const btnCon  = $('gpBtnConectar');
+    const spinner = $('gpConnectSpinner');
+    btnCon.disabled      = true;
+    btnCon.style.display = 'none';
+    spinner.style.display = '';
+    gpUpdateBanner({ conectando: true });
+
+    /* Polling de status enquanto o Puppeteer faz o login em background */
+    _gpStatusTimer = setInterval(gpCheckStatus, 3000);
+
+    try {
+        const r = await fetch('/api/provas/gradepen/connect', {
+            method: 'POST',
+            credentials: 'same-origin',
+        });
+        clearInterval(_gpStatusTimer);
+        const d = await r.json();
+        if (d.ok) {
+            gpUpdateBanner({ conectado: true, expira: d.expira });
+            await notificar('GradePen conectado!',
+                'Gabaritos serão importados automaticamente ao criar uma prova.', { tipo: 'ok' });
+        } else {
+            gpUpdateBanner({ conectado: false });
+            await notificar('Erro ao conectar ao GradePen',
+                d.erro || 'Verifique se GOOGLE_EMAIL e GOOGLE_PASSWORD estão configurados e se a conta não tem 2FA.',
+                { tipo: 'danger' });
+        }
+    } catch (e) {
+        clearInterval(_gpStatusTimer);
+        gpUpdateBanner({ conectado: false });
+        await notificar('Erro ao conectar ao GradePen', e.message, { tipo: 'danger' });
+    }
+}
+
+async function gpDesconectar() {
+    const ok = await confirmar(
+        'A próxima operação de gabarito vai reconectar automaticamente.',
+        { titulo: 'Desconectar GradePen?', confirmLabel: 'Desconectar', cancelLabel: 'Cancelar', tipo: 'danger', icone: '🔌' }
+    );
+    if (!ok) return;
+    await fetch('/api/provas/gradepen/connect', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+    gpUpdateBanner({ conectado: false });
+}
+
 async function init() {
     /* Initialise custom selects early so observers are in place before data loads */
     prvCreateCustomSelect($('prvTurma'));
@@ -166,6 +262,11 @@ async function init() {
     prvCreateCustomSelect($('prvfFoto'));
     prvCreateCustomSelect($('prvfTipo'));
     prvCreateCustomSelect($('prvfTrimestre'));
+
+    /* Verifica status do GradePen e exibe o banner */
+    gpCheckStatus();
+    /* Atualiza o banner a cada 60s (reflete reconexão automática) */
+    setInterval(gpCheckStatus, 60_000);
 
     try {
         const cfgRes = await fetch('/api/classroom/provas/ui-config', { credentials: 'include' });
@@ -1457,6 +1558,8 @@ function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+window.gpConectar      = gpConectar;
+window.gpDesconectar   = gpDesconectar;
 window.onTurmaChange   = onTurmaChange;
 window.onCursoChange   = onCursoChange;
 window.prvAtualizarNome = prvAtualizarNome;
