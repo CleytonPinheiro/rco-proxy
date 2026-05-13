@@ -441,6 +441,7 @@ async function onTurmaChange() {
     if (!turma) {
         selDisc.innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
         selDisc.disabled = true;
+        acRefreshCustomSelect($('acProva'));
         return;
     }
 
@@ -448,6 +449,7 @@ async function onTurmaChange() {
     selDisc.innerHTML = '<option value="">Selecione uma disciplina…</option>' +
         filtrados.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(_nomeDisciplina(c.nome))}</option>`).join('');
     selDisc.disabled = false;
+    acRefreshCustomSelect($('acProva'));
 }
 
 async function onCursoChange() {
@@ -462,6 +464,7 @@ async function onCursoChange() {
 
     if (!cursoAtual) {
         provasSel.innerHTML = '<option value="">Selecione uma prova…</option>';
+        acRefreshCustomSelect($('acProva'));
         return;
     }
 
@@ -480,6 +483,7 @@ async function onCursoChange() {
         provasSel.innerHTML = '<option value="">Erro ao carregar provas</option>';
         provasSel.disabled = false;
     }
+    acRefreshCustomSelect($('acProva'));
 }
 
 async function onProvaChange() {
