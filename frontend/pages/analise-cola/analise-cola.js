@@ -1303,3 +1303,19 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
         </div>`;
     wrap.style.display = '';
 }
+
+async function excluirSubmissaoManual(provaId, subId, alunoEmail) {
+    if (!confirm(`Excluir a submissão manual de "${alunoEmail}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaId}/submissoes/${subId}/manual`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao excluir.');
+        await onProvaChange();
+    } catch (e) {
+        if (typeof notificar === 'function') await notificar('Erro ao excluir submissão', e.message, { tipo: 'danger' });
+        else alert(e.message);
+    }
+}
