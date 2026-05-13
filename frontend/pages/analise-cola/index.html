@@ -72,35 +72,51 @@
         </div>
     </main>
 
-    <!-- Modal Confrontar Gabarito (professor) -->
+    <!-- Modal Confrontar Gabarito (dois painéis de bubble sheet) -->
     <div id="acRegModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalRegistro()">
         <div class="modal-box modal-box-xl">
             <div class="modal-header">
-                <h3>🔍 Confrontar gabarito</h3>
+                <h3>🔍 Confrontar dois gabaritos</h3>
                 <button class="modal-close" onclick="fecharModalRegistro()">✕</button>
             </div>
             <div class="modal-body">
                 <p class="ac-reg-instrucao">
-                    Selecione a variante cujos alunos serão analisados e a variante cujo gabarito servirá de padrão de comparação.
-                    Identifica cola entre variantes: se um aluno da variante A respondeu igual ao gabarito da variante B, ele provavelmente viu a prova errada.
+                    Marque as respostas de dois alunos como se fosse cada um deles no portal.
+                    O sistema compara questão a questão e destaca coincidências — especialmente erros iguais, o sinal mais forte de cola.
                     Nenhum dado é salvo.
                 </p>
-                <div class="ac-reg-selects-grid">
-                    <div>
-                        <label for="acRegVarianteAlunos" class="form-label">Variante dos alunos</label>
-                        <select id="acRegVarianteAlunos" class="form-select" onchange="onVarianteRegistroChange()">
+                <div class="ac-reg-dois-paineis">
+                    <!-- Painel A -->
+                    <div class="ac-reg-painel">
+                        <div class="ac-reg-painel-titulo ac-reg-painel-a">👤 Aluno A</div>
+                        <label class="form-label" for="acRegVarianteA">Variante</label>
+                        <select id="acRegVarianteA" class="form-select" onchange="onVarianteAChange()">
                             <option value="">Selecione a variante…</option>
                         </select>
+                        <div id="acRegBolhasWrapA" style="display:none">
+                            <div class="ac-reg-bolhas-titulo">Marque as respostas do Aluno A:</div>
+                            <div id="acRegBolhasGridA" class="ac-reg-bolhas-grid"></div>
+                        </div>
+                    </div>
+                    <!-- Painel B -->
+                    <div class="ac-reg-painel">
+                        <div class="ac-reg-painel-titulo ac-reg-painel-b">👤 Aluno B</div>
+                        <label class="form-label" for="acRegVarianteB">Variante</label>
+                        <select id="acRegVarianteB" class="form-select" onchange="onVarianteBChange()">
+                            <option value="">Selecione a variante…</option>
+                        </select>
+                        <div id="acRegBolhasWrapB" style="display:none">
+                            <div class="ac-reg-bolhas-titulo">Marque as respostas do Aluno B:</div>
+                            <div id="acRegBolhasGridB" class="ac-reg-bolhas-grid"></div>
+                        </div>
                     </div>
                 </div>
-                <div id="acRegGabaritoContainer" class="ac-reg-gabaritos-container"></div>
-                <button type="button" id="acRegAdicionarGabaritoBtn" class="ac-btn ac-btn-sm" onclick="adicionarGabarito()" style="margin-top:8px">+ Adicionar gabarito</button>
                 <div id="acRegStatus" class="ac-reg-status" style="display:none"></div>
                 <div id="acRegResultados" style="display:none" class="ac-reg-resultados"></div>
             </div>
             <div class="modal-footer">
                 <button class="ac-btn" onclick="fecharModalRegistro()">Fechar</button>
-                <button class="ac-btn ac-btn-primary" id="acRegSalvarBtn" onclick="salvarRegistroManual()" disabled>🔍 Confrontar gabaritos</button>
+                <button class="ac-btn ac-btn-primary" id="acRegSalvarBtn" onclick="salvarRegistroManual()" disabled>🔍 Confrontar</button>
             </div>
         </div>
     </div>

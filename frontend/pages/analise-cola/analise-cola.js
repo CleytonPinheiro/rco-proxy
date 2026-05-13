@@ -1049,74 +1049,102 @@ async function salvarFlagNota(alunoA, alunoB, notaId) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
- *  REGISTRO MANUAL DE RESPOSTAS
+ *  CONFRONTAR DOIS GABARITOS (dois bubble sheets independentes)
  * ═════════════════════════════════════════════════════════════════ */
 
-function _buildGabaritoOpts(variantes) {
-    return '<option value="">Selecione a variante…</option>' +
-        variantes.map(v => `<option value="${v.id}">${escapeHtml(v.codigo)}</option>`).join('');
+let _regMarcacoesA = {};
+let _regMarcacoesB = {};
+let _regGabaritoA  = null;
+let _regGabaritoB  = null;
+
+const _BOLHA_LETRAS = ['a','b','c','d','e','f','g'];
+
+function _renderBolhasSheet(gridId, wrapId, gabarito, lado) {
+    const grid = $(gridId);
+    const wrap = $(wrapId);
+    if (!grid || !wrap) return;
+    if (!gabarito || gabarito.length === 0) { wrap.style.display = 'none'; return; }
+
+    const marcacoes = lado === 'A' ? _regMarcacoesA : _regMarcacoesB;
+    grid.innerHTML = '';
+
+    for (const q of gabarito) {
+        if (q.tipo === 'discursiva') continue;
+        const qStr = String(q.questao);
+        const qDiv = document.createElement('div');
+        qDiv.className = 'ac-bolha-questao';
+
+        if (q.tipo === 'multipla') {
+            const n = q.n_alternativas || 5;
+            const letras = _BOLHA_LETRAS.slice(0, n);
+            qDiv.innerHTML = `<span class="ac-bolha-num">Q${q.questao}</span>` +
+                letras.map(l => {
+                    const sel = marcacoes[qStr] === l;
+                    return `<button type="button" class="ac-bolha${sel ? ' ac-bolha-sel' : ''}" onclick="marcarBolha${lado}('${qStr}','${l}')">${l.toUpperCase()}</button>`;
+                }).join('');
+        } else if (q.tipo === 'vf') {
+            const n = Array.isArray(q.correta) ? q.correta.length : 4;
+            qDiv.innerHTML = `<span class="ac-bolha-num">Q${q.questao}</span>` +
+                Array.from({length: n}, (_, i) => {
+                    const key = `${qStr}_${i}`;
+                    const val = marcacoes[key];
+                    return `<span class="ac-bolha-vf-wrap">${i + 1}:<button type="button" class="ac-bolha ac-bolha-vf${val === 'V' ? ' ac-bolha-sel' : ''}" onclick="marcarBolha${lado}('${qStr}_${i}','V')">V</button><button type="button" class="ac-bolha ac-bolha-vf${val === 'F' ? ' ac-bolha-sel' : ''}" onclick="marcarBolha${lado}('${qStr}_${i}','F')">F</button></span>`;
+                }).join('');
+        }
+
+        grid.appendChild(qDiv);
+    }
+    wrap.style.display = '';
 }
 
-function _renderGabaritoSelects() {
-    const variantes = (_analise && _analise.variantes) || [];
-    const container = $('acRegGabaritoContainer');
-    if (!container) return;
-    container.innerHTML = '';
-    const count = _gabaritoIds.length;
-    _gabaritoIds.forEach((val, idx) => {
-        const canRemove = idx >= 1;
-        const row = document.createElement('div');
-        row.className = 'ac-reg-gabarito-row';
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px';
-        const labelText = idx === 0 ? 'Comparar com gabarito de' : `Gabarito ${idx + 1}`;
-        row.innerHTML = `
-            <div style="flex:1">
-                <label class="form-label">${labelText}</label>
-                <select class="form-select ac-reg-gab-select" data-idx="${idx}" onchange="onVarianteRegistroChange()">
-                    ${_buildGabaritoOpts(variantes)}
-                </select>
-            </div>
-            ${canRemove ? `<button type="button" class="ac-btn ac-btn-sm" style="margin-top:20px;flex-shrink:0" onclick="removerGabarito(${idx})" title="Remover este gabarito">✕</button>` : ''}
-        `;
-        container.appendChild(row);
-        row.querySelector('select').value = val || '';
-    });
-    const addBtn = $('acRegAdicionarGabaritoBtn');
-    if (addBtn) addBtn.style.display = count < 3 ? '' : 'none';
+function _toggleMarca(marcacoes, qStr, resp) {
+    if (marcacoes[qStr] === resp) delete marcacoes[qStr];
+    else marcacoes[qStr] = resp;
 }
 
-let _gabaritoIds = [''];
-
-function adicionarGabarito() {
-    if (_gabaritoIds.length >= 3) return;
-    _gabaritoIds.push('');
-    _renderGabaritoSelects();
-    _atualizarBotaoRegistro();
+function marcarBolhaA(qStr, resp) {
+    _toggleMarca(_regMarcacoesA, qStr, resp);
+    _renderBolhasSheet('acRegBolhasGridA', 'acRegBolhasWrapA', _regGabaritoA, 'A');
 }
 
-function removerGabarito(idx) {
-    if (idx < 1) return;
-    _gabaritoIds.splice(idx, 1);
-    _renderGabaritoSelects();
-    _atualizarBotaoRegistro();
+function marcarBolhaB(qStr, resp) {
+    _toggleMarca(_regMarcacoesB, qStr, resp);
+    _renderBolhasSheet('acRegBolhasGridB', 'acRegBolhasWrapB', _regGabaritoB, 'B');
+}
+
+function _montarMarcacoesParaApi(marcacoes, gabarito) {
+    const result = {};
+    for (const q of (gabarito || [])) {
+        if (q.tipo === 'discursiva') continue;
+        const qStr = String(q.questao);
+        if (q.tipo === 'multipla') {
+            if (marcacoes[qStr] !== undefined) result[qStr] = marcacoes[qStr];
+        } else if (q.tipo === 'vf') {
+            const n = Array.isArray(q.correta) ? q.correta.length : 4;
+            const arr = Array.from({length: n}, (_, i) => marcacoes[`${qStr}_${i}`] || null);
+            if (arr.some(x => x !== null)) result[qStr] = arr;
+        }
+    }
+    return result;
 }
 
 function abrirModalRegistro() {
     if (!provaAtualId || !_analise) return;
-
     const variantes = _analise.variantes || [];
-    if (variantes.length === 0) {
-        alert('Esta prova não possui variantes cadastradas.');
-        return;
-    }
+    if (variantes.length === 0) { alert('Esta prova não possui variantes cadastradas.'); return; }
 
     const opts = '<option value="">Selecione a variante…</option>' +
         variantes.map(v => `<option value="${v.id}">${escapeHtml(v.codigo)}</option>`).join('');
+    $('acRegVarianteA').innerHTML = opts;
+    $('acRegVarianteB').innerHTML = opts;
 
-    $('acRegVarianteAlunos').innerHTML = opts;
+    _regMarcacoesA = {};
+    _regMarcacoesB = {};
+    _regGabaritoA  = null;
+    _regGabaritoB  = null;
 
-    _gabaritoIds = [''];
-    _renderGabaritoSelects();
+    const wA = $('acRegBolhasWrapA'); if (wA) wA.style.display = 'none';
+    const wB = $('acRegBolhasWrapB'); if (wB) wB.style.display = 'none';
 
     _regSetStatus('', '');
     const res = $('acRegResultados');
@@ -1130,58 +1158,57 @@ function fecharModalRegistro() {
     $('acRegModal').style.display = 'none';
 }
 
-function onVarianteRegistroChange() {
-    const selects = document.querySelectorAll('.ac-reg-gab-select');
-    selects.forEach(sel => {
-        const idx = parseInt(sel.dataset.idx, 10);
-        _gabaritoIds[idx] = sel.value;
-    });
+function onVarianteAChange() {
+    const id = parseInt($('acRegVarianteA')?.value, 10);
+    if (!id) {
+        _regGabaritoA = null;
+        const w = $('acRegBolhasWrapA'); if (w) w.style.display = 'none';
+        _atualizarBotaoRegistro(); return;
+    }
+    const v = (_analise.variantes || []).find(x => x.id === id);
+    _regGabaritoA  = v ? (v.gabarito || []) : [];
+    _regMarcacoesA = {};
+    _renderBolhasSheet('acRegBolhasGridA', 'acRegBolhasWrapA', _regGabaritoA, 'A');
+    _atualizarBotaoRegistro();
+}
+
+function onVarianteBChange() {
+    const id = parseInt($('acRegVarianteB')?.value, 10);
+    if (!id) {
+        _regGabaritoB = null;
+        const w = $('acRegBolhasWrapB'); if (w) w.style.display = 'none';
+        _atualizarBotaoRegistro(); return;
+    }
+    const v = (_analise.variantes || []).find(x => x.id === id);
+    _regGabaritoB  = v ? (v.gabarito || []) : [];
+    _regMarcacoesB = {};
+    _renderBolhasSheet('acRegBolhasGridB', 'acRegBolhasWrapB', _regGabaritoB, 'B');
     _atualizarBotaoRegistro();
 }
 
 function _atualizarBotaoRegistro() {
     const btn = $('acRegSalvarBtn');
     if (!btn) return;
-    const alunosId = $('acRegVarianteAlunos')?.value;
-    if (!alunosId) { btn.disabled = true; return; }
-    const gabIds = _gabaritoIds.map(v => v);
-    const allFilled = gabIds.every(id => !!id);
-    const allDistinct = new Set(gabIds).size === gabIds.length;
-    const noneEqualsAlunos = gabIds.every(id => id !== alunosId);
-    btn.disabled = !(allFilled && allDistinct && noneEqualsAlunos);
+    btn.disabled = !($('acRegVarianteA')?.value && $('acRegVarianteB')?.value);
 }
 
 function _regSetStatus(msg, tipo) {
     const el = $('acRegStatus');
     if (!el) return;
     if (!msg) { el.style.display = 'none'; return; }
-    el.textContent  = msg;
-    el.className    = `ac-reg-status ${tipo}`;
+    el.textContent = msg;
+    el.className   = `ac-reg-status ${tipo}`;
     el.style.display = '';
 }
 
 async function salvarRegistroManual() {
     if (!provaAtualId) return;
+    const varAId = parseInt($('acRegVarianteA').value, 10);
+    const varBId = parseInt($('acRegVarianteB').value, 10);
+    if (!varAId || !varBId) { _regSetStatus('Selecione as variantes de ambos os alunos.', 'err'); return; }
 
-    const varianteAlunosId = parseInt($('acRegVarianteAlunos').value, 10);
-    const varianteGabaritoIds = _gabaritoIds.map(id => parseInt(id, 10));
-
-    if (!varianteAlunosId || varianteGabaritoIds.some(id => !id)) {
-        _regSetStatus('Selecione todas as variantes.', 'err');
-        return;
-    }
-    if (varianteGabaritoIds.length < 1) {
-        _regSetStatus('Selecione ao menos 1 gabarito.', 'err');
-        return;
-    }
-    if (new Set(varianteGabaritoIds).size !== varianteGabaritoIds.length) {
-        _regSetStatus('Os gabaritos selecionados devem ser distintos.', 'err');
-        return;
-    }
-    if (varianteGabaritoIds.includes(varianteAlunosId)) {
-        _regSetStatus('Nenhum gabarito pode ser igual à variante dos alunos.', 'err');
-        return;
-    }
+    const marcacoesA = _montarMarcacoesParaApi(_regMarcacoesA, _regGabaritoA);
+    const marcacoesB = _montarMarcacoesParaApi(_regMarcacoesB, _regGabaritoB);
 
     const btn = $('acRegSalvarBtn');
     btn.disabled    = true;
@@ -1191,188 +1218,88 @@ async function salvarRegistroManual() {
     if (resWrap) resWrap.style.display = 'none';
 
     try {
-        const r = await fetch(`/api/classroom/provas/${provaAtualId}/comparar-respostas`, {
+        const r = await fetch(`/api/classroom/provas/${provaAtualId}/confrontar-dois`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ varianteAlunosId, varianteGabaritoIds }),
+            body: JSON.stringify({ varianteAId: varAId, marcacoesA, varianteBId: varBId, marcacoesB }),
         });
         const d = await r.json();
-        if (!r.ok) throw new Error(d.erro || 'Erro ao comparar.');
-
-        _renderResultadosComparacao(d);
+        if (!r.ok) throw new Error(d.erro || 'Erro ao confrontar.');
+        _renderResultadosConfronto(d);
     } catch (e) {
         _regSetStatus(e.message, 'err');
     } finally {
         btn.disabled    = false;
-        btn.textContent = '🔍 Confrontar gabaritos';
+        btn.textContent = '🔍 Confrontar';
     }
 }
 
-let _regExpandido = null;
-let _regExpandidoGab = null;
-
-function _renderResultadosComparacao({ similares, gabaritosCodigos, totalComparados }) {
+function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVariante,
+                                       total, identicas, identicasErradas, similaridade, questoes }) {
     const wrap = $('acRegResultados');
     if (!wrap) return;
 
-    if (!similares || similares.length === 0) {
-        wrap.innerHTML = `<div class="ac-reg-res-vazio">
-            Nenhuma submissão encontrada nesta variante para comparar.
-        </div>`;
-        wrap.style.display = '';
-        return;
-    }
-
     const LIMIAR_ALTO  = 85;
     const LIMIAR_MEDIO = 70;
-    const codigos = gabaritosCodigos || [];
+    const nivelClass = similaridade >= LIMIAR_ALTO  ? 'ac-conf-critico'
+                     : similaridade >= LIMIAR_MEDIO ? 'ac-conf-alerta' : 'ac-conf-ok';
 
-    function nivelGabarito(g) {
-        return g.similaridade >= LIMIAR_ALTO  ? 'critico'
-             : g.similaridade >= LIMIAR_MEDIO ? 'alerta' : '';
-    }
+    const linhasQ = (questoes || []).map(q => {
+        const aResp = q.respA ? q.respA.toUpperCase() : '–';
+        const bResp = q.respB ? q.respB.toUpperCase() : '–';
+        const corA  = q.corretaA ? q.corretaA.toUpperCase() : '–';
+        const corB  = q.corretaB ? q.corretaB.toUpperCase() : '–';
 
-    function nivelAluno(s) {
-        const niveis = (s.porGabarito || []).map(g => nivelGabarito(g));
-        if (niveis.includes('critico')) return 'critico';
-        if (niveis.includes('alerta'))  return 'alerta';
-        return '';
-    }
-
-    function buildDetalheHtml(detalhes, gabCodigo) {
-        if (!detalhes || detalhes.length === 0) return `<em style="font-size:12px;color:var(--text-muted,#888)">Nenhuma questão coincidente registrada para o Gab. ${escapeHtml(gabCodigo)}.</em>`;
-        const erradas = detalhes.filter(d => d.errada);
-        const corretas = detalhes.filter(d => !d.errada);
-        const filas = [...erradas, ...corretas].map(d => {
-            const cls = d.errada ? 'ac-reg-det-errada' : 'ac-reg-det-certa';
-            return `<tr class="${cls}">
-                <td class="ac-reg-det-q">Q${escapeHtml(String(d.questao))}</td>
-                <td class="ac-reg-det-resp">${escapeHtml(d.respAluno)}</td>
-                <td class="ac-reg-det-resp">${escapeHtml(d.respGabarito)}</td>
-                <td class="ac-reg-det-icon">${d.errada ? '⚠️' : '✓'}</td>
-            </tr>`;
-        }).join('');
-        return `<table class="ac-reg-det-table">
-            <thead><tr>
-                <th>Questão</th>
-                <th>Resp. Aluno</th>
-                <th>Gab. ${escapeHtml(gabCodigo)}</th>
-                <th></th>
-            </tr></thead>
-            <tbody>${filas}</tbody>
-        </table>`;
-    }
-
-    function render() {
-        const rows = similares.map((s, i) => {
-            const nivel = nivelAluno(s);
-            const profBadge = s.origem === 'professor'
-                ? '<span class="ac-badge-prof">📋 prof.</span>' : '';
-            const aberto = _regExpandido === i;
-
-            const gabCols = (s.porGabarito || []).map((g, gi) => {
-                const n = nivelGabarito(g);
-                const badgeCls = n === 'critico' ? 'ac-badge-critico' : n === 'alerta' ? 'ac-badge-alerta' : '';
-                return `<td class="ac-reg-res-num">
-                    <span class="ac-badge ${badgeCls}">${g.similaridade}%</span>
-                </td>`;
-            }).join('');
-
-            const identicasErradasMax = Math.max(...(s.porGabarito || []).map(g => g.identicasErradas));
-
-            const expandIcon = `<span class="ac-reg-expand-icon">${aberto ? '▲' : '▼'}</span>`;
-            const mainRow = `<tr class="ac-reg-res-row ${nivel ? 'ac-reg-res-' + nivel : ''} ac-reg-res-expandable" data-idx="${i}">
-                <td class="ac-reg-res-nome">${escapeHtml(s.alunoNome)}${profBadge}</td>
-                ${gabCols}
-                <td class="ac-reg-res-num ${identicasErradasMax > 0 ? 'ac-reg-res-erros' : ''}">${identicasErradasMax}</td>
-                <td class="ac-reg-res-num">${expandIcon}</td>
-            </tr>`;
-
-            let detalheRow = '';
-            if (aberto) {
-                const gabTabs = (s.porGabarito || []).map((g, gi) => {
-                    const isActive = _regExpandidoGab === gi || (_regExpandidoGab === null && gi === 0);
-                    return `<button type="button" class="ac-reg-gab-tab ${isActive ? 'active' : ''}" onclick="_regExpandidoGab=${gi};render()" style="margin-right:4px;padding:3px 10px;border:1px solid var(--border,#ccc);border-radius:4px;cursor:pointer;background:${isActive ? 'var(--primary,#3b82f6)' : 'transparent'};color:${isActive ? '#fff' : 'inherit'}">
-                        Gab. ${escapeHtml(String(g.varianteCodigo || codigos[gi] || gi + 1))}
-                    </button>`;
-                }).join('');
-                const activeGabIdx = _regExpandidoGab !== null ? _regExpandidoGab : 0;
-                const activeGab = (s.porGabarito || [])[activeGabIdx];
-                detalheRow = `<tr class="ac-reg-det-row">
-                    <td colspan="${2 + codigos.length}">
-                        <div class="ac-reg-det-wrap">
-                            <div style="margin-bottom:8px">${gabTabs}</div>
-                            ${activeGab ? buildDetalheHtml(activeGab.detalhes, activeGab.varianteCodigo || codigos[activeGabIdx] || String(activeGabIdx + 1)) : ''}
-                        </div>
-                    </td>
-                </tr>`;
-            }
-
-            return mainRow + detalheRow;
-        }).join('');
-
-        const gabHeaders = codigos.map(c => `<th>Gab. ${escapeHtml(c)}</th>`).join('');
-
-        const tbody = wrap.querySelector('tbody');
-        if (tbody) {
-            tbody.innerHTML = rows;
+        let matchCell;
+        if (!q.identica) {
+            matchCell = `<td class="ac-conf-td-match">–</td>`;
+        } else if (q.erradasAmbos) {
+            matchCell = `<td class="ac-conf-td-match ac-conf-match-erros">⚠️ Erro igual</td>`;
         } else {
-            wrap.innerHTML = `
-                <div class="ac-reg-res-header">
-                    <span class="ac-reg-res-titulo">Resultados — ${totalComparados} aluno(s) comparado(s)</span>
-                    <span class="ac-reg-res-legenda">
-                        <span class="ac-badge ac-badge-alerta">≥70%</span> suspeito &nbsp;
-                        <span class="ac-badge ac-badge-critico">≥85%</span> alto risco
-                        <span style="margin-left:8px;font-size:11px;color:var(--text-muted,#888)">Clique numa linha para ver as questões coincidentes.</span>
-                    </span>
-                </div>
-                <div class="ac-reg-res-table-wrap">
-                    <table class="ac-reg-res-table">
-                        <thead><tr>
-                            <th>Aluno</th>
-                            ${gabHeaders}
-                            <th>Erros coinc.</th>
-                            <th></th>
-                        </tr></thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>`;
+            matchCell = `<td class="ac-conf-td-match ac-conf-match-certo">✓ Igual</td>`;
         }
 
-        wrap.querySelectorAll('.ac-reg-res-expandable').forEach(tr => {
-            tr.addEventListener('click', (e) => {
-                if (e.target.closest('button')) return;
-                const idx = parseInt(tr.dataset.idx, 10);
-                if (_regExpandido === idx) {
-                    _regExpandido = null;
-                } else {
-                    _regExpandido = idx;
-                    _regExpandidoGab = 0;
-                }
-                render();
-            });
-        });
-    }
+        const trClass = q.erradasAmbos ? 'ac-conf-tr-erros' : q.identica ? 'ac-conf-tr-ident' : '';
+        const qLabel = mesmaVariante ? `Q${q.posA}` : `Q${q.posA}<span class="ac-conf-posb">/Q${q.posB}</span>`;
+        return `<tr class="${trClass}">
+            <td class="ac-conf-td-q">${qLabel}</td>
+            <td class="ac-conf-td-resp">${escapeHtml(aResp)}</td>
+            <td class="ac-conf-td-gab">${escapeHtml(corA)}</td>
+            <td class="ac-conf-td-resp">${escapeHtml(bResp)}</td>
+            <td class="ac-conf-td-gab">${escapeHtml(corB)}</td>
+            ${matchCell}
+        </tr>`;
+    }).join('');
 
-    _regExpandido = null;
-    _regExpandidoGab = null;
-    render();
+    const aviso = !mesmaVariante
+        ? `<div class="ac-conf-aviso">⚠️ Variantes diferentes (${escapeHtml(varianteACodigo)} × ${escapeHtml(varianteBCodigo)}): comparação posicional — Q1 de cada variante pode não ser a mesma questão física.</div>`
+        : '';
+
+    wrap.innerHTML = `
+        <div class="ac-conf-resumo ${nivelClass}">
+            <div class="ac-conf-resumo-linha">
+                <span class="ac-conf-resumo-label">Respostas idênticas:</span>
+                <span class="ac-conf-resumo-valor">${identicas}/${total} <em>(${similaridade}%)</em></span>
+            </div>
+            <div class="ac-conf-resumo-linha">
+                <span class="ac-conf-resumo-label">Erros coincidentes:</span>
+                <span class="ac-conf-resumo-valor ${identicasErradas > 0 ? 'ac-conf-erros-label' : ''}">${identicasErradas}${identicasErradas > 0 ? ' ⚠️' : ''}</span>
+            </div>
+        </div>
+        ${aviso}
+        <div class="ac-conf-table-wrap">
+            <table class="ac-conf-table">
+                <thead><tr>
+                    <th>Q</th>
+                    <th>A (${escapeHtml(varianteACodigo)})</th>
+                    <th>Gab A</th>
+                    <th>B (${escapeHtml(varianteBCodigo)})</th>
+                    <th>Gab B</th>
+                    <th>Coincidência</th>
+                </tr></thead>
+                <tbody>${linhasQ || '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Nenhuma questão para comparar.</td></tr>'}</tbody>
+            </table>
+        </div>`;
     wrap.style.display = '';
-}
-
-async function excluirSubmissaoManual(provaId, subId, alunoEmail) {
-    if (!confirm(`Excluir a submissão manual de "${alunoEmail}"? Esta ação não pode ser desfeita.`)) return;
-    try {
-        const r = await fetch(`/api/classroom/provas/${provaId}/submissoes/${subId}/manual`, {
-            method: 'DELETE',
-            credentials: 'include',
-        });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.erro || 'Erro ao excluir.');
-        await onProvaChange();
-    } catch (e) {
-        if (typeof notificar === 'function') await notificar('Erro ao excluir submissão', e.message, { tipo: 'danger' });
-        else alert(e.message);
-    }
 }

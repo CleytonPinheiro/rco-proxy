@@ -2248,6 +2248,100 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* ── Confrontar dois gabaritos em memória (sem gravação) ── */
+    router.post('/classroom/provas/:provaId/confrontar-dois', async (req, res) => {
+        const session = req.userSession;
+        if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { varianteAId, marcacoesA, varianteBId, marcacoesB } = req.body || {};
+        if (!varianteAId || !marcacoesA || !varianteBId || !marcacoesB) {
+            return res.status(400).json({ erro: 'varianteAId, marcacoesA, varianteBId e marcacoesB são obrigatórios.' });
+        }
+
+        try {
+            const provaId = parseInt(req.params.provaId, 10);
+            const aId = parseInt(varianteAId, 10);
+            const bId = parseInt(varianteBId, 10);
+
+            const { rows: variantes } = await pool.query(
+                `SELECT id, codigo, gabarito_json FROM classroom_prova_variantes WHERE id = ANY($1) AND prova_id = $2`,
+                [[aId, bId], provaId]
+            );
+            const varMap = Object.fromEntries(variantes.map(v => [v.id, v]));
+            const varA = varMap[aId], varB = varMap[bId];
+            if (!varA) return res.status(404).json({ erro: 'Variante A não encontrada.' });
+            if (!varB) return res.status(404).json({ erro: 'Variante B não encontrada.' });
+
+            const gabA = varA.gabarito_json || [];
+            const gabB = varB.gabarito_json || [];
+            const mesmaVariante = aId === bId;
+
+            const questoes = [];
+            let identicas = 0, identicasErradas = 0, total = 0;
+
+            for (let i = 0; i < Math.min(gabA.length, gabB.length); i++) {
+                const qA = gabA[i], qB = gabB[i];
+                if (qA.tipo === 'discursiva' || qB.tipo === 'discursiva') continue;
+                total++;
+
+                const posA = String(qA.questao), posB = String(qB.questao);
+                const respA = marcacoesA[posA] ?? null;
+                const respB = marcacoesB[posB] ?? null;
+
+                const normA = Array.isArray(respA) ? respA.map(x => String(x).toUpperCase()).join(',')
+                            : String(respA ?? '').toLowerCase();
+                const normB = Array.isArray(respB) ? respB.map(x => String(x).toUpperCase()).join(',')
+                            : String(respB ?? '').toLowerCase();
+
+                const identica = respA !== null && respB !== null && normA === normB;
+
+                let erradaA = respA === null ? null : false;
+                let erradaB = respB === null ? null : false;
+                if (respA !== null) {
+                    if (qA.tipo === 'multipla') {
+                        erradaA = String(respA).toLowerCase() !== String(qA.correta || '').toLowerCase();
+                    } else if (qA.tipo === 'vf' && Array.isArray(qA.correta)) {
+                        const arrA = Array.isArray(respA) ? respA : normA.split(',');
+                        erradaA = arrA.length !== qA.correta.length ||
+                                  arrA.some((v, k) => String(v).toUpperCase() !== String(qA.correta[k]).toUpperCase());
+                    }
+                }
+                if (respB !== null) {
+                    if (qB.tipo === 'multipla') {
+                        erradaB = String(respB).toLowerCase() !== String(qB.correta || '').toLowerCase();
+                    } else if (qB.tipo === 'vf' && Array.isArray(qB.correta)) {
+                        const arrB = Array.isArray(respB) ? respB : normB.split(',');
+                        erradaB = arrB.length !== qB.correta.length ||
+                                  arrB.some((v, k) => String(v).toUpperCase() !== String(qB.correta[k]).toUpperCase());
+                    }
+                }
+
+                if (identica) identicas++;
+                if (identica && erradaA && erradaB) identicasErradas++;
+
+                questoes.push({
+                    posA: qA.questao, posB: qB.questao,
+                    respA: normA || null, respB: normB || null,
+                    corretaA: Array.isArray(qA.correta) ? qA.correta.join(',') : (qA.correta || null),
+                    corretaB: Array.isArray(qB.correta) ? qB.correta.join(',') : (qB.correta || null),
+                    identica, erradaA, erradaB,
+                    erradasAmbos: !!(identica && erradaA && erradaB),
+                });
+            }
+
+            const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
+
+            res.json({
+                varianteACodigo: varA.codigo,
+                varianteBCodigo: varB.codigo,
+                mesmaVariante, total, identicas, identicasErradas, similaridade, questoes,
+            });
+        } catch (e) {
+            console.error('[PROVAS] Erro ao confrontar dois gabaritos:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Confrontar gabarito (comparação em memória, sem gravação) ── */
     router.post('/classroom/provas/:provaId/comparar-respostas', async (req, res) => {
         const session = req.userSession;
