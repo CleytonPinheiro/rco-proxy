@@ -968,8 +968,14 @@
     color: var(--text-muted, #888);
     background: var(--bg, #f9f9f9);
     border-bottom: 1px solid var(--border, #ddd);
+    cursor: pointer; user-select: none;
+    white-space: nowrap;
 }
+.prv-lista-th:hover { color: var(--text, #333); background: var(--border, #eee); }
+.prv-lista-th--ativo { color: #4285F4; }
 .prv-lista-th-num { text-align: center; }
+.prv-sort-icon { margin-left: 4px; font-style: normal; font-size: 11px; }
+.prv-sort-icon--idle { opacity: .35; }
 .prv-lista-row {
     cursor: pointer; transition: background .12s;
 }

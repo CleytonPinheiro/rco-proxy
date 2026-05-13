@@ -14,6 +14,8 @@ let _modoLista = false; /* false = Cards (padrão), true = Lista */
 let _todasProvas = [];  /* cache do modo lista para filtragem client-side */
 let _filtroTexto = '';
 let _filtroStatus = ''; /* '' = todos, 'rascunho', 'efetivada' */
+let _sortColuna = 'data'; /* 'nome' | 'curso' | 'data' | 'variantes' | 'corrigidas' */
+let _sortDir = 'desc';    /* 'asc' | 'desc' */
 let _colaCarregada = false;
 let _colaExpandido = null;
 let _colaFlags = {};
@@ -515,6 +517,43 @@ async function carregarTodasProvas() {
     }
 }
 
+function _sortProvas(lista) {
+    const dir = _sortDir === 'asc' ? 1 : -1;
+    return [...lista].sort((a, b) => {
+        let va, vb;
+        switch (_sortColuna) {
+            case 'nome':
+                va = (a.nome || '').toLowerCase();
+                vb = (b.nome || '').toLowerCase();
+                return dir * va.localeCompare(vb, 'pt-BR');
+            case 'curso':
+                va = (a.curso_nome || a.curso_id || '').toLowerCase();
+                vb = (b.curso_nome || b.curso_id || '').toLowerCase();
+                return dir * va.localeCompare(vb, 'pt-BR');
+            case 'data':
+                va = a.data_aplicacao ? new Date(a.data_aplicacao).getTime() : 0;
+                vb = b.data_aplicacao ? new Date(b.data_aplicacao).getTime() : 0;
+                return dir * (va - vb);
+            case 'variantes':
+                return dir * ((a.variantes_count || 0) - (b.variantes_count || 0));
+            case 'corrigidas':
+                return dir * ((a.submissoes_count || 0) - (b.submissoes_count || 0));
+            default:
+                return 0;
+        }
+    });
+}
+
+function prvSortLista(coluna) {
+    if (_sortColuna === coluna) {
+        _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _sortColuna = coluna;
+        _sortDir = coluna === 'data' ? 'desc' : 'asc';
+    }
+    _renderListaFiltrada();
+}
+
 function _renderListaFiltrada() {
     const termo = _filtroTexto.trim().toLowerCase();
 
@@ -547,7 +586,19 @@ function _renderListaFiltrada() {
         return;
     }
 
-    const linhas = filtradas.map(p => {
+    const ordenadas = _sortProvas(filtradas);
+
+    function thClass(col, extra = '') {
+        const ativo = _sortColuna === col ? ' prv-lista-th--ativo' : '';
+        return `prv-lista-th${extra}${ativo}`;
+    }
+
+    function thArrow(col) {
+        if (_sortColuna !== col) return '<span class="prv-sort-icon prv-sort-icon--idle">⇅</span>';
+        return `<span class="prv-sort-icon">${_sortDir === 'asc' ? '↑' : '↓'}</span>`;
+    }
+
+    const linhas = ordenadas.map(p => {
         const data = p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : '—';
         return `<tr class="prv-lista-row" onclick="abrirDetalhe(${p.id})" title="Abrir detalhes">
             <td class="prv-lista-td prv-lista-td-nome">
@@ -565,11 +616,11 @@ function _renderListaFiltrada() {
         <table class="prv-lista-tabela">
             <thead>
                 <tr>
-                    <th class="prv-lista-th">Prova</th>
-                    <th class="prv-lista-th">Curso</th>
-                    <th class="prv-lista-th">Data</th>
-                    <th class="prv-lista-th prv-lista-th-num">Variantes</th>
-                    <th class="prv-lista-th prv-lista-th-num">Corrigidas</th>
+                    <th class="${thClass('nome')}" onclick="prvSortLista('nome')">Prova ${thArrow('nome')}</th>
+                    <th class="${thClass('curso')}" onclick="prvSortLista('curso')">Curso ${thArrow('curso')}</th>
+                    <th class="${thClass('data')}" onclick="prvSortLista('data')">Data ${thArrow('data')}</th>
+                    <th class="${thClass('variantes', ' prv-lista-th-num')}" onclick="prvSortLista('variantes')">Variantes ${thArrow('variantes')}</th>
+                    <th class="${thClass('corrigidas', ' prv-lista-th-num')}" onclick="prvSortLista('corrigidas')">Corrigidas ${thArrow('corrigidas')}</th>
                 </tr>
             </thead>
             <tbody>${linhas}</tbody>
@@ -592,6 +643,7 @@ function prvFiltrarStatus(btn) {
 window.prvSetModo = prvSetModo;
 window.prvFiltrarLista = prvFiltrarLista;
 window.prvFiltrarStatus = prvFiltrarStatus;
+window.prvSortLista = prvSortLista;
 
 function _prvNomeBase() {
     const turma = $('prvTurma').value;
