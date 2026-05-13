@@ -115,6 +115,15 @@ async function selecionarVariante(v) {
     estado.qtdQuestoes = v.qtd_questoes;
     estado.marcacoes = {};
     $('ppVarCod1').textContent = v.codigo;
+    const linkProva = estado.prova.link_prova;
+    const etapa1LinkWrap = $('ppLinkProvaEtapa1Wrap');
+    const etapa1LinkEl   = $('ppLinkProvaEtapa1');
+    if (linkProva) {
+        etapa1LinkEl.href = linkProva;
+        etapa1LinkWrap.style.display = '';
+    } else {
+        etapa1LinkWrap.style.display = 'none';
+    }
     renderTabelaEtapa1();
     show('ppEtapa1');
 }
