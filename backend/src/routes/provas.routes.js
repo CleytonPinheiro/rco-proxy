@@ -2257,8 +2257,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         if (!varianteAlunosId || !Array.isArray(varianteGabaritoIds)) {
             return res.status(400).json({ erro: 'varianteAlunosId e varianteGabaritoIds (array) são obrigatórios.' });
         }
-        if (varianteGabaritoIds.length < 2 || varianteGabaritoIds.length > 3) {
-            return res.status(400).json({ erro: 'varianteGabaritoIds deve conter de 2 a 3 itens.' });
+        if (varianteGabaritoIds.length < 1 || varianteGabaritoIds.length > 3) {
+            return res.status(400).json({ erro: 'varianteGabaritoIds deve conter de 1 a 3 itens.' });
         }
         const alunosIdInt = parseInt(varianteAlunosId, 10);
         const gabIds = varianteGabaritoIds.map(id => parseInt(id, 10));

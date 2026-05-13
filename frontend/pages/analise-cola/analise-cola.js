@@ -1064,7 +1064,7 @@ function _renderGabaritoSelects() {
     container.innerHTML = '';
     const count = _gabaritoIds.length;
     _gabaritoIds.forEach((val, idx) => {
-        const canRemove = idx >= 2;
+        const canRemove = idx >= 1;
         const row = document.createElement('div');
         row.className = 'ac-reg-gabarito-row';
         row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px';
@@ -1085,7 +1085,7 @@ function _renderGabaritoSelects() {
     if (addBtn) addBtn.style.display = count < 3 ? '' : 'none';
 }
 
-let _gabaritoIds = ['', ''];
+let _gabaritoIds = [''];
 
 function adicionarGabarito() {
     if (_gabaritoIds.length >= 3) return;
@@ -1095,7 +1095,7 @@ function adicionarGabarito() {
 }
 
 function removerGabarito(idx) {
-    if (idx < 2) return;
+    if (idx < 1) return;
     _gabaritoIds.splice(idx, 1);
     _renderGabaritoSelects();
     _atualizarBotaoRegistro();
@@ -1115,7 +1115,7 @@ function abrirModalRegistro() {
 
     $('acRegVarianteAlunos').innerHTML = opts;
 
-    _gabaritoIds = ['', ''];
+    _gabaritoIds = [''];
     _renderGabaritoSelects();
 
     _regSetStatus('', '');
@@ -1148,7 +1148,7 @@ function _atualizarBotaoRegistro() {
     const allFilled = gabIds.every(id => !!id);
     const allDistinct = new Set(gabIds).size === gabIds.length;
     const noneEqualsAlunos = gabIds.every(id => id !== alunosId);
-    btn.disabled = !(allFilled && allDistinct && noneEqualsAlunos && gabIds.length >= 2);
+    btn.disabled = !(allFilled && allDistinct && noneEqualsAlunos);
 }
 
 function _regSetStatus(msg, tipo) {
@@ -1170,8 +1170,8 @@ async function salvarRegistroManual() {
         _regSetStatus('Selecione todas as variantes.', 'err');
         return;
     }
-    if (varianteGabaritoIds.length < 2) {
-        _regSetStatus('Selecione ao menos 2 gabaritos.', 'err');
+    if (varianteGabaritoIds.length < 1) {
+        _regSetStatus('Selecione ao menos 1 gabarito.', 'err');
         return;
     }
     if (new Set(varianteGabaritoIds).size !== varianteGabaritoIds.length) {
