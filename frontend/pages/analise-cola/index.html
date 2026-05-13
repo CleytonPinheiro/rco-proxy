@@ -28,6 +28,21 @@
                 <a href="/pages/analise-cola/" class="active">🔍 Cola</a>
             </nav>
             <div class="header-actions">
+                <div class="ac-notif-wrap" id="acNotifWrap">
+                    <button class="ac-notif-bell" id="acNotifBell" onclick="toggleNotifPanel()" title="Alertas de cola" aria-label="Alertas de cola">
+                        🔔
+                        <span class="ac-notif-badge" id="acNotifBadge" style="display:none">0</span>
+                    </button>
+                    <div class="ac-notif-panel" id="acNotifPanel" style="display:none">
+                        <div class="ac-notif-header">
+                            <span>Alertas de Cola</span>
+                            <button class="ac-notif-lida-todas" id="acNotifLidaTodas" onclick="marcarTodasLidas()">Marcar todas como lidas</button>
+                        </div>
+                        <div id="acNotifLista" class="ac-notif-lista">
+                            <div class="ac-notif-vazia">Nenhum alerta pendente.</div>
+                        </div>
+                    </div>
+                </div>
                 <button class="btn-theme" onclick="toggleTheme()">🌙</button>
                 <button id="btnLogout" class="btn-logout">Sair</button>
             </div>

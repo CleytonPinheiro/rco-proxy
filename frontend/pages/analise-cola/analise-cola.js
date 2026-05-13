@@ -23,10 +23,190 @@ function escapeHtml(s) {
         .replace(/'/g, '&#39;');
 }
 
+let _notifPollTimer = null;
+let _notifPanelAberto = false;
+
 document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('click', e => {
+    const wrap = $('acNotifWrap');
+    if (wrap && !wrap.contains(e.target)) fecharNotifPanel();
+});
 
 async function init() {
     await carregarCursos();
+    _iniciarNotifPoll();
+    _aplicarUrlParams();
+}
+
+/* ── Notificações de cola ─────────────────────────────────────── */
+
+function _iniciarNotifPoll() {
+    _buscarNotificacoes();
+    _notifPollTimer = setInterval(_buscarNotificacoes, 2 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) _buscarNotificacoes();
+    });
+}
+
+async function _buscarNotificacoes() {
+    try {
+        const r = await fetch('/api/classroom/provas/notificacoes-cola', { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        _atualizarBadge(d.totalNaoLidas || 0);
+        _renderNotifLista(d.notificacoes || []);
+    } catch (_) {}
+}
+
+function _atualizarBadge(total) {
+    const badge = $('acNotifBadge');
+    if (!badge) return;
+    if (total > 0) {
+        badge.textContent = total > 99 ? '99+' : String(total);
+        badge.style.display = '';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function _renderNotifLista(notifs) {
+    const lista = $('acNotifLista');
+    if (!lista) return;
+    if (!notifs.length) {
+        lista.innerHTML = '<div class="ac-notif-vazia">Nenhum alerta pendente.</div>';
+        _bindNotifClicks(lista);
+        return;
+    }
+    lista.innerHTML = notifs.map(n => {
+        const data  = n.criado_em ? new Date(n.criado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+        const safeA = escapeHtml(n.aluno_a);
+        const safeB = escapeHtml(n.aluno_b);
+        /* Use data-* attributes — no inline string interpolation of user values */
+        return `
+        <div class="ac-notif-item"
+             data-notif-id="${n.id}"
+             data-prova-id="${n.prova_id}"
+             data-aluno-a="${safeA}"
+             data-aluno-b="${safeB}">
+            <div class="ac-notif-item-titulo">⚠️ Par suspeito — ${n.similaridade}% de similaridade</div>
+            <div class="ac-notif-item-detalhe">
+                <strong>${escapeHtml(n.prova_nome || 'Prova #' + n.prova_id)}</strong><br>
+                ${safeA} ↔ ${safeB}
+            </div>
+            <div class="ac-notif-item-data">${data}</div>
+        </div>`;
+    }).join('');
+    _bindNotifClicks(lista);
+}
+
+function _bindNotifClicks(lista) {
+    lista.querySelectorAll('.ac-notif-item[data-notif-id]').forEach(el => {
+        el.addEventListener('click', () => {
+            const notifId = parseInt(el.dataset.notifId, 10);
+            const provaId = parseInt(el.dataset.provaId, 10);
+            const alunoA  = el.dataset.alunoA || null;
+            const alunoB  = el.dataset.alunoB || null;
+            abrirNotif(notifId, provaId, alunoA, alunoB);
+        });
+    });
+}
+
+function toggleNotifPanel() {
+    if (_notifPanelAberto) fecharNotifPanel();
+    else abrirNotifPanel();
+}
+
+function abrirNotifPanel() {
+    const panel = $('acNotifPanel');
+    if (panel) panel.style.display = '';
+    _notifPanelAberto = true;
+}
+
+function fecharNotifPanel() {
+    const panel = $('acNotifPanel');
+    if (panel) panel.style.display = 'none';
+    _notifPanelAberto = false;
+}
+
+async function abrirNotif(notifId, provaId, alunoA, alunoB) {
+    fecharNotifPanel();
+    await _marcarLida(notifId);
+    await _navegarParaProva(provaId, alunoA, alunoB);
+}
+
+async function _navegarParaProva(provaId, alunoA, alunoB) {
+    await _selecionarProvaPorId(provaId);
+    if (alunoA && alunoB) _expandirPar(alunoA, alunoB);
+}
+
+function _expandirPar(alunoA, alunoB) {
+    /* parKey in _colaParesMap may be in either order — try both */
+    const candidatos = [`${alunoA}|${alunoB}`, `${alunoB}|${alunoA}`];
+    let key = null;
+    for (const k of candidatos) {
+        if (_colaParesMap[k]) { key = k; break; }
+    }
+    if (!key) return;
+    _colaExpandido = key;
+    if (_renderTabela) _renderTabela();
+    /* Scroll the expanded row into view */
+    setTimeout(() => {
+        const row = document.querySelector(`.ac-row[data-par="${CSS.escape(key)}"]`);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+}
+
+async function _marcarLida(notifId) {
+    try {
+        await fetch(`/api/classroom/provas/notificacoes-cola/${notifId}/lida`, {
+            method: 'POST', credentials: 'include',
+        });
+        await _buscarNotificacoes();
+    } catch (_) {}
+}
+
+async function marcarTodasLidas() {
+    try {
+        await fetch('/api/classroom/provas/notificacoes-cola/lida-todas', {
+            method: 'POST', credentials: 'include',
+        });
+        await _buscarNotificacoes();
+        fecharNotifPanel();
+    } catch (_) {}
+}
+
+/* ── URL params ────────────────────────────────────────────────── */
+
+async function _aplicarUrlParams() {
+    const params  = new URLSearchParams(location.search);
+    const provaId = params.get('provaId');
+    if (!provaId) return;
+    const alunoA  = params.get('alunoA') || null;
+    const alunoB  = params.get('alunoB') || null;
+    await _selecionarProvaPorId(parseInt(provaId, 10));
+    if (alunoA && alunoB) _expandirPar(alunoA, alunoB);
+}
+
+async function _selecionarProvaPorId(provaId) {
+    if (!provaId) return;
+    /* Find which curso owns this prova */
+    try {
+        /* Try each curso until we find the prova */
+        for (const curso of cursos) {
+            const r = await fetch(`/api/classroom/provas?courseId=${encodeURIComponent(curso.id)}`, { credentials: 'include' });
+            if (!r.ok) continue;
+            const d = await r.json();
+            const lista = Array.isArray(d.provas) ? d.provas : (Array.isArray(d) ? d : []);
+            const found = lista.find(p => p.id === provaId);
+            if (found) {
+                $('acCurso').value = curso.id;
+                await onCursoChange();
+                $('acProva').value = provaId;
+                await onProvaChange();
+                return;
+            }
+        }
+    } catch (_) {}
 }
 
 async function carregarCursos() {

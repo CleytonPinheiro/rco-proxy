@@ -17,6 +17,7 @@ import crypto     from 'crypto';
 import { auditLogger }      from '../services/AuditLogger.js';
 import { getBrowser }       from '../../auth-puppeteer.js';
 import { ReputacaoService, EVENTOS, BADGES, RANKS, getRank } from '../services/reputacao.service.js';
+import { checarColaPosSubmissao } from '../services/colaCheck.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -114,7 +115,25 @@ async function migrarTabelas() {
                 UNIQUE(prova_id, aluno_a, aluno_b)
             )
         `);
-        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags)');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notificacoes_professor (
+                id             SERIAL PRIMARY KEY,
+                cpf_professor  TEXT        NOT NULL,
+                prova_id       INTEGER     NOT NULL REFERENCES classroom_provas(id) ON DELETE CASCADE,
+                aluno_a        TEXT        NOT NULL,
+                aluno_b        TEXT        NOT NULL,
+                similaridade   INTEGER     NOT NULL,
+                prova_nome     TEXT,
+                lida           BOOLEAN     NOT NULL DEFAULT false,
+                criado_em      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(prova_id, aluno_a, aluno_b)
+            )
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_notif_prof_cpf_lida
+                ON notificacoes_professor(cpf_professor, lida, criado_em DESC)
+        `);
+        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags + notif-professor)');
     } catch (e) {
         console.warn('[PROVAS] Erro na migração:', e.message);
     }
@@ -638,6 +657,65 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             res.json({ badgePollMinutos: 3 });
         }
     });
+
+    /* ── Notificações de cola para o professor ────────────────────── */
+
+    /* Lista notificações não-lidas (e opcionalmente todas) */
+    router.get('/classroom/provas/notificacoes-cola', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        const soNaoLidas = req.query.naoLidas !== '0';
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, prova_id, aluno_a, aluno_b, similaridade, prova_nome, lida, criado_em
+                   FROM notificacoes_professor
+                  WHERE cpf_professor = $1
+                    ${soNaoLidas ? 'AND lida = false' : ''}
+                  ORDER BY criado_em DESC
+                  LIMIT 50`,
+                [cpf]
+            );
+            const { rows: [{ total }] } = await pool.query(
+                `SELECT COUNT(*)::int AS total FROM notificacoes_professor WHERE cpf_professor = $1 AND lida = false`,
+                [cpf]
+            );
+            res.json({ notificacoes: rows, totalNaoLidas: total });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Marca uma notificação como lida */
+    router.post('/classroom/provas/notificacoes-cola/:id/lida', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            await pool.query(
+                `UPDATE notificacoes_professor SET lida = true WHERE id = $1 AND cpf_professor = $2`,
+                [req.params.id, cpf]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Marca todas as notificações como lidas */
+    router.post('/classroom/provas/notificacoes-cola/lida-todas', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            await pool.query(
+                `UPDATE notificacoes_professor SET lida = true WHERE cpf_professor = $1 AND lida = false`,
+                [cpf]
+            );
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── /Notificações de cola ─────────────────────────────────────── */
 
     /* Contagem de flags 'investigar' agrupada por curso, restrita aos cursos do professor */
     router.get('/classroom/provas/resumo-investigar', async (req, res) => {
@@ -2218,6 +2296,16 @@ export function createProvasPublicRouter() {
                 fotoObrigatoria: fotoObrig,
                 fotoEntregue: !!fotoUrlSalva,
                 criada_em: sub.criada_em,
+            });
+
+            /* ── Verificação de cola pós-submissão (fire-and-forget) ── */
+            setImmediate(() => {
+                checarColaPosSubmissao(pool, {
+                    provaId:      prova.id,
+                    varianteId:   variante.id,
+                    alunoEmail:   aluno.email,
+                    marcacoesJson: marcacoes,
+                });
             });
 
             /* ── Sorteio automático de 2º corretor (fire-and-forget) ──
