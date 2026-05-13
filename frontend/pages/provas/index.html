@@ -51,12 +51,15 @@
 
     <main class="prv-main">
         <div id="prvResumoPendentes" style="display:none" class="prv-resumo-pendentes"
-             onclick="$('prvCurso').focus(); $('prvCurso').scrollIntoView({behavior:'smooth',block:'nearest'})"></div>
+             onclick="$('prvTurma').focus(); $('prvTurma').scrollIntoView({behavior:'smooth',block:'nearest'})"></div>
         <div class="prv-toolbar">
             <h1>Provas</h1>
             <div class="prv-toolbar-right">
+                <select id="prvTurma" onchange="onTurmaChange()">
+                    <option value="">Selecione uma turma…</option>
+                </select>
                 <select id="prvCurso" onchange="onCursoChange()">
-                    <option value="">Selecione um curso…</option>
+                    <option value="">Selecione uma turma primeiro…</option>
                 </select>
                 <button class="prv-btn prv-btn-primary" onclick="abrirNova()" id="prvBtnNova" disabled>+ Nova prova</button>
             </div>

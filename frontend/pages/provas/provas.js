@@ -161,6 +161,7 @@ function prvRefreshCustomSelect(selectEl) {
 
 async function init() {
     /* Initialise custom selects early so observers are in place before data loads */
+    prvCreateCustomSelect($('prvTurma'));
     prvCreateCustomSelect($('prvCurso'));
     prvCreateCustomSelect($('prvfFoto'));
 
@@ -197,8 +198,7 @@ function _aplicarResumo(resumo) {
             const n = resumo[opt.value] || 0;
             const curso = cursos.find(c => c.id === opt.value);
             if (!curso) continue;
-            const base = curso.nome + (curso.secao ? ' — ' + curso.secao : '');
-            opt.textContent = base + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
+            opt.textContent = curso.nome + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
         }
     }
     const box = $('prvResumoPendentes');
@@ -222,13 +222,15 @@ async function carregarCursos() {
     try {
         const rCursos = await fetch('/api/classroom/courses', { credentials: 'include' });
         if (!rCursos.ok) {
-            $('prvCurso').innerHTML = '<option>Erro — conecte o Classroom primeiro</option>';
+            $('prvTurma').innerHTML = '<option>Erro — conecte o Classroom primeiro</option>';
             return;
         }
         cursos = await rCursos.json();
-        const sel = $('prvCurso');
-        sel.innerHTML = '<option value="">Selecione um curso…</option>' +
-            cursos.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}${c.secao ? ' — ' + escapeHtml(c.secao) : ''}</option>`).join('');
+        const turmas = [...new Set(cursos.map(c => c.secao || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const selTurma = $('prvTurma');
+        selTurma.innerHTML = '<option value="">Selecione uma turma…</option>' +
+            turmas.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+        $('prvCurso').innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
         if (cursos.length > 0) {
             const ids = encodeURIComponent(cursos.map(c => c.id).join(','));
             const rResumo = await fetch(`/api/classroom/provas/resumo-investigar?courseIds=${ids}`, { credentials: 'include' });
@@ -241,11 +243,27 @@ async function carregarCursos() {
     }
 }
 
+async function onTurmaChange() {
+    const turma = $('prvTurma').value;
+    cursoAtual = '';
+    $('prvBtnNova').disabled = true;
+    $('prvLista').innerHTML = '<div class="prv-empty">Selecione uma disciplina acima para ver as provas.</div>';
+    const panel = $('prvFlagsPendentes');
+    if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+    if (!turma) {
+        $('prvCurso').innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
+        return;
+    }
+    const filtrados = cursos.filter(c => (c.secao || '') === turma);
+    $('prvCurso').innerHTML = '<option value="">Selecione uma disciplina…</option>' +
+        filtrados.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+}
+
 async function onCursoChange() {
     cursoAtual = $('prvCurso').value;
     $('prvBtnNova').disabled = !cursoAtual;
     if (!cursoAtual) {
-        $('prvLista').innerHTML = '<div class="prv-empty">Selecione um curso acima para ver as provas.</div>';
+        $('prvLista').innerHTML = '<div class="prv-empty">Selecione uma disciplina acima para ver as provas.</div>';
         const panel = $('prvFlagsPendentes');
         if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
         return;
@@ -1374,6 +1392,7 @@ function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+window.onTurmaChange   = onTurmaChange;
 window.onCursoChange   = onCursoChange;
 window.abrirNova       = abrirNova;
 window.fecharNova      = fecharNova;
