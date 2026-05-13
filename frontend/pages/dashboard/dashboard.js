@@ -48,6 +48,8 @@ async function carregarDados() {
     loading.style.display = 'none';
     content.style.display  = 'block';
 
+    carregarBadgesColaProvas();
+
     const colegios = extrairColegios(dadosGlobais);
     /* Restaura escola salva ou usa a primeira disponível */
     const escolaSalva = localStorage.getItem('edusync_escola');
@@ -540,6 +542,103 @@ function renderizarTudo() {
     renderizarTurmas(turmas);
     renderizarDisciplinas(disciplinas);
     renderizarLivros(livros);
+
+    /* Re-render cola alert section after school filter changes */
+    _renderSecaoAlertas();
+}
+
+// ── Cheating-alert section (Análise de Cola) ─────────────────────────────────
+// Builds a dedicated "🔍 Análise de Cola" section with one card per Classroom
+// course that has unresolved suspicious pairs. courseId is always the canonical
+// Classroom ID directly from the API — no fuzzy name matching is used.
+
+let _colaResumo      = {};   // { courseId: count }
+let _classroomCursos = [];   // [{ id, nome }]  (from /api/classroom/courses)
+let _colaBadgePollTimer = null;
+
+async function carregarBadgesColaProvas() {
+    try {
+        const [resumoRes, cursosRes] = await Promise.all([
+            fetch(`${API_URL}/api/classroom/provas/resumo-cola-geral`, { credentials: 'include' }),
+            fetch(`${API_URL}/api/classroom/courses`, { credentials: 'include' }),
+        ]);
+
+        if (resumoRes.ok) {
+            const d = await resumoRes.json();
+            _colaResumo = d.resumo || {};
+        }
+        if (cursosRes.ok) {
+            const d = await cursosRes.json();
+            _classroomCursos = Array.isArray(d) ? d : [];
+        }
+    } catch (_) { /* rede indisponível – ignora silenciosamente */ }
+
+    _renderSecaoAlertas();
+    _iniciarPollCola();
+}
+
+function _renderSecaoAlertas() {
+    const secao   = document.getElementById('secaoAlertas');
+    const grid    = document.getElementById('alertasGrid');
+    const counter = document.getElementById('totalAlertas');
+    if (!secao || !grid) return;
+
+    /* Build list of courses with pending pairs using canonical courseId */
+    const cursoMap = {};
+    for (const c of _classroomCursos) cursoMap[c.id] = c.nome || c.name || c.id;
+
+    const pendentes = Object.entries(_colaResumo)
+        .filter(([, count]) => count > 0)
+        .map(([courseId, count]) => ({ courseId, count, nome: cursoMap[courseId] || courseId }))
+        .sort((a, b) => b.count - a.count);
+
+    if (pendentes.length === 0) {
+        secao.style.display = 'none';
+        return;
+    }
+
+    secao.style.display = '';
+    counter.textContent = `${pendentes.length} curso${pendentes.length > 1 ? 's' : ''} com alertas`;
+
+    grid.innerHTML = '';
+    pendentes.forEach(({ courseId, count, nome }) => {
+        const card = document.createElement('div');
+        card.className = 'card card-cola-alerta';
+        card.innerHTML = `
+            <span class="cola-alert-badge-corner">🔍 ${count}</span>
+            <div class="card-icon cola-icon">🔍</div>
+            <div class="card-title">${nome}</div>
+            <div class="card-info">${count} par${count > 1 ? 'es' : ''} suspeito${count > 1 ? 's' : ''} aguardando revisão</div>
+            <div class="card-action-hint">Ver Análise de Cola →</div>
+        `;
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => {
+            window.location.href = `/pages/analise-cola/?courseId=${encodeURIComponent(courseId)}`;
+        });
+        grid.appendChild(card);
+    });
+}
+
+function _iniciarPollCola() {
+    if (_colaBadgePollTimer) clearInterval(_colaBadgePollTimer);
+    _colaBadgePollTimer = setInterval(async () => {
+        try {
+            const r = await fetch(`${API_URL}/api/classroom/provas/resumo-cola-geral`, { credentials: 'include' });
+            if (!r.ok) return;
+            const d = await r.json();
+            _colaResumo = d.resumo || {};
+            _renderSecaoAlertas();
+        } catch (_) {}
+    }, 3 * 60 * 1000);
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            fetch(`${API_URL}/api/classroom/provas/resumo-cola-geral`, { credentials: 'include' })
+                .then(r => r.ok ? r.json() : null)
+                .then(d => { if (d) { _colaResumo = d.resumo || {}; _renderSecaoAlertas(); } })
+                .catch(() => {});
+        }
+    });
 }
 
 // ── Cards de turmas ───────────────────────────────────────────────────────────
@@ -558,6 +657,7 @@ function renderizarTurmas(turmas) {
         const card = document.createElement('div');
         card.className = 'card card-turma';
         card.style.cursor = 'pointer';
+        if (turma.nmTurma) card.dataset.nmTurma = turma.nmTurma;
         card.addEventListener('click', () => abrirModalAlunos({
             titulo:   turma.nmTurma,
             nmTurma:  turma.nmTurma,
@@ -608,6 +708,7 @@ function renderizarDisciplinas(disciplinas) {
     Object.values(agrupadas).forEach(disc => {
         const card = document.createElement('div');
         card.className = 'card card-disciplina';
+        card.dataset.nmDisciplina = disc.nome;
 
         const turmasHtml = disc.items.length
             ? disc.items.map(it => {

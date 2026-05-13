@@ -741,6 +741,28 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* Contagem de flags 'investigar' para TODOS os cursos do professor logado — sem precisar informar courseIds */
+    router.get('/classroom/provas/resumo-cola-geral', async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT p.curso_id, COUNT(*)::int AS pendentes
+                   FROM classroom_prova_cola_flags f
+                   JOIN classroom_provas p ON p.id = f.prova_id
+                  WHERE f.status = 'investigar'
+                    AND p.criada_por_cpf = $1
+                  GROUP BY p.curso_id`,
+                [cpf]
+            );
+            const resumo = {};
+            for (const r of rows) resumo[r.curso_id] = r.pendentes;
+            res.json({ resumo });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* Todas as flags 'investigar' de um curso (visão consolidada) */
     router.get('/classroom/provas/pendentes-investigar', async (req, res) => {
         const courseId = req.query.courseId;

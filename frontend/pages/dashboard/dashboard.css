@@ -290,3 +290,39 @@
 
 /* Sync status chip styles live in shared/css/layout.css */
 
+/* ── Seção de Alertas de Cola ────────────────────────────────────────────── */
+.secao-alertas .section-header h2 { color: #e65100; }
+
+/* Card de alerta de cola (um por Classroom course com pares pendentes) */
+.card-cola-alerta {
+    border: 2px solid #ff9800;
+    cursor: pointer;
+}
+
+.card-cola-alerta:hover { border-color: #e65100; }
+
+.cola-icon {
+    background: linear-gradient(135deg, #ff9800, #e65100);
+    font-size: 18px;
+}
+
+/* Badge de contagem no canto superior direito do card */
+.cola-alert-badge-corner {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ff9800;
+    color: #fff;
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .secao-alertas .section-header h2 { color: #ffb74d; }
+[data-theme="dark"] .card-cola-alerta { border-color: #b36200; }
+[data-theme="dark"] .card-cola-alerta:hover { border-color: #ff9800; }
+[data-theme="dark"] .cola-alert-badge-corner { background: #b36200; }
+

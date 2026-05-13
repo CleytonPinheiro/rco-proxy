@@ -178,13 +178,24 @@ async function marcarTodasLidas() {
 /* ── URL params ────────────────────────────────────────────────── */
 
 async function _aplicarUrlParams() {
-    const params  = new URLSearchParams(location.search);
-    const provaId = params.get('provaId');
-    if (!provaId) return;
-    const alunoA  = params.get('alunoA') || null;
-    const alunoB  = params.get('alunoB') || null;
-    await _selecionarProvaPorId(parseInt(provaId, 10));
-    if (alunoA && alunoB) _expandirPar(alunoA, alunoB);
+    const params   = new URLSearchParams(location.search);
+    const courseId = params.get('courseId');
+    const provaId  = params.get('provaId');
+
+    if (courseId) {
+        const sel = $('acCurso');
+        if (sel && sel.querySelector(`option[value="${CSS.escape(courseId)}"]`)) {
+            sel.value = courseId;
+            await onCursoChange();
+        }
+    }
+
+    if (provaId) {
+        const alunoA = params.get('alunoA') || null;
+        const alunoB = params.get('alunoB') || null;
+        await _selecionarProvaPorId(parseInt(provaId, 10));
+        if (alunoA && alunoB) _expandirPar(alunoA, alunoB);
+    }
 }
 
 async function _selecionarProvaPorId(provaId) {
