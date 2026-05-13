@@ -208,7 +208,7 @@
     display: block;
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-secondary, #333);
     margin-bottom: 6px;
 }
 
@@ -216,15 +216,18 @@
 .form-group select {
     width: 100%;
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-input, #ddd);
     border-radius: 6px;
     font-size: 14px;
+    background: var(--bg-secondary, #f8f9fb);
+    color: var(--text-primary, #1a1a2e);
 }
 
 .form-group input:focus,
 .form-group select:focus {
-    outline: none;
-    border-color: #007bff;
+    outline: 2px solid color-mix(in srgb, var(--input-focus, #007bff) 25%, transparent);
+    outline-offset: 0;
+    border-color: var(--input-focus, #007bff);
 }
 
 .form-actions {
@@ -280,7 +283,7 @@
 
 [data-theme="dark"] .filtros input,
 [data-theme="dark"] .filtros select {
-    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+    background: var(--bg-input, #1e2130); color: var(--text-primary, #e8e8f0); border-color: var(--border-input, #3a3d52);
 }
 
 [data-theme="dark"] .stats-card,
@@ -300,10 +303,13 @@
 [data-theme="dark"] .form-group input,
 [data-theme="dark"] .form-group select,
 [data-theme="dark"] .form-group textarea {
-    background: var(--input-bg); color: var(--input-color); border-color: var(--input-border);
+    background: var(--bg-input, #1e2130); color: var(--text-primary, #e8e8f0); border-color: var(--border-input, #3a3d52);
 }
 [data-theme="dark"] .form-group input:focus,
-[data-theme="dark"] .form-group select:focus { border-color: var(--input-focus); }
+[data-theme="dark"] .form-group select:focus {
+    border-color: var(--input-focus, #60a5fa);
+    outline: 2px solid color-mix(in srgb, var(--input-focus, #60a5fa) 30%, transparent);
+}
 
 [data-theme="dark"] .btn-editar-mat { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border); }
 [data-theme="dark"] .btn-editar-mat:hover { background: var(--bg-hover); }
@@ -331,5 +337,5 @@
 }
 .form-group .csel--open .csel-trigger,
 .form-group .csel-trigger:hover { border-color: #007bff; }
-[data-theme="dark"] .form-group .csel-trigger { background: var(--input-bg); color: var(--input-color); border-color: var(--input-border); }
-[data-theme="dark"] .filtros .csel-trigger { background: var(--input-bg); color: var(--input-color); border-color: var(--input-border); }
+[data-theme="dark"] .form-group .csel-trigger { background: var(--bg-input, #1e2130); color: var(--text-primary, #e8e8f0); border-color: var(--border-input, #3a3d52); }
+[data-theme="dark"] .filtros .csel-trigger { background: var(--bg-input, #1e2130); color: var(--text-primary, #e8e8f0); border-color: var(--border-input, #3a3d52); }

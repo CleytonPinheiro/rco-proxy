@@ -279,7 +279,7 @@ html, body {
 }
 
 .kiosk-modal-box {
-    background: var(--surface);
+    background: var(--bg-card, #1a1d27);
     border: 1px solid var(--border);
     border-radius: 20px;
     width: 540px;
@@ -543,8 +543,8 @@ html, body {
 [data-theme="light"] .loan-material { color: #555; }
 [data-theme="light"] .loan-data { color: #888; }
 
-[data-theme="light"] .kiosk-modal-overlay { background: rgba(0,0,0,0.5); }
-[data-theme="light"] .kiosk-modal { background: #ffffff; border-color: #dee2e6; }
-[data-theme="light"] .kiosk-modal-header { border-color: #dee2e6; }
-[data-theme="light"] .kiosk-modal-title { color: #1a1a2e; }
-[data-theme="light"] .kiosk-input { background: #f0f2f5; color: #1a1a2e; border-color: #dee2e6; }
+[data-theme="light"] .kiosk-modal { background: rgba(0,0,0,0.5); }
+[data-theme="light"] .kiosk-modal-box { background: var(--bg-card, #ffffff); border-color: var(--border, #dee2e6); }
+[data-theme="light"] .kiosk-modal-header { border-color: var(--border, #dee2e6); }
+[data-theme="light"] .kiosk-modal-header h2 { color: var(--text-primary, #1a1a2e); }
+[data-theme="light"] .btn-fechar { background: var(--bg-secondary, #f0f2f5); color: var(--text-muted, #6b7280); border-color: var(--border, #dee2e6); }

@@ -261,10 +261,19 @@
 .form-group label { font-size: .82rem; font-weight: 600; color: var(--text-muted); }
 .input-form {
     padding: 9px 12px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--bg);
+    border: 1px solid var(--border); background: var(--bg-secondary, #f8f9fb);
     color: var(--text); font-size: .9rem; width: 100%; box-sizing: border-box;
 }
-.input-form:focus { outline: none; border-color: var(--accent); }
+[data-theme="dark"] .input-form {
+    background: var(--bg-input, #1e2130);
+    border-color: var(--border-input, #2d3154);
+    color: var(--text-primary);
+}
+.input-form:focus {
+    border-color: var(--accent);
+    outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    outline-offset: 0;
+}
 textarea.input-form { resize: vertical; font-family: inherit; }
 .textarea-msg { min-height: 100px; }
 .hint { font-size: .76rem; color: var(--text-muted); margin-top: 4px; }

@@ -154,11 +154,26 @@
 .modal-box .form-group input,
 .modal-box .form-group select {
     width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
-    border-radius: 8px; background: var(--bg); color: var(--text-primary);
+    border-radius: 8px; background: var(--bg-secondary, #f8f9fb); color: var(--text-primary);
     font-size: .9rem; outline: none;
 }
+[data-theme="dark"] .modal-box .form-group input,
+[data-theme="dark"] .modal-box .form-group select {
+    background: var(--bg-input, #1e2130);
+    border-color: var(--border-input, #2d3154);
+    color: var(--text-primary);
+}
 .modal-box .form-group input:focus,
-.modal-box .form-group select:focus { border-color: #4285F4; }
+.modal-box .form-group select:focus {
+    border-color: #4285F4;
+    outline: 2px solid color-mix(in srgb, #4285F4 25%, transparent);
+    outline-offset: 0;
+}
+[data-theme="dark"] .modal-box .form-group input:focus,
+[data-theme="dark"] .modal-box .form-group select:focus {
+    border-color: var(--input-focus, #60a5fa);
+    outline: 2px solid color-mix(in srgb, var(--input-focus, #60a5fa) 30%, transparent);
+}
 
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
 .btn-modal-salvar  { padding: 9px 20px; background: #4285F4; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; }
