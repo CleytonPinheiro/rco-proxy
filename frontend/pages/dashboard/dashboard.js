@@ -549,8 +549,8 @@ function renderizarTudo() {
     _renderSecaoAlertas();
 }
 
-// ── Cheating-alert section (Análise de Cola) ─────────────────────────────────
-// Builds a dedicated "🔍 Análise de Cola" section with one card per Classroom
+// ── Cheating-alert section (Analise de gabarito) ─────────────────────────────────
+// Builds a dedicated "🔍 Analise de gabarito" section with one card per Classroom
 // course that has unresolved suspicious pairs. courseId is always the canonical
 // Classroom ID directly from the API — no fuzzy name matching is used.
 
@@ -611,7 +611,7 @@ function _renderSecaoAlertas() {
             <div class="card-icon cola-icon">🔍</div>
             <div class="card-title">${nome}</div>
             <div class="card-info">${count} par${count > 1 ? 'es' : ''} suspeito${count > 1 ? 's' : ''} aguardando revisão</div>
-            <div class="card-action-hint">Ver Análise de Cola →</div>
+            <div class="card-action-hint">Ver Analise de gabarito →</div>
         `;
         card.style.cursor = 'pointer';
         card.addEventListener('click', () => {

@@ -295,7 +295,7 @@ function renderBadgesProva(p) {
                 ? '<span class="prv-badge prv-badge-efetiva">Efetivada</span>'
                 : '<span class="prv-badge prv-badge-rascunho">Rascunho</span>'}
             ${p.segundo_corretor_ativo ? '<span class="prv-badge prv-badge-2cor">2º corretor</span>' : ''}
-            ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥${p.pares_suspeitos_threshold ?? 70}% de similaridade — abra a aba Análise de Cola para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
+            ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥${p.pares_suspeitos_threshold ?? 70}% de similaridade — abra a aba Analise de gabarito para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
             ${p.pares_flagged_investigar > 0 ? `<span class="prv-badge prv-badge-flagged" title="Pares suspeitos ainda em investigação">🔍 ${p.pares_flagged_investigar} pendente${p.pares_flagged_investigar > 1 ? 's' : ''}</span>` : ''}
             ${p.pares_flagged_resolvido > 0 ? `<span class="prv-badge prv-badge-resolvido" title="Pares suspeitos já resolvidos pelo professor">✅ ${p.pares_flagged_resolvido} resolvido${p.pares_flagged_resolvido > 1 ? 's' : ''}</span>` : ''}`;
 }
@@ -485,7 +485,7 @@ function renderDetalhe(d) {
             ? `ativo · ${p.segundo_corretor_pct === 100 ? '100% automático' : (p.segundo_corretor_pct || 15) + '% automático'}${p.permitir_outra_turma ? ' · cross-turma ON' : ''}`
             : 'desativado'}</span>
     `;
-    $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Análise de Cola</strong> para carregar.</div>';
+    $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Analise de gabarito</strong> para carregar.</div>';
     $('prvDetDivergencias').innerHTML = '<div class="prv-empty">Carregando divergências…</div>';
     _colaCarregada = false;
     _colaExpandido = null;

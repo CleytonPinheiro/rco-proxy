@@ -1,5 +1,5 @@
 'use strict';
-/* Análise de Cola — Página dedicada */
+/* Analise de gabarito — Página dedicada */
 
 const $ = id => document.getElementById(id);
 
@@ -697,7 +697,7 @@ async function exportarPdf() {
         const url  = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `analise-cola-prova-${provaAtualId}.pdf`;
+        a.download = `analise-gabarito-prova-${provaAtualId}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();

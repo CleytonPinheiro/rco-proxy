@@ -2010,7 +2010,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             res.setHeader('Content-Type', 'application/pdf');
             const dataProva = prova.data_aplicacao ? new Date(prova.data_aplicacao).toLocaleDateString('pt-BR') : '—';
             const nomeSanitized = prova.nome.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-            res.setHeader('Content-Disposition', `attachment; filename="analise-cola-${nomeSanitized}-${provaId}.pdf"`);
+            res.setHeader('Content-Disposition', `attachment; filename="analise-gabarito-${nomeSanitized}-${provaId}.pdf"`);
             doc.pipe(res);
 
             const AZUL = '#1e40af';
@@ -2019,7 +2019,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             const PAGE_W = doc.page.width - 80; /* margem 40 de cada lado */
 
             /* Cabeçalho */
-            doc.fontSize(18).fillColor(AZUL).font('Helvetica-Bold').text('Análise de Cola — Relatório Formal', 40, 40);
+            doc.fontSize(18).fillColor(AZUL).font('Helvetica-Bold').text('Analise de gabarito — Relatório Formal', 40, 40);
             doc.fontSize(11).fillColor('#111').font('Helvetica').moveDown(0.3);
             doc.text(`Prova: ${prova.nome}`);
             if (prova.curso_id) doc.text(`Turma (Google Classroom ID): ${prova.curso_id}`);

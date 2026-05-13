@@ -47,7 +47,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'pedagogico',         nome: 'Painel Pedagógico' },
     { id: 'retorno-pedagogico', nome: 'Retorno Pedagógico' },
     { id: 'provas',             nome: 'Gabarito & Correção' },
-    { id: 'analise-cola',       nome: 'Análise de Cola' },
+    { id: 'analise-cola',       nome: 'Analise de gabarito' },
     { id: 'comunicados',        nome: 'Comunicados' },
     { id: 'crachas',            nome: 'Crachás' },
     { id: 'emprestimos',        nome: 'Empréstimos' },
