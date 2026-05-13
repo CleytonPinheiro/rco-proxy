@@ -20,6 +20,7 @@ import { getBrowser }       from '../../auth-puppeteer.js';
 import { ReputacaoService, EVENTOS, BADGES, RANKS, getRank } from '../services/reputacao.service.js';
 import { checarColaPosSubmissao } from '../services/colaCheck.js';
 import { recordGpError } from '../services/gpErrorAlertJob.js';
+import { requireModulo } from '../middleware/auth.middleware.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -2179,8 +2180,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     });
 
     /* ── Registrar respostas manualmente (professor insere gabarito físico de aluno) ── */
-    router.post('/classroom/provas/:provaId/submissoes/manual', async (req, res) => {
-        const session = req.session?.usuario;
+    router.post('/classroom/provas/:provaId/submissoes/manual', requireModulo('confrontar-gabarito'), async (req, res) => {
+        const session = req.userSession;
         if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
 
         const { alunoNome, alunoEmail, varianteId, marcacoes } = req.body || {};
@@ -2248,7 +2249,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     });
 
     /* ── Confrontar gabarito (comparação em memória, sem gravação) ── */
-    router.post('/classroom/provas/:provaId/comparar-respostas', async (req, res) => {
+    router.post('/classroom/provas/:provaId/comparar-respostas', requireModulo('confrontar-gabarito'), async (req, res) => {
         const session = req.userSession;
         if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
 
