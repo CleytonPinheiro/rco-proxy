@@ -46,7 +46,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'mapa-sala',          nome: 'Mapa de Sala' },
     { id: 'pedagogico',         nome: 'Painel Pedagógico' },
     { id: 'retorno-pedagogico', nome: 'Retorno Pedagógico' },
-    { id: 'provas',             nome: 'Provas' },
+    { id: 'provas',             nome: 'Gabarito & Correção' },
     { id: 'analise-cola',       nome: 'Análise de Cola' },
     { id: 'comunicados',        nome: 'Comunicados' },
     { id: 'crachas',            nome: 'Crachás' },

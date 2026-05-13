@@ -934,8 +934,8 @@ const CONFIG_LABELS = {
         min: 0.5, max: 168, integer: false,
     },
     badge_poll_minutos: {
-        nome: 'Intervalo de atualização do badge de Provas (minutos)',
-        desc: 'Com que frequência a tela de Provas consulta o servidor para atualizar o contador de pares pendentes de investigação. Valores menores deixam o badge mais atualizado, mas aumentam o tráfego de rede. Padrão: 3.',
+        nome: 'Intervalo de atualização do badge de Gabarito & Correção (minutos)',
+        desc: 'Com que frequência a tela de Gabarito & Correção consulta o servidor para atualizar o contador de pares pendentes de investigação. Valores menores deixam o badge mais atualizado, mas aumentam o tráfego de rede. Padrão: 3.',
         tipo: 'text',
         min: 1, max: 60, integer: true,
     },
@@ -2798,7 +2798,7 @@ function renderSistema(d, cache, rl, historico) {
             : '—';
         gradePenHtml = `
         <div style="margin-top:24px;padding:16px 18px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg-card)">
-            <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px">GradePen (Provas)</div>
+            <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px">GradePen (Gabarito &amp; Correção)</div>
             <div style="display:flex;flex-wrap:wrap;gap:20px;font-size:.875rem">
                 <div><span style="color:var(--text-muted)">Página: </span>${gpStatus}</div>
                 <div><span style="color:var(--text-muted)">Login: </span>${gpLogin}</div>
