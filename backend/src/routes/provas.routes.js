@@ -87,6 +87,7 @@ async function migrarTabelas() {
            Separado do grupo_destino_id (que costuma ser o de "atividades 4 pts"). */
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS grupo_avaliacao_id INTEGER REFERENCES classroom_grupos(id) ON DELETE SET NULL`);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS pontos_avaliacao   NUMERIC NOT NULL DEFAULT 6.0`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS link_prova TEXT`);
         await pool.query(`
             CREATE UNIQUE INDEX IF NOT EXISTS idx_provasub_2cor_unico
                 ON classroom_prova_submissoes(submissao_ref_id, aluno_email)
@@ -919,6 +920,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             fotoModo = 'sorteio', fotoSorteioPct = 20,
             segundoCorretorAtivo = false, segundoCorretorPct = 15,
             permitirOutraTurma = false,
+            linkProva,           // opcional: URL da prova para os alunos lerem as questões
             variantesManuais,    // opcional: [{codigo, gabarito: [{questao, tipo, correta, valor, n_alternativas}]}]
         } = req.body || {};
 
@@ -933,16 +935,17 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
+            const linkProvaVal = (linkProva && typeof linkProva === 'string' && linkProva.trim()) ? linkProva.trim() : null;
             const { rows: [prova] } = await client.query(
                 `INSERT INTO classroom_provas
                    (curso_id, gradepen_id, nome, grupo_destino_id, data_aplicacao,
                     foto_modo, foto_sorteio_pct, segundo_corretor_ativo, segundo_corretor_pct,
-                    permitir_outra_turma, criada_por_cpf, criada_por_nome)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                    permitir_outra_turma, link_prova, criada_por_cpf, criada_por_nome)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
                  RETURNING *`,
                 [courseId, String(gradepenId), nome, grupoDestinoId || null, dataAplicacao || null,
                  fotoModo, fotoSorteioPct, !!segundoCorretorAtivo, segundoCorretorPct,
-                 !!permitirOutraTurma, req.userSession?.cpf || null, req.userSession?.nome || null]
+                 !!permitirOutraTurma, linkProvaVal, req.userSession?.cpf || null, req.userSession?.nome || null]
             );
 
             let variantes;
@@ -2341,6 +2344,7 @@ export function createProvasPublicRouter() {
                     grupo_destino_nome: prova.grupo_destino_nome,
                     efetivada: prova.efetivada,
                     foto_modo: prova.foto_modo,
+                    link_prova: prova.link_prova || null,
                 },
                 variantes,
                 varianteSugerida: varCodigo || null,

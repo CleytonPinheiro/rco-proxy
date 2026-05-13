@@ -90,6 +90,15 @@ async function init() {
 function renderVariantes() {
     $('ppNomeProva').textContent = estado.prova.nome;
     $('ppAlunoNome').textContent = estado.aluno.nome || estado.aluno.email;
+    const linkProva = estado.prova.link_prova;
+    const linkWrap = $('ppLinkProvaWrap');
+    const linkEl   = $('ppLinkProva');
+    if (linkProva) {
+        linkEl.href = linkProva;
+        linkWrap.style.display = '';
+    } else {
+        linkWrap.style.display = 'none';
+    }
     const wrap = $('ppListaVariantes');
     wrap.innerHTML = '';
     estado.variantes.forEach(v => {

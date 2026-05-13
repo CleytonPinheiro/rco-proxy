@@ -371,6 +371,7 @@ function abrirNova() {
     prvRefreshCustomSelect($('prvfTrimestre'));
     prvAtualizarNome();
     $('prvfAnsid').value = '';
+    $('prvfLinkProva').value = '';
     $('prvfData').value  = new Date().toISOString().slice(0,10);
     $('prvfFoto').value  = 'sorteio';
     prvRefreshCustomSelect($('prvfFoto'));
@@ -391,6 +392,7 @@ async function salvarNova() {
     if ($('prvfSegundo').checked && (segundoPct < 1 || segundoPct > 100)) {
         return mostraErro('O percentual do 2º corretor deve ser entre 1 e 100.');
     }
+    const linkProvaRaw = $('prvfLinkProva').value.trim();
     const body = {
         courseId:             cursoAtual,
         nome:                 $('prvfNome').value.trim(),
@@ -401,6 +403,7 @@ async function salvarNova() {
         segundoCorretorAtivo: $('prvfSegundo').checked,
         segundoCorretorPct:   segundoPct,
         permitirOutraTurma:   $('prvfOutraTurma').checked,
+        linkProva:            linkProvaRaw || null,
     };
     if (!body.nome || !body.gradepenId) {
         return mostraErro('Preencha nome e ID GradePen.');
