@@ -107,7 +107,7 @@
                 <small>Cole só o número antes do ponto. Ex: do link https://gradepen.com/.../?ansid=<strong>2997247</strong>.0 → digite <strong>2997247</strong>.</small>
             </label>
             <label>Link da prova <small>opcional</small>
-                <input id="prvfLinkProva" type="url" placeholder="Ex: https://drive.google.com/file/d/…">
+                <input id="prvfLinkProva" type="text" placeholder="Ex: https://drive.google.com/file/d/ABC123/view?usp=sharing">
                 <small>Cole o link do Google Drive, PDF ou qualquer URL com as questões. O aluno verá um botão "Ver questões" no portal de correção.</small>
             </label>
             <label>Data da aplicação
@@ -139,7 +139,7 @@
             </label>
             <div class="prv-modal-actions">
                 <button class="prv-btn" onclick="fecharNova()">Cancelar</button>
-                <button class="prv-btn prv-btn-primary" id="prvBtnSalvarNova" onclick="salvarNova()">Cadastrar e baixar gabarito</button>
+                <button class="prv-btn prv-btn-primary" id="prvBtnSalvarNova" onclick="salvarNova()">Cadastrar e importar gabarito</button>
             </div>
             <div id="prvNovaErro" class="prv-erro" style="display:none"></div>
         </div>

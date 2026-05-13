@@ -443,12 +443,12 @@ async function salvarNova() {
         }
         fecharNova();
         await carregarProvas();
-        await notificar('Prova cadastrada', `${d.variantes_count} variante(s) baixadas da GradePen.`, {tipo: 'ok'});
+        await notificar('Prova cadastrada', `${d.variantes_count} variante(s) importada(s) da GradePen. Clique no card da prova para ver as variantes e alternativas corretas.`, {tipo: 'ok'});
     } catch (e) {
         mostraErro(e.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Cadastrar e baixar gabarito';
+        btn.textContent = 'Cadastrar e importar gabarito';
         $('prvNovaLoading').style.display = 'none';
     }
 }
