@@ -9,7 +9,7 @@
 .prv-toolbar-right select {
     padding: 8px 12px; border-radius: 8px;
     border: 1px solid var(--border, #ddd);
-    background: var(--bg-secondary, #fff); color: var(--text, #000);
+    background: var(--bg-secondary, #fff); color: var(--text-primary, #1a1a2e);
     min-width: 180px; max-width: 260px;
 }
 #prvTurma { min-width: 200px; }
@@ -17,7 +17,7 @@
 
 .prv-btn {
     padding: 8px 16px; border: 1px solid var(--border, #ddd);
-    background: var(--bg-secondary, #fff); color: var(--text, #000);
+    background: var(--bg-secondary, #fff); color: var(--text-primary, #1a1a2e);
     border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
 }
 .prv-btn:hover { background: var(--bg, #f5f5f5); }
@@ -62,6 +62,12 @@
 .prv-badge-cola     { background:#fee2e2; color:#991b1b; }
 .prv-badge-flagged  { background:#ede9fe; color:#5b21b6; }
 .prv-badge-resolvido { background:#dcfce7; color:#166534; }
+[data-theme="dark"] .prv-badge-rascunho { background:#3b2a00; color:#fcd34d; }
+[data-theme="dark"] .prv-badge-efetiva  { background:#14532d; color:#86efac; }
+[data-theme="dark"] .prv-badge-2cor     { background:#1e3a6e; color:#93c5fd; }
+[data-theme="dark"] .prv-badge-cola     { background:#450a0a; color:#fca5a5; }
+[data-theme="dark"] .prv-badge-flagged  { background:#2e1065; color:#c4b5fd; }
+[data-theme="dark"] .prv-badge-resolvido { background:#14532d; color:#86efac; }
 
 /* Modal */
 .prv-modal {
@@ -71,7 +77,7 @@
     padding: 20px;
 }
 .prv-modal-card {
-    background: var(--bg-card, #fff); color: var(--text, #000);
+    background: var(--bg-card, #fff); color: var(--text-primary, #1a1a2e);
     border-radius: 14px; padding: 24px;
     max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto;
     box-shadow: 0 8px 32px var(--shadow-lg, rgba(0,0,0,0.18));
@@ -79,7 +85,7 @@
 .prv-modal-large { max-width: 880px; }
 .prv-modal-title {
     margin: 0 0 14px; font-size: 18px; font-weight: 700;
-    color: var(--text, #111);
+    color: var(--text-primary, #111);
 }
 /* Loading overlay inside modal */
 .prv-modal-loading {
@@ -90,7 +96,7 @@
     align-items: center; justify-content: center;
     gap: 12px; text-align: center; padding: 24px;
 }
-.prv-modal-loading p  { margin: 0; font-size: 15px; font-weight: 600; color: var(--text, #111); }
+.prv-modal-loading p  { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary, #111); }
 .prv-modal-loading small { color: var(--text-muted, #666); font-size: 12px; }
 .prv-loading-spinner {
     width: 48px; height: 48px;
@@ -147,6 +153,8 @@
 }
 .prv-flag-foto { background:#fef3c7; color:#92400e; }
 .prv-flag-2cor { background:#dbeafe; color:#1e40af; }
+[data-theme="dark"] .prv-flag-foto { background:#3b2a00; color:#fcd34d; }
+[data-theme="dark"] .prv-flag-2cor { background:#1e3a6e; color:#93c5fd; }
 .prv-link-acao { color:#4285F4; cursor:pointer; text-decoration:underline; font-size:12px; background:none;border:none;padding:0; }
 
 .prv-info-box {
@@ -172,7 +180,7 @@
     border-radius: 8px;
     border: 1px solid var(--border, #ddd);
     background: var(--bg-secondary, #fff);
-    color: var(--text, #000);
+    color: var(--text-primary, #1a1a2e);
     font-size: 14px;
     font-family: inherit;
     cursor: pointer;
@@ -218,7 +226,7 @@
     padding: 8px 14px;
     font-size: 14px;
     cursor: pointer;
-    color: var(--text, #000);
+    color: var(--text-primary, #1a1a2e);
     border-radius: 6px;
     margin: 1px 4px;
     transition: background .1s;
@@ -312,7 +320,7 @@
     border-bottom: 2px solid transparent; margin-bottom: -2px;
     transition: .15s;
 }
-.prv-tab-btn:hover { background: var(--bg, #f5f5f5); color: var(--text, #000); }
+.prv-tab-btn:hover { background: var(--bg, #f5f5f5); color: var(--text-primary, #1a1a2e); }
 .prv-tab-ativa { color: #4285F4 !important; border-bottom-color: #4285F4 !important; background: none !important; }
 
 /* Análise de Cola */
@@ -361,10 +369,14 @@
     border-color: #bbf7d0; font-size: 13px;
 }
 .prv-cola-export-btn:hover { background: #dcfce7; border-color: #86efac; }
+[data-theme="dark"] .prv-cola-export-btn { background: #14532d; color: #86efac; border-color: #166534; }
+[data-theme="dark"] .prv-cola-export-btn:hover { background: #166534; border-color: #22c55e; }
 
 /* Flag badges */
 .prv-cola-flag-investigar { background:#fff7ed; color:#c2410c; }
 .prv-cola-flag-resolvido  { background:#dcfce7; color:#166534; }
+[data-theme="dark"] .prv-cola-flag-investigar { background:#3b1500; color:#fb923c; }
+[data-theme="dark"] .prv-cola-flag-resolvido  { background:#14532d; color:#86efac; }
 
 /* Flagged row subtle outline */
 .prv-cola-row-flagged td { outline: 1px solid #d1fae5; }
@@ -391,7 +403,7 @@
     flex: 1; min-width: 0; resize: vertical;
     padding: 6px 10px; border-radius: 6px; font-size: 13px;
     border: 1px solid var(--border, #d1d5db);
-    background: var(--bg-secondary, #fff); color: var(--text, #000);
+    background: var(--bg-secondary, #fff); color: var(--text-primary, #1a1a2e);
 }
 [data-theme="dark"] .prv-cola-flag-nota { background: #1e1e2e; border-color: #444; }
 
@@ -460,6 +472,8 @@
     border-color: #bfdbfe;
 }
 .prv-pendente-link:hover { background: #dbeafe; }
+[data-theme="dark"] .prv-pendente-link { background: #1e3a6e; color: #93c5fd; border-color: #1e40af; }
+[data-theme="dark"] .prv-pendente-link:hover { background: #1e448a; border-color: #3b82f6; }
 
 /* ── Visual Grid (cola) ────────────────────────────────────────── */
 .prv-cola-grid-toggle {
@@ -511,6 +525,9 @@
 .prv-cola-score-num.baixo { color: #166534; }
 .prv-cola-score-num.medio { color: #92400e; }
 .prv-cola-score-num.alto  { color: #991b1b; }
+[data-theme="dark"] .prv-cola-score-num.baixo { color: #4ade80; }
+[data-theme="dark"] .prv-cola-score-num.medio { color: #fbbf24; }
+[data-theme="dark"] .prv-cola-score-num.alto  { color: #f87171; }
 
 /* ── History button (cola table) ───────────────────────────────── */
 .prv-cola-hist-btn {
@@ -518,7 +535,7 @@
     padding: 1px 3px; border-radius: 4px; color: var(--text-muted, #999);
     vertical-align: middle; margin-left: 2px;
 }
-.prv-cola-hist-btn:hover { background: var(--bg, #f3f4f6); color: var(--text, #000); }
+.prv-cola-hist-btn:hover { background: var(--bg, #f3f4f6); color: var(--text-primary, #1a1a2e); }
 
 /* Conversa Pedagógica button in cola table */
 .prv-cola-conversa-btn {
@@ -528,6 +545,8 @@
     white-space: nowrap;
 }
 .prv-cola-conversa-btn:hover { background: #e0f2fe; border-color: #7dd3fc; }
+[data-theme="dark"] .prv-cola-conversa-btn { background: #0c2d4a; color: #7dd3fc; border-color: #0369a1; }
+[data-theme="dark"] .prv-cola-conversa-btn:hover { background: #0e3a5c; border-color: #38bdf8; }
 
 /* Conversa Pedagógica Modal */
 .prv-conversa-modal {
@@ -536,7 +555,7 @@
 }
 .prv-conversa-card {
     background: var(--bg-secondary, #fff);
-    color: var(--text, #000);
+    color: var(--text-primary, #1a1a2e);
     width: 100%;
     min-height: 100vh;
     padding: 28px 36px 40px;
@@ -569,6 +588,8 @@
     border-color: #d1d5db; font-size: 13px;
 }
 .prv-conversa-print-btn:hover { background: #f3f4f6; }
+[data-theme="dark"] .prv-conversa-print-btn { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .prv-conversa-print-btn:hover { background: var(--bg-hover); }
 
 .prv-conversa-switcher {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -640,7 +661,7 @@
     padding: 4px 6px;
     position: relative;
     border-radius: 6px;
-    color: var(--text, #333);
+    color: var(--text-primary, #333);
     transition: background .15s;
 }
 .ac-notif-bell:hover { background: var(--bg-secondary, #f3f4f6); }
@@ -777,7 +798,7 @@
 .gp-connect-info strong {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text, #111);
+    color: var(--text-primary, #111);
 }
 .gp-connect-info span {
     font-size: 12px;
