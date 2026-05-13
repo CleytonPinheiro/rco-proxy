@@ -441,6 +441,7 @@ async function onTurmaChange() {
     if (!turma) {
         selDisc.innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
         selDisc.disabled = true;
+        acRefreshCustomSelect($('acDisciplina'));
         acRefreshCustomSelect($('acProva'));
         return;
     }
@@ -449,6 +450,7 @@ async function onTurmaChange() {
     selDisc.innerHTML = '<option value="">Selecione uma disciplina…</option>' +
         filtrados.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(_nomeDisciplina(c.nome))}</option>`).join('');
     selDisc.disabled = false;
+    acRefreshCustomSelect($('acDisciplina'));
     acRefreshCustomSelect($('acProva'));
 }
 
