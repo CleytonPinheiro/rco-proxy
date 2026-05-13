@@ -175,57 +175,129 @@ async function gpLogin() {
         const delay = ms => new Promise(r => setTimeout(r, ms));
 
         /* Helper: conduz o login Google dentro de uma página (main ou popup) */
-        async function handleGoogleLogin(p) {
-            const pScreen = await Promise.race([
-                p.waitForSelector('input[type="email"]',    { timeout: 8000 }).then(() => 'email').catch(() => null),
-                p.waitForSelector('input[type="password"]', { timeout: 8000 }).then(() => 'password').catch(() => null),
-                p.waitForSelector('[data-authuser]',        { timeout: 8000 }).then(() => 'chooser').catch(() => null),
-                p.waitForSelector('[data-email]',           { timeout: 8000 }).then(() => 'chooser').catch(() => null),
+        /* Detecta qual tela do Google está ativa */
+        async function detectGoogleScreen(p, timeout = 8000) {
+            const s = await Promise.race([
+                p.waitForSelector('input[type="password"]',                  { timeout, visible: true }).then(() => 'password').catch(() => null),
+                p.waitForSelector('[data-authuser], [data-identifier]',      { timeout }).then(() => 'chooser').catch(() => null),
+                p.waitForSelector('#profileIdentifier, .ByO6e, .nJjxad',    { timeout }).then(() => 'chooser').catch(() => null),
+                p.waitForSelector('input[type="email"]',                     { timeout }).then(() => 'email').catch(() => null),
+                p.waitForSelector('[data-challengetype], #challenge, #view_container form:not(:has(input[type="email"]))', { timeout }).then(() => 'challenge').catch(() => null),
             ]).catch(() => null);
-
-            console.log('[PROVAS] Tela Google detectada:', pScreen, '— URL:', p.url().substring(0, 90));
-
-            if (pScreen === 'chooser') {
-                const accountBtn = await p.$(`[data-email="${email}"], [data-identifier="${email}"]`).catch(() => null);
-                if (accountBtn) {
-                    await Promise.all([
-                        p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
-                        accountBtn.click(),
-                    ]);
-                } else {
-                    const otherBtn = await p.$('#identifierLink, [data-identifier=""], .w6VTHd').catch(() => null);
-                    if (otherBtn) {
-                        await Promise.all([
-                            p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
-                            otherBtn.click(),
-                        ]);
-                    }
-                }
-                await delay(1000);
+            /* Desempate: se detectou email mas há account-chooser no DOM */
+            if (s === 'email') {
+                const hasChooser = await p.$('[data-authuser], [data-identifier], .ByO6e').catch(() => null);
+                if (hasChooser) return 'chooser';
             }
+            return s || 'unknown';
+        }
 
-            if (pScreen !== 'password') {
-                await p.waitForSelector('input[type="email"]', { timeout: 30000 });
-                await p.type('input[type="email"]', email, { delay: 30 });
+        /* Lida com a tela de escolha de conta (account chooser) */
+        async function handleChooser(p) {
+            console.log('[PROVAS] Account chooser detectado, procurando conta:', email);
+            await p.screenshot({ path: '/tmp/gp-chooser.png' }).catch(() => null);
+
+            /* Tenta clicar na conta específica */
+            const accountBtn = await p.$(`[data-email="${email}"], [data-identifier="${email}"]`).catch(() => null);
+            if (accountBtn) {
+                console.log('[PROVAS] Clicando na conta encontrada no chooser');
                 await Promise.all([
                     p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
-                    p.click('#identifierNext, button[jsname="LgbsSe"]').catch(() => p.keyboard.press('Enter')),
+                    accountBtn.click(),
                 ]);
-                await delay(800);
+                await delay(1200);
+                return;
+            }
+            /* Tenta "Usar outra conta" */
+            const otherBtn = await p.$('[data-identifier=""], #identifierLink, [jsname="E6Lnze"], .BHzsHc button').catch(() => null);
+            if (otherBtn) {
+                console.log('[PROVAS] Clicando em "Usar outra conta"');
+                await Promise.all([
+                    p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+                    otherBtn.click(),
+                ]);
+                await delay(1200);
+                return;
+            }
+            /* Fallback: procura qualquer botão de conta pelo texto */
+            const allBtns = await p.$$('li[data-authuser], li[data-identifier], .C6LFNc, .OVnw0d, .GE6Bmd').catch(() => []);
+            if (allBtns.length > 0) {
+                console.log('[PROVAS] Clicando na primeira conta disponível no chooser');
+                await Promise.all([
+                    p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+                    allBtns[0].click(),
+                ]);
+                await delay(1200);
+            } else {
+                console.log('[PROVAS] Chooser detectado mas nenhuma conta encontrada, tentando continuar');
+            }
+        }
+
+        async function handleGoogleLogin(p) {
+            /* ── Tela inicial ─────────────────────────────────────────────────── */
+            let screen = await detectGoogleScreen(p, 10000);
+            console.log('[PROVAS] Tela Google detectada:', screen, '— URL:', p.url().substring(0, 90));
+            await p.screenshot({ path: '/tmp/gp-screen-inicial.png' }).catch(() => null);
+
+            /* ── Chooser na tela inicial ──────────────────────────────────────── */
+            if (screen === 'chooser') {
+                await handleChooser(p);
+                screen = await detectGoogleScreen(p, 8000);
+                console.log('[PROVAS] Tela após chooser:', screen, '— URL:', p.url().substring(0, 90));
+                await p.screenshot({ path: '/tmp/gp-screen-pos-chooser.png' }).catch(() => null);
             }
 
-            await p.waitForSelector('input[type="password"]', { timeout: 25000, visible: true });
-            await p.type('input[type="password"]', pwd, { delay: 30 });
+            /* ── Campo de email ───────────────────────────────────────────────── */
+            if (screen === 'email') {
+                const emailInput = await p.waitForSelector('input[type="email"]', { timeout: 15000, visible: true });
+                await emailInput.click({ clickCount: 3 }); /* seleciona tudo antes de digitar */
+                await emailInput.type(email, { delay: 40 });
+                console.log('[PROVAS] Email digitado, clicando Next...');
+                await Promise.all([
+                    p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => null),
+                    p.click('#identifierNext, button[jsname="LgbsSe"], [jsname="LgbsSe"]')
+                        .catch(() => p.keyboard.press('Enter')),
+                ]);
+                await delay(1500);
+
+                screen = await detectGoogleScreen(p, 12000);
+                console.log('[PROVAS] Tela após email Next:', screen, '— URL:', p.url().substring(0, 90));
+                await p.screenshot({ path: '/tmp/gp-screen-pos-email.png' }).catch(() => null);
+
+                /* Às vezes aparece chooser DEPOIS do email (conta já autenticada antes) */
+                if (screen === 'chooser') {
+                    await handleChooser(p);
+                    screen = await detectGoogleScreen(p, 8000);
+                    console.log('[PROVAS] Tela após chooser pós-email:', screen, '— URL:', p.url().substring(0, 90));
+                    await p.screenshot({ path: '/tmp/gp-screen-pos-chooser2.png' }).catch(() => null);
+                }
+            }
+
+            /* ── Campo de senha ───────────────────────────────────────────────── */
+            if (screen !== 'password') {
+                /* Última tentativa: aguarda mais tempo */
+                console.log('[PROVAS] Aguardando campo de senha (tela atual:', screen, ')...');
+                await p.screenshot({ path: '/tmp/gp-screen-esperando-senha.png' }).catch(() => null);
+                await p.waitForSelector('input[type="password"]', { timeout: 30000, visible: true });
+            }
+
+            const pwdInput = await p.$('input[type="password"]');
+            await pwdInput.click({ clickCount: 3 });
+            await pwdInput.type(pwd, { delay: 40 });
+            console.log('[PROVAS] Senha digitada, clicando Next...');
             await Promise.all([
                 p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
-                p.click('#passwordNext, button[jsname="LgbsSe"]').catch(() => p.keyboard.press('Enter')),
+                p.click('#passwordNext, button[jsname="LgbsSe"], [jsname="LgbsSe"]')
+                    .catch(() => p.keyboard.press('Enter')),
             ]);
             await delay(1500);
             console.log('[PROVAS] Senha enviada, URL:', p.url().substring(0, 90));
+            await p.screenshot({ path: '/tmp/gp-screen-pos-senha.png' }).catch(() => null);
 
-            /* Consentimento OAuth, se aparecer */
-            const consent = await p.$('#submit_approve_access, button[jsname="LgbsSe"]').catch(() => null);
+            /* ── Consentimento OAuth ──────────────────────────────────────────── */
+            const consent = await p.$('#submit_approve_access, [data-primary-action-label]').catch(() => null);
             if (consent) {
+                console.log('[PROVAS] Tela de consentimento OAuth detectada, aprovando...');
                 await Promise.all([
                     p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
                     consent.click(),
