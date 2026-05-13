@@ -74,8 +74,13 @@
 
     <!-- Modal Nova Prova -->
     <div id="prvModalNova" class="prv-modal" style="display:none">
-        <div class="prv-modal-card">
-            <h2>Nova prova</h2>
+        <div class="prv-modal-card" style="position:relative">
+            <div id="prvNovaLoading" class="prv-modal-loading" style="display:none">
+                <div class="prv-loading-spinner"></div>
+                <p>Buscando gabarito no GradePen…</p>
+                <small>Isso pode levar até 60 segundos na primeira vez.</small>
+            </div>
+            <h2 class="prv-modal-title">Novo Gabarito</h2>
             <div class="prv-form-row">
                 <label>Tipo <small>opcional</small>
                     <select id="prvfTipo" onchange="prvAtualizarNome()">

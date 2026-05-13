@@ -406,16 +406,17 @@ async function salvarNova() {
         return mostraErro('Preencha nome e ID GradePen.');
     }
     /* Fechar qualquer painel de custom select aberto para evitar interceptação de clique */
-    _cselMap.forEach(entry => {
-        if (!entry.panel.hidden) {
-            entry.panel.hidden = true;
-            entry.trigger.setAttribute('aria-expanded', 'false');
-            entry.wrap.classList.remove('prv-csel--open');
-        }
+    document.querySelectorAll('.prv-csel--open').forEach(wrap => {
+        wrap.classList.remove('prv-csel--open');
+        const panel = wrap.querySelector('.prv-csel-panel');
+        if (panel) panel.hidden = true;
+        const trigger = wrap.querySelector('.prv-csel-trigger');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
     });
     const btn = $('prvBtnSalvarNova');
     btn.disabled = true;
-    btn.textContent = 'Baixando gabarito GradePen…';
+    btn.textContent = 'Aguardando…';
+    $('prvNovaLoading').style.display = '';
     try {
         const r = await fetch('/api/classroom/provas', {
             method: 'POST',
@@ -445,6 +446,7 @@ async function salvarNova() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Cadastrar e baixar gabarito';
+        $('prvNovaLoading').style.display = 'none';
     }
 }
 

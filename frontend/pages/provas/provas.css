@@ -76,7 +76,29 @@
     max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto;
 }
 .prv-modal-large { max-width: 880px; }
-.prv-modal-card h2 { margin: 0 0 14px; font-size: 18px; }
+.prv-modal-title {
+    margin: 0 0 14px; font-size: 18px; font-weight: 700;
+    color: var(--text, #111);
+}
+/* Loading overlay inside modal */
+.prv-modal-loading {
+    position: absolute; inset: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg-secondary, #fff) 92%, transparent);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; text-align: center; padding: 24px;
+}
+.prv-modal-loading p  { margin: 0; font-size: 15px; font-weight: 600; color: var(--text, #111); }
+.prv-modal-loading small { color: var(--text-muted, #666); font-size: 12px; }
+.prv-loading-spinner {
+    width: 48px; height: 48px;
+    border: 5px solid var(--border, #ddd);
+    border-top-color: var(--primary, #2563eb);
+    border-radius: 50%;
+    animation: prv-spin 0.8s linear infinite;
+}
+@keyframes prv-spin { to { transform: rotate(360deg); } }
 .prv-modal-card label { display: block; margin-bottom: 12px; font-size: 13px; color: var(--text-muted, #555); }
 .prv-modal-card label small { display:block; margin-top:4px; color:var(--text-muted,#888); font-size:11px; line-height:1.4; }
 .prv-modal-card input[type=text],
