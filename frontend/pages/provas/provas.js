@@ -11,6 +11,9 @@ let cursoAtual = '';
 let provas = [];
 let provaAberta = null;
 let _modoLista = false; /* false = Cards (padrão), true = Lista */
+let _todasProvas = [];  /* cache do modo lista para filtragem client-side */
+let _filtroTexto = '';
+let _filtroStatus = ''; /* '' = todos, 'rascunho', 'efetivada' */
 let _colaCarregada = false;
 let _colaExpandido = null;
 let _colaFlags = {};
@@ -472,7 +475,18 @@ function prvSetModo(modo) {
     const panel = $('prvFlagsPendentes');
     if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
 
+    const filtroBar = $('prvFiltroLista');
+    if (filtroBar) filtroBar.style.display = _modoLista ? '' : 'none';
+
     if (_modoLista) {
+        /* Reinicia filtros ao entrar no modo lista */
+        _filtroTexto = '';
+        _filtroStatus = '';
+        const inp = $('prvFiltroTexto');
+        if (inp) inp.value = '';
+        document.querySelectorAll('.prv-filtro-btn').forEach(b => {
+            b.classList.toggle('prv-filtro-btn-ativo', b.dataset.status === '');
+        });
         carregarTodasProvas();
     } else {
         /* Volta ao modo cards: reusa estado atual dos selects */
@@ -494,45 +508,90 @@ async function carregarTodasProvas() {
             return;
         }
         const d = await r.json();
-        const todas = d.provas || [];
-        if (todas.length === 0) {
-            $('prvLista').innerHTML = '<div class="prv-empty">Nenhuma prova cadastrada ainda.</div>';
-            return;
-        }
-
-        const linhas = todas.map(p => {
-            const data = p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : '—';
-            return `<tr class="prv-lista-row" onclick="abrirDetalhe(${p.id})" title="Abrir detalhes">
-                <td class="prv-lista-td prv-lista-td-nome">
-                    <span class="prv-lista-nome">${escapeHtml(p.nome)}</span>
-                    <div class="prv-lista-badges">${renderBadgesProva(p)}</div>
-                </td>
-                <td class="prv-lista-td prv-lista-td-curso">${escapeHtml(p.curso_nome || p.curso_id)}</td>
-                <td class="prv-lista-td prv-lista-td-data">${escapeHtml(data)}</td>
-                <td class="prv-lista-td prv-lista-td-num">${p.variantes_count}</td>
-                <td class="prv-lista-td prv-lista-td-num">${p.submissoes_count}</td>
-            </tr>`;
-        }).join('');
-
-        $('prvLista').innerHTML = `
-            <table class="prv-lista-tabela">
-                <thead>
-                    <tr>
-                        <th class="prv-lista-th">Prova</th>
-                        <th class="prv-lista-th">Curso</th>
-                        <th class="prv-lista-th">Data</th>
-                        <th class="prv-lista-th prv-lista-th-num">Variantes</th>
-                        <th class="prv-lista-th prv-lista-th-num">Corrigidas</th>
-                    </tr>
-                </thead>
-                <tbody>${linhas}</tbody>
-            </table>`;
+        _todasProvas = d.provas || [];
+        _renderListaFiltrada();
     } catch (e) {
         $('prvLista').innerHTML = `<div class="prv-empty">Erro: ${escapeHtml(e.message)}</div>`;
     }
 }
 
+function _renderListaFiltrada() {
+    const termo = _filtroTexto.trim().toLowerCase();
+
+    const filtradas = _todasProvas.filter(p => {
+        if (_filtroStatus === 'efetivada' && !p.efetivada) return false;
+        if (_filtroStatus === 'rascunho' && p.efetivada) return false;
+        if (termo) {
+            const nome   = (p.nome || '').toLowerCase();
+            const curso  = (p.curso_nome || p.curso_id || '').toLowerCase();
+            if (!nome.includes(termo) && !curso.includes(termo)) return false;
+        }
+        return true;
+    });
+
+    const contagem = $('prvFiltroContagem');
+    if (contagem) {
+        const total = _todasProvas.length;
+        contagem.textContent = filtradas.length === total
+            ? `${total} prova${total !== 1 ? 's' : ''}`
+            : `${filtradas.length} de ${total}`;
+    }
+
+    if (_todasProvas.length === 0) {
+        $('prvLista').innerHTML = '<div class="prv-empty">Nenhuma prova cadastrada ainda.</div>';
+        return;
+    }
+
+    if (filtradas.length === 0) {
+        $('prvLista').innerHTML = '<div class="prv-empty">Nenhuma prova encontrada com esses filtros.</div>';
+        return;
+    }
+
+    const linhas = filtradas.map(p => {
+        const data = p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : '—';
+        return `<tr class="prv-lista-row" onclick="abrirDetalhe(${p.id})" title="Abrir detalhes">
+            <td class="prv-lista-td prv-lista-td-nome">
+                <span class="prv-lista-nome">${escapeHtml(p.nome)}</span>
+                <div class="prv-lista-badges">${renderBadgesProva(p)}</div>
+            </td>
+            <td class="prv-lista-td prv-lista-td-curso">${escapeHtml(p.curso_nome || p.curso_id)}</td>
+            <td class="prv-lista-td prv-lista-td-data">${escapeHtml(data)}</td>
+            <td class="prv-lista-td prv-lista-td-num">${p.variantes_count}</td>
+            <td class="prv-lista-td prv-lista-td-num">${p.submissoes_count}</td>
+        </tr>`;
+    }).join('');
+
+    $('prvLista').innerHTML = `
+        <table class="prv-lista-tabela">
+            <thead>
+                <tr>
+                    <th class="prv-lista-th">Prova</th>
+                    <th class="prv-lista-th">Curso</th>
+                    <th class="prv-lista-th">Data</th>
+                    <th class="prv-lista-th prv-lista-th-num">Variantes</th>
+                    <th class="prv-lista-th prv-lista-th-num">Corrigidas</th>
+                </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+        </table>`;
+}
+
+function prvFiltrarLista() {
+    _filtroTexto = $('prvFiltroTexto')?.value || '';
+    _renderListaFiltrada();
+}
+
+function prvFiltrarStatus(btn) {
+    _filtroStatus = btn.dataset.status;
+    document.querySelectorAll('.prv-filtro-btn').forEach(b => {
+        b.classList.toggle('prv-filtro-btn-ativo', b === btn);
+    });
+    _renderListaFiltrada();
+}
+
 window.prvSetModo = prvSetModo;
+window.prvFiltrarLista = prvFiltrarLista;
+window.prvFiltrarStatus = prvFiltrarStatus;
 
 function _prvNomeBase() {
     const turma = $('prvTurma').value;

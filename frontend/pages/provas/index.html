@@ -111,6 +111,22 @@
 
         <div id="prvFlagsPendentes" style="display:none" class="prv-pendentes-panel"></div>
 
+        <!-- ── Barra de filtros (modo Lista) ─────────────────────────── -->
+        <div id="prvFiltroLista" class="prv-filtro-lista" style="display:none">
+            <div class="prv-filtro-busca-wrap">
+                <span class="prv-filtro-icone" aria-hidden="true">🔎</span>
+                <input id="prvFiltroTexto" type="search" class="prv-filtro-input"
+                       placeholder="Buscar por nome ou curso…"
+                       oninput="prvFiltrarLista()" autocomplete="off">
+            </div>
+            <div class="prv-filtro-status" role="group" aria-label="Filtrar por status">
+                <button class="prv-filtro-btn prv-filtro-btn-ativo" data-status="" onclick="prvFiltrarStatus(this)">Todos</button>
+                <button class="prv-filtro-btn" data-status="rascunho" onclick="prvFiltrarStatus(this)">Rascunho</button>
+                <button class="prv-filtro-btn" data-status="efetivada" onclick="prvFiltrarStatus(this)">Efetivada</button>
+            </div>
+            <span id="prvFiltroContagem" class="prv-filtro-contagem"></span>
+        </div>
+
         <div id="prvLista" class="prv-lista">
             <div class="prv-empty">Selecione um curso acima para ver as provas.</div>
         </div>
