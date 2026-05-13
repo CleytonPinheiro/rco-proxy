@@ -215,7 +215,8 @@ async function getBrowser() {
                     "--mute-audio",
                     "--hide-scrollbars",
                     "--disable-notifications",
-                    "--js-flags=--max-old-space-size=512"
+                    "--js-flags=--max-old-space-size=512",
+                    "--disable-blink-features=AutomationControlled"
                 ]
             });
 

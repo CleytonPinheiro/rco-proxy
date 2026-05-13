@@ -14,6 +14,7 @@
 import { Router }  from 'express';
 import pkg        from 'pg';
 import crypto     from 'crypto';
+import fs         from 'fs';
 import { auditLogger }      from '../services/AuditLogger.js';
 import { getBrowser }       from '../../auth-puppeteer.js';
 import { ReputacaoService, EVENTOS, BADGES, RANKS, getRank } from '../services/reputacao.service.js';
@@ -169,7 +170,24 @@ async function gpLogin() {
 
         const browser = await getBrowser();
         const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0 Safari/537.36');
+
+        /* ── Anti-detecção de automação ──────────────────────────────────────── */
+        /* Esconde as marcas de Puppeteer/headless que o Google usa para CAPTCHA */
+        await page.evaluateOnNewDocument(() => {
+            Object.defineProperty(navigator, 'webdriver',  { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins',    { get: () => Object.assign([], { length: 5 }) });
+            Object.defineProperty(navigator, 'languages',  { get: () => ['pt-BR', 'pt', 'en-US', 'en'] });
+            window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
+            const origQuery = navigator.permissions?.query?.bind(navigator.permissions);
+            if (origQuery) {
+                navigator.permissions.query = params =>
+                    params.name === 'notifications'
+                        ? Promise.resolve({ state: Notification.permission })
+                        : origQuery(params);
+            }
+        });
+
+        await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36');
         await page.setViewport({ width: 1280, height: 800 });
 
         const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -306,14 +324,48 @@ async function gpLogin() {
             }
         }
 
+        const GP_COOKIE_PATH = '/tmp/gp-session-cookies.json';
+
         try {
             console.log('[PROVAS] Iniciando login GradePen...');
 
-            /* ── 1. Carrega o GradePen ───────────────────────────────────────── */
+            /* ── 1. Restaura cookies de sessão salvos (evita Google OAuth) ──────── */
+            if (fs.existsSync(GP_COOKIE_PATH)) {
+                try {
+                    const saved = JSON.parse(fs.readFileSync(GP_COOKIE_PATH, 'utf8'));
+                    if (Array.isArray(saved) && saved.length > 0) {
+                        await page.setCookie(...saved);
+                        console.log('[PROVAS] Cookies GradePen restaurados:', saved.length, 'cookies');
+                    }
+                } catch (e) { console.log('[PROVAS] Falha ao restaurar cookies:', e.message); }
+            }
+
+            /* ── 2. Carrega o GradePen ───────────────────────────────────────── */
             await page.goto('https://gradepen.com/p/index.php',
                 { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
 
-            /* ── 2. Diagnóstico: dump de todos os elementos com "google" ──────── */
+            /* ── 2b. Verifica se a sessão salva ainda é válida ────────────────── */
+            const sessionOk = await page.evaluate(async () => {
+                try {
+                    const r = await fetch('/p/requests/getAnswers.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new URLSearchParams({ jobId: '0', index: '0', type: '0' }).toString(),
+                    });
+                    const j = await r.json().catch(() => ({}));
+                    return r.ok && j.errorCode !== 3;
+                } catch { return false; }
+            }).catch(() => false);
+
+            if (sessionOk) {
+                console.log('[PROVAS] Sessão GradePen restaurada via cookies — sem necessidade de Google OAuth');
+                _gpPage    = page;
+                _gpPageExp = Date.now() + 25 * 60 * 1000;
+                return;
+            }
+            console.log('[PROVAS] Sessão inválida ou sem cookies — iniciando OAuth Google...');
+
+            /* ── 3. Diagnóstico: dump de todos os elementos com "google" ──────── */
             const googleEls = await page.evaluate(() => {
                 const out = [];
                 document.querySelectorAll('*').forEach(el => {
@@ -368,6 +420,12 @@ async function gpLogin() {
 
                     const p = await target.page().catch(() => null);
                     if (!p) return;
+
+                    /* Aplica anti-detecção no popup também */
+                    await p.evaluateOnNewDocument(() => {
+                        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                        window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
+                    }).catch(() => null);
 
                     /* Aguarda a URL navegar para accounts.google.com (até 15s) */
                     /* O popup pode passar por gradepen.com/oauth → accounts.google.com */
@@ -462,6 +520,15 @@ async function gpLogin() {
                 'Login Google→GradePen não autenticou. Verifique se a conta ' +
                 `${email} não tem 2FA e se as credenciais estão corretas.`
             );
+
+            /* Salva cookies do GradePen para reutilizar na próxima sessão */
+            try {
+                const cookies = await page.cookies('https://gradepen.com');
+                if (cookies.length > 0) {
+                    fs.writeFileSync(GP_COOKIE_PATH, JSON.stringify(cookies));
+                    console.log('[PROVAS] Cookies GradePen salvos:', cookies.length, 'cookies');
+                }
+            } catch (e) { console.log('[PROVAS] Falha ao salvar cookies:', e.message); }
 
             _gpPage    = page;
             _gpPageExp = Date.now() + 25 * 60 * 1000;
@@ -876,9 +943,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
     router.delete('/provas/gradepen/connect', async (req, res) => {
         if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
-        /* Invalida a sessão GradePen (força re-login na próxima requisição) */
+        /* Invalida a sessão GradePen e remove cookies salvos */
         _gpPage    = null;
         _gpPageExp = 0;
+        try { fs.unlinkSync('/tmp/gp-session-cookies.json'); } catch {}
         res.json({ ok: true });
     });
 
