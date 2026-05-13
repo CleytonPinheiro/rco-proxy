@@ -283,15 +283,15 @@
             <h3 id="modalTitulo">Novo usuário</h3>
             <form id="formUsuario" novalidate>
                 <input type="hidden" id="modalUserId">
-                <div class="form-group">
+                <div>
                     <label class="form-label">Nome completo</label>
                     <input class="form-input" type="text" id="modalNome" placeholder="Nome do professor/funcionário" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label class="form-label">CPF (apenas números)</label>
                     <input class="form-input" type="text" id="modalCpf" placeholder="00000000000" maxlength="11" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label class="form-label">Perfil de acesso</label>
                     <select class="form-select" id="modalPerfil">
                         <option value="professor">Professor</option>
@@ -302,7 +302,7 @@
                         <option value="admin">Administrador</option>
                     </select>
                 </div>
-                <div id="formMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div id="formMsg" style="display:none;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn-modal-cancelar" id="btnCancelarModal">Cancelar</button>
                     <button type="submit" class="btn-modal-salvar" id="btnSalvarModal">Salvar</button>
@@ -318,7 +318,7 @@
             <form id="formEscola" novalidate>
                 <input type="hidden" id="modalEscolaId">
 
-                <div class="form-group">
+                <div>
                     <label class="form-label">Escola (do RCO sincronizado)</label>
                     <select class="form-select" id="modalEscolaRco">
                         <option value="">— Carregando... —</option>
@@ -327,23 +327,22 @@
                         Ou preencha manualmente os campos abaixo
                     </p>
                 </div>
-
-                <div class="form-group">
+                <div>
                     <label class="form-label">Nome da escola</label>
                     <input class="form-input" type="text" id="modalEscolaNome" placeholder="Ex: E.E. Padre Cícero" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label class="form-label">Código do estabelecimento (RCO)</label>
                     <input class="form-input" type="number" id="modalEscolaCodigo" placeholder="Ex: 123456" required>
                 </div>
-                <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                <div style="display:flex;align-items:center;gap:10px">
                     <input type="checkbox" id="modalEscolaAutoCadastro" checked style="width:auto">
                     <label for="modalEscolaAutoCadastro" style="font-size:.9rem;color:var(--text-primary);font-weight:500;cursor:pointer">
                         Permitir auto-cadastro de professores desta escola
                     </label>
                 </div>
 
-                <div id="formEscolaMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div id="formEscolaMsg" style="display:none;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn-modal-cancelar" id="btnCancelarModalEscola">Cancelar</button>
                     <button type="submit" class="btn-modal-salvar" id="btnSalvarEscola">Salvar</button>
@@ -358,11 +357,11 @@
             <h3 id="modalPlanoTitulo">Gerenciar plano</h3>
             <form id="formPlano" novalidate>
                 <input type="hidden" id="modalPlanoUserId">
-                <div style="margin-bottom:12px;padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
+                <div style="padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
                     <strong id="modalPlanoUserNome"></strong>
                 </div>
-                <div id="modalPlanoStatus" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:.84rem"></div>
-                <div class="form-group">
+                <div id="modalPlanoStatus" style="display:none;padding:10px 14px;border-radius:8px;font-size:.84rem"></div>
+                <div>
                     <label class="form-label">Plano</label>
                     <select class="form-select" id="modalPlanoTipo">
                         <option value="">Sem plano</option>
@@ -372,24 +371,24 @@
                         <option value="classroom-individual">👨‍🏫 Individual (legado)</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div>
                     <label class="form-label">Data de início</label>
                     <input class="form-input" type="date" id="modalPlanoInicio">
                 </div>
-                <div id="modalPlanoEstenderWrap" style="display:none;margin-bottom:12px">
+                <div id="modalPlanoEstenderWrap" style="display:none">
                     <button type="button" id="btnEstenderPlano" style="width:100%;padding:9px 16px;background:#d97706;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
                         <span style="font-size:1rem">📅</span> Estender +30 dias
                     </button>
                 </div>
-                <div class="form-group">
+                <div>
                     <label class="form-label">Renovação (opcional)</label>
                     <input class="form-input" type="date" id="modalPlanoRenovacao">
                 </div>
-                <div class="form-group">
+                <div>
                     <label class="form-label">Observações</label>
                     <textarea class="form-textarea" id="modalPlanoObs" rows="2" style="resize:vertical"></textarea>
                 </div>
-                <div id="formPlanoMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div id="formPlanoMsg" style="display:none;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn-modal-cancelar" id="btnCancelarPlano">Cancelar</button>
                     <button type="submit" class="btn-modal-salvar" id="btnSalvarPlano">Salvar plano</button>
@@ -405,31 +404,31 @@
             <h3 id="modalPlanoEscolaTitulo">Gerenciar plano da escola</h3>
             <form id="formPlanoEscola" novalidate>
                 <input type="hidden" id="modalPlanoEscolaId">
-                <div style="margin-bottom:12px;padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
+                <div style="padding:10px;background:var(--bg-hover);border-radius:8px;font-size:.85rem">
                     <strong id="modalPlanoEscolaNome"></strong>
                 </div>
-                <div class="form-group">
-                    <label>Plano</label>
-                    <select id="modalPlanoEscolaTipo">
+                <div>
+                    <label class="form-label">Plano</label>
+                    <select class="form-select" id="modalPlanoEscolaTipo">
                         <option value="">Sem plano</option>
                         <option value="inicial">🌱 Inicial</option>
                         <option value="profissional">🚀 Profissional</option>
                         <option value="rede">🏫 Rede Escolar</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Data de início</label>
-                    <input type="date" id="modalPlanoEscolaInicio">
+                <div>
+                    <label class="form-label">Data de início</label>
+                    <input class="form-input" type="date" id="modalPlanoEscolaInicio">
                 </div>
-                <div class="form-group">
-                    <label>Renovação (opcional)</label>
-                    <input type="date" id="modalPlanoEscolaRenovacao">
+                <div>
+                    <label class="form-label">Renovação (opcional)</label>
+                    <input class="form-input" type="date" id="modalPlanoEscolaRenovacao">
                 </div>
-                <div class="form-group">
-                    <label>Observações</label>
-                    <textarea id="modalPlanoEscolaObs" rows="2" style="width:100%;resize:vertical;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;background:var(--bg-input);color:var(--text-primary)"></textarea>
+                <div>
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-textarea" id="modalPlanoEscolaObs" rows="2"></textarea>
                 </div>
-                <div id="formPlanoEscolaMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div id="formPlanoEscolaMsg" style="display:none;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn-modal-cancelar" id="btnCancelarPlanoEscola">Cancelar</button>
                     <button type="submit" class="btn-modal-salvar" id="btnSalvarPlanoEscola">Salvar plano</button>
@@ -447,25 +446,25 @@
                 <span id="suspensaoTurmaAluno" style="color:var(--text-muted);margin-left:8px"></span>
             </div>
             <form id="formSuspensao" novalidate>
-                <div class="form-group">
-                    <label>Nome do responsável *</label>
-                    <input type="text" id="suspensaoResponsavel" placeholder="Ex: Maria da Silva" required>
+                <div>
+                    <label class="form-label">Nome do responsável *</label>
+                    <input class="form-input" type="text" id="suspensaoResponsavel" placeholder="Ex: Maria da Silva" required>
                 </div>
                 <div style="display:flex;gap:12px">
-                    <div class="form-group" style="flex:1">
-                        <label>Data de início *</label>
-                        <input type="date" id="suspensaoDataInicio" required>
+                    <div style="flex:1">
+                        <label class="form-label">Data de início *</label>
+                        <input class="form-input" type="date" id="suspensaoDataInicio" required>
                     </div>
-                    <div class="form-group" style="flex:1">
-                        <label>Data de fim *</label>
-                        <input type="date" id="suspensaoDataFim" required>
+                    <div style="flex:1">
+                        <label class="form-label">Data de fim *</label>
+                        <input class="form-input" type="date" id="suspensaoDataFim" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Motivo <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label>
-                    <textarea id="suspensaoMotivo" rows="3" style="width:100%;resize:vertical;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:.875rem;background:var(--bg-input);color:var(--text-primary)" placeholder="Descreva brevemente o motivo do afastamento..."></textarea>
+                <div>
+                    <label class="form-label">Motivo <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label>
+                    <textarea class="form-textarea" id="suspensaoMotivo" rows="3" placeholder="Descreva brevemente o motivo do afastamento..."></textarea>
                 </div>
-                <div id="suspensaoMsg" style="display:none;margin-top:8px;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
+                <div id="suspensaoMsg" style="display:none;font-size:.85rem;padding:8px 12px;border-radius:6px"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn-modal-cancelar" id="btnCancelarSuspensao">Cancelar</button>
                     <button type="submit" class="btn-modal-salvar" id="btnGerarComunicado" style="background:#dc2626">
