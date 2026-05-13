@@ -650,6 +650,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
     const CONFIG_NUMERIC_RULES = {
         badge_poll_minutos:           { min: 1,   max: 60,   integer: true,  label: 'Intervalo do badge de provas (badge_poll_minutos)' },
         rco_sync_ttl_hours:           { min: 0.5, max: 168,  integer: false, label: 'TTL de sync RCO (rco_sync_ttl_hours)' },
+        puppeteer_protocol_timeout:   { min: 5000, max: 600000, integer: true, label: 'Timeout de protocolo Puppeteer (puppeteer_protocol_timeout)' },
         purga_intervalo_horas:        { min: 1,   max: 168,  integer: true,  label: 'Intervalo de purga (purga_intervalo_horas)' },
         purga_audit_dias:             { min: 1,   max: 3650, integer: true,  label: 'Retenção do audit log (purga_audit_dias)' },
         purga_reputacao_dias:         { min: 1,   max: 3650, integer: true,  label: 'Retenção do log de reputação (purga_reputacao_dias)' },
@@ -1889,6 +1890,17 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
             gradepen = mod.getGradePenStats();
         } catch {}
 
+        let protocolTimeout = parseInt(process.env.PUPPETEER_PROTOCOL_TIMEOUT, 10) || 300000;
+        try {
+            const { rows } = await pool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'puppeteer_protocol_timeout' LIMIT 1`
+            );
+            if (rows.length > 0) {
+                const dbVal = parseInt(rows[0].valor, 10);
+                if (Number.isFinite(dbVal) && dbVal >= 5000) protocolTimeout = dbVal;
+            }
+        } catch {}
+
         res.json({
             login: {
                 ativos:       login.active,
@@ -1903,6 +1915,7 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                 PUPPETEER_LOGIN_CONCURRENCY:   login.maxSlots,
                 PUPPETEER_LOGIN_QUEUE_TIMEOUT: process.env.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '60000 (padrão)',
                 FILA_ALERTA_LIMIAR:            (v => Number.isFinite(v) ? v : 5)(parseInt(process.env.FILA_ALERTA_LIMIAR, 10)),
+                PUPPETEER_PROTOCOL_TIMEOUT:    protocolTimeout,
             },
         });
     });

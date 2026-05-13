@@ -105,6 +105,33 @@ export function setConcurrencyGetter(fn) {
     _concurrencyGetter = fn;
 }
 
+// ── Protocol timeout configurável em tempo de execução ───────────────────────
+let _protocolTimeoutGetter = null;
+
+/**
+ * Registra um getter assíncrono que retorna o protocolTimeout atual (ms) do banco.
+ * Chamado a cada getBrowser() para sincronizar sem restart.
+ * @param {() => Promise<number|null>} fn
+ */
+export function setProtocolTimeoutGetter(fn) {
+    _protocolTimeoutGetter = fn;
+}
+
+/**
+ * Retorna o protocolTimeout em ms, consultando o getter de DB se disponível.
+ * Prioridade: DB > env PUPPETEER_PROTOCOL_TIMEOUT > 300000 ms.
+ * @returns {Promise<number>}
+ */
+export async function getProtocolTimeout() {
+    if (_protocolTimeoutGetter) {
+        try {
+            const v = await _protocolTimeoutGetter();
+            if (Number.isFinite(v) && v > 0) return v;
+        } catch {}
+    }
+    return parseInt(process.env.PUPPETEER_PROTOCOL_TIMEOUT, 10) || 300000;
+}
+
 const AUTH_CONFIG = {
     loginPageUrl: process.env.AUTH_LOGIN_PAGE_URL || "https://auth-cs.identidadedigital.pr.gov.br/centralautenticacao/login.html",
     clientId: process.env.AUTH_CLIENT_ID || "f340f1b1f65b6df5b5e3f94d95b11daf",
@@ -163,8 +190,8 @@ async function getBrowser() {
             console.log("Iniciando nova instância do browser...");
             console.log("Usando Chromium em:", chromiumPath);
 
-            const protocolTimeout = parseInt(process.env.PUPPETEER_PROTOCOL_TIMEOUT, 10) || 300000;
-            console.log(`[Puppeteer] protocolTimeout: ${protocolTimeout}ms (PUPPETEER_PROTOCOL_TIMEOUT)`);
+            const protocolTimeout = await getProtocolTimeout();
+            console.log(`[Puppeteer] protocolTimeout: ${protocolTimeout}ms`);
 
             const instance = await puppeteer.launch({
                 headless: true,

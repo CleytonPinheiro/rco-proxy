@@ -120,7 +120,7 @@ async function initializeApp() {
         await loadCpfRateLimitFromDb();
 
         const { supabase, supabaseAdmin }                     = await import('./src/config/supabase.js');
-        const { loginWithPuppeteer, decodeJwtExpiration, setLoginConcurrency, setConcurrencyGetter } = await import('./auth-puppeteer.js');
+        const { loginWithPuppeteer, decodeJwtExpiration, setLoginConcurrency, setConcurrencyGetter, setProtocolTimeoutGetter } = await import('./auth-puppeteer.js');
         const { tokenService }                                = await import('./src/services/TokenService.js');
         const { rcoApiService }                               = await import('./src/services/RcoApiService.js');
         const { syncService }                                 = await import('./src/services/SyncService.js');
@@ -195,6 +195,18 @@ async function initializeApp() {
         } catch (e) {
             console.warn('[Puppeteer] Não foi possível restaurar concorrência do banco:', e.message);
         }
+
+        // Registrar getter de protocol timeout: lido do banco a cada getBrowser() (fallback para env/padrão).
+        setProtocolTimeoutGetter(async () => {
+            const { rows } = await localPool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'puppeteer_protocol_timeout' LIMIT 1`
+            );
+            if (rows.length > 0) {
+                const v = parseInt(rows[0].valor, 10);
+                return Number.isFinite(v) && v >= 5000 ? v : null;
+            }
+            return null;
+        });
 
         // Job de purga de dados antigos (audit_log, reputacao_log, notificacoes_aluno)
         const { agendarPurga } = await import('./src/services/purgeJob.js');

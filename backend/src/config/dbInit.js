@@ -198,6 +198,11 @@ export async function initializeDatabase() {
                 ('badge_poll_minutos', '3', 'Intervalo de atualização automática do badge de pares pendentes na tela de Provas (em minutos). Mínimo: 1, Máximo: 60. Padrão: 3.')
             ON CONFLICT (chave) DO NOTHING
         `);
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('puppeteer_protocol_timeout', '300000', 'Tempo máximo (em ms) que o Puppeteer aguarda uma resposta do protocolo CDP ao iniciar o browser (protocolTimeout). Padrão: 300000 ms (5 min). Aplica-se na próxima inicialização do browser, sem reiniciar o servidor.')
+            ON CONFLICT (chave) DO NOTHING
+        `);
 
         /* ── Alerta de sync parado ── */
         await client.query(`

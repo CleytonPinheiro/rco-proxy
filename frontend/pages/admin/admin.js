@@ -2823,9 +2823,10 @@ function renderSistema(d, cache, rl, historico) {
         </div>`;
     }
 
-    const concurrency  = (typeof config.PUPPETEER_LOGIN_CONCURRENCY === 'number') ? config.PUPPETEER_LOGIN_CONCURRENCY : (parseInt(config.PUPPETEER_LOGIN_CONCURRENCY, 10) || 3);
-    const queueTimeout = config.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '—';
-    const filaLimiar   = (typeof config.FILA_ALERTA_LIMIAR === 'number') ? config.FILA_ALERTA_LIMIAR : 5;
+    const concurrency      = (typeof config.PUPPETEER_LOGIN_CONCURRENCY === 'number') ? config.PUPPETEER_LOGIN_CONCURRENCY : (parseInt(config.PUPPETEER_LOGIN_CONCURRENCY, 10) || 3);
+    const queueTimeout     = config.PUPPETEER_LOGIN_QUEUE_TIMEOUT || '—';
+    const filaLimiar       = (typeof config.FILA_ALERTA_LIMIAR === 'number') ? config.FILA_ALERTA_LIMIAR : 5;
+    const protocolTimeout  = (typeof config.PUPPETEER_PROTOCOL_TIMEOUT === 'number') ? config.PUPPETEER_PROTOCOL_TIMEOUT : (parseInt(config.PUPPETEER_PROTOCOL_TIMEOUT, 10) || 300000);
 
     /* ── Cache de sync RCO → Supabase ── */
     let syncCacheHtml = '';
@@ -3086,6 +3087,22 @@ function renderSistema(d, cache, rl, historico) {
                 💾 Salvar
             </button>
             <span id="puppeteerConcurrencyMsg" style="font-size:.82rem"></span>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Timeout de Resposta GradePen</div>
+            <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:12px">Tempo máximo (em ms) que o Puppeteer aguarda o protocolo CDP ao iniciar o browser. Aplica-se na <strong>próxima inicialização</strong> do browser, sem reiniciar o servidor. Padrão: 300000 ms (5 min). Mínimo: 5000, Máximo: 600000.</div>
+            <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                    <label for="puppeteer_protocol_timeout_input" style="font-size:.75rem;font-weight:600;color:var(--text-secondary)">protocolTimeout (ms)</label>
+                    <input type="number" id="puppeteer_protocol_timeout_input" value="${esc(String(protocolTimeout))}" min="5000" max="600000" step="1000"
+                        style="width:130px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.9rem;font-weight:700;background:var(--bg-input);color:var(--text-primary)">
+                </div>
+                <button onclick="salvarProtocolTimeout()"
+                    style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.85rem;cursor:pointer">
+                    💾 Salvar
+                </button>
+                <span id="protocolTimeoutMsg" style="font-size:.82rem"></span>
+            </div>
         </div>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:16px;font-size:.85rem">
             <div>
@@ -3397,6 +3414,40 @@ window.salvarPuppeteerConcurrency = async function () {
     } catch (e) {
         if (msg) { msg.style.color = '#dc2626'; msg.textContent = `Erro: ${e.message}`; }
         showToast(`Erro ao salvar: ${e.message}`, 'error');
+    }
+};
+
+window.salvarProtocolTimeout = async function () {
+    const el  = document.getElementById('puppeteer_protocol_timeout_input');
+    const msg = document.getElementById('protocolTimeoutMsg');
+    if (!el) return;
+
+    const v = parseInt(el.value, 10);
+    if (!Number.isFinite(v) || v < 5000 || v > 600000) {
+        if (msg) { msg.style.color = '#dc2626'; msg.textContent = 'Valor inválido (5000–600000 ms).'; }
+        return;
+    }
+
+    if (msg) { msg.style.color = 'var(--text-muted)'; msg.textContent = 'Salvando...'; }
+
+    try {
+        const res = await api('/admin/config/puppeteer_protocol_timeout', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ valor: v }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        if (msg) {
+            msg.style.color = '#16a34a';
+            msg.textContent = `Salvo! Novo timeout: ${v} ms. Aplica-se na próxima inicialização do browser.`;
+            setTimeout(() => { if (msg) msg.textContent = ''; }, 5000);
+        }
+        showToast(`Timeout de protocolo atualizado para ${v} ms.`, 'success');
+        carregarSistema();
+    } catch (e) {
+        if (msg) { msg.style.color = '#dc2626'; msg.textContent = `Erro: ${e.message}`; }
+        showToast(`Erro ao salvar timeout: ${e.message}`, 'error');
     }
 };
 
