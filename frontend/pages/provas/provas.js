@@ -176,6 +176,7 @@ async function init() {
     } catch (_) { /* keep default */ }
     await carregarCursos();
     if (cursos.length) startBadgePoll(cursos.map(c => c.id), _aplicarResumo, _badgePollMs);
+    _prvIniciarNotifPoll();
     /* mostra/esconde % foto conforme modo */
     $('prvfFoto').addEventListener('change', () => {
         $('prvfFotoPctWrap').style.display = $('prvfFoto').value === 'sorteio' ? '' : 'none';
@@ -1409,5 +1410,123 @@ window.prvToggleSegundo       = prvToggleSegundo;
 window.abrirConversaPedagogica = abrirConversaPedagogica;
 window.fecharConversaPedagogica = fecharConversaPedagogica;
 window.switchFocoConversa     = switchFocoConversa;
+
+/* ── Cola alert bell (Provas page) ────────────────────────────── */
+
+let _prvNotifPollTimer   = null;
+let _prvNotifPanelAberto = false;
+
+function _prvIniciarNotifPoll() {
+    _prvBuscarNotificacoes();
+    _prvNotifPollTimer = setInterval(_prvBuscarNotificacoes, _badgePollMs);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) _prvBuscarNotificacoes();
+    });
+    document.addEventListener('click', e => {
+        const wrap = $('prvNotifWrap');
+        if (wrap && !wrap.contains(e.target)) _prvFecharNotifPanel();
+    });
+}
+
+async function _prvBuscarNotificacoes() {
+    try {
+        const r = await fetch('/api/classroom/provas/notificacoes-cola', { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        _prvAtualizarBadge(d.totalNaoLidas || 0);
+        _prvRenderNotifLista(d.notificacoes || []);
+    } catch (_) {}
+}
+
+function _prvAtualizarBadge(total) {
+    const badge = $('prvNotifBadge');
+    if (!badge) return;
+    if (total > 0) {
+        badge.textContent = total > 99 ? '99+' : String(total);
+        badge.style.display = '';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function _prvRenderNotifLista(notifs) {
+    const lista = $('prvNotifLista');
+    if (!lista) return;
+    if (!notifs.length) {
+        lista.innerHTML = '<div class="ac-notif-vazia">Nenhum alerta pendente.</div>';
+        return;
+    }
+    lista.innerHTML = notifs.map(n => {
+        const data   = n.criado_em ? new Date(n.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        const safeA  = escapeHtml(n.aluno_a);
+        const safeB  = escapeHtml(n.aluno_b);
+        return `
+        <div class="ac-notif-item"
+             data-notif-id="${n.id}"
+             data-prova-id="${n.prova_id}"
+             data-aluno-a="${safeA}"
+             data-aluno-b="${safeB}">
+            <div class="ac-notif-item-titulo">⚠️ Par suspeito — ${n.similaridade}% de similaridade</div>
+            <div class="ac-notif-item-detalhe">
+                <strong>${escapeHtml(n.prova_nome || 'Prova #' + n.prova_id)}</strong><br>
+                ${safeA} ↔ ${safeB}
+            </div>
+            <div class="ac-notif-item-data">${data}</div>
+        </div>`;
+    }).join('');
+
+    lista.querySelectorAll('.ac-notif-item[data-notif-id]').forEach(el => {
+        el.addEventListener('click', () => {
+            const notifId = parseInt(el.dataset.notifId, 10);
+            const provaId = parseInt(el.dataset.provaId, 10);
+            const alunoA  = el.dataset.alunoA || null;
+            const alunoB  = el.dataset.alunoB || null;
+            _prvAbrirNotif(notifId, provaId, alunoA, alunoB);
+        });
+    });
+}
+
+async function _prvAbrirNotif(notifId, provaId, alunoA, alunoB) {
+    _prvFecharNotifPanel();
+    try {
+        await fetch(`/api/classroom/provas/notificacoes-cola/${notifId}/lida`, {
+            method: 'POST', credentials: 'include',
+        });
+    } catch (_) {}
+    const params = new URLSearchParams({ provaId });
+    if (alunoA) params.set('alunoA', alunoA);
+    if (alunoB) params.set('alunoB', alunoB);
+    location.href = `/pages/analise-cola/?${params.toString()}`;
+}
+
+function prvToggleNotifPanel() {
+    if (_prvNotifPanelAberto) _prvFecharNotifPanel();
+    else _prvAbrirNotifPanel();
+}
+
+function _prvAbrirNotifPanel() {
+    const panel = $('prvNotifPanel');
+    if (panel) panel.style.display = '';
+    _prvNotifPanelAberto = true;
+}
+
+function _prvFecharNotifPanel() {
+    const panel = $('prvNotifPanel');
+    if (panel) panel.style.display = 'none';
+    _prvNotifPanelAberto = false;
+}
+
+async function prvMarcarTodasLidas() {
+    try {
+        await fetch('/api/classroom/provas/notificacoes-cola/lida-todas', {
+            method: 'POST', credentials: 'include',
+        });
+        await _prvBuscarNotificacoes();
+        _prvFecharNotifPanel();
+    } catch (_) {}
+}
+
+window.prvToggleNotifPanel = prvToggleNotifPanel;
+window.prvMarcarTodasLidas = prvMarcarTodasLidas;
 
 init();
