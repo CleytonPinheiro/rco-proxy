@@ -198,7 +198,7 @@ function _aplicarResumo(resumo) {
             const n = resumo[opt.value] || 0;
             const curso = cursos.find(c => c.id === opt.value);
             if (!curso) continue;
-            opt.textContent = curso.nome + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
+            opt.textContent = _nomeDisciplina(curso.nome) + (n > 0 ? ` ⚠️ ${n} pendente${n > 1 ? 's' : ''}` : '');
         }
     }
     const box = $('prvResumoPendentes');
@@ -218,15 +218,32 @@ function _aplicarResumo(resumo) {
     box.style.display = '';
 }
 
+function _nomeTurma(nomeCompleto) {
+    const sep = nomeCompleto.indexOf(' - ');
+    return sep >= 0 ? nomeCompleto.slice(sep + 3) : '';
+}
+
+function _nomeDisciplina(nomeCompleto) {
+    const sep = nomeCompleto.indexOf(' - ');
+    return sep >= 0 ? nomeCompleto.slice(0, sep) : nomeCompleto;
+}
+
 async function carregarCursos() {
+    const escolaNav = localStorage.getItem('edusync_escola') || '';
     try {
         const rCursos = await fetch('/api/classroom/courses', { credentials: 'include' });
         if (!rCursos.ok) {
             $('prvTurma').innerHTML = '<option>Erro — conecte o Classroom primeiro</option>';
             return;
         }
-        cursos = await rCursos.json();
-        const turmas = [...new Set(cursos.map(c => c.secao || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const todos = await rCursos.json();
+        /* Filtra pelo colégio já selecionado na barra de navegação */
+        cursos = escolaNav
+            ? todos.filter(c => (c.secao || '').includes(escolaNav) || escolaNav.includes(c.secao || ''))
+            : todos;
+        /* Extrai turmas únicas do nome do curso (formato "Disciplina - Turma") */
+        const turmasSet = new Set(cursos.map(c => _nomeTurma(c.nome)).filter(Boolean));
+        const turmas = [...turmasSet].sort((a, b) => a.localeCompare(b, 'pt-BR'));
         const selTurma = $('prvTurma');
         selTurma.innerHTML = '<option value="">Selecione uma turma…</option>' +
             turmas.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
@@ -254,9 +271,9 @@ async function onTurmaChange() {
         $('prvCurso').innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
         return;
     }
-    const filtrados = cursos.filter(c => (c.secao || '') === turma);
+    const filtrados = cursos.filter(c => _nomeTurma(c.nome) === turma);
     $('prvCurso').innerHTML = '<option value="">Selecione uma disciplina…</option>' +
-        filtrados.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+        filtrados.map(c => `<option value="${c.id}">${escapeHtml(_nomeDisciplina(c.nome))}</option>`).join('');
 }
 
 async function onCursoChange() {
