@@ -331,93 +331,7 @@
     padding: 8px 0;
 }
 
-/* ── Modais ──────────────────────────────────────────────────────────────── */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-}
-.modal-box {
-    background: var(--bg-card, #fff);
-    border-radius: 16px;
-    width: 100%;
-    max-width: 480px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-}
-.modal-box-lg { max-width: 600px; }
-
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px 0;
-}
-.modal-header h3 {
-    font-size: 17px;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin: 0;
-}
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #9ca3af;
-    cursor: pointer;
-    padding: 0 4px;
-    line-height: 1;
-}
-.modal-close:hover { color: #374151; }
-
-.modal-body {
-    padding: 18px 24px;
-    overflow-y: auto;
-    flex: 1;
-}
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 12px 24px 20px;
-    border-top: 1px solid #f3f4f8;
-}
-
-.form-label {
-    display: block;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-secondary, #6b7280);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    margin-bottom: 6px;
-}
-.form-input, .form-textarea {
-    width: 100%;
-    border: 1px solid var(--border-input, #d1d5db);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 14px;
-    font-family: inherit;
-    background: var(--bg-secondary, #f8f9fb);
-    color: var(--text-primary, #1a1a2e);
-    outline: none;
-    transition: border-color 0.15s;
-    box-sizing: border-box;
-}
-.form-input:focus, .form-textarea:focus {
-    border-color: var(--input-focus, #6366f1);
-    outline: 2px solid color-mix(in srgb, var(--input-focus, #6366f1) 25%, transparent);
-    outline-offset: 0;
-}
-.form-textarea { resize: vertical; min-height: 90px; }
+/* ── Modais — ver frontend/shared/css/modal-forms.css ────────────────────── */
 
 .btn-cancelar {
     background: #f3f4f6;
@@ -1037,23 +951,6 @@
 [data-theme="dark"] .atividade-nome { color: var(--text-primary); }
 [data-theme="dark"] .atividade-meta { color: var(--text-secondary); }
 
-[data-theme="dark"] .modal-box { background: var(--bg-card); }
-[data-theme="dark"] .modal-header h3 { color: var(--text-primary); }
-[data-theme="dark"] .modal-footer { border-top-color: var(--border); }
-[data-theme="dark"] .form-label { color: #b0b3c8; }
-[data-theme="dark"] .form-input,
-[data-theme="dark"] .form-textarea {
-    background: var(--bg-input, #1e2130);
-    border-color: var(--border-input, #3a3d52);
-    color: var(--text-primary, #e8e8f0);
-}
-[data-theme="dark"] .form-input::placeholder,
-[data-theme="dark"] .form-textarea::placeholder { color: var(--text-muted, #676a80); }
-[data-theme="dark"] .form-input:focus,
-[data-theme="dark"] .form-textarea:focus {
-    border-color: var(--input-focus, #60a5fa);
-    outline: 2px solid color-mix(in srgb, var(--input-focus, #60a5fa) 30%, transparent);
-}
 [data-theme="dark"] .modal-grupos { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .modal-grupos-header { border-color: var(--border); }
 [data-theme="dark"] .modal-grupos-titulo { color: var(--text-primary); }

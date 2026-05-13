@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="EduSync — sistema de gestão escolar para professores e coordenadores de escolas do Paraná.">
     <title>EduSync — Painel da Cozinha</title>
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./cozinha.css">
 </head>
 <body>
@@ -107,7 +108,7 @@
         <div class="modal-box">
             <div class="modal-header">
                 <h3 id="modalCozinhaTitulo">Confirmar Cardápio</h3>
-                <button onclick="fecharModalCozinha()">✕</button>
+                <button class="modal-close" onclick="fecharModalCozinha()">✕</button>
             </div>
             <div class="modal-body">
                 <p>Total de refeições a preparar para <strong id="modalCozinhaPeriodo"></strong>:</p>

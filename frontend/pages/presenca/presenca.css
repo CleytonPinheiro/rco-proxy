@@ -269,42 +269,7 @@
     color: white;
 }
 
-/* ── Modal ────────────────────────────────────────────────────── */
-.modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-}
-.modal-box {
-    background: var(--bg-card, #fff);
-    border-radius: 18px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-    overflow: hidden;
-}
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 20px;
-    border-bottom: 1px solid #f0f2f5;
-}
-.modal-header h3 { font-size: 17px; font-weight: 700; }
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    color: #888;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+/* ── Modal — estrutura em frontend/shared/css/modal-forms.css ─── */
 .modal-turma { font-size: 15px; font-weight: 700; color: #1a1a2e; line-height: 1.3; }
 .modal-info { display: flex; gap: 16px; font-size: 13px; color: #666; }
 
@@ -435,9 +400,6 @@
 [data-theme="dark"] .btn-sm { background: var(--bg-secondary); color: var(--text-primary); }
 [data-theme="dark"] .btn-sm:hover { background: var(--border); }
 
-[data-theme="dark"] .modal-box { background: var(--bg-card); border: 1px solid var(--border); }
-[data-theme="dark"] .modal-header { border-color: var(--border); }
-[data-theme="dark"] .modal-header h3 { color: var(--text-primary); }
 [data-theme="dark"] .modal-turma { color: var(--text-primary); }
 [data-theme="dark"] .modal-info { color: var(--text-secondary); }
 [data-theme="dark"] .form-group label { color: #b0b3c8; }
@@ -461,7 +423,6 @@
 [data-theme="dark"] #inputObs {
     background: var(--bg-input, #1e2130); color: var(--text-primary, #e8e8f0); border-color: var(--border-input, #3a3d52);
 }
-[data-theme="dark"] .modal-footer { border-color: var(--border); }
 [data-theme="dark"] .btn-cancelar { color: var(--text-muted); border-color: var(--border); }
 [data-theme="dark"] .counter-hint { color: var(--text-muted); }
 [data-theme="dark"] .empty-state h3 { color: var(--text-primary); }

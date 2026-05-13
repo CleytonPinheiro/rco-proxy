@@ -313,33 +313,9 @@
 }
 .modal-close-livros:hover { color: var(--text-primary); }
 
+/* Label/input/select/textarea styles come from shared .form-label / .form-input /
+   .form-select / .form-textarea classes in modal-forms.css */
 .form-group-livros { margin-bottom: 16px; }
-.form-group-livros label {
-    display: block;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    margin-bottom: 6px;
-}
-.form-group-livros input,
-.form-group-livros select,
-.form-group-livros textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1.5px solid var(--input-border);
-    background: var(--input-bg);
-    color: var(--input-color);
-    font-size: 13.5px;
-    outline: none;
-    transition: border-color .15s;
-    box-sizing: border-box;
-}
-.form-group-livros input:focus,
-.form-group-livros select:focus,
-.form-group-livros textarea:focus { border-color: #1d4ed8; }
 .form-row-livros { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .modal-actions-livros { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 .form-msg-livros {
@@ -561,7 +537,6 @@
 [data-theme="dark"] .livro-busca-status   { color: var(--text-secondary); }
 [data-theme="dark"] .livro-busca-divisor  { color: var(--text-secondary); }
 [data-theme="dark"] .modal-close-livros   { color: var(--text-secondary); }
-[data-theme="dark"] .form-group-livros label { color: var(--text-secondary); }
 [data-theme="dark"] .print-card-desc      { color: var(--text-secondary); }
 [data-theme="dark"] .print-filter-area h4 { color: var(--text-secondary); }
 [data-theme="dark"] .print-filter-group label { color: var(--text-secondary); }

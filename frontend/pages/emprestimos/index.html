@@ -9,6 +9,7 @@
     <meta name="description" content="EduSync — sistema de gestão escolar para professores e coordenadores de escolas do Paraná.">
     <title>EduSync — Livros Didáticos</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./emprestimos.css">
 </head>
 <body>
@@ -89,16 +90,16 @@
             <div class="livros-panel" id="panel-emprestimos">
                 <div class="livros-filtros">
                     <input type="search" id="filtroAluno" placeholder="🔍 Buscar aluno..." oninput="filtrarEmprestimos()">
-                    <select id="filtroStatus" onchange="filtrarEmprestimos()">
+                    <select class="form-select" id="filtroStatus" onchange="filtrarEmprestimos()">
                         <option value="">Todos os status</option>
                         <option value="emprestado">Emprestados</option>
                         <option value="devolvido">Devolvidos</option>
                         <option value="perdido">Perdidos</option>
                     </select>
-                    <select id="filtroTurma" onchange="filtrarEmprestimos()">
+                    <select class="form-select" id="filtroTurma" onchange="filtrarEmprestimos()">
                         <option value="">Todas as turmas</option>
                     </select>
-                    <select id="filtroLivro" onchange="filtrarEmprestimos()">
+                    <select class="form-select" id="filtroLivro" onchange="filtrarEmprestimos()">
                         <option value="">Todos os livros</option>
                     </select>
                 </div>
@@ -128,14 +129,14 @@
                         <div class="print-filter-area" style="margin-top:8px;margin-bottom:0">
                             <div class="print-filter-row">
                                 <div class="print-filter-group">
-                                    <label>Turma</label>
-                                    <select id="printFiltroTurma">
+                                    <label class="form-label">Turma</label>
+                                    <select class="form-select" id="printFiltroTurma">
                                         <option value="">Todas as turmas</option>
                                     </select>
                                 </div>
                                 <div class="print-filter-group">
-                                    <label>Livro</label>
-                                    <select id="printFiltroLivro">
+                                    <label class="form-label">Livro</label>
+                                    <select class="form-select" id="printFiltroLivro">
                                         <option value="">Todos os livros</option>
                                     </select>
                                 </div>
@@ -158,21 +159,21 @@
                         <div class="print-filter-area" style="margin-top:8px;margin-bottom:0">
                             <div class="print-filter-row">
                                 <div class="print-filter-group">
-                                    <label>Turma</label>
-                                    <select id="printFiltroTurmaLista">
+                                    <label class="form-label">Turma</label>
+                                    <select class="form-select" id="printFiltroTurmaLista">
                                         <option value="">Todas as turmas</option>
                                     </select>
                                 </div>
                                 <div class="print-filter-group">
-                                    <label>Livro</label>
-                                    <select id="printFiltroLivroLista">
+                                    <label class="form-label">Livro</label>
+                                    <select class="form-select" id="printFiltroLivroLista">
                                         <option value="">Todos os livros</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="print-filter-row" style="margin-top:8px">
                                 <div class="print-filter-group">
-                                    <label>Data estimada de entrega</label>
+                                    <label class="form-label">Data estimada de entrega</label>
                                     <input type="date" id="printDataEntregaLista">
                                 </div>
                             </div>
@@ -194,26 +195,26 @@
             <h3>Registrar Empréstimo</h3>
             <form id="formEmprestimo" novalidate>
                 <div class="form-group-livros">
-                    <label>Turma</label>
-                    <select id="modalEmpTurma" required>
+                    <label class="form-label">Turma</label>
+                    <select class="form-select" id="modalEmpTurma" required>
                         <option value="">— Selecione a turma —</option>
                     </select>
                 </div>
                 <div class="form-group-livros">
-                    <label>Aluno <span id="modalEmpAlunoLabel"></span></label>
-                    <select id="modalEmpAluno" required>
+                    <label class="form-label">Aluno <span id="modalEmpAlunoLabel"></span></label>
+                    <select class="form-select" id="modalEmpAluno" required>
                         <option value="">— Selecione a turma primeiro —</option>
                     </select>
                 </div>
                 <div class="form-group-livros">
-                    <label>Livro</label>
-                    <select id="modalEmpLivro" required>
+                    <label class="form-label">Livro</label>
+                    <select class="form-select" id="modalEmpLivro" required>
                         <option value="">— Selecione o livro —</option>
                     </select>
                 </div>
                 <div class="form-group-livros">
-                    <label>Observações (opcional)</label>
-                    <textarea id="modalEmpObs" rows="2" placeholder="Estado do livro, número de exemplar, etc."></textarea>
+                    <label class="form-label">Observações (opcional)</label>
+                    <textarea class="form-textarea" id="modalEmpObs" rows="2" placeholder="Estado do livro, número de exemplar, etc."></textarea>
                 </div>
                 <div class="form-msg-livros" id="formEmpMsg"></div>
                 <div class="modal-actions-livros">
@@ -235,8 +236,8 @@
             <h3 id="confirmTitulo"></h3>
             <p class="confirm-desc" id="confirmDesc"></p>
             <div class="form-group-livros">
-                <label>Observações (opcional)</label>
-                <textarea id="confirmObs" rows="2" placeholder="Condição do livro, motivo, etc."></textarea>
+                <label class="form-label">Observações (opcional)</label>
+                <textarea class="form-textarea" id="confirmObs" rows="2" placeholder="Condição do livro, motivo, etc."></textarea>
             </div>
             <div class="modal-actions-livros">
                 <button type="button" class="btn-secondary-livros" id="btnCancelarConfirm">Cancelar</button>
@@ -254,7 +255,7 @@
             <!-- Busca externa Open Library -->
             <div class="livro-busca-ext">
                 <div class="livro-busca-row">
-                    <input type="text" id="livroSearchInput"
+                    <input type="text" class="form-input" id="livroSearchInput"
                            placeholder="Buscar por ISBN ou título (ex: 9788572160735)"
                            autocomplete="off">
                     <button type="button" id="btnBuscarLivro" class="btn-buscar-livro">🔍 Buscar</button>
@@ -268,13 +269,13 @@
             <form id="formLivro" novalidate>
                 <input type="hidden" id="modalLivroId">
                 <div class="form-group-livros">
-                    <label>Título *</label>
-                    <input type="text" id="modalLivroTituloInput" placeholder="Ex: Matemática — Volume 1" required>
+                    <label class="form-label">Título *</label>
+                    <input type="text" class="form-input" id="modalLivroTituloInput" placeholder="Ex: Matemática — Volume 1" required>
                 </div>
                 <div class="form-row-livros">
                     <div class="form-group-livros">
-                        <label>Disciplina</label>
-                        <select id="modalLivroDisciplina">
+                        <label class="form-label">Disciplina</label>
+                        <select class="form-select" id="modalLivroDisciplina">
                             <option value="">— Selecione —</option>
                             <option>Língua Portuguesa</option>
                             <option>Matemática</option>
@@ -295,8 +296,8 @@
                         </select>
                     </div>
                     <div class="form-group-livros">
-                        <label>Série / Ano</label>
-                        <select id="modalLivroSerie">
+                        <label class="form-label">Série / Ano</label>
+                        <select class="form-select" id="modalLivroSerie">
                             <option value="">— Selecione —</option>
                             <optgroup label="Ensino Fundamental — Anos Iniciais">
                                 <option value="1ºAno">1º Ano</option>
@@ -336,27 +337,27 @@
                     </div>
                 </div>
                 <div class="form-group-livros">
-                    <label>Autor(es)</label>
-                    <input type="text" id="modalLivroAutor" placeholder="Ex: João Silva">
+                    <label class="form-label">Autor(es)</label>
+                    <input type="text" class="form-input" id="modalLivroAutor" placeholder="Ex: João Silva">
                 </div>
                 <div class="form-row-livros">
                     <div class="form-group-livros">
-                        <label>Editora</label>
-                        <input type="text" id="modalLivroEditora" placeholder="Ex: FTD">
+                        <label class="form-label">Editora</label>
+                        <input type="text" class="form-input" id="modalLivroEditora" placeholder="Ex: FTD">
                     </div>
                     <div class="form-group-livros">
-                        <label>Ano de Publicação</label>
-                        <input type="number" id="modalLivroAno" placeholder="Ex: 2023" min="1990" max="2030">
+                        <label class="form-label">Ano de Publicação</label>
+                        <input type="number" class="form-input" id="modalLivroAno" placeholder="Ex: 2023" min="1990" max="2030">
                     </div>
                 </div>
                 <div class="form-row-livros">
                     <div class="form-group-livros">
-                        <label>ISBN</label>
-                        <input type="text" id="modalLivroIsbn" placeholder="ISBN-13">
+                        <label class="form-label">ISBN</label>
+                        <input type="text" class="form-input" id="modalLivroIsbn" placeholder="ISBN-13">
                     </div>
                     <div class="form-group-livros">
-                        <label>Quantidade de exemplares</label>
-                        <input type="number" id="modalLivroQtde" value="1" min="1">
+                        <label class="form-label">Quantidade de exemplares</label>
+                        <input type="number" class="form-input" id="modalLivroQtde" value="1" min="1">
                     </div>
                 </div>
                 <div class="form-msg-livros" id="formLivroMsg"></div>

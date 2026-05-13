@@ -102,29 +102,10 @@
 @keyframes prv-spin { to { transform: rotate(360deg); } }
 .prv-modal-card label { display: block; margin-bottom: 12px; font-size: 13px; color: var(--text-secondary, #444); }
 .prv-modal-card label small { display:block; margin-top:4px; color:var(--text-muted,#666); font-size:11px; line-height:1.4; }
-.prv-modal-card input[type=text],
-.prv-modal-card input[type=date],
-.prv-modal-card input[type=number],
-.prv-modal-card select {
-    display: block; width: 100%;
-    padding: 8px 10px; margin-top: 4px;
-    border: 1px solid var(--border-input, #d1d5db);
-    border-radius: 6px; font-size: 14px;
-    background: var(--bg-secondary, #f8f9fb); color: var(--text, #000);
-}
-.prv-modal-card input[type=text]::placeholder,
-.prv-modal-card input[type=date]::placeholder,
-.prv-modal-card input[type=number]::placeholder {
-    color: var(--text-muted, #888);
-}
-.prv-modal-card input[type=text]:focus,
-.prv-modal-card input[type=date]:focus,
-.prv-modal-card input[type=number]:focus,
-.prv-modal-card select:focus {
-    border-color: var(--input-focus, #007bff);
-    outline: 2px solid color-mix(in srgb, var(--input-focus, #007bff) 25%, transparent);
-    outline-offset: 0;
-}
+/* Inputs/selects use shared .form-input / .form-select from modal-forms.css.
+   Only page-specific layout overrides live here. */
+.prv-modal-card .form-input,
+.prv-modal-card .form-select { display: block; width: 100%; margin-top: 4px; }
 .prv-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; }
 .prv-toggle input { width:auto !important; margin-top:0 !important; }
 .prv-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
@@ -133,30 +114,10 @@
 .prv-form-row > label { flex:1; min-width:0; }
 
 /* ── Dark theme — modal ──────────────────────────────────────────── */
+/* Input bg/color/border in dark mode are handled by theme.css globals */
 [data-theme="dark"] .prv-modal-card { background: var(--bg-card, #1a1d27); }
 [data-theme="dark"] .prv-modal-card label { color: #b0b3c8; }
 [data-theme="dark"] .prv-modal-card label small { color: #8a8ea8; }
-[data-theme="dark"] .prv-modal-card input[type=text],
-[data-theme="dark"] .prv-modal-card input[type=date],
-[data-theme="dark"] .prv-modal-card input[type=number],
-[data-theme="dark"] .prv-modal-card select {
-    background: var(--bg-input, #1e2130);
-    border-color: var(--border-input, #3a3d52);
-    color: var(--input-color, #e8e8f0);
-}
-[data-theme="dark"] .prv-modal-card input[type=text]::placeholder,
-[data-theme="dark"] .prv-modal-card input[type=date]::placeholder,
-[data-theme="dark"] .prv-modal-card input[type=number]::placeholder {
-    color: var(--text-muted, #676a80);
-}
-[data-theme="dark"] .prv-modal-card input[type=text]:focus,
-[data-theme="dark"] .prv-modal-card input[type=date]:focus,
-[data-theme="dark"] .prv-modal-card input[type=number]:focus,
-[data-theme="dark"] .prv-modal-card select:focus {
-    border-color: var(--input-focus, #60a5fa);
-    outline: 2px solid color-mix(in srgb, var(--input-focus, #60a5fa) 30%, transparent);
-    outline-offset: 0;
-}
 [data-theme="dark"] .prv-toggle span { color: #b0b3c8; }
 [data-theme="dark"] .prv-erro { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
 [data-theme="dark"] .prv-btn-danger { background: var(--bg-secondary); color: #f87171; border-color: #7f1d1d; }

@@ -9,6 +9,7 @@
     <meta name="description" content="EduSync — sistema de gestão escolar para professores e coordenadores de escolas do Paraná.">
     <title>EduSync — Materiais</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./materiais.css">
     <link rel="stylesheet" href="../../shared/css/custom-select.css">
 </head>
@@ -96,12 +97,12 @@
                 <form id="formMaterial" onsubmit="salvarMaterial(event)">
                     <input type="hidden" id="materialId">
                     <div class="form-group">
-                        <label for="codigo">Código Patrimonial</label>
-                        <input type="text" id="codigo" required placeholder="Ex: TAB-001">
+                        <label class="form-label" for="codigo">Código Patrimonial</label>
+                        <input class="form-input" type="text" id="codigo" required placeholder="Ex: TAB-001">
                     </div>
                     <div class="form-group">
-                        <label for="tipo">Tipo de Material</label>
-                        <select id="tipo" required>
+                        <label class="form-label" for="tipo">Tipo de Material</label>
+                        <select class="form-select" id="tipo" required>
                             <option value="">Selecione...</option>
                             <option value="tablet">Tablet</option>
                             <option value="notebook">Notebook</option>
@@ -112,16 +113,16 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="descricao">Descrição / Modelo</label>
-                        <input type="text" id="descricao" required placeholder="Ex: Samsung Galaxy Tab A7">
+                        <label class="form-label" for="descricao">Descrição / Modelo</label>
+                        <input class="form-input" type="text" id="descricao" required placeholder="Ex: Samsung Galaxy Tab A7">
                     </div>
                     <div class="form-group">
-                        <label for="localizacao">Localização</label>
-                        <input type="text" id="localizacao" placeholder="Ex: Sala 12, Armário 3">
+                        <label class="form-label" for="localizacao">Localização</label>
+                        <input class="form-input" type="text" id="localizacao" placeholder="Ex: Sala 12, Armário 3">
                     </div>
                     <div class="form-group">
-                        <label for="estado">Estado de Conservação</label>
-                        <select id="estado" required>
+                        <label class="form-label" for="estado">Estado de Conservação</label>
+                        <select class="form-select" id="estado" required>
                             <option value="otimo">Ótimo</option>
                             <option value="bom">Bom</option>
                             <option value="regular">Regular</option>
@@ -129,8 +130,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="status">Status</label>
-                        <select id="status" required>
+                        <label class="form-label" for="status">Status</label>
+                        <select class="form-select" id="status" required>
                             <option value="disponivel">Disponível</option>
                             <option value="emprestado">Emprestado</option>
                             <option value="manutencao">Em Manutenção</option>

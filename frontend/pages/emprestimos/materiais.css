@@ -299,17 +299,8 @@
 
 [data-theme="dark"] .modal-material { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .modal-material h3 { color: var(--text-primary); }
+/* Input bg/color/border/focus in dark mode are handled by theme.css globals */
 [data-theme="dark"] .form-group label { color: var(--text-secondary); }
-[data-theme="dark"] .form-group input,
-[data-theme="dark"] .form-group select,
-[data-theme="dark"] .form-group textarea {
-    background: var(--bg-input, #1e2130); color: var(--text-primary, #e8e8f0); border-color: var(--border-input, #3a3d52);
-}
-[data-theme="dark"] .form-group input:focus,
-[data-theme="dark"] .form-group select:focus {
-    border-color: var(--input-focus, #60a5fa);
-    outline: 2px solid color-mix(in srgb, var(--input-focus, #60a5fa) 30%, transparent);
-}
 
 [data-theme="dark"] .btn-editar-mat { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border); }
 [data-theme="dark"] .btn-editar-mat:hover { background: var(--bg-hover); }

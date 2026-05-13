@@ -6,6 +6,7 @@
     <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
     <link rel="stylesheet" href="../../shared/css/theme.css">
     <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./provas.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="EduSync — sistema de gestão escolar para professores e coordenadores de escolas do Paraná.">
@@ -122,14 +123,14 @@
             <h2 class="prv-modal-title">Novo Gabarito</h2>
             <div class="prv-form-row">
                 <label>Tipo <small>opcional</small>
-                    <select id="prvfTipo" onchange="prvAtualizarNome()">
+                    <select id="prvfTipo" class="form-select" onchange="prvAtualizarNome()">
                         <option value="">— Avaliação ou Recuperação —</option>
                         <option value="Avaliação">Avaliação</option>
                         <option value="Recuperação">Recuperação</option>
                     </select>
                 </label>
                 <label>Trimestre <small>opcional</small>
-                    <select id="prvfTrimestre" onchange="prvAtualizarNome()">
+                    <select id="prvfTrimestre" class="form-select" onchange="prvAtualizarNome()">
                         <option value="">— Trimestre —</option>
                         <option value="1º Trimestre">1º Trimestre</option>
                         <option value="2º Trimestre">2º Trimestre</option>
@@ -138,29 +139,29 @@
                 </label>
             </div>
             <label>Nome da prova
-                <input id="prvfNome" type="text" placeholder="Ex: 3º Ano C Manha | Matemática">
+                <input id="prvfNome" type="text" class="form-input" placeholder="Ex: 3º Ano C Manha | Matemática">
                 <small>Composto automaticamente a partir da turma e disciplina. Edite livremente.</small>
             </label>
             <label>ID GradePen (ansid)
-                <input id="prvfAnsid" type="text" placeholder="Ex: 2997247" inputmode="numeric">
+                <input id="prvfAnsid" type="text" class="form-input" placeholder="Ex: 2997247" inputmode="numeric">
                 <small>Cole só o número antes do ponto. Ex: do link https://gradepen.com/.../?ansid=<strong>2997247</strong>.0 → digite <strong>2997247</strong>.</small>
             </label>
             <label>Link da prova <small>opcional</small>
-                <input id="prvfLinkProva" type="text" placeholder="Ex: https://drive.google.com/file/d/ABC123/view?usp=sharing">
+                <input id="prvfLinkProva" type="text" class="form-input" placeholder="Ex: https://drive.google.com/file/d/ABC123/view?usp=sharing">
                 <small>Cole o link do Google Drive, PDF ou qualquer URL com as questões. O aluno verá um botão "Ver questões" no portal de correção.</small>
             </label>
             <label>Data da aplicação
-                <input id="prvfData" type="date">
+                <input id="prvfData" type="date" class="form-input">
             </label>
             <label>Foto da folha
-                <select id="prvfFoto">
+                <select id="prvfFoto" class="form-select">
                     <option value="nunca">Nunca pedir foto</option>
                     <option value="sorteio" selected>Sorteio (alguns alunos)</option>
                     <option value="sempre">Sempre obrigatória</option>
                 </select>
             </label>
             <label id="prvfFotoPctWrap">% sorteado para enviar foto
-                <input id="prvfFotoPct" type="number" min="1" max="100" value="20">
+                <input id="prvfFotoPct" type="number" class="form-input" min="1" max="100" value="20">
             </label>
             <label class="prv-toggle">
                 <input id="prvfSegundo" type="checkbox" onchange="prvToggleSegundo(this.checked)">
@@ -173,7 +174,7 @@
                 </span>
             </label>
             <label id="prvfSegundoPctWrap" style="display:none;margin-left:24px">% de alunos que recebem sorteio automático
-                <input id="prvfSegundoPct" type="number" min="1" max="100" value="15">
+                <input id="prvfSegundoPct" type="number" class="form-input" min="1" max="100" value="15">
                 <small id="prvfSegundoPctDica" style="color:#666">15% = sorteio aleatório para ~1 em cada 7 alunos. <strong>100% = todos os alunos recebem 2ª correção automática.</strong></small>
             </label>
             <div class="prv-modal-actions">
