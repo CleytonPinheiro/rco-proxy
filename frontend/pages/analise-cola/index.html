@@ -92,13 +92,9 @@
                             <option value="">Selecione a variante…</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="acRegVarianteGabarito" class="form-label">Comparar com gabarito de</label>
-                        <select id="acRegVarianteGabarito" class="form-select" onchange="onVarianteRegistroChange()">
-                            <option value="">Selecione a variante…</option>
-                        </select>
-                    </div>
                 </div>
+                <div id="acRegGabaritoContainer" class="ac-reg-gabaritos-container"></div>
+                <button type="button" id="acRegAdicionarGabaritoBtn" class="ac-btn ac-btn-sm" onclick="adicionarGabarito()" style="margin-top:8px">+ Adicionar gabarito</button>
                 <div id="acRegStatus" class="ac-reg-status" style="display:none"></div>
                 <div id="acRegResultados" style="display:none" class="ac-reg-resultados"></div>
             </div>

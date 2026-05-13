@@ -2252,12 +2252,21 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         const session = req.userSession;
         if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
 
-        const { varianteAlunosId, varianteGabaritoId } = req.body || {};
-        if (!varianteAlunosId || !varianteGabaritoId) {
-            return res.status(400).json({ erro: 'varianteAlunosId e varianteGabaritoId são obrigatórios.' });
+        const { varianteAlunosId, varianteGabaritoIds } = req.body || {};
+
+        if (!varianteAlunosId || !Array.isArray(varianteGabaritoIds)) {
+            return res.status(400).json({ erro: 'varianteAlunosId e varianteGabaritoIds (array) são obrigatórios.' });
         }
-        if (parseInt(varianteAlunosId, 10) === parseInt(varianteGabaritoId, 10)) {
-            return res.status(400).json({ erro: 'As duas variantes devem ser diferentes.' });
+        if (varianteGabaritoIds.length < 2 || varianteGabaritoIds.length > 3) {
+            return res.status(400).json({ erro: 'varianteGabaritoIds deve conter de 2 a 3 itens.' });
+        }
+        const alunosIdInt = parseInt(varianteAlunosId, 10);
+        const gabIds = varianteGabaritoIds.map(id => parseInt(id, 10));
+        if (gabIds.some(id => id === alunosIdInt)) {
+            return res.status(400).json({ erro: 'Nenhum gabarito pode ser igual à variante dos alunos.' });
+        }
+        if (new Set(gabIds).size !== gabIds.length) {
+            return res.status(400).json({ erro: 'Os gabaritos selecionados devem ser distintos.' });
         }
 
         try {
@@ -2275,32 +2284,24 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
             const { rows: [varianteAlunos] } = await pool.query(
                 `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
-                [parseInt(varianteAlunosId, 10), provaId]
+                [alunosIdInt, provaId]
             );
             if (!varianteAlunos) return res.status(404).json({ erro: 'Variante dos alunos não encontrada.' });
-
-            const { rows: [varianteGabarito] } = await pool.query(
-                `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
-                [parseInt(varianteGabaritoId, 10), provaId]
-            );
-            if (!varianteGabarito) return res.status(404).json({ erro: 'Variante do gabarito não encontrada.' });
-
-            const marcacoes = {};
-            const gabaritoQuestoes = varianteGabarito.gabarito_json || [];
-            for (const q of gabaritoQuestoes) {
-                if (q.tipo !== 'multipla' && q.tipo !== 'vf') continue;
-                const qStr = String(q.questao);
-                if (q.tipo === 'multipla') {
-                    if (q.correta != null) marcacoes[qStr] = q.correta;
-                } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
-                    marcacoes[qStr] = q.correta;
-                }
-            }
 
             const gabaritoAlunos = {};
             for (const q of (varianteAlunos.gabarito_json || [])) {
                 if (q.tipo !== 'multipla' && q.tipo !== 'vf') continue;
                 gabaritoAlunos[String(q.questao)] = q;
+            }
+
+            const variantesGabarito = [];
+            for (const gabId of gabIds) {
+                const { rows: [vg] } = await pool.query(
+                    `SELECT id, codigo, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
+                    [gabId, provaId]
+                );
+                if (!vg) return res.status(404).json({ erro: `Variante de gabarito ${gabId} não encontrada.` });
+                variantesGabarito.push(vg);
             }
 
             const { rows: submissoes } = await pool.query(
@@ -2312,13 +2313,23 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             );
 
             if (submissoes.length === 0) {
-                return res.json({ similares: [], totalComparados: 0 });
+                return res.json({ similares: [], gabaritosCodigos: variantesGabarito.map(v => v.codigo), totalComparados: 0 });
             }
 
-            const questoesComp = gabaritoQuestoes.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
-            const total        = questoesComp.length;
-
-            const similares = submissoes.map(sub => {
+            function compararComGabarito(sub, varianteGabarito) {
+                const marcacoes = {};
+                const gabaritoQuestoes = varianteGabarito.gabarito_json || [];
+                for (const q of gabaritoQuestoes) {
+                    if (q.tipo !== 'multipla' && q.tipo !== 'vf') continue;
+                    const qStr = String(q.questao);
+                    if (q.tipo === 'multipla') {
+                        if (q.correta != null) marcacoes[qStr] = q.correta;
+                    } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
+                        marcacoes[qStr] = q.correta;
+                    }
+                }
+                const questoesComp = gabaritoQuestoes.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+                const total = questoesComp.length;
                 const marcB = sub.marcacoes_json || {};
                 let identicas = 0;
                 let identicasErradas = 0;
@@ -2364,22 +2375,28 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 }
 
                 const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
+                return { varianteCodigo: varianteGabarito.codigo, similaridade, identicas, identicasErradas, total, detalhes };
+            }
+
+            const similares = submissoes.map(sub => {
+                const porGabarito = variantesGabarito.map(vg => compararComGabarito(sub, vg));
                 return {
-                    alunoNome:      sub.aluno_nome || sub.aluno_email,
-                    similaridade,
-                    identicas,
-                    identicasErradas,
-                    total,
-                    origem:         sub.origem,
-                    detalhes,
+                    alunoNome: sub.aluno_nome || sub.aluno_email,
+                    origem: sub.origem,
+                    porGabarito,
                 };
             });
 
-            similares.sort((a, b) =>
-                b.identicasErradas - a.identicasErradas || b.similaridade - a.similaridade
-            );
+            similares.sort((a, b) => {
+                const worstA = Math.max(...a.porGabarito.map(g => g.identicasErradas));
+                const worstB = Math.max(...b.porGabarito.map(g => g.identicasErradas));
+                if (worstB !== worstA) return worstB - worstA;
+                const simA = Math.max(...a.porGabarito.map(g => g.similaridade));
+                const simB = Math.max(...b.porGabarito.map(g => g.similaridade));
+                return simB - simA;
+            });
 
-            res.json({ similares, totalComparados: submissoes.length });
+            res.json({ similares, gabaritosCodigos: variantesGabarito.map(v => v.codigo), totalComparados: submissoes.length });
         } catch (e) {
             console.error('[PROVAS] Erro ao comparar respostas:', e.message);
             res.status(500).json({ erro: e.message });
