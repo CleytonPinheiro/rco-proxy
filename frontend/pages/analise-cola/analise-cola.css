@@ -475,58 +475,20 @@
 }
 
 /* ── Modal Registro Manual ────────────────────────────────────────── */
-.ac-reg-card {
-    width: min(780px, 95vw);
-    max-height: 90vh;
-    overflow-y: auto;
-}
-.ac-reg-corpo {
-    padding: 0 20px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-.ac-reg-descr {
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-muted, #666);
-    background: var(--bg-tertiary, #f0f4ff);
-    padding: 10px 14px;
-    border-radius: 8px;
-    border-left: 3px solid #3b82f6;
-}
-.ac-reg-form {
+.ac-reg-form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
-.ac-reg-form .ac-reg-label:last-child {
-    grid-column: 1 / -1;
+@media (max-width: 540px) {
+    .ac-reg-form-grid { grid-template-columns: 1fr; }
+    .ac-reg-form-grid [style*="grid-column"] { grid-column: auto; }
 }
-.ac-reg-label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text, #111);
-}
-.ac-reg-input, .ac-reg-select {
-    padding: 8px 10px;
-    border-radius: 7px;
-    border: 1px solid var(--border-input, #ddd);
-    background: var(--bg-input, #fff);
-    color: var(--text, #000);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    transition: border-color .15s;
-}
-.ac-reg-input:focus, .ac-reg-select:focus { border-color: #3b82f6; }
 .ac-reg-hint {
+    display: block;
     font-size: 11px;
-    font-weight: 400;
     color: var(--text-muted, #888);
+    margin-top: 4px;
 }
 
 /* Bubble sheet */
@@ -612,13 +574,6 @@
 [data-theme="dark"] .ac-reg-status.ok  { background: #14532d; color: #86efac; }
 [data-theme="dark"] .ac-reg-status.err { background: #7f1d1d; color: #fca5a5; }
 
-.ac-reg-footer {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    border-top: 1px solid var(--border, #eee);
-    padding-top: 14px;
-}
 .ac-btn-primary {
     background: #3b82f6;
     color: #fff;
@@ -736,7 +691,3 @@
 }
 .ac-excluir-manual-btn:hover { background: #fca5a5; }
 
-@media (max-width: 540px) {
-    .ac-reg-form { grid-template-columns: 1fr; }
-    .ac-reg-form .ac-reg-label:last-child { grid-column: auto; }
-}

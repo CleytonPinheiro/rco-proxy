@@ -6,6 +6,7 @@
     <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
     <link rel="stylesheet" href="../../shared/css/theme.css">
     <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./analise-cola.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="EduSync — Analise de gabarito">
@@ -72,24 +73,22 @@
     </main>
 
     <!-- Modal Confrontar Gabarito (professor) -->
-    <div id="acRegModal" class="ac-modal" style="display:none" onclick="if(event.target===this)fecharModalRegistro()">
-        <div class="ac-modal-card ac-reg-card">
-            <div class="ac-modal-header">
+    <div id="acRegModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalRegistro()">
+        <div class="modal-box modal-box-xl">
+            <div class="modal-header">
                 <h3>🔍 Confrontar gabarito</h3>
-                <button class="ac-btn-icon" onclick="fecharModalRegistro()">✕</button>
+                <button class="modal-close" onclick="fecharModalRegistro()">✕</button>
             </div>
-            <div class="ac-reg-corpo">
-                <p class="ac-reg-descr">
+            <div class="modal-body">
+                <p style="margin:0;font-size:13px;color:var(--text-muted,#666);background:var(--bg-tertiary,#f0f4ff);padding:10px 14px;border-radius:8px;border-left:3px solid #3b82f6">
                     Marque as respostas que você quer confrontar (de um gabarito físico, por exemplo)
                     e veja quais alunos têm padrão de marcação similar. Nenhum dado é salvo.
                 </p>
-                <div class="ac-reg-form ac-reg-form--variante">
-                    <label class="ac-reg-label">
-                        Variante da prova
-                        <select id="acRegVariante" class="ac-reg-select" onchange="onVarianteRegistroChange()">
-                            <option value="">Selecione a variante…</option>
-                        </select>
-                    </label>
+                <div>
+                    <label for="acRegVariante" class="form-label">Variante da prova</label>
+                    <select id="acRegVariante" class="form-select" onchange="onVarianteRegistroChange()">
+                        <option value="">Selecione a variante…</option>
+                    </select>
                 </div>
                 <div id="acRegBolhasWrap" style="display:none">
                     <div class="ac-reg-bolhas-titulo">Marque as respostas para confrontar:</div>
@@ -97,10 +96,10 @@
                 </div>
                 <div id="acRegStatus" class="ac-reg-status" style="display:none"></div>
                 <div id="acRegResultados" style="display:none" class="ac-reg-resultados"></div>
-                <div class="ac-reg-footer">
-                    <button class="ac-btn" onclick="fecharModalRegistro()">Fechar</button>
-                    <button class="ac-btn ac-btn-primary" id="acRegSalvarBtn" onclick="salvarRegistroManual()" disabled>🔍 Confrontar com a turma</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="ac-btn" onclick="fecharModalRegistro()">Fechar</button>
+                <button class="ac-btn ac-btn-primary" id="acRegSalvarBtn" onclick="salvarRegistroManual()" disabled>🔍 Confrontar com a turma</button>
             </div>
         </div>
     </div>
