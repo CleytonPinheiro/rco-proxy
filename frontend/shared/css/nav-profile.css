@@ -373,6 +373,7 @@
 [data-theme="dark"] .perfil-panel-item-icon { background: var(--bg-tertiary, #374151); }
 [data-theme="dark"] .perfil-tema-toggle:hover,
 [data-theme="dark"] .perfil-panel-item:hover { background: var(--bg-secondary, #1f2937); }
+[data-theme="dark"] .perfil-panel-item-sub { color: var(--text-secondary); }
 
 /* ── Seta apontando pro avatar ───────────────────────────────────────────── */
 .perfil-panel::before {

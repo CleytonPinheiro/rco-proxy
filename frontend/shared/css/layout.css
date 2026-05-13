@@ -778,6 +778,14 @@ body[data-side="open"] .side-panel {
 [data-theme="dark"] .side-nav-desc { color: var(--text-secondary); }
 [data-theme="dark"] .side-panel-section-label { color: var(--text-secondary); }
 [data-theme="dark"] .side-panel-footer { border-color: var(--border); color: var(--text-secondary); }
+[data-theme="dark"] .side-nav-chevron { color: var(--text-secondary); }
+[data-theme="dark"] .classroom-flyout-label { color: var(--text-secondary); }
+[data-theme="dark"] .status-card-label { color: var(--text-secondary); }
+[data-theme="dark"] .status-card-sub { color: var(--text-secondary); }
+[data-theme="dark"] .sync-row-time { color: var(--text-secondary); }
+[data-theme="dark"] .empty-state-desc { color: var(--text-secondary); }
+[data-theme="dark"] .empty-state-sync-info { color: var(--text-secondary); }
+[data-theme="dark"] .loading p { color: var(--text-secondary); }
 
 /* ── Responsivo ───────────────────────────────────────── */
 @media (max-width: 640px) {
