@@ -241,17 +241,50 @@ async function gpLogin() {
             await page.goto('https://gradepen.com/p/index.php',
                 { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
 
-            /* ── 2. Localiza o botão Google (pode estar em modal oculto) ─────── */
+            /* ── 2. Diagnóstico: dump de todos os elementos com "google" ──────── */
+            const googleEls = await page.evaluate(() => {
+                const out = [];
+                document.querySelectorAll('*').forEach(el => {
+                    const tag  = el.tagName;
+                    const id   = el.id   || '';
+                    const cls  = el.className && typeof el.className === 'string' ? el.className : '';
+                    const href = el.href  || el.getAttribute('href')    || '';
+                    const onclick = el.getAttribute('onclick') || '';
+                    const txt  = (el.textContent || '').trim().substring(0, 60);
+                    if (/google/i.test(id + cls + href + onclick + txt)) {
+                        out.push({ tag, id, cls: cls.substring(0,80), href: href.substring(0,100), onclick: onclick.substring(0,80), txt: txt.substring(0,60) });
+                    }
+                });
+                return out.slice(0, 30);
+            }).catch(() => []);
+            console.log('[PROVAS] Elementos "google" na página:', JSON.stringify(googleEls));
+
+            /* ── 3. Localiza o botão Google (pode estar em modal oculto) ─────── */
             const googleBtn = await page.$(
-                '[class*="google"]:not(script), [id*="google"]:not(script), ' +
-                'a[href*="oauth.php"], a[href*="accounts.google"]'
+                'a[href*="google"], a[href*="oauth"], button[onclick*="google"], ' +
+                '#googleSignInButton, .g-signin2, [class*="google"], [id*="google"], ' +
+                'a[href*="accounts.google"], button[data-provider="google"]'
             ).catch(() => null);
 
             if (!googleBtn) {
-                throw new Error(
-                    'Botão "Sign in with Google" não encontrado no GradePen. ' +
-                    'Verifique se GOOGLE_EMAIL/GOOGLE_PASSWORD estão configurados e se a conta não tem 2FA.'
-                );
+                /* Fallback: tenta navegar direto ao endpoint oauth do GradePen */
+                console.log('[PROVAS] Botão Google não encontrado pelo seletor — elementos google acima. Tentando oauth.php...');
+                await page.goto('https://gradepen.com/p/oauth.php?provider=google',
+                    { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
+                console.log('[PROVAS] URL oauth.php:', page.url().substring(0, 90));
+                /* Se abriu accounts.google.com na mesma aba, vai para handleGoogleLogin */
+                if (/accounts\.google\.com/i.test(page.url())) {
+                    await handleGoogleLogin(page);
+                    if (!/gradepen\.com/i.test(page.url())) {
+                        await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => null);
+                    }
+                    /* Pula para verificação de sessão */
+                } else {
+                    throw new Error(
+                        'Botão "Sign in with Google" não encontrado no GradePen. ' +
+                        'Verifique se GOOGLE_EMAIL/GOOGLE_PASSWORD estão configurados e se a conta não tem 2FA.'
+                    );
+                }
             }
 
             /* ── 3. Configura interceptador de popup ANTES de clicar ─────────── */
