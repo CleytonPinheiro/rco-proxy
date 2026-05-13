@@ -369,6 +369,7 @@
     border-radius: 8px;
     margin-bottom: 8px;
     font-size: 13px;
+    background: var(--bg-secondary, #f8f9fb);
 }
 .ac-hist-item-nome { font-weight: 600; margin-bottom: 4px; }
 .ac-hist-item-meta { color: var(--text-muted, #666); font-size: 12px; }
@@ -415,7 +416,7 @@
     width: 340px;
     max-height: 420px;
     overflow-y: auto;
-    background: var(--bg-secondary, #fff);
+    background: var(--bg-card, #fff);
     border: 1px solid var(--border, #ddd);
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0,0,0,.12);
