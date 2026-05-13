@@ -390,6 +390,12 @@ async function gpFetchAnswers(jobId, index, retried = false) {
     }
 
     if (fetchError) {
+        const isTimeout = /timed out|protocolTimeout/i.test(fetchError.message);
+        if (isTimeout) {
+            fetchError.gpMensagem = 'O GradePen demorou demais para responder. Tente novamente em instantes.';
+            fetchError.gpTimeout = true;
+            throw fetchError;
+        }
         if (retried) throw fetchError;
         const oldPage = _gpPage;
         _gpPage = null;

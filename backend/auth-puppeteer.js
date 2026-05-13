@@ -163,10 +163,14 @@ async function getBrowser() {
             console.log("Iniciando nova instância do browser...");
             console.log("Usando Chromium em:", chromiumPath);
 
+            const protocolTimeout = parseInt(process.env.PUPPETEER_PROTOCOL_TIMEOUT, 10) || 300000;
+            console.log(`[Puppeteer] protocolTimeout: ${protocolTimeout}ms (PUPPETEER_PROTOCOL_TIMEOUT)`);
+
             const instance = await puppeteer.launch({
                 headless: true,
                 executablePath: chromiumPath,
                 timeout: 90000,
+                protocolTimeout,
                 args: [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
