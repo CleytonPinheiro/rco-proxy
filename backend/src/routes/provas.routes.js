@@ -103,6 +103,7 @@ async function migrarTabelas() {
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS foto_conferida TEXT`);
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS xp_creditado_efetiv BOOLEAN NOT NULL DEFAULT false`);
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS voluntaria BOOLEAN NOT NULL DEFAULT false`);
+        await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS origem TEXT NOT NULL DEFAULT 'aluno'`);
         await reputacao.migrate();
         await pool.query(`
             CREATE TABLE IF NOT EXISTS classroom_prova_cola_flags (
@@ -1878,7 +1879,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
             /* Carrega submissões primárias (não 2º corretores) */
             const { rows: submissoes } = await pool.query(
-                `SELECT id, variante_id, aluno_email, aluno_nome, marcacoes_json
+                `SELECT id, variante_id, aluno_email, aluno_nome, marcacoes_json,
+                        COALESCE(origem, 'aluno') AS origem
                    FROM classroom_prova_submissoes
                   WHERE prova_id = $1 AND eh_segundo_corretor = false
                   ORDER BY variante_id, aluno_email`,
@@ -2006,8 +2008,12 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         pares.push({
                             alunoA:           a.aluno_email,
                             nomeA:            a.aluno_nome || a.aluno_email,
+                            origemA:          a.origem || 'aluno',
+                            subIdA:           a.id,
                             alunoB:           b.aluno_email,
                             nomeB:            b.aluno_nome || b.aluno_email,
+                            origemB:          b.origem || 'aluno',
+                            subIdB:           b.id,
                             varianteCodigo:   codigo,
                             total,
                             identicas,
@@ -2106,7 +2112,119 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 par.flag = flagMap[`${ea}|${eb}`] || null;
             }
 
-            res.json({ pares, suspeitosEntreVariantes, temDiscursiva });
+            /* Expõe variantes (com gabarito) para o modal de registro manual no frontend */
+            const variantesPublic = variantes.map(v => ({
+                id:       v.id,
+                codigo:   v.codigo,
+                gabarito: v.gabarito_json,
+            }));
+
+            res.json({ pares, suspeitosEntreVariantes, temDiscursiva, variantes: variantesPublic });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Registrar respostas manualmente (professor insere gabarito físico de aluno) ── */
+    router.post('/classroom/provas/:provaId/submissoes/manual', async (req, res) => {
+        const session = req.session?.usuario;
+        if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { alunoNome, alunoEmail, varianteId, marcacoes } = req.body || {};
+        if (!alunoNome || !alunoEmail || !varianteId || !marcacoes || typeof marcacoes !== 'object') {
+            return res.status(400).json({ erro: 'alunoNome, alunoEmail, varianteId e marcacoes são obrigatórios.' });
+        }
+
+        try {
+            const provaId = parseInt(req.params.provaId, 10);
+
+            const { rows: [prova] } = await pool.query(
+                `SELECT id, criada_por_cpf FROM classroom_provas WHERE id = $1`, [provaId]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            const cpf = session.cpf || session.rco_cpf;
+            if (session.perfil !== 'admin' && prova.criada_por_cpf !== cpf) {
+                return res.status(403).json({ erro: 'Acesso negado. Esta prova não é sua.' });
+            }
+
+            const { rows: [variante] } = await pool.query(
+                `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
+                [parseInt(varianteId, 10), provaId]
+            );
+            if (!variante) return res.status(404).json({ erro: 'Variante não encontrada.' });
+
+            const emailNorm = String(alunoEmail).toLowerCase().trim();
+
+            const { rows: existente } = await pool.query(
+                `SELECT id FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND aluno_email = $2 AND eh_segundo_corretor = false`,
+                [provaId, emailNorm]
+            );
+            if (existente.length > 0) {
+                return res.status(409).json({ erro: `${emailNorm} já possui uma submissão para esta prova. Exclua-a primeiro se quiser substituir.` });
+            }
+
+            const { nota, total } = calcularNota(variante.gabarito_json, marcacoes);
+
+            const { rows: [sub] } = await pool.query(
+                `INSERT INTO classroom_prova_submissoes
+                   (prova_id, variante_id, variante_id_original, aluno_email, aluno_nome,
+                    marcacoes_json, nota, total_max, ip, user_agent, origem)
+                 VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,'professor')
+                 RETURNING id, criada_em`,
+                [provaId, variante.id, emailNorm, String(alunoNome).trim(),
+                 JSON.stringify(marcacoes), nota, total,
+                 'manual:' + (cpf || 'professor'), 'manual-professor']
+            );
+
+            res.json({ submissaoId: sub.id, nota, total, criada_em: sub.criada_em });
+
+            setImmediate(() => {
+                checarColaPosSubmissao(pool, {
+                    provaId,
+                    varianteId:    variante.id,
+                    alunoEmail:    emailNorm,
+                    marcacoesJson: marcacoes,
+                });
+            });
+        } catch (e) {
+            console.error('[PROVAS] Erro ao registrar submissão manual:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Excluir submissão registrada manualmente ── */
+    router.delete('/classroom/provas/:provaId/submissoes/:subId/manual', async (req, res) => {
+        const session = req.session?.usuario;
+        if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        try {
+            const provaId = parseInt(req.params.provaId, 10);
+            const subId   = parseInt(req.params.subId,   10);
+
+            const { rows: [prova] } = await pool.query(
+                `SELECT id, criada_por_cpf FROM classroom_provas WHERE id = $1`, [provaId]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            const cpf = session.cpf || session.rco_cpf;
+            if (session.perfil !== 'admin' && prova.criada_por_cpf !== cpf) {
+                return res.status(403).json({ erro: 'Acesso negado.' });
+            }
+
+            const { rows: [sub] } = await pool.query(
+                `SELECT id, origem FROM classroom_prova_submissoes
+                  WHERE id = $1 AND prova_id = $2 AND eh_segundo_corretor = false`,
+                [subId, provaId]
+            );
+            if (!sub) return res.status(404).json({ erro: 'Submissão não encontrada.' });
+            if (sub.origem !== 'professor') {
+                return res.status(403).json({ erro: 'Só é possível excluir submissões inseridas manualmente pelo professor.' });
+            }
+
+            await pool.query(`DELETE FROM classroom_prova_submissoes WHERE id = $1`, [subId]);
+            res.json({ ok: true });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

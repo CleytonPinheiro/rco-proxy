@@ -71,6 +71,48 @@
         </div>
     </main>
 
+    <!-- Modal Registrar Respostas Manualmente -->
+    <div id="acRegModal" class="ac-modal" style="display:none" onclick="if(event.target===this)fecharModalRegistro()">
+        <div class="ac-modal-card ac-reg-card">
+            <div class="ac-modal-header">
+                <h3>📋 Registrar respostas manualmente</h3>
+                <button class="ac-btn-icon" onclick="fecharModalRegistro()">✕</button>
+            </div>
+            <div class="ac-reg-corpo">
+                <p class="ac-reg-descr">
+                    Insira as marcações de um aluno que respondeu em papel (ou fora do portal).
+                    Essas respostas participarão normalmente da detecção de cola.
+                </p>
+                <div class="ac-reg-form">
+                    <label class="ac-reg-label">
+                        Nome do aluno
+                        <input id="acRegNome" type="text" placeholder="Ex: João da Silva" class="ac-reg-input">
+                    </label>
+                    <label class="ac-reg-label">
+                        E-mail ou RA
+                        <input id="acRegEmail" type="text" placeholder="Ex: ra1234@escola.pr.gov.br" class="ac-reg-input">
+                        <span class="ac-reg-hint">Use um identificador único — o mesmo e-mail não pode ter duas submissões.</span>
+                    </label>
+                    <label class="ac-reg-label">
+                        Variante da prova
+                        <select id="acRegVariante" class="ac-reg-select" onchange="onVarianteRegistroChange()">
+                            <option value="">Selecione a variante…</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="acRegBolhasWrap" style="display:none">
+                    <div class="ac-reg-bolhas-titulo">Marque as respostas do aluno:</div>
+                    <div id="acRegBolhasGrid" class="ac-reg-bolhas-grid"></div>
+                </div>
+                <div id="acRegStatus" class="ac-reg-status" style="display:none"></div>
+                <div class="ac-reg-footer">
+                    <button class="ac-btn" onclick="fecharModalRegistro()">Cancelar</button>
+                    <button class="ac-btn ac-btn-primary" id="acRegSalvarBtn" onclick="salvarRegistroManual()" disabled>💾 Registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Histórico Aluno -->
     <div id="acHistModal" class="ac-modal" style="display:none" onclick="if(event.target===this)fecharHistoricoModal()">
         <div class="ac-modal-card">

@@ -472,3 +472,191 @@
     font-size: 11px;
     color: var(--text-muted, #999);
 }
+
+/* ── Modal Registro Manual ────────────────────────────────────────── */
+.ac-reg-card {
+    width: min(780px, 95vw);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.ac-reg-corpo {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.ac-reg-descr {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted, #666);
+    background: var(--bg-secondary, #f5f5f5);
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 3px solid #3b82f6;
+}
+.ac-reg-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.ac-reg-form .ac-reg-label:last-child {
+    grid-column: 1 / -1;
+}
+.ac-reg-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text, #111);
+}
+.ac-reg-input, .ac-reg-select {
+    padding: 8px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border, #ddd);
+    background: var(--bg-secondary, #fff);
+    color: var(--text, #000);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+}
+.ac-reg-input:focus, .ac-reg-select:focus { border-color: #3b82f6; }
+.ac-reg-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted, #888);
+}
+
+/* Bubble sheet */
+.ac-reg-bolhas-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text, #111);
+    margin-bottom: 8px;
+}
+.ac-reg-bolhas-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+.ac-bolha-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+.ac-bolha-row-num {
+    width: 28px;
+    text-align: right;
+    color: var(--text-muted, #666);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.ac-bolha-row-tipo {
+    font-size: 10px;
+    color: var(--text-muted, #999);
+    margin-left: 4px;
+}
+.ac-bolha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border, #ccc);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--bg-secondary, #fff);
+    color: var(--text-muted, #666);
+    user-select: none;
+    transition: .12s;
+    flex-shrink: 0;
+}
+.ac-bolha:hover { border-color: #3b82f6; color: #3b82f6; }
+.ac-bolha.ac-bolha-marcada {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+.ac-bolha-vazia {
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--text-muted, #aaa);
+    cursor: pointer;
+    border: 2px dashed var(--border, #ddd);
+    border-radius: 50%;
+    transition: .12s;
+}
+.ac-bolha-vazia:hover { border-color: #94a3b8; }
+.ac-bolha-vazia.ac-bolha-marcada {
+    background: #64748b;
+    border-color: #64748b;
+    color: #fff;
+}
+
+/* Status message */
+.ac-reg-status {
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+}
+.ac-reg-status.ok  { background: #dcfce7; color: #166534; }
+.ac-reg-status.err { background: #fee2e2; color: #991b1b; }
+
+.ac-reg-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border, #eee);
+    padding-top: 14px;
+}
+.ac-btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+}
+.ac-btn-primary:hover:not(:disabled) { background: #2563eb; }
+.ac-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Origem badge (prof inseriu) */
+.ac-badge-prof {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+[data-theme="dark"] .ac-badge-prof {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-color: #1d4ed8;
+}
+
+/* Excluir submissão manual */
+.ac-excluir-manual-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    cursor: pointer;
+    transition: .12s;
+}
+.ac-excluir-manual-btn:hover { background: #fca5a5; }
+
+@media (max-width: 540px) {
+    .ac-reg-form { grid-template-columns: 1fr; }
+    .ac-reg-form .ac-reg-label:last-child { grid-column: auto; }
+}
