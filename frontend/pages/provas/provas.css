@@ -867,3 +867,64 @@
     .gp-connect-inner { flex-wrap: wrap; gap: 10px; }
     .gp-connect-icon { display: none; }
 }
+
+/* ── Modo Cards / Lista toggle ──────────────────────────────────── */
+.prv-modo-toggle {
+    display: flex; align-items: center;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 8px; overflow: hidden;
+}
+.prv-modo-btn {
+    padding: 7px 14px;
+    background: var(--bg-secondary, #fff);
+    color: var(--text-muted, #888);
+    border: none; cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    transition: background .15s, color .15s;
+    line-height: 1;
+}
+.prv-modo-btn + .prv-modo-btn {
+    border-left: 1px solid var(--border, #ddd);
+}
+.prv-modo-btn:hover { background: var(--bg, #f5f5f5); color: var(--text-primary, #1a1a2e); }
+.prv-modo-btn.prv-modo-ativo {
+    background: #4285F4; color: #fff;
+}
+.prv-modo-btn.prv-modo-ativo:hover { background: #3367d6; }
+
+/* ── Tabela modo Lista ─────────────────────────────────────────── */
+.prv-lista-tabela {
+    width: 100%; border-collapse: collapse;
+    background: var(--bg-secondary, #fff);
+    border: 1px solid var(--border, #ddd);
+    border-radius: 12px; overflow: hidden;
+    font-size: 14px;
+}
+.prv-lista-th {
+    padding: 10px 14px; text-align: left;
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted, #888);
+    background: var(--bg, #f9f9f9);
+    border-bottom: 1px solid var(--border, #ddd);
+}
+.prv-lista-th-num { text-align: center; }
+.prv-lista-row {
+    cursor: pointer; transition: background .12s;
+}
+.prv-lista-row:hover { background: var(--bg, #f5f5f5); }
+.prv-lista-row:not(:last-child) td { border-bottom: 1px solid var(--border, #ddd); }
+.prv-lista-td {
+    padding: 10px 14px; vertical-align: middle;
+}
+.prv-lista-td-num { text-align: center; color: #4285F4; font-weight: 600; }
+.prv-lista-td-data { white-space: nowrap; color: var(--text-muted, #888); font-size: 13px; }
+.prv-lista-td-curso { color: var(--text-muted, #888); font-size: 13px; max-width: 220px; }
+.prv-lista-nome { font-weight: 600; }
+.prv-lista-badges { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; }
+@media (max-width: 700px) {
+    .prv-lista-td-curso,
+    .prv-lista-td-data { display: none; }
+    .prv-lista-th:nth-child(2),
+    .prv-lista-th:nth-child(3) { display: none; }
+}

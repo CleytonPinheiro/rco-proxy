@@ -10,6 +10,7 @@ let cursos = [];
 let cursoAtual = '';
 let provas = [];
 let provaAberta = null;
+let _modoLista = false; /* false = Cards (padrão), true = Lista */
 let _colaCarregada = false;
 let _colaExpandido = null;
 let _colaFlags = {};
@@ -449,6 +450,89 @@ async function carregarProvas() {
         $('prvLista').innerHTML = `<div class="prv-empty">Erro: ${escapeHtml(e.message)}</div>`;
     }
 }
+
+/* ── Modo Lista (todas as provas) ───────────────────────────────── */
+
+function prvSetModo(modo) {
+    _modoLista = (modo === 'lista');
+
+    /* Atualiza botões do toggle */
+    const btnCards = $('prvBtnModoCards');
+    const btnLista = $('prvBtnModoLista');
+    if (btnCards) btnCards.classList.toggle('prv-modo-ativo', !_modoLista);
+    if (btnLista) btnLista.classList.toggle('prv-modo-ativo', _modoLista);
+
+    /* Mostra/oculta selects de turma e disciplina */
+    const selTurma = $('prvTurma');
+    const selCurso = $('prvCurso');
+    if (selTurma?.parentElement) selTurma.parentElement.style.display = _modoLista ? 'none' : '';
+    if (selCurso?.parentElement) selCurso.parentElement.style.display = _modoLista ? 'none' : '';
+
+    /* Oculta painel de flags pendentes no modo lista */
+    const panel = $('prvFlagsPendentes');
+    if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+
+    if (_modoLista) {
+        carregarTodasProvas();
+    } else {
+        /* Volta ao modo cards: reusa estado atual dos selects */
+        if (cursoAtual) {
+            carregarProvas();
+        } else {
+            $('prvLista').innerHTML = '<div class="prv-empty">Selecione um curso acima para ver as provas.</div>';
+        }
+    }
+}
+
+async function carregarTodasProvas() {
+    $('prvLista').innerHTML = '<div class="prv-empty">Carregando…</div>';
+    try {
+        const r = await fetch('/api/classroom/provas/todas', { credentials: 'include' });
+        if (!r.ok) {
+            const d = await r.json().catch(() => ({}));
+            $('prvLista').innerHTML = `<div class="prv-empty">Erro: ${escapeHtml(d.erro || r.statusText)}</div>`;
+            return;
+        }
+        const d = await r.json();
+        const todas = d.provas || [];
+        if (todas.length === 0) {
+            $('prvLista').innerHTML = '<div class="prv-empty">Nenhuma prova cadastrada ainda.</div>';
+            return;
+        }
+
+        const linhas = todas.map(p => {
+            const data = p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : '—';
+            return `<tr class="prv-lista-row" onclick="abrirDetalhe(${p.id})" title="Abrir detalhes">
+                <td class="prv-lista-td prv-lista-td-nome">
+                    <span class="prv-lista-nome">${escapeHtml(p.nome)}</span>
+                    <div class="prv-lista-badges">${renderBadgesProva(p)}</div>
+                </td>
+                <td class="prv-lista-td prv-lista-td-curso">${escapeHtml(p.curso_nome || p.curso_id)}</td>
+                <td class="prv-lista-td prv-lista-td-data">${escapeHtml(data)}</td>
+                <td class="prv-lista-td prv-lista-td-num">${p.variantes_count}</td>
+                <td class="prv-lista-td prv-lista-td-num">${p.submissoes_count}</td>
+            </tr>`;
+        }).join('');
+
+        $('prvLista').innerHTML = `
+            <table class="prv-lista-tabela">
+                <thead>
+                    <tr>
+                        <th class="prv-lista-th">Prova</th>
+                        <th class="prv-lista-th">Curso</th>
+                        <th class="prv-lista-th">Data</th>
+                        <th class="prv-lista-th prv-lista-th-num">Variantes</th>
+                        <th class="prv-lista-th prv-lista-th-num">Corrigidas</th>
+                    </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+            </table>`;
+    } catch (e) {
+        $('prvLista').innerHTML = `<div class="prv-empty">Erro: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+window.prvSetModo = prvSetModo;
 
 function _prvNomeBase() {
     const turma = $('prvTurma').value;

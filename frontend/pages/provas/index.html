@@ -95,6 +95,10 @@
         <div class="prv-toolbar">
             <h1>Gabarito &amp; Correção</h1>
             <div class="prv-toolbar-right">
+                <div class="prv-modo-toggle" role="group" aria-label="Modo de exibição">
+                    <button id="prvBtnModoCards" class="prv-modo-btn prv-modo-ativo" onclick="prvSetModo('cards')" title="Exibir por turma/disciplina">Cards</button>
+                    <button id="prvBtnModoLista" class="prv-modo-btn" onclick="prvSetModo('lista')" title="Listar todas as provas">Lista</button>
+                </div>
                 <select id="prvTurma" onchange="onTurmaChange()">
                     <option value="">Selecione uma turma…</option>
                 </select>

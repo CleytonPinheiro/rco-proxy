@@ -951,6 +951,57 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         res.json({ ok: true });
     });
 
+    /* Lista todas as provas do professor autenticado (sem filtro de curso) */
+    router.get('/classroom/provas/todas', async (req, res) => {
+        if (!getClassroomAuth) return res.status(500).json({ erro: 'Integração Classroom não inicializada.' });
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            /* Busca nomes dos cursos via Classroom API */
+            const cursoNomes = {};
+            try {
+                const auth = await getClassroomAuth(req);
+                const { google } = await import('googleapis');
+                const classroom = google.classroom({ version: 'v1', auth });
+                let pageToken;
+                do {
+                    const resp = await classroom.courses.list({
+                        teacherId: 'me', courseStates: ['ACTIVE'], pageSize: 100, pageToken,
+                    });
+                    for (const c of (resp.data.courses || [])) cursoNomes[c.id] = c.name;
+                    pageToken = resp.data.nextPageToken;
+                } while (pageToken);
+            } catch (_) { /* sem Classroom conectado — nomes ficam em branco */ }
+
+            const { rows } = await pool.query(
+                `SELECT p.*,
+                        g.nome AS grupo_destino_nome,
+                        (SELECT COUNT(*) FROM classroom_prova_submissoes s
+                          WHERE s.prova_id = p.id AND s.eh_segundo_corretor = false) AS submissoes_count,
+                        (SELECT COUNT(*) FROM classroom_prova_variantes v
+                          WHERE v.prova_id = p.id) AS variantes_count,
+                        (SELECT COUNT(*) FROM classroom_prova_cola_flags f
+                          WHERE f.prova_id = p.id AND f.status = 'investigar') AS pares_flagged_investigar,
+                        (SELECT COUNT(*) FROM classroom_prova_cola_flags f
+                          WHERE f.prova_id = p.id AND f.status = 'resolvido') AS pares_flagged_resolvido
+                   FROM classroom_provas p
+                   LEFT JOIN classroom_grupos g ON g.id = p.grupo_destino_id
+                  WHERE p.criada_por_cpf = $1
+                  ORDER BY p.data_aplicacao DESC NULLS LAST, p.criada_em DESC`,
+                [cpf]
+            );
+
+            const provas = rows.map(p => ({
+                ...p,
+                pares_suspeitos: 0,
+                curso_nome: cursoNomes[p.curso_id] || p.curso_id,
+            }));
+            res.json({ provas });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* Lista provas de um curso */
     router.get('/classroom/provas', async (req, res) => {
         const cursoId = req.query.courseId;
