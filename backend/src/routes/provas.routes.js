@@ -2322,6 +2322,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 const marcB = sub.marcacoes_json || {};
                 let identicas = 0;
                 let identicasErradas = 0;
+                const detalhes = [];
 
                 for (const q of questoesComp) {
                     const qStr = String(q.questao);
@@ -2351,6 +2352,15 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         }
                     }
                     if (!corretaParaAlunos) identicasErradas++;
+
+                    const respALabel = Array.isArray(respA) ? respA.join(',') : String(respA ?? '');
+                    const respBLabel = Array.isArray(respB) ? respB.join(',') : String(respB ?? '');
+                    detalhes.push({
+                        questao: q.questao,
+                        respAluno: respBLabel.toUpperCase(),
+                        respGabarito: respALabel.toUpperCase(),
+                        errada: !corretaParaAlunos,
+                    });
                 }
 
                 const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
@@ -2361,6 +2371,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                     identicasErradas,
                     total,
                     origem:         sub.origem,
+                    detalhes,
                 };
             });
 

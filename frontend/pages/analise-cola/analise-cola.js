@@ -1134,6 +1134,8 @@ async function salvarRegistroManual() {
     }
 }
 
+let _regExpandido = null;
+
 function _renderResultadosComparacao({ similares, totalComparados }) {
     const wrap = $('acRegResultados');
     if (!wrap) return;
@@ -1149,40 +1151,96 @@ function _renderResultadosComparacao({ similares, totalComparados }) {
     const LIMIAR_ALTO  = 85;
     const LIMIAR_MEDIO = 70;
 
-    const rows = similares.map(s => {
-        const nivel = s.similaridade >= LIMIAR_ALTO  ? 'critico'
-                    : s.similaridade >= LIMIAR_MEDIO ? 'alerta' : '';
-        const profBadge = s.origem === 'professor'
-            ? '<span class="ac-badge-prof">📋 prof.</span>' : '';
-        return `<tr class="ac-reg-res-row ${nivel ? 'ac-reg-res-' + nivel : ''}">
-            <td class="ac-reg-res-nome">${escapeHtml(s.alunoNome)}${profBadge}</td>
-            <td class="ac-reg-res-num">
-                <span class="ac-badge ${nivel === 'critico' ? 'ac-badge-critico' : nivel === 'alerta' ? 'ac-badge-alerta' : ''}">${s.similaridade}%</span>
-            </td>
-            <td class="ac-reg-res-num">${s.identicas}/${s.total}</td>
-            <td class="ac-reg-res-num ${s.identicasErradas > 0 ? 'ac-reg-res-erros' : ''}">${s.identicasErradas}</td>
-        </tr>`;
-    }).join('');
+    function buildDetalheHtml(detalhes) {
+        if (!detalhes || detalhes.length === 0) return '<em style="font-size:12px;color:var(--text-muted,#888)">Nenhuma questão coincidente registrada.</em>';
+        const erradas = detalhes.filter(d => d.errada);
+        const corretas = detalhes.filter(d => !d.errada);
+        const filas = [...erradas, ...corretas].map(d => {
+            const cls = d.errada ? 'ac-reg-det-errada' : 'ac-reg-det-certa';
+            return `<tr class="${cls}">
+                <td class="ac-reg-det-q">Q${escapeHtml(String(d.questao))}</td>
+                <td class="ac-reg-det-resp">${escapeHtml(d.respAluno)}</td>
+                <td class="ac-reg-det-resp">${escapeHtml(d.respGabarito)}</td>
+                <td class="ac-reg-det-icon">${d.errada ? '⚠️' : '✓'}</td>
+            </tr>`;
+        }).join('');
+        return `<table class="ac-reg-det-table">
+            <thead><tr>
+                <th>Questão</th>
+                <th>Resp. Aluno</th>
+                <th>Gabarito (outra variante)</th>
+                <th></th>
+            </tr></thead>
+            <tbody>${filas}</tbody>
+        </table>`;
+    }
 
-    wrap.innerHTML = `
-        <div class="ac-reg-res-header">
-            <span class="ac-reg-res-titulo">Resultados — ${totalComparados} aluno(s) comparado(s)</span>
-            <span class="ac-reg-res-legenda">
-                <span class="ac-badge ac-badge-alerta">≥70%</span> suspeito &nbsp;
-                <span class="ac-badge ac-badge-critico">≥85%</span> alto risco
-            </span>
-        </div>
-        <div class="ac-reg-res-table-wrap">
-            <table class="ac-reg-res-table">
-                <thead><tr>
-                    <th>Aluno</th>
-                    <th>Similaridade</th>
-                    <th>Iguais / Total</th>
-                    <th>Erros coinc.</th>
-                </tr></thead>
-                <tbody>${rows}</tbody>
-            </table>
-        </div>`;
+    function render() {
+        const rows = similares.map((s, i) => {
+            const nivel = s.similaridade >= LIMIAR_ALTO  ? 'critico'
+                        : s.similaridade >= LIMIAR_MEDIO ? 'alerta' : '';
+            const profBadge = s.origem === 'professor'
+                ? '<span class="ac-badge-prof">📋 prof.</span>' : '';
+            const aberto = _regExpandido === i;
+            const temDetalhes = s.detalhes && s.detalhes.length > 0;
+            const expandIcon = temDetalhes
+                ? `<span class="ac-reg-expand-icon">${aberto ? '▲' : '▼'}</span>`
+                : '';
+            const mainRow = `<tr class="ac-reg-res-row ${nivel ? 'ac-reg-res-' + nivel : ''} ${temDetalhes ? 'ac-reg-res-expandable' : ''}" data-idx="${i}">
+                <td class="ac-reg-res-nome">${escapeHtml(s.alunoNome)}${profBadge}</td>
+                <td class="ac-reg-res-num">
+                    <span class="ac-badge ${nivel === 'critico' ? 'ac-badge-critico' : nivel === 'alerta' ? 'ac-badge-alerta' : ''}">${s.similaridade}%</span>
+                </td>
+                <td class="ac-reg-res-num">${s.identicas}/${s.total}</td>
+                <td class="ac-reg-res-num ${s.identicasErradas > 0 ? 'ac-reg-res-erros' : ''}">${s.identicasErradas}</td>
+                <td class="ac-reg-res-num">${expandIcon}</td>
+            </tr>`;
+            const detalheRow = aberto && temDetalhes ? `<tr class="ac-reg-det-row">
+                <td colspan="5">
+                    <div class="ac-reg-det-wrap">${buildDetalheHtml(s.detalhes)}</div>
+                </td>
+            </tr>` : '';
+            return mainRow + detalheRow;
+        }).join('');
+
+        const tbody = wrap.querySelector('tbody');
+        if (tbody) {
+            tbody.innerHTML = rows;
+        } else {
+            wrap.innerHTML = `
+                <div class="ac-reg-res-header">
+                    <span class="ac-reg-res-titulo">Resultados — ${totalComparados} aluno(s) comparado(s)</span>
+                    <span class="ac-reg-res-legenda">
+                        <span class="ac-badge ac-badge-alerta">≥70%</span> suspeito &nbsp;
+                        <span class="ac-badge ac-badge-critico">≥85%</span> alto risco
+                        <span style="margin-left:8px;font-size:11px;color:var(--text-muted,#888)">Clique numa linha para ver as questões coincidentes.</span>
+                    </span>
+                </div>
+                <div class="ac-reg-res-table-wrap">
+                    <table class="ac-reg-res-table">
+                        <thead><tr>
+                            <th>Aluno</th>
+                            <th>Similaridade</th>
+                            <th>Iguais / Total</th>
+                            <th>Erros coinc.</th>
+                            <th></th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        wrap.querySelectorAll('.ac-reg-res-expandable').forEach(tr => {
+            tr.addEventListener('click', () => {
+                const idx = parseInt(tr.dataset.idx, 10);
+                _regExpandido = _regExpandido === idx ? null : idx;
+                render();
+            });
+        });
+    }
+
+    _regExpandido = null;
+    render();
     wrap.style.display = '';
 }
 
