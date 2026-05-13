@@ -177,16 +177,20 @@ async function gpLogin() {
             console.log('[PROVAS] Iniciando login GradePen via Google OAuth...');
 
             /* ── 1. Navega direto ao endpoint OAuth do GradePen ───────────────── */
+            /* Usa networkidle2 para seguir o redirect HTTP 302 até a página final */
             await page.goto('https://gradepen.com/p/oauth.php?provider=google',
-                { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null);
-
-            /* Aguarda chegar em accounts.google.com (até 45 s) */
-            await page.waitForFunction(
-                () => location.hostname.includes('accounts.google.com') || location.hostname.includes('gradepen.com'),
-                { timeout: 45000 },
-            ).catch(() => null);
+                { waitUntil: 'networkidle2', timeout: 45000 }).catch(() => null);
 
             console.log('[PROVAS] URL após OAuth redirect:', page.url().substring(0, 90));
+
+            /* Se ainda estamos na página oauth (redirect não completou), aguarda mais */
+            if (/oauth\.php/i.test(page.url())) {
+                await page.waitForFunction(
+                    () => !location.pathname.includes('oauth.php'),
+                    { timeout: 30000 },
+                ).catch(() => null);
+                console.log('[PROVAS] URL após aguardar redirect:', page.url().substring(0, 90));
+            }
 
             /* ── 2. Tela "Escolher conta" do Google ──────────────────────────── */
             /* Detecta: account chooser, email input ou password input */
