@@ -303,6 +303,18 @@ async function gpFetchAnswers(jobId, index, retried = false) {
             try { await oldPage.close(); } catch {}
             return gpFetchAnswers(jobId, index, true);
         }
+        const _isGabaritoNaoPublicado = (j) => {
+            if (!j) return false;
+            if (j.errorCode === 4 || j.errorCode === 5) return true;
+            const msg = (j.message || '').toLowerCase();
+            return msg.includes('job') && (msg.includes('não encontrado') || msg.includes('nao encontrado') || msg.includes('not found'))
+                || msg.includes('gabarito') && (msg.includes('não encontrado') || msg.includes('nao encontrado') || msg.includes('não publicado') || msg.includes('nao publicado') || msg.includes('not found'));
+        };
+        if (_isGabaritoNaoPublicado(j)) {
+            const err = new Error('GradePen recusou: ' + (j.message || 'gabarito não encontrado (errorCode ' + j.errorCode + ')'));
+            err.gabaritoNaoPublicado = true;
+            throw err;
+        }
         throw new Error('GradePen recusou: ' + ((j && j.message) || 'erro ' + (j && j.errorCode)));
     }
     return j;
@@ -866,6 +878,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         detalhe: e.message,
                         prova: null,
                         precisaGabaritoManual: true,
+                        gabaritoNaoPublicado: e.gabaritoNaoPublicado === true,
                     });
                 }
             }
