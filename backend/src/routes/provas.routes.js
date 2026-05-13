@@ -407,12 +407,25 @@ async function gpFetchAnswers(jobId, index, retried = false) {
             try { await oldPage.close(); } catch {}
             return gpFetchAnswers(jobId, index, true);
         }
+        /* "Job not found" means the ansid itself doesn't exist — wrong ID entered by the teacher */
+        const _isVarianteNaoEncontrada = (j) => {
+            if (!j) return false;
+            const msg = (j.message || '').toLowerCase();
+            return msg.includes('job') && (msg.includes('não encontrado') || msg.includes('nao encontrado') || msg.includes('not found'));
+        };
+        if (_isVarianteNaoEncontrada(j)) {
+            const err = new Error('Nenhuma variante encontrada para ansid=' + jobId);
+            err.varianteNaoEncontrada = true;
+            err.gpMensagem = `Nenhuma variante encontrada. Confira o ID GradePen: no link https://gradepen.com/.../?ansid=${jobId}.0, o ID é o número antes do ponto (ex: ${jobId}).`;
+            throw err;
+        }
+
+        /* "Gabarito not published" means the job exists but the teacher hasn't published the answer key yet */
         const _isGabaritoNaoPublicado = (j) => {
             if (!j) return false;
             if (j.errorCode === 4 || j.errorCode === 5) return true;
             const msg = (j.message || '').toLowerCase();
-            return msg.includes('job') && (msg.includes('não encontrado') || msg.includes('nao encontrado') || msg.includes('not found'))
-                || msg.includes('gabarito') && (msg.includes('não encontrado') || msg.includes('nao encontrado') || msg.includes('não publicado') || msg.includes('nao publicado') || msg.includes('not found'));
+            return msg.includes('gabarito') && (msg.includes('não encontrado') || msg.includes('nao encontrado') || msg.includes('não publicado') || msg.includes('nao publicado') || msg.includes('not found'));
         };
         if (_isGabaritoNaoPublicado(j)) {
             const err = new Error('GradePen recusou: ' + (j.message || 'gabarito não encontrado (errorCode ' + j.errorCode + ')'));
@@ -616,7 +629,12 @@ async function scrapeProva(gradepenId) {
             break;
         }
     }
-    if (variantes.length === 0) throw new Error('Nenhuma variante encontrada para ansid=' + gradepenId);
+    if (variantes.length === 0) {
+        const err = new Error('Nenhuma variante encontrada para ansid=' + gradepenId);
+        err.varianteNaoEncontrada = true;
+        err.gpMensagem = `Nenhuma variante encontrada. Confira o ID GradePen: no link https://gradepen.com/.../?ansid=${gradepenId}.0, o ID é o número antes do ponto (ex: ${gradepenId}).`;
+        throw err;
+    }
     return variantes;
 }
 
@@ -1030,6 +1048,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         prova: null,
                         precisaGabaritoManual: true,
                         gabaritoNaoPublicado: e.gabaritoNaoPublicado === true,
+                        varianteNaoEncontrada: e.varianteNaoEncontrada === true,
                     });
                 }
             }

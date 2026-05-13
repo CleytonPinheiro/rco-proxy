@@ -432,6 +432,8 @@ async function salvarNova() {
             let msg;
             if (d.gabaritoNaoPublicado) {
                 msg = 'O gabarito desta prova ainda não foi publicado na GradePen. Publique o gabarito lá e tente novamente.';
+            } else if (d.varianteNaoEncontrada) {
+                msg = d.gpMensagem || 'Nenhuma variante encontrada. Confira o ID GradePen: no link https://gradepen.com/.../?ansid=XXXX.0, o ID é o número antes do ponto (ex: XXXX).';
             } else if (d.gpMensagem) {
                 msg = d.gpMensagem;
             } else if (d.precisaGabaritoManual) {
