@@ -10,7 +10,7 @@ let cursos = [];
 let cursoAtual = '';
 let provas = [];
 let provaAberta = null;
-let _modoLista = false; /* false = Cards (padrão), true = Lista */
+let _modoLista = true; /* false = Cards, true = Lista (padrão) */
 let _todasProvas = [];  /* cache do modo lista para filtragem client-side */
 let _filtroTexto = '';
 let _filtroStatus = ''; /* '' = todos, 'rascunho', 'efetivada' */
@@ -291,6 +291,9 @@ async function init() {
     $('prvfFoto').addEventListener('change', () => {
         $('prvfFotoPctWrap').style.display = $('prvfFoto').value === 'sorteio' ? '' : 'none';
     });
+
+    /* Abre no modo Lista por padrão: exibe todas as provas imediatamente */
+    prvSetModo('lista');
 }
 
 function prvToggleSegundo(ativo) {
