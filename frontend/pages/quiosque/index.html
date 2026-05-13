@@ -9,6 +9,7 @@
     <meta name="description" content="EduSync — sistema de gestão escolar para professores e coordenadores de escolas do Paraná.">
     <title>EduSync — Quiosque</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./quiosque.css">
 </head>
 <body>
@@ -75,13 +76,13 @@
     </div>
 
     <!-- Modal: Câmera QR -->
-    <div id="modalScan" class="kiosk-modal" style="display:none;">
-        <div class="kiosk-modal-box">
-            <div class="kiosk-modal-header">
-                <h2 id="scanTitulo">Escanear QR do Aluno</h2>
-                <button class="btn-fechar" onclick="cancelarFluxo()">✕</button>
+    <div id="modalScan" class="modal-overlay" style="display:none;">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3 id="scanTitulo">Escanear QR do Aluno</h3>
+                <button class="modal-close" onclick="cancelarFluxo()">✕</button>
             </div>
-            <div class="kiosk-modal-body">
+            <div class="modal-body">
                 <div class="qr-viewport">
                     <video id="qrVideo" autoplay playsinline muted></video>
                     <canvas id="qrCanvas" style="display:none;"></canvas>
@@ -98,13 +99,13 @@
     </div>
 
     <!-- Modal: Confirmar Empréstimo -->
-    <div id="modalEmprestar" class="kiosk-modal" style="display:none;">
-        <div class="kiosk-modal-box">
-            <div class="kiosk-modal-header">
-                <h2>📤 Novo Empréstimo</h2>
-                <button class="btn-fechar" onclick="cancelarFluxo()">✕</button>
+    <div id="modalEmprestar" class="modal-overlay" style="display:none;">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3>📤 Novo Empréstimo</h3>
+                <button class="modal-close" onclick="cancelarFluxo()">✕</button>
             </div>
-            <div class="kiosk-modal-body">
+            <div class="modal-body">
                 <div id="infoAlunoEmp" class="info-aluno-box"></div>
                 <div class="form-section">
                     <label class="form-label">Material a emprestar</label>
@@ -130,13 +131,13 @@
     </div>
 
     <!-- Modal: Devolução -->
-    <div id="modalDevolver" class="kiosk-modal" style="display:none;">
-        <div class="kiosk-modal-box">
-            <div class="kiosk-modal-header">
-                <h2>📥 Devolução</h2>
-                <button class="btn-fechar" onclick="cancelarFluxo()">✕</button>
+    <div id="modalDevolver" class="modal-overlay" style="display:none;">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3>📥 Devolução</h3>
+                <button class="modal-close" onclick="cancelarFluxo()">✕</button>
             </div>
-            <div class="kiosk-modal-body">
+            <div class="modal-body">
                 <div id="infoAlunoDev" class="info-aluno-box"></div>
                 <div id="listaEmpAlunoDiv">
                     <p class="scan-instrucao">Buscando empréstimos ativos...</p>
@@ -149,8 +150,8 @@
     </div>
 
     <!-- Modal: Sucesso / Feedback -->
-    <div id="modalFeedback" class="kiosk-modal" style="display:none;">
-        <div class="kiosk-modal-box feedback-box">
+    <div id="modalFeedback" class="modal-overlay" style="display:none;">
+        <div class="modal-box modal-box-lg feedback-box">
             <div id="feedbackIcone" class="feedback-icone">✅</div>
             <div id="feedbackMsg" class="feedback-msg"></div>
             <div id="feedbackSub" class="feedback-sub"></div>

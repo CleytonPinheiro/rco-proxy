@@ -388,12 +388,12 @@ function mostrarFeedback(icone, msg, sub, duracaoMs) {
 
 // ── Helpers de modal ──────────────────────────────────────────────────────────
 function mostrarModal(id) {
-    document.querySelectorAll('.kiosk-modal').forEach(m => m.style.display = 'none');
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
     document.getElementById(id).style.display = 'flex';
 }
 
 function esconderTodosModais() {
-    document.querySelectorAll('.kiosk-modal').forEach(m => m.style.display = 'none');
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
     fluxoAtual = null;
     alunoFluxo = null;
     materialFluxo = null;

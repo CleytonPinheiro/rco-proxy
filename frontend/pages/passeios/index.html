@@ -9,6 +9,7 @@
     <meta name="description" content="EduSync — Passeios e Eventos Externos">
     <title>EduSync — Passeios</title>
     <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="../../shared/css/modal-forms.css">
     <link rel="stylesheet" href="./passeios.css">
 </head>
 <body>
@@ -57,13 +58,13 @@
     </main>
 
     <!-- ── Modal: Criar / Editar Evento ─────────────────────────────── -->
-    <div id="modalEvento" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalEvento')">
-        <div class="ps-modal-box ps-modal-lg">
-            <div class="ps-modal-header">
+    <div id="modalEvento" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalEvento')">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
                 <h3 id="modalEventoTitulo">Novo Evento</h3>
-                <button class="ps-modal-close" onclick="fecharModalEvento()">✕</button>
+                <button class="modal-close" onclick="fecharModalEvento()">✕</button>
             </div>
-            <div class="ps-modal-body">
+            <div class="modal-body">
                 <div class="ps-form-grid">
                     <div class="ps-field ps-col-2">
                         <label>Nome do Evento *</label>
@@ -108,7 +109,7 @@
                 <div id="onibusContainer" class="ps-onibus-container"></div>
                 <button class="ps-btn-add-onibus" onclick="adicionarOnibusForm()">+ Adicionar Ônibus</button>
             </div>
-            <div class="ps-modal-footer">
+            <div class="modal-footer">
                 <button class="ps-btn-cancel" onclick="fecharModalEvento()">Cancelar</button>
                 <button class="ps-btn-save" onclick="salvarEvento()">Salvar Evento</button>
             </div>
@@ -116,9 +117,9 @@
     </div>
 
     <!-- ── Modal: Detalhe do Evento (inscricoes, pagamentos, ônibus) ── -->
-    <div id="modalDetalhe" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalDetalhe')">
-        <div class="ps-modal-box ps-modal-full">
-            <div class="ps-modal-header">
+    <div id="modalDetalhe" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalDetalhe')">
+        <div class="modal-box modal-box-xl">
+            <div class="modal-header">
                 <div>
                     <h3 id="detalheNome">Evento</h3>
                     <div id="detalheInfo" class="ps-detalhe-info"></div>
@@ -126,7 +127,7 @@
                 <div class="ps-detalhe-actions">
                     <button class="ps-btn-scanner" onclick="abrirScanner()">📷 Scanner</button>
                     <button class="ps-btn-painel" onclick="abrirPainel()">📊 Painel ao Vivo</button>
-                    <button class="ps-btn-cancel" onclick="fecharModalDetalhe()">✕ Fechar</button>
+                    <button class="modal-close" onclick="fecharModalDetalhe()" style="width:auto;padding:6px 14px;border-radius:8px;font-size:13px;">✕ Fechar</button>
                 </div>
             </div>
 
@@ -201,19 +202,19 @@
     </div>
 
     <!-- ── Modal: Inscrever Turmas ──────────────────────────────────── -->
-    <div id="modalInscricao" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalInscricao')">
-        <div class="ps-modal-box">
-            <div class="ps-modal-header">
+    <div id="modalInscricao" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalInscricao')">
+        <div class="modal-box">
+            <div class="modal-header">
                 <h3>Inscrever Turmas</h3>
-                <button class="ps-modal-close" onclick="fecharModalInscricao()">✕</button>
+                <button class="modal-close" onclick="fecharModalInscricao()">✕</button>
             </div>
-            <div class="ps-modal-body">
+            <div class="modal-body">
                 <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px">Selecione as turmas para inscrever no evento. Alunos já inscritos serão ignorados.</p>
                 <div id="listaTurmasModal" class="ps-turmas-lista">
                     <div class="spinner"></div>
                 </div>
             </div>
-            <div class="ps-modal-footer">
+            <div class="modal-footer">
                 <button class="ps-btn-cancel" onclick="fecharModalInscricao()">Cancelar</button>
                 <button class="ps-btn-save" onclick="confirmarInscricao()">Inscrever Selecionadas</button>
             </div>
@@ -221,13 +222,13 @@
     </div>
 
     <!-- ── Modal: PIX QR Code ─────────────────────────────────────── -->
-    <div id="modalPix" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalPix')">
-        <div class="ps-modal-box ps-modal-sm">
-            <div class="ps-modal-header">
+    <div id="modalPix" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalPix')">
+        <div class="modal-box modal-box-sm">
+            <div class="modal-header">
                 <h3>💰 PIX — <span id="pixAlunoNome"></span></h3>
-                <button class="ps-modal-close" onclick="document.getElementById('modalPix').classList.add('oculto')">✕</button>
+                <button class="modal-close" onclick="document.getElementById('modalPix').classList.add('oculto')">✕</button>
             </div>
-            <div class="ps-modal-body" style="text-align:center">
+            <div class="modal-body" style="text-align:center">
                 <div id="pixQrImg"></div>
                 <div id="pixValor" style="font-size:22px;font-weight:700;margin:12px 0;color:var(--accent)"></div>
                 <div class="ps-pix-copia" id="pixPayload" onclick="copiarPix()" title="Clique para copiar">
@@ -240,13 +241,13 @@
     </div>
 
     <!-- ── Modal: Editar inscrição ───────────────────────────────── -->
-    <div id="modalEditarInsc" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalEditarInsc')">
-        <div class="ps-modal-box ps-modal-sm">
-            <div class="ps-modal-header">
+    <div id="modalEditarInsc" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalEditarInsc')">
+        <div class="modal-box modal-box-sm">
+            <div class="modal-header">
                 <h3>Editar Inscrição — <span id="editInscNome"></span></h3>
-                <button class="ps-modal-close" onclick="fecharModalEditarInsc()">✕</button>
+                <button class="modal-close" onclick="fecharModalEditarInsc()">✕</button>
             </div>
-            <div class="ps-modal-body">
+            <div class="modal-body">
                 <div class="ps-field">
                     <label>Nome do Responsável</label>
                     <input id="editNomeResp" type="text" class="ps-input" placeholder="Nome do responsável">
@@ -260,7 +261,7 @@
                     <textarea id="editRestricoes" class="ps-input ps-textarea" placeholder="Alergias, medicamentos, etc."></textarea>
                 </div>
             </div>
-            <div class="ps-modal-footer">
+            <div class="modal-footer">
                 <button class="ps-btn-cancel" onclick="fecharModalEditarInsc()">Cancelar</button>
                 <button class="ps-btn-save" onclick="salvarEdicaoInsc()">Salvar</button>
             </div>
@@ -268,16 +269,16 @@
     </div>
 
     <!-- ── Modal: Painel ao Vivo ─────────────────────────────────── -->
-    <div id="modalPainel" class="ps-modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalPainel')">
-        <div class="ps-modal-box ps-modal-full">
-            <div class="ps-modal-header">
+    <div id="modalPainel" class="modal-overlay oculto" onclick="fecharModalSeOverlay(event, 'modalPainel')">
+        <div class="modal-box modal-box-xl">
+            <div class="modal-header">
                 <h3>📊 Painel ao Vivo — <span id="painelEventoNome"></span></h3>
                 <div style="display:flex;gap:8px;align-items:center">
                     <span id="painelAtualizado" style="font-size:12px;color:var(--text-muted)"></span>
-                    <button class="ps-btn-cancel" onclick="fecharPainel()">✕ Fechar</button>
+                    <button class="modal-close" onclick="fecharPainel()" style="width:auto;padding:6px 14px;border-radius:8px;font-size:13px;">✕ Fechar</button>
                 </div>
             </div>
-            <div class="ps-modal-body">
+            <div class="modal-body">
                 <div id="painelContent" class="ps-painel-content"></div>
             </div>
         </div>

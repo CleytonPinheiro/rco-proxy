@@ -277,41 +277,9 @@
 }
 .btn-print-livros:hover { background: #047857; }
 
-/* ── Modais ── */
-.modal-overlay-livros {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-}
-.modal-overlay-livros.aberto { display: flex; }
-.modal-box-livros {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 28px 32px;
-    width: 100%;
-    max-width: 520px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,.3);
-    position: relative;
-}
-.modal-box-livros h3 { font-size: 18px; font-weight: 800; margin: 0 0 20px; color: var(--text-primary); }
-.modal-close-livros {
-    position: absolute;
-    top: 16px; right: 20px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: var(--text-muted);
-    line-height: 1;
-    padding: 4px 8px;
-}
-.modal-close-livros:hover { color: var(--text-primary); }
+/* ── Modais — visibility (shared modal-forms.css handles appearance) ── */
+.modal-overlay { display: none; }
+.modal-overlay.aberto { display: flex; }
 
 /* Label/input/select/textarea styles come from shared .form-label / .form-input /
    .form-select / .form-textarea classes in modal-forms.css */
@@ -512,7 +480,7 @@
     .livros-filtros input { min-width: unset; width: 100%; }
     .emprestimos-grid { grid-template-columns: 1fr; }
     .form-row-livros { grid-template-columns: 1fr; }
-    .modal-box-livros { padding: 20px; margin: 12px; }
+    .modal-box { padding: 20px; margin: 12px; }
     .print-filter-row { flex-direction: column; }
     .print-options { grid-template-columns: 1fr; }
 }
@@ -536,7 +504,7 @@
 [data-theme="dark"] .livro-busca-item-meta { color: var(--text-secondary); }
 [data-theme="dark"] .livro-busca-status   { color: var(--text-secondary); }
 [data-theme="dark"] .livro-busca-divisor  { color: var(--text-secondary); }
-[data-theme="dark"] .modal-close-livros   { color: var(--text-secondary); }
+[data-theme="dark"] .modal-close          { color: var(--text-secondary); }
 [data-theme="dark"] .print-card-desc      { color: var(--text-secondary); }
 [data-theme="dark"] .print-filter-area h4 { color: var(--text-secondary); }
 [data-theme="dark"] .print-filter-group label { color: var(--text-secondary); }

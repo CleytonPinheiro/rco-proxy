@@ -266,39 +266,25 @@ html, body {
 }
 .monitor-vazio-icon { font-size: 48px; display: block; margin-bottom: 12px; }
 
-/* ── Modais do Quiosque ───────────────────────────────────── */
-.kiosk-modal {
-    position: fixed;
-    inset: 0;
+/* ── Modais do Quiosque — overrides sobre modal-forms.css ── */
+.modal-overlay {
     background: rgba(0,0,0,0.75);
     backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
 }
-
-.kiosk-modal-box {
-    background: var(--bg-card, #1a1d27);
-    border: 1px solid var(--border);
+.modal-box {
+    background: var(--card, #1e293b);
+    border-color: var(--border);
     border-radius: 20px;
-    width: 540px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    max-width: 540px;
 }
-.kiosk-modal-box::-webkit-scrollbar { width: 6px; }
-.kiosk-modal-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.modal-box::-webkit-scrollbar { width: 6px; }
+.modal-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.kiosk-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px 0;
-}
-.kiosk-modal-header h2 { font-size: 20px; font-weight: 700; }
+.modal-header { padding: 20px 24px 12px; border-bottom-color: var(--border); }
+.modal-header h3 { font-size: 20px; font-weight: 700; color: var(--text); }
+.modal-body { padding: 16px 24px 24px; gap: 16px; }
 
-.btn-fechar {
+.modal-close {
     background: var(--card);
     border: 1px solid var(--border);
     color: var(--muted);
@@ -312,9 +298,7 @@ html, body {
     justify-content: center;
     transition: all 0.15s;
 }
-.btn-fechar:hover { background: var(--danger); color: white; border-color: var(--danger); }
-
-.kiosk-modal-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+.modal-close:hover { background: var(--danger); color: white; border-color: var(--danger); }
 
 /* QR viewport no modal */
 .qr-viewport {
@@ -543,8 +527,8 @@ html, body {
 [data-theme="light"] .loan-material { color: #555; }
 [data-theme="light"] .loan-data { color: #888; }
 
-[data-theme="light"] .kiosk-modal { background: rgba(0,0,0,0.5); }
-[data-theme="light"] .kiosk-modal-box { background: var(--bg-card, #ffffff); border-color: var(--border, #dee2e6); }
-[data-theme="light"] .kiosk-modal-header { border-color: var(--border, #dee2e6); }
-[data-theme="light"] .kiosk-modal-header h2 { color: var(--text-primary, #1a1a2e); }
-[data-theme="light"] .btn-fechar { background: var(--bg-secondary, #f0f2f5); color: var(--text-muted, #6b7280); border-color: var(--border, #dee2e6); }
+[data-theme="light"] .modal-overlay { background: rgba(0,0,0,0.5); }
+[data-theme="light"] .modal-box { background: var(--bg-card, #ffffff); border-color: var(--border, #dee2e6); }
+[data-theme="light"] .modal-header { border-color: var(--border, #dee2e6); }
+[data-theme="light"] .modal-header h3 { color: var(--text-primary, #1a1a2e); }
+[data-theme="light"] .modal-close { background: var(--bg-secondary, #f0f2f5); color: var(--text-muted, #6b7280); border-color: var(--border, #dee2e6); }

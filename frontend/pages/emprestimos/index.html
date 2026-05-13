@@ -189,68 +189,79 @@
     </main>
 
     <!-- Modal: Registrar Empréstimo -->
-    <div class="modal-overlay-livros" id="modalEmprestimo">
-        <div class="modal-box-livros">
-            <button class="modal-close-livros" id="btnFecharModalEmp">✕</button>
-            <h3>Registrar Empréstimo</h3>
-            <form id="formEmprestimo" novalidate>
-                <div class="form-group-livros">
-                    <label class="form-label">Turma</label>
-                    <select class="form-select" id="modalEmpTurma" required>
-                        <option value="">— Selecione a turma —</option>
-                    </select>
-                </div>
-                <div class="form-group-livros">
-                    <label class="form-label">Aluno <span id="modalEmpAlunoLabel"></span></label>
-                    <select class="form-select" id="modalEmpAluno" required>
-                        <option value="">— Selecione a turma primeiro —</option>
-                    </select>
-                </div>
-                <div class="form-group-livros">
-                    <label class="form-label">Livro</label>
-                    <select class="form-select" id="modalEmpLivro" required>
-                        <option value="">— Selecione o livro —</option>
-                    </select>
-                </div>
-                <div class="form-group-livros">
-                    <label class="form-label">Observações (opcional)</label>
-                    <textarea class="form-textarea" id="modalEmpObs" rows="2" placeholder="Estado do livro, número de exemplar, etc."></textarea>
-                </div>
-                <div class="form-msg-livros" id="formEmpMsg"></div>
-                <div class="modal-actions-livros">
-                    <button type="button" class="btn-secondary-livros" id="btnCancelarEmp"
-                        onclick="document.getElementById('modalEmprestimo').classList.remove('aberto')">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="btn-primary-livros" id="btnSalvarEmp">Registrar</button>
-                </div>
-            </form>
+    <div class="modal-overlay" id="modalEmprestimo">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3>Registrar Empréstimo</h3>
+                <button class="modal-close" id="btnFecharModalEmp">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="formEmprestimo" novalidate>
+                    <div class="form-group-livros">
+                        <label class="form-label">Turma</label>
+                        <select class="form-select" id="modalEmpTurma" required>
+                            <option value="">— Selecione a turma —</option>
+                        </select>
+                    </div>
+                    <div class="form-group-livros">
+                        <label class="form-label">Aluno <span id="modalEmpAlunoLabel"></span></label>
+                        <select class="form-select" id="modalEmpAluno" required>
+                            <option value="">— Selecione a turma primeiro —</option>
+                        </select>
+                    </div>
+                    <div class="form-group-livros">
+                        <label class="form-label">Livro</label>
+                        <select class="form-select" id="modalEmpLivro" required>
+                            <option value="">— Selecione o livro —</option>
+                        </select>
+                    </div>
+                    <div class="form-group-livros">
+                        <label class="form-label">Observações (opcional)</label>
+                        <textarea class="form-textarea" id="modalEmpObs" rows="2" placeholder="Estado do livro, número de exemplar, etc."></textarea>
+                    </div>
+                    <div class="form-msg-livros" id="formEmpMsg"></div>
+                    <div class="modal-actions-livros">
+                        <button type="button" class="btn-secondary-livros" id="btnCancelarEmp"
+                            onclick="document.getElementById('modalEmprestimo').classList.remove('aberto')">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-primary-livros" id="btnSalvarEmp">Registrar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- Modal: Confirmar Devolução / Perdido -->
-    <div class="modal-overlay-livros" id="modalConfirmAcao">
-        <div class="modal-box-livros modal-confirm-box">
-            <button class="modal-close-livros" id="btnFecharModalConfirm">✕</button>
-            <div class="confirm-icone" id="confirmIcone"></div>
-            <h3 id="confirmTitulo"></h3>
-            <p class="confirm-desc" id="confirmDesc"></p>
-            <div class="form-group-livros">
-                <label class="form-label">Observações (opcional)</label>
-                <textarea class="form-textarea" id="confirmObs" rows="2" placeholder="Condição do livro, motivo, etc."></textarea>
+    <div class="modal-overlay" id="modalConfirmAcao">
+        <div class="modal-box modal-box-sm modal-confirm-box">
+            <div class="modal-header">
+                <h3 id="confirmTitulo"></h3>
+                <button class="modal-close" id="btnFecharModalConfirm">✕</button>
             </div>
-            <div class="modal-actions-livros">
-                <button type="button" class="btn-secondary-livros" id="btnCancelarConfirm">Cancelar</button>
-                <button type="button" id="btnConfirmarAcao">Confirmar</button>
+            <div class="modal-body">
+                <div class="confirm-icone" id="confirmIcone"></div>
+                <p class="confirm-desc" id="confirmDesc"></p>
+                <div class="form-group-livros">
+                    <label class="form-label">Observações (opcional)</label>
+                    <textarea class="form-textarea" id="confirmObs" rows="2" placeholder="Condição do livro, motivo, etc."></textarea>
+                </div>
+                <div class="modal-actions-livros">
+                    <button type="button" class="btn-secondary-livros" id="btnCancelarConfirm">Cancelar</button>
+                    <button type="button" id="btnConfirmarAcao">Confirmar</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal: Cadastrar/Editar Livro -->
-    <div class="modal-overlay-livros" id="modalLivro">
-        <div class="modal-box-livros">
-            <button class="modal-close-livros" id="btnFecharModalLivro">✕</button>
-            <h3 id="modalLivroTitulo">Cadastrar livro</h3>
+    <div class="modal-overlay" id="modalLivro">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
+                <h3 id="modalLivroTitulo">Cadastrar livro</h3>
+                <button class="modal-close" id="btnFecharModalLivro">✕</button>
+            </div>
+            <div class="modal-body">
 
             <!-- Busca externa Open Library -->
             <div class="livro-busca-ext">
@@ -369,6 +380,7 @@
                     <button type="submit" class="btn-primary-livros" id="btnSalvarLivro">Salvar</button>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 

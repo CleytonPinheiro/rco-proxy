@@ -1042,19 +1042,19 @@ function solicitarTexto(label, valorAtual = '', titulo = 'Informar') {
     return new Promise(resolve => {
         const id  = 'ps-prompt-' + Date.now();
         const el  = document.createElement('div');
-        el.className = 'ps-modal-overlay';
+        el.className = 'modal-overlay';
         el.id = id;
         el.style.zIndex = '1100';
         el.innerHTML = `
-            <div class="ps-modal-box ps-modal-sm" onclick="event.stopPropagation()" style="margin:auto">
-                <div class="ps-modal-header">
+            <div class="modal-box modal-box-sm" onclick="event.stopPropagation()" style="margin:auto">
+                <div class="modal-header">
                     <h3>${esc(titulo)}</h3>
                 </div>
-                <div class="ps-modal-body">
+                <div class="modal-body">
                     <label style="font-size:13px;color:var(--text-secondary)">${esc(label)}</label>
                     <input id="${id}_inp" type="text" class="ps-input" value="${esc(valorAtual)}" style="margin-top:8px;width:100%">
                 </div>
-                <div class="ps-modal-footer">
+                <div class="modal-footer">
                     <button class="ps-btn-cancel" id="${id}_cancel">Cancelar</button>
                     <button class="ps-btn-save"   id="${id}_ok">OK</button>
                 </div>
