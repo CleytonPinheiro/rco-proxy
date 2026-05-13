@@ -177,20 +177,73 @@ async function gpLogin() {
         try {
             console.log('[PROVAS] Iniciando login GradePen via Google OAuth...');
 
-            /* ── 1. Navega direto ao endpoint OAuth do GradePen ───────────────── */
-            /* Usa networkidle2 para seguir o redirect HTTP 302 até a página final */
-            await page.goto('https://gradepen.com/p/oauth.php?provider=google',
-                { waitUntil: 'networkidle2', timeout: 45000 }).catch(() => null);
+            /* ── 1. Navega para a página de login do GradePen ───────────────── */
+            await page.goto('https://gradepen.com/p/index.php',
+                { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
 
-            console.log('[PROVAS] URL após OAuth redirect:', page.url().substring(0, 90));
+            console.log('[PROVAS] URL index.php:', page.url().substring(0, 90));
 
-            /* Se ainda estamos na página oauth (redirect não completou), aguarda mais */
-            if (/oauth\.php/i.test(page.url())) {
-                await page.waitForFunction(
-                    () => !location.pathname.includes('oauth.php'),
-                    { timeout: 30000 },
+            /* Salva screenshot para diagnóstico */
+            await page.screenshot({ path: '/tmp/gradepen-debug-1.png', fullPage: false }).catch(() => null);
+
+            /* Dump de links e botões da página para diagnóstico */
+            const pageLinks = await page.evaluate(() => {
+                const items = [];
+                document.querySelectorAll('a, button').forEach(el => {
+                    const txt = (el.textContent || el.innerText || '').trim().substring(0, 80);
+                    const href = el.href || el.getAttribute('onclick') || '';
+                    if (txt || href) items.push({ tag: el.tagName, txt, href: href.substring(0, 100) });
+                });
+                return items.slice(0, 20);
+            }).catch(() => []);
+            console.log('[PROVAS] Links/botões na página:', JSON.stringify(pageLinks));
+
+            /* Procura botão "Sign in with Google" ou similar */
+            const googleBtn = await page.$(
+                'a[href*="google"], a[href*="oauth"], button[onclick*="google"], ' +
+                '#googleSignInButton, .g-signin2, [class*="google"], [id*="google"], ' +
+                'a[href*="accounts.google"], button[data-provider="google"]'
+            ).catch(() => null);
+
+            if (googleBtn) {
+                console.log('[PROVAS] Botão Google encontrado — clicando...');
+                await Promise.all([
+                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 35000 }).catch(() => null),
+                    googleBtn.click(),
+                ]);
+            } else {
+                /* Fallback: vai direto ao endpoint OAuth */
+                console.log('[PROVAS] Botão Google não encontrado — tentando oauth.php diretamente...');
+                await page.goto('https://gradepen.com/p/oauth.php?provider=google',
+                    { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
+            }
+
+            console.log('[PROVAS] URL após clique/oauth:', page.url().substring(0, 90));
+            await page.screenshot({ path: '/tmp/gradepen-debug-2.png', fullPage: false }).catch(() => null);
+
+            /* Se ainda no GradePen, tenta clicar botão Google na página oauth */
+            if (/gradepen\.com/i.test(page.url())) {
+                const googleBtn2 = await page.$(
+                    'a[href*="google"], a[href*="accounts"], button[onclick*="google"], ' +
+                    '[class*="google-btn"], [id*="google"], .btn-google'
                 ).catch(() => null);
-                console.log('[PROVAS] URL após aguardar redirect:', page.url().substring(0, 90));
+                if (googleBtn2) {
+                    console.log('[PROVAS] Botão Google na página oauth — clicando...');
+                    await Promise.all([
+                        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 35000 }).catch(() => null),
+                        googleBtn2.click(),
+                    ]);
+                    console.log('[PROVAS] URL após clique oauth:', page.url().substring(0, 90));
+                } else {
+                    const oauthLinks = await page.evaluate(() => {
+                        const items = [];
+                        document.querySelectorAll('a, button').forEach(el => {
+                            items.push({ tag: el.tagName, txt: (el.textContent||'').trim().substring(0,60), href: (el.href||'').substring(0,100) });
+                        });
+                        return items.slice(0, 15);
+                    }).catch(() => []);
+                    console.log('[PROVAS] Links na página oauth:', JSON.stringify(oauthLinks));
+                }
             }
 
             /* ── 2. Tela "Escolher conta" do Google ──────────────────────────── */
