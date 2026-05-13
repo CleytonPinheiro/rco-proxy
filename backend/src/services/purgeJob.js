@@ -9,18 +9,22 @@
  *   PURGA_INTERVALO_HORAS   — intervalo entre execuções (default: 24)
  *   PURGA_AUDIT_DIAS        — dias de retenção de edusync_audit_log (default: 365)
  *   PURGA_REPUTACAO_DIAS    — dias de retenção de aluno_reputacao_log (default: 365)
- *   PURGA_NOTIF_LIDA_DIAS   — dias de retenção de notificacoes_aluno lidas (default: 90)
- *   PURGA_NOTIF_NLIDA_DIAS  — dias de retenção de notificacoes_aluno não-lidas (default: 365)
+ *   PURGA_NOTIF_LIDA_DIAS        — dias de retenção de notificacoes_aluno lidas (default: 90)
+ *   PURGA_NOTIF_NLIDA_DIAS       — dias de retenção de notificacoes_aluno não-lidas (default: 365)
+ *   PURGA_NOTIF_PROF_LIDA_DIAS   — dias de retenção de notificacoes_professor lidas (default: 90)
+ *   PURGA_NOTIF_PROF_NLIDA_DIAS  — dias de retenção de notificacoes_professor não-lidas (default: 365)
  *   PURGA_LOTE              — linhas por DELETE em lote (default: 1000)
  */
 
 const DEFAULTS = {
-    intervalHoras:   24,
-    auditDias:      365,
-    reputacaoDias:  365,
-    notifLidaDias:   90,
-    notifNlidaDias: 365,
-    lote:          1000,
+    intervalHoras:       24,
+    auditDias:          365,
+    reputacaoDias:      365,
+    notifLidaDias:       90,
+    notifNlidaDias:     365,
+    notifProfLidaDias:   90,
+    notifProfNlidaDias: 365,
+    lote:              1000,
 };
 
 function cfg(envKey, defaultVal) {
@@ -30,12 +34,14 @@ function cfg(envKey, defaultVal) {
 
 export function getConfig() {
     return {
-        intervalHoras:  cfg('PURGA_INTERVALO_HORAS',  DEFAULTS.intervalHoras),
-        auditDias:      cfg('PURGA_AUDIT_DIAS',        DEFAULTS.auditDias),
-        reputacaoDias:  cfg('PURGA_REPUTACAO_DIAS',    DEFAULTS.reputacaoDias),
-        notifLidaDias:  cfg('PURGA_NOTIF_LIDA_DIAS',  DEFAULTS.notifLidaDias),
-        notifNlidaDias: cfg('PURGA_NOTIF_NLIDA_DIAS', DEFAULTS.notifNlidaDias),
-        lote:           cfg('PURGA_LOTE',              DEFAULTS.lote),
+        intervalHoras:      cfg('PURGA_INTERVALO_HORAS',       DEFAULTS.intervalHoras),
+        auditDias:          cfg('PURGA_AUDIT_DIAS',             DEFAULTS.auditDias),
+        reputacaoDias:      cfg('PURGA_REPUTACAO_DIAS',         DEFAULTS.reputacaoDias),
+        notifLidaDias:      cfg('PURGA_NOTIF_LIDA_DIAS',        DEFAULTS.notifLidaDias),
+        notifNlidaDias:     cfg('PURGA_NOTIF_NLIDA_DIAS',       DEFAULTS.notifNlidaDias),
+        notifProfLidaDias:  cfg('PURGA_NOTIF_PROF_LIDA_DIAS',  DEFAULTS.notifProfLidaDias),
+        notifProfNlidaDias: cfg('PURGA_NOTIF_PROF_NLIDA_DIAS', DEFAULTS.notifProfNlidaDias),
+        lote:               cfg('PURGA_LOTE',                   DEFAULTS.lote),
     };
 }
 
@@ -44,12 +50,14 @@ export function getConfig() {
  * Priority: edusync_config (DB) > env var > hardcoded default.
  */
 const DB_KEY_MAP = [
-    { dbKey: 'purga_intervalo_horas',  field: 'intervalHoras',  envKey: 'PURGA_INTERVALO_HORAS',  def: DEFAULTS.intervalHoras  },
-    { dbKey: 'purga_audit_dias',       field: 'auditDias',      envKey: 'PURGA_AUDIT_DIAS',        def: DEFAULTS.auditDias      },
-    { dbKey: 'purga_reputacao_dias',   field: 'reputacaoDias',  envKey: 'PURGA_REPUTACAO_DIAS',    def: DEFAULTS.reputacaoDias  },
-    { dbKey: 'purga_notif_lida_dias',  field: 'notifLidaDias',  envKey: 'PURGA_NOTIF_LIDA_DIAS',   def: DEFAULTS.notifLidaDias  },
-    { dbKey: 'purga_notif_nlida_dias', field: 'notifNlidaDias', envKey: 'PURGA_NOTIF_NLIDA_DIAS',  def: DEFAULTS.notifNlidaDias },
-    { dbKey: 'purga_lote',             field: 'lote',           envKey: 'PURGA_LOTE',              def: DEFAULTS.lote           },
+    { dbKey: 'purga_intervalo_horas',       field: 'intervalHoras',      envKey: 'PURGA_INTERVALO_HORAS',       def: DEFAULTS.intervalHoras      },
+    { dbKey: 'purga_audit_dias',            field: 'auditDias',          envKey: 'PURGA_AUDIT_DIAS',            def: DEFAULTS.auditDias          },
+    { dbKey: 'purga_reputacao_dias',        field: 'reputacaoDias',      envKey: 'PURGA_REPUTACAO_DIAS',        def: DEFAULTS.reputacaoDias      },
+    { dbKey: 'purga_notif_lida_dias',       field: 'notifLidaDias',      envKey: 'PURGA_NOTIF_LIDA_DIAS',       def: DEFAULTS.notifLidaDias      },
+    { dbKey: 'purga_notif_nlida_dias',      field: 'notifNlidaDias',     envKey: 'PURGA_NOTIF_NLIDA_DIAS',      def: DEFAULTS.notifNlidaDias     },
+    { dbKey: 'purga_notif_prof_lida_dias',  field: 'notifProfLidaDias',  envKey: 'PURGA_NOTIF_PROF_LIDA_DIAS',  def: DEFAULTS.notifProfLidaDias  },
+    { dbKey: 'purga_notif_prof_nlida_dias', field: 'notifProfNlidaDias', envKey: 'PURGA_NOTIF_PROF_NLIDA_DIAS', def: DEFAULTS.notifProfNlidaDias },
+    { dbKey: 'purga_lote',                  field: 'lote',               envKey: 'PURGA_LOTE',                  def: DEFAULTS.lote               },
 ];
 
 /**
@@ -132,6 +140,10 @@ export async function executarPurga(pool) {
         `[PURGA] Políticas: audit=${conf.auditDias}d | reputacao_log=${conf.reputacaoDias}d | notif_lida=${conf.notifLidaDias}d | notif_nlida=${conf.notifNlidaDias}d | lote=${conf.lote}`
     );
 
+    console.log(
+        `[PURGA] Políticas prof: notif_prof_lida=${conf.notifProfLidaDias}d | notif_prof_nlida=${conf.notifProfNlidaDias}d`
+    );
+
     const resultados = {};
 
     try {
@@ -212,31 +224,77 @@ export async function executarPurga(pool) {
         resultados.notif_nlidas = -1;
     }
 
+    try {
+        /* ── 4a. notificacoes_professor — LIDAS ── */
+        resultados.notif_prof_lidas = await deletarEmLotes(
+            pool,
+            `DELETE FROM notificacoes_professor
+              WHERE id IN (
+                  SELECT id FROM notificacoes_professor
+                   WHERE lida = true
+                     AND criado_em < NOW() - ($1 || ' days')::INTERVAL
+                   LIMIT $2
+              )`,
+            [conf.notifProfLidaDias],
+            conf.lote
+        );
+    } catch (e) {
+        console.error('[PURGA] Erro ao purgar notificacoes_professor (lidas):', e.message);
+        resultados.notif_prof_lidas = -1;
+    }
+
+    try {
+        /* ── 4b. notificacoes_professor — NÃO LIDAS (expiradas) ── */
+        resultados.notif_prof_nlidas = await deletarEmLotes(
+            pool,
+            `DELETE FROM notificacoes_professor
+              WHERE id IN (
+                  SELECT id FROM notificacoes_professor
+                   WHERE lida = false
+                     AND criado_em < NOW() - ($1 || ' days')::INTERVAL
+                   LIMIT $2
+              )`,
+            [conf.notifProfNlidaDias],
+            conf.lote
+        );
+    } catch (e) {
+        console.error('[PURGA] Erro ao purgar notificacoes_professor (não-lidas):', e.message);
+        resultados.notif_prof_nlidas = -1;
+    }
+
     const durMs = Date.now() - inicio;
     console.log(
         `[PURGA] Concluída em ${durMs}ms — ` +
         `audit_log: ${resultados.audit_log} | ` +
         `reputacao_log: ${resultados.reputacao_log} | ` +
         `notif_lidas: ${resultados.notif_lidas} | ` +
-        `notif_nlidas: ${resultados.notif_nlidas}`
+        `notif_nlidas: ${resultados.notif_nlidas} | ` +
+        `notif_prof_lidas: ${resultados.notif_prof_lidas} | ` +
+        `notif_prof_nlidas: ${resultados.notif_prof_nlidas}`
     );
 
     try {
         await pool.query(
             `INSERT INTO edusync_purga_log
                 (dur_ms, audit_log, reputacao_log, notif_lidas, notif_nlidas,
-                 politica_audit, politica_reputacao, politica_notif_lida, politica_notif_nlida)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                 notif_prof_lidas, notif_prof_nlidas,
+                 politica_audit, politica_reputacao, politica_notif_lida, politica_notif_nlida,
+                 politica_notif_prof_lida, politica_notif_prof_nlida)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
             [
                 durMs,
-                resultados.audit_log     < 0 ? -1 : resultados.audit_log,
-                resultados.reputacao_log < 0 ? -1 : resultados.reputacao_log,
-                resultados.notif_lidas   < 0 ? -1 : resultados.notif_lidas,
-                resultados.notif_nlidas  < 0 ? -1 : resultados.notif_nlidas,
+                resultados.audit_log          < 0 ? -1 : resultados.audit_log,
+                resultados.reputacao_log      < 0 ? -1 : resultados.reputacao_log,
+                resultados.notif_lidas        < 0 ? -1 : resultados.notif_lidas,
+                resultados.notif_nlidas       < 0 ? -1 : resultados.notif_nlidas,
+                resultados.notif_prof_lidas   < 0 ? -1 : resultados.notif_prof_lidas,
+                resultados.notif_prof_nlidas  < 0 ? -1 : resultados.notif_prof_nlidas,
                 conf.auditDias,
                 conf.reputacaoDias,
                 conf.notifLidaDias,
                 conf.notifNlidaDias,
+                conf.notifProfLidaDias,
+                conf.notifProfNlidaDias,
             ]
         );
     } catch (e) {
@@ -263,6 +321,14 @@ export async function garantirIndicesPurga(pool) {
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_notif_aluno_lida_criado
                 ON notificacoes_aluno(lida, criado_em)
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_notif_prof_criado_em
+                ON notificacoes_professor(criado_em)
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_notif_prof_lida_criado
+                ON notificacoes_professor(lida, criado_em)
         `);
         console.log('[PURGA] Índices de purga OK');
     } catch (e) {

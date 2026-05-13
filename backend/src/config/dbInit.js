@@ -361,15 +361,23 @@ export async function initializeDatabase() {
                 reputacao_log    INTEGER     NOT NULL DEFAULT 0,
                 notif_lidas      INTEGER     NOT NULL DEFAULT 0,
                 notif_nlidas     INTEGER     NOT NULL DEFAULT 0,
+                notif_prof_lidas  INTEGER    NOT NULL DEFAULT 0,
+                notif_prof_nlidas INTEGER    NOT NULL DEFAULT 0,
                 politica_audit   INTEGER     NOT NULL,
                 politica_reputacao INTEGER   NOT NULL,
                 politica_notif_lida INTEGER  NOT NULL,
-                politica_notif_nlida INTEGER NOT NULL
+                politica_notif_nlida INTEGER NOT NULL,
+                politica_notif_prof_lida  INTEGER NOT NULL DEFAULT 90,
+                politica_notif_prof_nlida INTEGER NOT NULL DEFAULT 365
             )
         `);
         await client.query(`
             CREATE INDEX IF NOT EXISTS idx_purga_log_iniciado ON edusync_purga_log(iniciado_em DESC)
         `);
+        await client.query(`ALTER TABLE edusync_purga_log ADD COLUMN IF NOT EXISTS notif_prof_lidas         INTEGER NOT NULL DEFAULT 0`);
+        await client.query(`ALTER TABLE edusync_purga_log ADD COLUMN IF NOT EXISTS notif_prof_nlidas        INTEGER NOT NULL DEFAULT 0`);
+        await client.query(`ALTER TABLE edusync_purga_log ADD COLUMN IF NOT EXISTS politica_notif_prof_lida  INTEGER NOT NULL DEFAULT 90`);
+        await client.query(`ALTER TABLE edusync_purga_log ADD COLUMN IF NOT EXISTS politica_notif_prof_nlida INTEGER NOT NULL DEFAULT 365`);
 
         /* ── Monitor de Projetos ── */
         await client.query(`
