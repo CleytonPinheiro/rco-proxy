@@ -315,7 +315,41 @@ async function gpFetchAnswers(jobId, index, retried = false) {
             err.gabaritoNaoPublicado = true;
             throw err;
         }
-        throw new Error('GradePen recusou: ' + ((j && j.message) || 'erro ' + (j && j.errorCode)));
+
+        /* Mapeamento de errorCodes conhecidos → mensagem amigável em português */
+        const GP_MENSAGENS = {
+            6:  'O ID GradePen informado tem formato inválido. Verifique o ansid da prova e tente novamente.',
+            7:  'Acesso negado pela GradePen. Confirme se sua conta tem permissão para acessar esta prova.',
+            8:  'Cota de requisições da GradePen excedida. Aguarde alguns minutos e tente novamente.',
+            9:  'A GradePen retornou um erro interno. Tente novamente mais tarde.',
+            10: 'Prova não encontrada na GradePen. Verifique se o ID está correto.',
+            11: 'Prova bloqueada na GradePen. Entre em contato com o suporte da GradePen.',
+            12: 'Licença GradePen expirada ou insuficiente para acessar esta prova.',
+        };
+
+        /* Detecção adicional por texto da mensagem para códigos desconhecidos */
+        const _gpMsgFromText = (rawMsg) => {
+            const m = (rawMsg || '').toLowerCase();
+            if (m.includes('invalid') && (m.includes('job') || m.includes('id') || m.includes('format')))
+                return 'O ID GradePen informado tem formato inválido. Verifique o ansid da prova e tente novamente.';
+            if (m.includes('quota') || m.includes('rate limit') || m.includes('too many'))
+                return 'Cota de requisições da GradePen excedida. Aguarde alguns minutos e tente novamente.';
+            if (m.includes('acesso negado') || m.includes('access denied') || m.includes('forbidden') || m.includes('permission'))
+                return 'Acesso negado pela GradePen. Confirme se sua conta tem permissão para acessar esta prova.';
+            if (m.includes('licen') || m.includes('license') || m.includes('subscription'))
+                return 'Licença GradePen expirada ou insuficiente para acessar esta prova.';
+            return null;
+        };
+
+        const code = j && j.errorCode;
+        const rawMessage = (j && j.message) || '';
+        const mensagemAmigavel = GP_MENSAGENS[code] || _gpMsgFromText(rawMessage)
+            || ('GradePen recusou: ' + (rawMessage || 'erro ' + code));
+
+        const err = new Error(mensagemAmigavel);
+        err.gpErrorCode = code;
+        err.gpMensagem  = mensagemAmigavel;
+        throw err;
     }
     return j;
 }
@@ -876,6 +910,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                     return res.status(422).json({
                         erro: 'Não foi possível ler a GradePen. Você pode cadastrar o gabarito manualmente.',
                         detalhe: e.message,
+                        gpMensagem: e.gpMensagem || null,
+                        gpErrorCode: e.gpErrorCode != null ? e.gpErrorCode : null,
                         prova: null,
                         precisaGabaritoManual: true,
                         gabaritoNaoPublicado: e.gabaritoNaoPublicado === true,

@@ -418,6 +418,8 @@ async function salvarNova() {
             let msg;
             if (d.gabaritoNaoPublicado) {
                 msg = 'O gabarito desta prova ainda não foi publicado na GradePen. Publique o gabarito lá e tente novamente.';
+            } else if (d.gpMensagem) {
+                msg = d.gpMensagem;
             } else if (d.precisaGabaritoManual) {
                 msg = `Não consegui ler a GradePen (${d.detalhe || 'erro'}).\n\nVerifique se o ID está correto e se as credenciais GRADEPEN_EMAIL/GRADEPEN_PASSWORD foram configuradas no servidor.`;
             } else {
