@@ -430,6 +430,65 @@
 }
 .prv-pendente-link:hover { background: #dbeafe; }
 
+/* ── Visual Grid (cola) ────────────────────────────────────────── */
+.prv-cola-grid-toggle {
+    font-size: 12px; cursor: pointer; color: #4285F4;
+    background: none; border: none; padding: 0;
+    margin: 8px 0 6px; display: inline-block;
+}
+.prv-cola-grid-toggle:hover { text-decoration: underline; }
+.prv-cola-grid {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px;
+}
+.prv-cola-grid-cell {
+    width: 30px; height: 30px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    cursor: default; transition: transform .12s; user-select: none;
+}
+.prv-cola-grid-cell:hover { transform: scale(1.2); z-index: 1; }
+.prv-cola-cell-correto  { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.prv-cola-cell-erro     { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.prv-cola-cell-diferente{ background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+[data-theme="dark"] .prv-cola-cell-correto  { background: #14532d; color: #bbf7d0; border-color: #166534; }
+[data-theme="dark"] .prv-cola-cell-erro     { background: #450a0a; color: #fecaca; border-color: #991b1b; }
+[data-theme="dark"] .prv-cola-cell-diferente{ background: #374151; color: #9ca3af; border-color: #4b5563; }
+.prv-cola-grid-legenda {
+    display: flex; gap: 12px; font-size: 11px;
+    color: var(--text-muted, #666); margin-bottom: 6px; flex-wrap: wrap;
+}
+.prv-cola-grid-leg-item { display: flex; align-items: center; gap: 4px; }
+.prv-cola-grid-leg-dot {
+    width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex-shrink: 0;
+}
+.prv-cola-grid-leg-dot.correto  { background: #dcfce7; border: 1px solid #bbf7d0; }
+.prv-cola-grid-leg-dot.erro     { background: #fee2e2; border: 1px solid #fecaca; }
+.prv-cola-grid-leg-dot.diferente{ background: #f3f4f6; border: 1px solid #e5e7eb; }
+
+/* ── Score Ponderado bar (cola table) ──────────────────────────── */
+.prv-cola-score-bar-wrap { display: flex; align-items: center; gap: 6px; min-width: 90px; }
+.prv-cola-score-bar-bg {
+    flex: 1; height: 7px;
+    background: var(--bg, #e5e7eb);
+    border-radius: 999px; overflow: hidden;
+}
+.prv-cola-score-bar-fill { height: 100%; border-radius: 999px; transition: width .3s; }
+.prv-cola-score-bar-fill.baixo { background: #22c55e; }
+.prv-cola-score-bar-fill.medio { background: #f59e0b; }
+.prv-cola-score-bar-fill.alto  { background: #dc2626; }
+.prv-cola-score-num { font-size: 11px; font-weight: 600; white-space: nowrap; min-width: 30px; text-align: right; }
+.prv-cola-score-num.baixo { color: #166534; }
+.prv-cola-score-num.medio { color: #92400e; }
+.prv-cola-score-num.alto  { color: #991b1b; }
+
+/* ── History button (cola table) ───────────────────────────────── */
+.prv-cola-hist-btn {
+    background: none; border: none; cursor: pointer; font-size: 14px;
+    padding: 1px 3px; border-radius: 4px; color: var(--text-muted, #999);
+    vertical-align: middle; margin-left: 2px;
+}
+.prv-cola-hist-btn:hover { background: var(--bg, #f3f4f6); color: var(--text, #000); }
+
 /* Conversa Pedagógica button in cola table */
 .prv-cola-conversa-btn {
     padding: 4px 10px; font-size: 14px;

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./analise-cola.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EduSync — Análise de Cola">
+    <title>EduSync — Análise de Cola</title>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+                <a href="/pages/classroom/">Classroom</a>
+                <a href="/pages/provas/">Provas</a>
+                <a href="/pages/analise-cola/" class="active">🔍 Cola</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()">🌙</button>
+                <button id="btnLogout" class="btn-logout">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="ac-main">
+        <div class="ac-toolbar">
+            <h1>🔍 Análise de Cola</h1>
+            <div class="ac-toolbar-right">
+                <select id="acCurso" onchange="onCursoChange()">
+                    <option value="">Selecione um curso…</option>
+                </select>
+                <select id="acProva" onchange="onProvaChange()" disabled>
+                    <option value="">Selecione uma prova…</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="acPanel" class="ac-panel" style="display:none"></div>
+        <div id="acEmpty" class="ac-empty">
+            Selecione um curso e uma prova acima para ver a análise de cola.
+        </div>
+    </main>
+
+    <!-- Modal Histórico Aluno -->
+    <div id="acHistModal" class="ac-modal" style="display:none" onclick="if(event.target===this)fecharHistoricoModal()">
+        <div class="ac-modal-card">
+            <div class="ac-modal-header">
+                <h3 id="acHistTitulo">Histórico de Cola</h3>
+                <button class="ac-btn-icon" onclick="fecharHistoricoModal()">✕</button>
+            </div>
+            <div id="acHistCorpo" class="ac-hist-corpo"></div>
+        </div>
+    </div>
+
+    <script src="../../shared/js/auth.js"></script>
+    <script src="../../shared/js/modal-confirmar.js"></script>
+    <script src="./analise-cola.js"></script>
+</body>
+</html>

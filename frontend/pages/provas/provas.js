@@ -727,12 +727,33 @@ async function carregarColAnalise() {
     }
 }
 
-function renderColAnalise({ pares, temDiscursiva }) {
+function renderColAnalise({ pares, suspeitosEntreVariantes, temDiscursiva }) {
     _colaParesMap = {};
     const cont = $('prvDetCola');
+    const temVariantes = suspeitosEntreVariantes && suspeitosEntreVariantes.length > 0;
 
     if (!pares || pares.length === 0) {
-        cont.innerHTML = `<div class="prv-empty">Sem dados suficientes para análise.<br><small>São necessárias ao menos 2 submissões na mesma variante.</small></div>`;
+        if (!temVariantes) {
+            cont.innerHTML = `<div class="prv-empty">Sem dados suficientes para análise.<br><small>São necessárias ao menos 2 submissões na mesma variante.</small></div>`;
+            return;
+        }
+        /* Apenas cross-variant: mostrar somente essa seção */
+        cont.innerHTML = `
+            <div class="prv-empty" style="margin-bottom:14px">
+                Nenhum par suspeito dentro da mesma variante,
+                mas foram detectados suspeitos entre variantes diferentes.
+            </div>
+            <div class="prv-cola-variantes-section" id="prvColaVariantesSection">
+                <div class="prv-cola-variantes-header" onclick="toggleVariantesProvas()" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-secondary,#fff);border:1px solid var(--border,#ddd);border-radius:8px;font-weight:600;font-size:13px">
+                    ⚡ Suspeitos entre variantes diferentes
+                    <span class="prv-cola-badge prv-cola-alerta">${suspeitosEntreVariantes.length}</span>
+                    <span id="prvColaVariantesArrow" style="margin-left:auto;color:var(--text-muted,#888)">▼</span>
+                </div>
+                <div id="prvColaVariantesBody" style="display:none;margin-top:8px">
+                    ${renderEntreVariantesProvas(suspeitosEntreVariantes)}
+                </div>
+            </div>
+        `;
         return;
     }
 
@@ -752,9 +773,23 @@ function renderColAnalise({ pares, temDiscursiva }) {
                 <span class="prv-cola-badge prv-cola-alerta">≥70%</span> suspeito &nbsp;
                 <span class="prv-cola-badge prv-cola-critico">≥85%</span> alto risco
             </span>
-            ${flagCount > 0 ? `<button class="prv-btn prv-cola-export-btn" id="prvColaExportBtn" onclick="exportarFlags(${provaAberta.prova.id})">⬇️ Exportar flags (${flagCount})</button>` : ''}
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                ${flagCount > 0 ? `<button class="prv-btn prv-cola-export-btn" id="prvColaExportBtn" onclick="exportarFlags(${provaIdAtual})">⬇️ Flags CSV (${flagCount})</button>` : ''}
+                <button class="prv-btn" id="prvColaPdfBtn" onclick="exportarColaPdf(${provaIdAtual})">📄 PDF</button>
+            </div>
         </div>
         <div id="prvColaTabelaWrap"></div>
+        ${temVariantes ? `
+        <div class="prv-cola-variantes-section" id="prvColaVariantesSection" style="margin-top:14px">
+            <div class="prv-cola-variantes-header" onclick="toggleVariantesProvas()" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-secondary,#fff);border:1px solid var(--border,#ddd);border-radius:8px;font-weight:600;font-size:13px">
+                ⚡ Suspeitos entre variantes diferentes
+                <span class="prv-cola-badge prv-cola-alerta">${suspeitosEntreVariantes.length}</span>
+                <span id="prvColaVariantesArrow" style="margin-left:auto;color:var(--text-muted,#888)">▼</span>
+            </div>
+            <div id="prvColaVariantesBody" style="display:none;margin-top:8px">
+                ${renderEntreVariantesProvas(suspeitosEntreVariantes)}
+            </div>
+        </div>` : ''}
         ${temDiscursiva ? '<p class="prv-cola-rodape">* Questões discursivas foram excluídas da comparação (apenas múltipla escolha e V/F são analisadas).</p>' : ''}
     `;
     cont.innerHTML = html;
@@ -798,13 +833,29 @@ function renderColAnalise({ pares, temDiscursiva }) {
                 : '';
             _colaParesMap[parKey] = par;
             const parKeyJson = JSON.stringify(parKey);
+            const score = par.scorePonderado ?? par.similaridade;
+            const scoreNivel = score >= 80 ? 'alto' : (score >= 60 ? 'medio' : 'baixo');
+            const safeA = escapeHtml(par.alunoA);
+            const safeB = escapeHtml(par.alunoB);
             rows += `
                 <tr class="prv-cola-row ${nivel ? 'prv-cola-row-' + nivel : ''} ${flag ? 'prv-cola-row-flagged' : ''}" data-par="${escapeHtml(parKey)}" style="cursor:pointer">
-                    <td><strong>${escapeHtml(par.nomeA)}</strong><br><small>${escapeHtml(par.alunoA)}</small></td>
-                    <td><strong>${escapeHtml(par.nomeB)}</strong><br><small>${escapeHtml(par.alunoB)}</small></td>
+                    <td>
+                        <strong>${escapeHtml(par.nomeA)}</strong><br><small>${safeA}</small>
+                        <button class="prv-cola-hist-btn" title="Histórico de cola" onclick="event.stopPropagation();verHistoricoAlunoProvas('${safeA}','${escapeHtml(par.nomeA)}')">🕐</button>
+                    </td>
+                    <td>
+                        <strong>${escapeHtml(par.nomeB)}</strong><br><small>${safeB}</small>
+                        <button class="prv-cola-hist-btn" title="Histórico de cola" onclick="event.stopPropagation();verHistoricoAlunoProvas('${safeB}','${escapeHtml(par.nomeB)}')">🕐</button>
+                    </td>
                     <td style="text-align:center">.${escapeHtml(par.varianteCodigo)}</td>
                     <td style="text-align:center">
                         <span class="prv-cola-badge ${nivel === 'critico' ? 'prv-cola-critico' : nivel === 'alerta' ? 'prv-cola-alerta' : ''}">${par.similaridade}%</span>
+                    </td>
+                    <td style="min-width:100px">
+                        <div class="prv-cola-score-bar-wrap" title="Score ponderado: coincidências em questões fáceis (alta taxa de acerto na turma) têm mais peso.">
+                            <div class="prv-cola-score-bar-bg"><div class="prv-cola-score-bar-fill ${scoreNivel}" style="width:${score}%"></div></div>
+                            <span class="prv-cola-score-num ${scoreNivel}">${score}%</span>
+                        </div>
                     </td>
                     <td style="text-align:center">${par.identicasErradas}</td>
                     <td style="text-align:center">${par.total}</td>
@@ -817,7 +868,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
                 </tr>
             `;
             if (expandido) {
-                rows += `<tr class="prv-cola-detalhe-row"><td colspan="8">${renderDetalhePar(par, flag)}</td></tr>`;
+                rows += `<tr class="prv-cola-detalhe-row"><td colspan="9">${renderDetalhePar(par, flag)}</td></tr>`;
             }
         }
 
@@ -827,6 +878,7 @@ function renderColAnalise({ pares, temDiscursiva }) {
                     <th>Aluno A</th><th>Aluno B</th>
                     <th style="text-align:center">Variante</th>
                     <th style="text-align:center">Similaridade</th>
+                    <th style="text-align:center">Score Ponderado</th>
                     <th style="text-align:center">Erros coincidentes</th>
                     <th style="text-align:center">Total questões</th>
                     <th style="text-align:center">Status</th>
@@ -854,7 +906,22 @@ function renderColAnalise({ pares, temDiscursiva }) {
 }
 
 function renderDetalhePar(par, flag) {
-    let rows = '';
+    const safeA = escapeHtml(par.alunoA);
+    const safeB = escapeHtml(par.alunoB);
+    const keyPart = par.alunoA.replace(/[^a-zA-Z0-9]/g, '-');
+    const notaId  = `prvFlagNota-${keyPart}-${par.alunoB.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const gridId  = `prvColaGrid-${keyPart}`;
+    const tableId = `prvColaTable-${keyPart}`;
+    const togId   = `prvColaToggle-${keyPart}`;
+    const currentStatus = flag ? flag.status : '';
+    const currentNota   = flag ? (flag.nota_professor || '') : '';
+    const btnInvCls = currentStatus === 'investigar' ? 'prv-cola-flag-btn-ativo' : '';
+    const btnResCls = currentStatus === 'resolvido'  ? 'prv-cola-flag-btn-ativo' : '';
+    const provaId   = provaAberta && provaAberta.prova && provaAberta.prova.id;
+
+    const gridHtml = renderGridCola(par.detalhes);
+
+    let tableRows = '';
     for (const q of par.detalhes) {
         const fmtResp = v => {
             if (v === null) return '<em style="color:#aaa">—</em>';
@@ -866,46 +933,33 @@ function renderDetalhePar(par, flag) {
             if (Array.isArray(v)) return escapeHtml(v.join(', '));
             return escapeHtml(String(v).toUpperCase());
         };
-        const cls = q.amboserram
-            ? 'prv-cola-q-erro'
-            : (q.igual ? 'prv-cola-q-igual' : '');
-        rows += `<tr class="${cls}">
+        const cls = q.amboserram ? 'prv-cola-q-erro' : (q.igual ? 'prv-cola-q-igual' : '');
+        const acertoBar = q.acertoRate != null
+            ? `<div style="display:inline-block;width:30px;height:5px;background:#e5e7eb;border-radius:99px;vertical-align:middle;margin-left:3px"><div style="width:${q.acertoRate}%;height:100%;background:${q.acertoRate>70?'#22c55e':q.acertoRate>40?'#f59e0b':'#dc2626'};border-radius:99px"></div></div>`
+            : '';
+        tableRows += `<tr class="${cls}">
             <td style="text-align:center;font-weight:600">${q.questao}</td>
             <td style="text-align:center">${fmtResp(q.respA)}</td>
             <td style="text-align:center">${fmtResp(q.respB)}</td>
             <td style="text-align:center;color:#166534;font-weight:600">${fmtGab(q.correta)}</td>
             <td style="text-align:center">${q.amboserram ? '<span class="prv-cola-badge prv-cola-critico">erro coincidente</span>' : (q.igual ? '<span class="prv-cola-badge prv-cola-alerta">idêntica</span>' : '')}</td>
+            <td style="text-align:center;font-size:12px">${q.acertoRate != null ? q.acertoRate+'%'+acertoBar : '—'}</td>
         </tr>`;
     }
-
-    /* Flag UI */
-    const safeA = escapeHtml(par.alunoA);
-    const safeB = escapeHtml(par.alunoB);
-    const notaId = `prvFlagNota-${par.alunoA.replace(/[^a-zA-Z0-9]/g, '-')}-${par.alunoB.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    const currentStatus = flag ? flag.status : '';
-    const currentNota = flag ? (flag.nota_professor || '') : '';
-    const btnInvCls = currentStatus === 'investigar' ? 'prv-cola-flag-btn-ativo' : '';
-    const btnResCls = currentStatus === 'resolvido'  ? 'prv-cola-flag-btn-ativo' : '';
 
     const flagHtml = `
         <div class="prv-cola-flag-wrap">
             <div class="prv-cola-flag-title">Decisão do professor</div>
             <div class="prv-cola-flag-btns">
                 <button class="prv-btn prv-cola-flag-btn ${btnInvCls}"
-                    onclick="salvarFlag(${provaAberta.prova.id}, '${safeA}', '${safeB}', 'investigar')">
-                    🔍 Investigar
-                </button>
+                    onclick="salvarFlag(${provaId}, '${safeA}', '${safeB}', 'investigar')">🔍 Investigar</button>
                 <button class="prv-btn prv-cola-flag-btn ${btnResCls}"
-                    onclick="salvarFlag(${provaAberta.prova.id}, '${safeA}', '${safeB}', 'resolvido')">
-                    ✅ Resolvido
-                </button>
+                    onclick="salvarFlag(${provaId}, '${safeA}', '${safeB}', 'resolvido')">✅ Resolvido</button>
             </div>
             <div class="prv-cola-flag-nota-wrap">
                 <textarea id="${notaId}" class="prv-cola-flag-nota" rows="2"
                     placeholder="Anotação opcional (ex: conversa agendada, coincidência confirmada…)">${escapeHtml(currentNota)}</textarea>
-                <button class="prv-btn" onclick="salvarFlagNota(${provaAberta.prova.id}, '${safeA}', '${safeB}', '${notaId}')">
-                    Salvar nota
-                </button>
+                <button class="prv-btn" onclick="salvarFlagNota(${provaId}, '${safeA}', '${safeB}', '${notaId}')">Salvar nota</button>
             </div>
         </div>
     `;
@@ -913,19 +967,173 @@ function renderDetalhePar(par, flag) {
     return `
         <div class="prv-cola-detalhe">
             <strong>Detalhamento questão a questão — ${escapeHtml(par.nomeA)} × ${escapeHtml(par.nomeB)}</strong>
-            <table class="prv-tabela" style="margin-top:8px">
-                <thead><tr>
-                    <th style="text-align:center">Q</th>
-                    <th style="text-align:center">Aluno A</th>
-                    <th style="text-align:center">Aluno B</th>
-                    <th style="text-align:center">Gabarito</th>
-                    <th style="text-align:center">Status</th>
-                </tr></thead>
-                <tbody>${rows}</tbody>
-            </table>
+            <div style="margin-top:10px">
+                <button class="prv-cola-grid-toggle" id="${togId}"
+                    onclick="toggleGridCola('${togId}','${gridId}','${tableId}')">
+                    📋 Ver como tabela
+                </button>
+                <div id="${gridId}">${gridHtml}</div>
+                <div id="${tableId}" style="display:none">
+                    <table class="prv-tabela" style="margin-top:6px;font-size:13px">
+                        <thead><tr>
+                            <th style="text-align:center">Q</th>
+                            <th style="text-align:center">Aluno A</th>
+                            <th style="text-align:center">Aluno B</th>
+                            <th style="text-align:center">Gabarito</th>
+                            <th style="text-align:center">Status</th>
+                            <th style="text-align:center">% Acerto turma</th>
+                        </tr></thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            </div>
             ${flagHtml}
         </div>
     `;
+}
+
+function renderGridCola(detalhes) {
+    const cells = detalhes.map(q => {
+        const cls = q.amboserram ? 'prv-cola-cell-erro' : (q.igual ? 'prv-cola-cell-correto' : 'prv-cola-cell-diferente');
+        const tip = q.amboserram
+            ? `Q${q.questao}: Erro coincidente (ambos: ${String(q.respA||'').toUpperCase()}, gabarito: ${String(q.correta||'').toUpperCase()})`
+            : q.igual
+                ? `Q${q.questao}: Resposta idêntica e correta (${String(q.respA||'').toUpperCase()})`
+                : `Q${q.questao}: Respostas diferentes (A:${String(q.respA||'—').toUpperCase()} / B:${String(q.respB||'—').toUpperCase()})`;
+        return `<div class="prv-cola-grid-cell ${cls}" title="${escapeHtml(tip)}">${q.questao}</div>`;
+    }).join('');
+    return `
+        <div class="prv-cola-grid-legenda">
+            <span class="prv-cola-grid-leg-item"><span class="prv-cola-grid-leg-dot correto"></span>Acerto idêntico</span>
+            <span class="prv-cola-grid-leg-item"><span class="prv-cola-grid-leg-dot erro"></span>Erro coincidente</span>
+            <span class="prv-cola-grid-leg-item"><span class="prv-cola-grid-leg-dot diferente"></span>Diferente</span>
+        </div>
+        <div class="prv-cola-grid">${cells}</div>
+    `;
+}
+
+function toggleGridCola(togId, gridId, tableId) {
+    const grid  = document.getElementById(gridId);
+    const table = document.getElementById(tableId);
+    const btn   = document.getElementById(togId);
+    if (!grid || !table) return;
+    const showGrid = grid.style.display === 'none';
+    grid.style.display  = showGrid ? '' : 'none';
+    table.style.display = showGrid ? 'none' : '';
+    if (btn) btn.textContent = showGrid ? '📋 Ver como tabela' : '🎨 Ver como grade visual';
+}
+
+function renderEntreVariantesProvas(suspeitos) {
+    if (!suspeitos || suspeitos.length === 0) return '';
+    let rows = '';
+    for (const s of suspeitos) {
+        rows += `<tr>
+            <td><strong>${escapeHtml(s.nomeA)}</strong><br><small>${escapeHtml(s.alunoA)}</small></td>
+            <td style="text-align:center">.${escapeHtml(String(s.varianteA))}</td>
+            <td><strong>${escapeHtml(s.nomeB)}</strong><br><small>${escapeHtml(s.alunoB)}</small></td>
+            <td style="text-align:center">.${escapeHtml(String(s.varianteB))}</td>
+            <td style="text-align:center">${s.posIguais} / ${s.totalComuns}</td>
+            <td style="text-align:center"><span class="prv-cola-badge ${s.posSimil >= 70 ? 'prv-cola-alerta' : ''}">${s.posSimil}%</span></td>
+        </tr>`;
+    }
+    return `
+        <p style="font-size:13px;color:var(--text-muted,#666);margin:0 0 10px">
+            Estes alunos usaram <strong>variantes diferentes</strong> mas responderam as mesmas posições de forma suspeita.
+        </p>
+        <div style="overflow-x:auto">
+        <table class="prv-tabela" style="font-size:13px">
+            <thead><tr>
+                <th>Aluno A</th>
+                <th style="text-align:center">Variante A</th>
+                <th>Aluno B</th>
+                <th style="text-align:center">Variante B</th>
+                <th style="text-align:center">Posições iguais</th>
+                <th style="text-align:center">Similaridade posicional</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        </div>
+    `;
+}
+
+function toggleVariantesProvas() {
+    const body  = document.getElementById('prvColaVariantesBody');
+    const arrow = document.getElementById('prvColaVariantesArrow');
+    if (!body) return;
+    const open = body.style.display === 'none';
+    body.style.display = open ? '' : 'none';
+    if (arrow) arrow.textContent = open ? '▲' : '▼';
+}
+
+async function exportarColaPdf(provaId) {
+    const btn = document.getElementById('prvColaPdfBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Gerando…'; }
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaId}/cola-pdf`, { credentials: 'include' });
+        if (!r.ok) {
+            const d = await r.json().catch(() => ({}));
+            throw new Error(d.erro || 'Erro ao gerar PDF.');
+        }
+        const blob = await r.blob();
+        const url  = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `analise-cola-prova-${provaId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        await notificar('Erro ao gerar PDF', e.message, { tipo: 'danger' });
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📄 PDF'; }
+    }
+}
+
+async function verHistoricoAlunoProvas(email, nome) {
+    let modal = document.getElementById('prvColaHistModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'prvColaHistModal';
+        modal.className = 'prv-modal';
+        modal.style.display = 'flex';
+        modal.onclick = e => { if (e.target === modal) modal.remove(); };
+        modal.innerHTML = `
+            <div class="prv-modal-card" style="max-width:560px;width:94%;max-height:80vh;overflow-y:auto">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <h3 id="prvColaHistTitulo" style="margin:0;font-size:18px">Histórico</h3>
+                    <button class="prv-btn-icon" onclick="document.getElementById('prvColaHistModal').remove()">✕</button>
+                </div>
+                <div id="prvColaHistCorpo"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } else {
+        modal.style.display = 'flex';
+    }
+    document.getElementById('prvColaHistTitulo').textContent = `Histórico de Cola — ${nome}`;
+    document.getElementById('prvColaHistCorpo').innerHTML = '<div class="prv-empty" style="padding:20px">Carregando…</div>';
+    try {
+        const r = await fetch(`/api/classroom/provas/cola-historico/${encodeURIComponent(email)}`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro.');
+        const historico = Array.isArray(d.historico) ? d.historico : [];
+        if (historico.length === 0) {
+            document.getElementById('prvColaHistCorpo').innerHTML = '<p style="color:var(--text-muted,#888);text-align:center;padding:20px 0">Nenhuma ocorrência registrada em outras provas.</p>';
+            return;
+        }
+        document.getElementById('prvColaHistCorpo').innerHTML = historico.map(h => `
+            <div style="padding:10px 12px;border:1px solid var(--border,#eee);border-radius:8px;margin-bottom:8px;font-size:13px">
+                <div style="font-weight:600;margin-bottom:4px">📝 ${escapeHtml(h.provaNome || 'Prova #' + h.provaId)}</div>
+                <div style="color:var(--text-muted,#666);font-size:12px">
+                    Com: <strong>${escapeHtml(h.outroAluno || h.emailOutro || '—')}</strong>
+                    ${h.status ? ` &nbsp;·&nbsp; <span class="prv-badge ${h.status === 'resolvido' ? 'prv-badge-efetiva' : 'prv-badge-cola'}">${h.status}</span>` : ''}
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        document.getElementById('prvColaHistCorpo').innerHTML = `<p style="color:#dc2626">Erro: ${escapeHtml(e.message)}</p>`;
+    }
 }
 
 async function exportarFlags(provaId) {

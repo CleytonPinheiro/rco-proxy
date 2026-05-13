@@ -1,5 +1,6 @@
 import { Router }               from 'express';
 import { requireAuth, requireModulo } from '../middleware/auth.middleware.js';
+import { podeAcessar }          from '../config/permissions.js';
 import { createAuthRouter }     from './auth.routes.js';
 import { createRcoRouter }      from './rco.routes.js';
 import { createAlunosRouter }   from './alunos.routes.js';
@@ -84,8 +85,22 @@ export function createApiRouter(deps) {
     router.use('/', createAdminRouter(deps));
     router.use('/', createRcoLancamentoRouter(deps));
     router.use('/', createSuporteRouter());
-    /* Provas: rotas do professor — restritas ao módulo 'provas' (admin/professor) */
-    router.use('/', requireModulo('provas'), createProvasRouter({ getClassroomAuth }));
+    /* Provas: rotas do professor — requer módulo 'provas'.
+       Endpoints exclusivos de análise de cola também aceitam módulo 'analise-cola';
+       essa permissão secundária é aplicada dentro de provas.routes.js por rota. */
+    router.use('/', (req, res, next) => {
+        const perfil = req.userSession?.perfil;
+        if (!perfil) return res.status(401).json({ erro: 'Não autenticado.' });
+        if (podeAcessar(perfil, 'provas')) return next();
+        /* Permite apenas endpoints de análise de cola para usuários com só 'analise-cola' */
+        const COLA_PATHS = [
+            /^\/classroom\/provas\/cola-historico\//,
+            /^\/classroom\/provas\/\d+\/analise-cola$/,
+            /^\/classroom\/provas\/\d+\/cola-pdf$/,
+        ];
+        if (podeAcessar(perfil, 'analise-cola') && COLA_PATHS.some(re => re.test(req.path))) return next();
+        return res.status(403).json({ erro: 'Acesso ao módulo "provas" não permitido.' });
+    }, createProvasRouter({ getClassroomAuth }));
 
     /* Passeios: rotas protegidas (scanner + CRUD — acessível a qualquer perfil logado) */
     router.use('/', passeiosRouters.router);

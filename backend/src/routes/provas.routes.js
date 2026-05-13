@@ -1294,6 +1294,52 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* Histórico de cola por aluno */
+    router.get('/classroom/provas/cola-historico/:email', async (req, res) => {
+        try {
+            const email = req.params.email;
+            /* Join with submissões twice to retrieve the name of each participant */
+            const { rows } = await pool.query(
+                `SELECT f.prova_id, f.aluno_a, f.aluno_b, f.status,
+                        f.nota_professor, f.registrado_em,
+                        p.nome AS prova_nome,
+                        sa.aluno_nome AS nome_a,
+                        sb.aluno_nome AS nome_b
+                   FROM classroom_prova_cola_flags f
+                   JOIN classroom_provas p ON p.id = f.prova_id
+                   LEFT JOIN LATERAL (
+                       SELECT aluno_nome FROM classroom_prova_submissoes
+                        WHERE prova_id = f.prova_id AND aluno_email = f.aluno_a
+                          AND eh_segundo_corretor = false LIMIT 1
+                   ) sa ON true
+                   LEFT JOIN LATERAL (
+                       SELECT aluno_nome FROM classroom_prova_submissoes
+                        WHERE prova_id = f.prova_id AND aluno_email = f.aluno_b
+                          AND eh_segundo_corretor = false LIMIT 1
+                   ) sb ON true
+                  WHERE f.aluno_a = $1 OR f.aluno_b = $1
+                  ORDER BY f.registrado_em DESC`,
+                [email]
+            );
+            /* Normalise to camelCase and resolve "outroAluno" based on which side matches */
+            const historico = rows.map(r => {
+                const isA = r.aluno_a === email;
+                return {
+                    provaId:       r.prova_id,
+                    provaNome:     r.prova_nome,
+                    emailOutro:    isA ? r.aluno_b : r.aluno_a,
+                    outroAluno:    isA ? (r.nome_b || r.aluno_b) : (r.nome_a || r.aluno_a),
+                    status:        r.status,
+                    notaProfessor: r.nota_professor,
+                    data:          r.registrado_em,
+                };
+            });
+            res.json({ historico });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* Análise de cola: comparação pairwise de marcações dentro da mesma variante */
     router.get('/classroom/provas/:id/analise-cola', async (req, res) => {
         try {
@@ -1326,6 +1372,34 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 porVariante[s.variante_id].push(s);
             }
 
+            /* ── Calcula taxa de acerto por questão, por variante (para score ponderado) ── */
+            const acertoRateMap = {}; /* varId → { questaoNum → passRate 0..1 } */
+            for (const [varId, subs] of Object.entries(porVariante)) {
+                const { gabarito } = gabMap[varId] || {};
+                if (!gabarito || subs.length === 0) continue;
+                const rateMap = {};
+                const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+                for (const q of questoesComp) {
+                    let acertos = 0;
+                    const qStr = String(q.questao);
+                    for (const s of subs) {
+                        const marc = (s.marcacoes_json || {})[qStr] ?? null;
+                        let corr = false;
+                        if (q.tipo === 'multipla') {
+                            corr = marc !== null && String(marc).toLowerCase() === String(q.correta || '').toLowerCase();
+                        } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
+                            corr = Array.isArray(marc) && marc.length === q.correta.length &&
+                                   marc.every((x, i) => String(x).toUpperCase() === String(q.correta[i]).toUpperCase());
+                        }
+                        if (corr) acertos++;
+                    }
+                    rateMap[qStr] = subs.length > 0 ? acertos / subs.length : 0;
+                }
+                acertoRateMap[varId] = rateMap;
+            }
+
+            const LETRAS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+
             const pares = [];
 
             for (const [varId, subs] of Object.entries(porVariante)) {
@@ -1337,6 +1411,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
                 if (questoesComp.length === 0) continue;
 
+                const rateMap = acertoRateMap[varId] || {};
+
                 /* Comparação pairwise */
                 for (let i = 0; i < subs.length; i++) {
                     for (let j = i + 1; j < subs.length; j++) {
@@ -1347,6 +1423,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
                         let identicas = 0;
                         let identicasErradas = 0;
+                        let somaPesos = 0;
+                        let somaIdenticasPonderada = 0;
                         const detalhes = [];
 
                         for (const q of questoesComp) {
@@ -1380,19 +1458,26 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                             if (igual) identicas++;
                             if (amboserram) identicasErradas++;
 
+                            /* Score ponderado: peso = taxa de acerto (questão fácil = peso maior) */
+                            const peso = rateMap[qStr] ?? 0.5;
+                            somaPesos += peso;
+                            if (igual) somaIdenticasPonderada += peso;
+
                             detalhes.push({
-                                questao:         q.questao,
-                                tipo:            q.tipo,
-                                correta:         q.correta,
+                                questao:   q.questao,
+                                tipo:      q.tipo,
+                                correta:   q.correta,
                                 respA,
                                 respB,
                                 igual,
                                 amboserram,
+                                acertoRate: Math.round((rateMap[qStr] ?? 0.5) * 100),
                             });
                         }
 
                         const total = questoesComp.length;
                         const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
+                        const scorePonderado = somaPesos > 0 ? Math.round((somaIdenticasPonderada / somaPesos) * 100) : 0;
 
                         pares.push({
                             alunoA:           a.aluno_email,
@@ -1404,6 +1489,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                             identicas,
                             identicasErradas,
                             similaridade,
+                            scorePonderado,
                             detalhes,
                         });
                     }
@@ -1415,6 +1501,67 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 if (b.identicasErradas !== a.identicasErradas) return b.identicasErradas - a.identicasErradas;
                 return b.similaridade - a.similaridade;
             });
+
+            /* ── Análise entre variantes (comparação por posição física) ── */
+            const suspeitosEntreVariantes = [];
+            const varIds = Object.keys(porVariante);
+
+            if (varIds.length >= 2) {
+                /* Para cada par de variantes distintas */
+                for (let vi = 0; vi < varIds.length; vi++) {
+                    for (let vj = vi + 1; vj < varIds.length; vj++) {
+                        const subsA = porVariante[varIds[vi]];
+                        const subsB = porVariante[varIds[vj]];
+                        const gabA = (gabMap[varIds[vi]] || {}).gabarito || [];
+                        const gabB = (gabMap[varIds[vj]] || {}).gabarito || [];
+                        const codA = (gabMap[varIds[vi]] || {}).codigo;
+                        const codB = (gabMap[varIds[vj]] || {}).codigo;
+
+                        /* Encontra questões múltipla-escolha presentes em ambas variantes (pelo número) */
+                        const questNums = new Set(gabA.filter(q => q.tipo === 'multipla').map(q => String(q.questao)));
+                        const questNumsB = new Set(gabB.filter(q => q.tipo === 'multipla').map(q => String(q.questao)));
+                        const questComuns = [...questNums].filter(qn => questNumsB.has(qn));
+                        if (questComuns.length < 5) continue; /* poucas questões em comum → não analisa */
+
+                        /* Monta mapa questao → posição-índice para cada variante */
+                        const posA = {}; /* questao → índice da resposta correta em variante A (só gabarito) */
+                        const posB = {};
+                        for (const q of gabA) if (q.tipo === 'multipla') posA[String(q.questao)] = q;
+                        for (const q of gabB) if (q.tipo === 'multipla') posB[String(q.questao)] = q;
+
+                        /* Compara todos os pares A×B */
+                        for (const sa of subsA) {
+                            for (const sb of subsB) {
+                                let posIguais = 0;
+                                for (const qn of questComuns) {
+                                    const respA = (sa.marcacoes_json || {})[qn] ?? null;
+                                    const respB = (sb.marcacoes_json || {})[qn] ?? null;
+                                    if (respA === null || respB === null) continue;
+                                    const idxA = LETRAS.indexOf(String(respA).toLowerCase());
+                                    const idxB = LETRAS.indexOf(String(respB).toLowerCase());
+                                    if (idxA >= 0 && idxB >= 0 && idxA === idxB) posIguais++;
+                                }
+                                const totalComuns = questComuns.length;
+                                const posSimil = totalComuns > 0 ? Math.round((posIguais / totalComuns) * 100) : 0;
+                                if (posSimil >= 70) {
+                                    suspeitosEntreVariantes.push({
+                                        alunoA:        sa.aluno_email,
+                                        nomeA:         sa.aluno_nome || sa.aluno_email,
+                                        varianteA:     codA,
+                                        alunoB:        sb.aluno_email,
+                                        nomeB:         sb.aluno_nome || sb.aluno_email,
+                                        varianteB:     codB,
+                                        posSimil,
+                                        totalComuns,
+                                        posIguais,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                suspeitosEntreVariantes.sort((a, b) => b.posSimil - a.posSimil);
+            }
 
             /* Informa se há questões discursivas na prova (para nota de rodapé) */
             const temDiscursiva = variantes.some(v =>
@@ -1435,9 +1582,226 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 par.flag = flagMap[`${ea}|${eb}`] || null;
             }
 
-            res.json({ pares, temDiscursiva });
+            res.json({ pares, suspeitosEntreVariantes, temDiscursiva });
         } catch (e) {
             res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Gera PDF formal da análise de cola */
+    router.get('/classroom/provas/:id/cola-pdf', async (req, res) => {
+        try {
+            const provaId = req.params.id;
+            const PDFDocument = (await import('pdfkit')).default;
+
+            /* Carrega dados da prova — sem JOIN falso; curso_id é o ID do Google Classroom */
+            const { rows: [prova] } = await pool.query(
+                `SELECT * FROM classroom_provas WHERE id = $1`,
+                [provaId]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            /* Carrega variantes e submissões */
+            const { rows: variantes } = await pool.query(
+                `SELECT id, codigo, gabarito_json FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
+                [provaId]
+            );
+            const { rows: submissoes } = await pool.query(
+                `SELECT id, variante_id, aluno_email, aluno_nome, marcacoes_json
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_segundo_corretor = false
+                  ORDER BY variante_id, aluno_email`,
+                [provaId]
+            );
+            const { rows: flagRows } = await pool.query(
+                `SELECT aluno_a, aluno_b, status, nota_professor FROM classroom_prova_cola_flags WHERE prova_id = $1 ORDER BY registrado_em`,
+                [provaId]
+            );
+
+            /* Recomputa análise simplificada para o PDF */
+            const gabMap = {};
+            for (const v of variantes) gabMap[v.id] = { codigo: v.codigo, gabarito: v.gabarito_json };
+            const porVariante = {};
+            for (const s of submissoes) {
+                if (!porVariante[s.variante_id]) porVariante[s.variante_id] = [];
+                porVariante[s.variante_id].push(s);
+            }
+            const flagMap = {};
+            for (const f of flagRows) flagMap[`${f.aluno_a}|${f.aluno_b}`] = f;
+
+            /* Calcula pares suspeitos (≥70%) para o PDF */
+            const paresParaPdf = [];
+            for (const [varId, subs] of Object.entries(porVariante)) {
+                if (subs.length < 2) continue;
+                const { codigo, gabarito } = gabMap[varId] || {};
+                if (!gabarito) continue;
+                const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+                if (questoesComp.length === 0) continue;
+
+                /* Pass rates */
+                const rateMap = {};
+                for (const q of questoesComp) {
+                    let ac = 0;
+                    const qStr = String(q.questao);
+                    for (const s of subs) {
+                        const marc = (s.marcacoes_json || {})[qStr] ?? null;
+                        let corr = false;
+                        if (q.tipo === 'multipla') corr = marc !== null && String(marc).toLowerCase() === String(q.correta || '').toLowerCase();
+                        else if (q.tipo === 'vf' && Array.isArray(q.correta)) corr = Array.isArray(marc) && marc.every((x, i) => String(x).toUpperCase() === String(q.correta[i]).toUpperCase());
+                        if (corr) ac++;
+                    }
+                    rateMap[qStr] = subs.length ? ac / subs.length : 0;
+                }
+
+                for (let i = 0; i < subs.length; i++) {
+                    for (let j = i + 1; j < subs.length; j++) {
+                        const a = subs[i]; const b = subs[j];
+                        const marcA = a.marcacoes_json || {}; const marcB = b.marcacoes_json || {};
+                        let identicas = 0, identicasErradas = 0, somaPesos = 0, somaIgualPond = 0;
+                        const questoesCoincidentes = []; /* erros coincidentes */
+                        const questoesIdenticas    = []; /* respostas idênticas e corretas */
+                        for (const q of questoesComp) {
+                            const qStr = String(q.questao);
+                            const respA = marcA[qStr] ?? null; const respB = marcB[qStr] ?? null;
+                            const normA = Array.isArray(respA) ? respA.map(x=>String(x).toUpperCase()).join(',') : String(respA??'').toLowerCase();
+                            const normB = Array.isArray(respB) ? respB.map(x=>String(x).toUpperCase()).join(',') : String(respB??'').toLowerCase();
+                            const igual = respA !== null && respB !== null && normA === normB;
+                            let corrA=false, corrB=false;
+                            if (q.tipo==='multipla') { const co=String(q.correta||'').toLowerCase(); corrA=String(respA??'').toLowerCase()===co; corrB=String(respB??'').toLowerCase()===co; }
+                            else if (q.tipo==='vf'&&Array.isArray(q.correta)) { corrA=Array.isArray(respA)&&respA.every((v,k)=>String(v).toUpperCase()===String(q.correta[k]).toUpperCase()); corrB=Array.isArray(respB)&&respB.every((v,k)=>String(v).toUpperCase()===String(q.correta[k]).toUpperCase()); }
+                            if (igual) identicas++;
+                            if (igual&&!corrA&&!corrB) {
+                                identicasErradas++;
+                                const respStr = Array.isArray(respA) ? respA.join(',') : String(respA??'').toUpperCase();
+                                const corrStr = Array.isArray(q.correta) ? q.correta.join(',') : String(q.correta??'').toUpperCase();
+                                questoesCoincidentes.push(`Q${qStr} (resp: ${respStr}, gab: ${corrStr})`);
+                            } else if (igual && corrA) {
+                                const respStr = Array.isArray(respA) ? respA.join(',') : String(respA??'').toUpperCase();
+                                questoesIdenticas.push(`Q${qStr} (${respStr})`);
+                            }
+                            const peso=rateMap[qStr]??0.5; somaPesos+=peso; if(igual) somaIgualPond+=peso;
+                        }
+                        const total = questoesComp.length;
+                        const simil = total>0 ? Math.round((identicas/total)*100) : 0;
+                        const scorePond = somaPesos>0 ? Math.round((somaIgualPond/somaPesos)*100) : 0;
+                        if (simil < 70) continue;
+                        const [ea, eb] = [a.aluno_email, b.aluno_email].sort();
+                        const flag = flagMap[`${ea}|${eb}`] || null;
+                        paresParaPdf.push({
+                            nomeA: a.aluno_nome||a.aluno_email, emailA: a.aluno_email,
+                            nomeB: b.aluno_nome||b.aluno_email, emailB: b.aluno_email,
+                            varianteCodigo: codigo, similaridade: simil, scorePonderado: scorePond,
+                            identicasErradas, total, flag,
+                            questoesCoincidentes, questoesIdenticas,
+                        });
+                    }
+                }
+            }
+            paresParaPdf.sort((a,b) => {
+                if (b.identicasErradas !== a.identicasErradas) return b.identicasErradas - a.identicasErradas;
+                return b.similaridade - a.similaridade;
+            });
+
+            /* Monta o PDF */
+            const doc = new PDFDocument({ margin: 40, size: 'A4' });
+            res.setHeader('Content-Type', 'application/pdf');
+            const dataProva = prova.data_aplicacao ? new Date(prova.data_aplicacao).toLocaleDateString('pt-BR') : '—';
+            const nomeSanitized = prova.nome.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+            res.setHeader('Content-Disposition', `attachment; filename="analise-cola-${nomeSanitized}-${provaId}.pdf"`);
+            doc.pipe(res);
+
+            const AZUL = '#1e40af';
+            const VERMELHO = '#991b1b';
+            const CINZA = '#6b7280';
+            const PAGE_W = doc.page.width - 80; /* margem 40 de cada lado */
+
+            /* Cabeçalho */
+            doc.fontSize(18).fillColor(AZUL).font('Helvetica-Bold').text('Análise de Cola — Relatório Formal', 40, 40);
+            doc.fontSize(11).fillColor('#111').font('Helvetica').moveDown(0.3);
+            doc.text(`Prova: ${prova.nome}`);
+            if (prova.curso_id) doc.text(`Turma (Google Classroom ID): ${prova.curso_id}`);
+            doc.text(`Data de aplicação: ${dataProva}`);
+            if (prova.gradepen_id) doc.text(`GradePen ID: ${prova.gradepen_id}`);
+            doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
+            doc.moveDown(0.5);
+            doc.moveTo(40, doc.y).lineTo(40 + PAGE_W, doc.y).strokeColor('#d1d5db').lineWidth(1).stroke();
+            doc.moveDown(0.5);
+
+            /* Resumo */
+            doc.fontSize(13).fillColor(AZUL).font('Helvetica-Bold').text('Resumo');
+            doc.fontSize(11).fillColor('#111').font('Helvetica');
+            doc.text(`Total de pares suspeitos (≥70% de similaridade): ${paresParaPdf.length}`);
+            const criticos = paresParaPdf.filter(p => p.similaridade >= 85).length;
+            doc.text(`Pares de alto risco (≥85%): ${criticos}`);
+            const flagsInvestigar = flagRows.filter(f => f.status === 'investigar').length;
+            const flagsResolvido  = flagRows.filter(f => f.status === 'resolvido').length;
+            doc.text(`Flagados para investigação: ${flagsInvestigar} | Resolvidos: ${flagsResolvido}`);
+            doc.moveDown(0.8);
+
+            /* Lista de pares */
+            doc.fontSize(13).fillColor(AZUL).font('Helvetica-Bold').text('Pares Suspeitos (ordenados por risco)');
+            doc.moveDown(0.4);
+
+            if (paresParaPdf.length === 0) {
+                doc.fontSize(11).fillColor(CINZA).font('Helvetica').text('Nenhum par com ≥70% de similaridade encontrado.');
+            }
+
+            for (let idx = 0; idx < paresParaPdf.length; idx++) {
+                const par = paresParaPdf[idx];
+                const nivel = par.similaridade >= 85 ? 'ALTO RISCO' : 'SUSPEITO';
+                const nivelCor = par.similaridade >= 85 ? VERMELHO : '#92400e';
+
+                /* Adiciona nova página se próximo do fim */
+                if (doc.y > doc.page.height - 200) doc.addPage();
+
+                doc.fontSize(12).fillColor(nivelCor).font('Helvetica-Bold')
+                   .text(`${idx + 1}. ${nivel} — Variante .${par.varianteCodigo}`, 40, doc.y);
+                doc.fontSize(10).fillColor('#111').font('Helvetica');
+                doc.text(`   Aluno A: ${par.nomeA} (${par.emailA})`);
+                doc.text(`   Aluno B: ${par.nomeB} (${par.emailB})`);
+                doc.text(`   Similaridade bruta: ${par.similaridade}%  |  Score ponderado: ${par.scorePonderado}%  |  Erros coincidentes: ${par.identicasErradas} de ${par.total}`);
+
+                /* Questões com erros coincidentes (destaque em vermelho) */
+                if (par.questoesCoincidentes && par.questoesCoincidentes.length > 0) {
+                    doc.moveDown(0.2);
+                    doc.fillColor(VERMELHO).font('Helvetica-Bold')
+                       .text(`   ⚑ Erros coincidentes (ambos erraram igual):`, { continued: false });
+                    doc.font('Helvetica').fillColor(VERMELHO)
+                       .text(`      ${par.questoesCoincidentes.join('  ·  ')}`);
+                }
+
+                /* Questões com acertos idênticos */
+                if (par.questoesIdenticas && par.questoesIdenticas.length > 0) {
+                    doc.moveDown(0.1);
+                    doc.fillColor('#92400e').font('Helvetica')
+                       .text(`   Acertos idênticos: ${par.questoesIdenticas.join('  ·  ')}`);
+                }
+
+                if (par.flag) {
+                    doc.moveDown(0.2);
+                    const statusLabel = par.flag.status === 'resolvido' ? '✔ Resolvido' : '⚑ Em investigação';
+                    doc.fillColor(par.flag.status === 'resolvido' ? '#166534' : '#c2410c')
+                       .font('Helvetica-Bold').text(`   Status: ${statusLabel}`);
+                    if (par.flag.nota_professor) {
+                        doc.fillColor(CINZA).font('Helvetica').text(`   Anotação: ${par.flag.nota_professor}`);
+                    }
+                }
+
+                doc.fillColor('#111').font('Helvetica').moveDown(0.3);
+                doc.moveTo(40, doc.y).lineTo(40 + PAGE_W, doc.y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+                doc.moveDown(0.4);
+            }
+
+            /* Rodapé */
+            if (doc.y > doc.page.height - 60) doc.addPage();
+            doc.moveDown(1);
+            doc.fontSize(9).fillColor(CINZA).font('Helvetica')
+               .text(`Este relatório foi gerado automaticamente pelo EduSync. Data: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, 40, doc.y, { width: PAGE_W, align: 'center' });
+
+            doc.end();
+        } catch (e) {
+            console.error('[PROVAS] Erro ao gerar PDF de cola:', e.message);
+            if (!res.headersSent) res.status(500).json({ erro: e.message });
         }
     });
 

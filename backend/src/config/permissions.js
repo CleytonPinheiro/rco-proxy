@@ -15,7 +15,7 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'qrcode', 'suporte', 'passeios'],
     },
     pedagogo: {
         nome: 'Pedagogo',
@@ -47,6 +47,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'pedagogico',         nome: 'Painel Pedagógico' },
     { id: 'retorno-pedagogico', nome: 'Retorno Pedagógico' },
     { id: 'provas',             nome: 'Provas' },
+    { id: 'analise-cola',       nome: 'Análise de Cola' },
     { id: 'comunicados',        nome: 'Comunicados' },
     { id: 'crachas',            nome: 'Crachás' },
     { id: 'emprestimos',        nome: 'Empréstimos' },
