@@ -319,8 +319,10 @@ async function gpLogin() {
                 setTimeout(() => browser.off('targetcreated', handler), 25000);
             });
 
-            console.log('[PROVAS] Clicando no botão Google...');
-            await googleBtn.click();
+            console.log('[PROVAS] Clicando no botão Google (via JS para ignorar visibilidade)...');
+            /* #triggerGoogle fica dentro do modal Bootstrap oculto — usa evaluate para    */
+            /* contornar a checagem de visibilidade do Puppeteer e disparar o evento click */
+            await page.evaluate(el => el.click(), googleBtn);
 
             /* ── 4. Aguarda popup (até 12 s) ou fallback para mesma aba ──────── */
             const popup = await Promise.race([
