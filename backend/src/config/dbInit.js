@@ -206,6 +206,14 @@ export async function initializeDatabase() {
                 ('sync_stale_alert_interval_horas', '24', 'Intervalo entre verificações automáticas de sync parado (horas).')
             ON CONFLICT (chave) DO NOTHING
         `);
+
+        /* ── Alerta de erros repetidos da GradePen ── */
+        await client.query(`
+            INSERT INTO edusync_config (chave, valor, obs) VALUES
+                ('gp_error_alerta_n',       '5',  'Quantidade de erros do mesmo código GradePen dentro da janela para disparar um alerta ao admin (GP_ERROR_ALERT). Mínimo: 1.'),
+                ('gp_error_alerta_minutos', '60', 'Largura da janela deslizante (em minutos) para contagem de erros GradePen. Mínimo: 1.')
+            ON CONFLICT (chave) DO NOTHING
+        `);
         await client.query(`
             INSERT INTO edusync_config (chave, valor, obs) VALUES
                 ('modulos_em_desenvolvimento', '["pedagogico","comunicados","retorno-pedagogico"]', 'Módulos exibidos como "🚧 em desenvolvimento" no menu (gerenciável pelo admin)')

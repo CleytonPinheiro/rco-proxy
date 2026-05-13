@@ -1856,6 +1856,28 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         }
     });
 
+    /* ── Alertas de erros repetidos da GradePen ── */
+    router.get('/admin/gp-error-alerts', async (_req, res) => {
+        try {
+            const { getRecentGpErrorAlerts } = await import('../services/gpErrorAlertJob.js');
+            const alertas = getRecentGpErrorAlerts();
+
+            /* Also include the last 20 GP_ERROR_ALERT entries from the audit log */
+            const { rows: historico } = await pool.query(`
+                SELECT id, detalhes, criado_em
+                  FROM edusync_audit_log
+                 WHERE acao = 'GP_ERROR_ALERT'
+                 ORDER BY criado_em DESC
+                 LIMIT 20
+            `);
+
+            res.json({ alertasRecentes: alertas, historico });
+        } catch (e) {
+            console.error('[ADMIN] Erro ao buscar gp-error-alerts:', e.message);
+            res.status(500).json({ erro: 'Erro interno ao buscar alertas GradePen.' });
+        }
+    });
+
     /* ── Observabilidade Puppeteer ── */
     router.get('/admin/puppeteer-stats', async (req, res) => {
         const login   = getLoginQueueStats();

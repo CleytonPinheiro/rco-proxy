@@ -18,6 +18,7 @@ import { auditLogger }      from '../services/AuditLogger.js';
 import { getBrowser }       from '../../auth-puppeteer.js';
 import { ReputacaoService, EVENTOS, BADGES, RANKS, getRank } from '../services/reputacao.service.js';
 import { checarColaPosSubmissao } from '../services/colaCheck.js';
+import { recordGpError } from '../services/gpErrorAlertJob.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -912,6 +913,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         gpMensagem: e.gpMensagem || e.message || null,
                         gradepenId,
                     });
+                    recordGpError(e.gpErrorCode != null ? e.gpErrorCode : null, {
+                        gpMensagem: e.gpMensagem || e.message || null,
+                        gradepenId,
+                    }).catch(() => {});
                     return res.status(422).json({
                         erro: 'Não foi possível ler a GradePen. Você pode cadastrar o gabarito manualmente.',
                         detalhe: e.message,
@@ -987,6 +992,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                     gpMensagem: e.gpMensagem || e.message || null,
                     gradepenId: prova.gradepen_id,
                 });
+                recordGpError(e.gpErrorCode != null ? e.gpErrorCode : null, {
+                    gpMensagem: e.gpMensagem || e.message || null,
+                    gradepenId: prova.gradepen_id,
+                }).catch(() => {});
                 throw e;
             }
             const client = await pool.connect();
