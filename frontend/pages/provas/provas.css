@@ -93,6 +93,32 @@
 .prv-toggle input { width:auto !important; margin-top:0 !important; }
 .prv-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
 .prv-erro { color:#dc2626; margin-top:10px; font-size:13px; padding:8px; background:#fee2e2; border-radius:6px; }
+.prv-form-row { display:flex; gap:10px; }
+.prv-form-row > label { flex:1; min-width:0; }
+
+/* ── Dark theme — modal ──────────────────────────────────────────── */
+[data-theme="dark"] .prv-modal-card { background: var(--bg-card, #1a1d27); }
+[data-theme="dark"] .prv-modal-card label { color: var(--text-secondary, #9da0b3); }
+[data-theme="dark"] .prv-modal-card label small { color: var(--text-secondary, #9da0b3); }
+[data-theme="dark"] .prv-modal-card input[type=text],
+[data-theme="dark"] .prv-modal-card input[type=date],
+[data-theme="dark"] .prv-modal-card input[type=number],
+[data-theme="dark"] .prv-modal-card select {
+    background: var(--bg-secondary, #12141f);
+    border-color: var(--border-input, #3a3d52);
+    color: var(--text, #e2e4f0);
+}
+[data-theme="dark"] .prv-modal-card input[type=text]:focus,
+[data-theme="dark"] .prv-modal-card input[type=date]:focus,
+[data-theme="dark"] .prv-modal-card input[type=number]:focus,
+[data-theme="dark"] .prv-modal-card select:focus {
+    border-color: var(--input-focus, #60a5fa);
+    outline: none;
+}
+[data-theme="dark"] .prv-toggle span { color: var(--text-secondary, #9da0b3); }
+[data-theme="dark"] .prv-erro { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+[data-theme="dark"] .prv-btn-danger { background: var(--bg-secondary); color: #f87171; border-color: #7f1d1d; }
+[data-theme="dark"] .prv-btn-danger:hover { background: #450a0a; }
 
 /* Detalhe */
 .prv-det-header { display:flex; justify-content:space-between; align-items:center; }

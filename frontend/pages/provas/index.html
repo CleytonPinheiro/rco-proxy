@@ -76,8 +76,26 @@
     <div id="prvModalNova" class="prv-modal" style="display:none">
         <div class="prv-modal-card">
             <h2>Nova prova</h2>
+            <div class="prv-form-row">
+                <label>Tipo <small>opcional</small>
+                    <select id="prvfTipo" onchange="prvAtualizarNome()">
+                        <option value="">— Avaliação ou Recuperação —</option>
+                        <option value="Avaliação">Avaliação</option>
+                        <option value="Recuperação">Recuperação</option>
+                    </select>
+                </label>
+                <label>Trimestre <small>opcional</small>
+                    <select id="prvfTrimestre" onchange="prvAtualizarNome()">
+                        <option value="">— Trimestre —</option>
+                        <option value="1º Trimestre">1º Trimestre</option>
+                        <option value="2º Trimestre">2º Trimestre</option>
+                        <option value="3º Trimestre">3º Trimestre</option>
+                    </select>
+                </label>
+            </div>
             <label>Nome da prova
-                <input id="prvfNome" type="text" placeholder="Ex: Prova de JS — 1º trimestre">
+                <input id="prvfNome" type="text" placeholder="Ex: 3º Ano C Manha | Matemática">
+                <small>Composto automaticamente a partir da turma e disciplina. Edite livremente.</small>
             </label>
             <label>ID GradePen (ansid)
                 <input id="prvfAnsid" type="text" placeholder="Ex: 2997247" inputmode="numeric">

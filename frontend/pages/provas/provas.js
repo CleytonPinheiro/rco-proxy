@@ -164,6 +164,8 @@ async function init() {
     prvCreateCustomSelect($('prvTurma'));
     prvCreateCustomSelect($('prvCurso'));
     prvCreateCustomSelect($('prvfFoto'));
+    prvCreateCustomSelect($('prvfTipo'));
+    prvCreateCustomSelect($('prvfTrimestre'));
 
     try {
         const cfgRes = await fetch('/api/classroom/provas/ui-config', { credentials: 'include' });
@@ -347,8 +349,27 @@ async function carregarProvas() {
     }
 }
 
+function _prvNomeBase() {
+    const turma = $('prvTurma').value;
+    const curso = cursos.find(c => c.id === cursoAtual);
+    const disciplina = curso ? _nomeDisciplina(curso.nome) : '';
+    return turma && disciplina ? `${turma} | ${disciplina}` : '';
+}
+
+function prvAtualizarNome() {
+    const base = _prvNomeBase();
+    if (!base) return;
+    const tipo = $('prvfTipo').value;
+    const trimestre = $('prvfTrimestre').value;
+    $('prvfNome').value = [base, tipo, trimestre].filter(Boolean).join(' - ');
+}
+
 function abrirNova() {
-    $('prvfNome').value  = '';
+    $('prvfTipo').value = '';
+    $('prvfTrimestre').value = '';
+    prvRefreshCustomSelect($('prvfTipo'));
+    prvRefreshCustomSelect($('prvfTrimestre'));
+    prvAtualizarNome();
     $('prvfAnsid').value = '';
     $('prvfData').value  = new Date().toISOString().slice(0,10);
     $('prvfFoto').value  = 'sorteio';
@@ -1416,6 +1437,7 @@ function escapeHtml(s) {
 
 window.onTurmaChange   = onTurmaChange;
 window.onCursoChange   = onCursoChange;
+window.prvAtualizarNome = prvAtualizarNome;
 window.abrirNova       = abrirNova;
 window.fecharNova      = fecharNova;
 window.salvarNova      = salvarNova;
