@@ -451,93 +451,27 @@
     color: var(--text-muted, #999);
 }
 
-/* ── Modal Registro Manual ────────────────────────────────────────── */
-.ac-reg-form-grid {
+/* ── Modal Confrontar Gabarito ────────────────────────────────────── */
+
+/* Instrução do modal */
+.ac-reg-instrucao {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted, #666);
+    background: var(--bg-secondary, #f5f7fa);
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 3px solid #3b82f6;
+}
+
+/* Grid de selects (variante dos alunos + variante do gabarito) */
+.ac-reg-selects-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
 @media (max-width: 540px) {
-    .ac-reg-form-grid { grid-template-columns: 1fr; }
-    .ac-reg-form-grid [style*="grid-column"] { grid-column: auto; }
-}
-.ac-reg-hint {
-    display: block;
-    font-size: 11px;
-    color: var(--text-muted, #888);
-    margin-top: 4px;
-}
-
-/* Bubble sheet */
-.ac-reg-bolhas-titulo {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text, #111);
-    margin-bottom: 8px;
-}
-.ac-reg-bolhas-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 340px;
-    overflow-y: auto;
-    padding: 4px 0;
-}
-.ac-bolha-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-}
-.ac-bolha-row-num {
-    width: 28px;
-    text-align: right;
-    color: var(--text-muted, #666);
-    font-size: 12px;
-    flex-shrink: 0;
-}
-.ac-bolha-row-tipo {
-    font-size: 10px;
-    color: var(--text-muted, #999);
-    margin-left: 4px;
-}
-.ac-bolha {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: 2px solid var(--border, #ccc);
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    background: var(--bg-input, #fff);
-    color: var(--text-muted, #666);
-    user-select: none;
-    transition: .12s;
-    flex-shrink: 0;
-}
-.ac-bolha:hover { border-color: #3b82f6; color: #3b82f6; }
-.ac-bolha.ac-bolha-marcada {
-    background: #3b82f6;
-    border-color: #3b82f6;
-    color: #fff;
-}
-.ac-bolha-vazia {
-    width: 28px; height: 28px;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 13px; color: var(--text-muted, #aaa);
-    cursor: pointer;
-    border: 2px dashed var(--border, #ddd);
-    border-radius: 50%;
-    transition: .12s;
-}
-.ac-bolha-vazia:hover { border-color: #94a3b8; }
-.ac-bolha-vazia.ac-bolha-marcada {
-    background: #64748b;
-    border-color: #64748b;
-    color: #fff;
+    .ac-reg-selects-grid { grid-template-columns: 1fr; }
 }
 
 /* Status message */
@@ -559,13 +493,6 @@
 .ac-btn-primary:hover:not(:disabled) { background: #2563eb; }
 .ac-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 
-/* Formulário só com variante (sem nome/email) */
-.ac-reg-form--variante {
-    grid-template-columns: 1fr;
-}
-.ac-reg-form--variante .ac-reg-label:last-child {
-    grid-column: auto;
-}
 
 /* Área de resultados da comparação */
 .ac-reg-resultados {

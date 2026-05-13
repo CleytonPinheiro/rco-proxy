@@ -2249,12 +2249,15 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
     /* ── Confrontar gabarito (comparação em memória, sem gravação) ── */
     router.post('/classroom/provas/:provaId/comparar-respostas', async (req, res) => {
-        const session = req.session?.usuario;
+        const session = req.userSession;
         if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
 
-        const { varianteId, marcacoes } = req.body || {};
-        if (!varianteId || !marcacoes || typeof marcacoes !== 'object') {
-            return res.status(400).json({ erro: 'varianteId e marcacoes são obrigatórios.' });
+        const { varianteAlunosId, varianteGabaritoId } = req.body || {};
+        if (!varianteAlunosId || !varianteGabaritoId) {
+            return res.status(400).json({ erro: 'varianteAlunosId e varianteGabaritoId são obrigatórios.' });
+        }
+        if (parseInt(varianteAlunosId, 10) === parseInt(varianteGabaritoId, 10)) {
+            return res.status(400).json({ erro: 'As duas variantes devem ser diferentes.' });
         }
 
         try {
@@ -2270,26 +2273,49 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 return res.status(403).json({ erro: 'Acesso negado.' });
             }
 
-            const { rows: [variante] } = await pool.query(
+            const { rows: [varianteAlunos] } = await pool.query(
                 `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
-                [parseInt(varianteId, 10), provaId]
+                [parseInt(varianteAlunosId, 10), provaId]
             );
-            if (!variante) return res.status(404).json({ erro: 'Variante não encontrada.' });
+            if (!varianteAlunos) return res.status(404).json({ erro: 'Variante dos alunos não encontrada.' });
+
+            const { rows: [varianteGabarito] } = await pool.query(
+                `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
+                [parseInt(varianteGabaritoId, 10), provaId]
+            );
+            if (!varianteGabarito) return res.status(404).json({ erro: 'Variante do gabarito não encontrada.' });
+
+            const marcacoes = {};
+            const gabaritoQuestoes = varianteGabarito.gabarito_json || [];
+            for (const q of gabaritoQuestoes) {
+                if (q.tipo !== 'multipla' && q.tipo !== 'vf') continue;
+                const qStr = String(q.questao);
+                if (q.tipo === 'multipla') {
+                    if (q.correta != null) marcacoes[qStr] = q.correta;
+                } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
+                    marcacoes[qStr] = q.correta;
+                }
+            }
+
+            const gabaritoAlunos = {};
+            for (const q of (varianteAlunos.gabarito_json || [])) {
+                if (q.tipo !== 'multipla' && q.tipo !== 'vf') continue;
+                gabaritoAlunos[String(q.questao)] = q;
+            }
 
             const { rows: submissoes } = await pool.query(
                 `SELECT aluno_email, aluno_nome, marcacoes_json, COALESCE(origem, 'aluno') AS origem
                    FROM classroom_prova_submissoes
                   WHERE prova_id = $1 AND variante_id = $2 AND eh_segundo_corretor = false
                   ORDER BY aluno_nome`,
-                [provaId, variante.id]
+                [provaId, varianteAlunos.id]
             );
 
             if (submissoes.length === 0) {
                 return res.json({ similares: [], totalComparados: 0 });
             }
 
-            const gabarito    = variante.gabarito_json || [];
-            const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+            const questoesComp = gabaritoQuestoes.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
             const total        = questoesComp.length;
 
             const similares = submissoes.map(sub => {
@@ -2314,14 +2340,17 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
                     identicas++;
 
-                    let corrA = false;
-                    if (q.tipo === 'multipla') {
-                        corrA = String(respA ?? '').toLowerCase() === String(q.correta || '').toLowerCase();
-                    } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
-                        corrA = Array.isArray(respA) && respA.length === q.correta.length &&
-                                respA.every((v, k) => String(v).toUpperCase() === String(q.correta[k]).toUpperCase());
+                    const qAlunos = gabaritoAlunos[qStr];
+                    let corretaParaAlunos = false;
+                    if (qAlunos) {
+                        if (qAlunos.tipo === 'multipla') {
+                            corretaParaAlunos = String(respB ?? '').toLowerCase() === String(qAlunos.correta || '').toLowerCase();
+                        } else if (qAlunos.tipo === 'vf' && Array.isArray(qAlunos.correta)) {
+                            corretaParaAlunos = Array.isArray(respB) && respB.length === qAlunos.correta.length &&
+                                    respB.every((v, k) => String(v).toUpperCase() === String(qAlunos.correta[k]).toUpperCase());
+                        }
                     }
-                    if (!corrA) identicasErradas++;
+                    if (!corretaParaAlunos) identicasErradas++;
                 }
 
                 const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;

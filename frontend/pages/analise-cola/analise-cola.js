@@ -13,9 +13,6 @@ let _colaExpandido= null;
 let _colaParesMap = {};
 let _renderTabela = null;
 
-/* ── Registro manual state ── */
-let _regMarcacoes = {};   /* { "1": "a", "2": "-", ... } */
-let _regGabarito  = null; /* gabarito_json da variante selecionada */
 
 function escapeHtml(s) {
     if (s == null) return '';
@@ -1052,141 +1049,40 @@ async function salvarFlagNota(alunoA, alunoB, notaId) {
 function abrirModalRegistro() {
     if (!provaAtualId || !_analise) return;
 
-    /* Limpa estado */
-    _regMarcacoes = {};
-    _regGabarito  = null;
-
-    /* Popula select de variantes */
-    const sel = $('acRegVariante');
     const variantes = _analise.variantes || [];
     if (variantes.length === 0) {
         alert('Esta prova não possui variantes cadastradas.');
         return;
     }
-    sel.innerHTML = '<option value="">Selecione a variante…</option>' +
-        variantes.map(v => `<option value="${v.id}">.${escapeHtml(v.codigo)}</option>`).join('');
 
-    /* Se só há uma variante, seleciona automaticamente */
-    if (variantes.length === 1) {
-        sel.value = variantes[0].id;
-        onVarianteRegistroChange();
-    } else {
-        $('acRegBolhasWrap').style.display = 'none';
-        $('acRegSalvarBtn').disabled = true;
-    }
+    const opts = '<option value="">Selecione a variante…</option>' +
+        variantes.map(v => `<option value="${v.id}">${escapeHtml(v.codigo)}</option>`).join('');
+
+    $('acRegVarianteAlunos').innerHTML  = opts;
+    $('acRegVarianteGabarito').innerHTML = opts;
 
     _regSetStatus('', '');
     const res = $('acRegResultados');
     if (res) res.style.display = 'none';
 
+    $('acRegSalvarBtn').disabled = true;
     $('acRegModal').style.display = '';
 }
 
 function fecharModalRegistro() {
     $('acRegModal').style.display = 'none';
-    _regMarcacoes = {};
-    _regGabarito  = null;
 }
 
 function onVarianteRegistroChange() {
-    const sel  = $('acRegVariante');
-    const varId = parseInt(sel.value, 10);
-    if (!varId || !_analise) {
-        $('acRegBolhasWrap').style.display = 'none';
-        $('acRegSalvarBtn').disabled = true;
-        return;
-    }
-    const variante = (_analise.variantes || []).find(v => v.id === varId);
-    if (!variante) return;
-
-    _regGabarito  = variante.gabarito || [];
-    _regMarcacoes = {};
-
-    _renderBolhasModal(_regGabarito);
-    $('acRegBolhasWrap').style.display = '';
-    _atualizarBotaoRegistro();
-}
-
-function _renderBolhasModal(gabarito) {
-    const grid = $('acRegBolhasGrid');
-    if (!grid) return;
-
-    const questoesVisiveis = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
-    if (questoesVisiveis.length === 0) {
-        grid.innerHTML = '<em style="color:var(--text-muted,#888);font-size:13px">Esta variante só possui questões discursivas — sem bolhas para marcar.</em>';
-        return;
-    }
-
-    const LETRAS_MC = ['a', 'b', 'c', 'd', 'e'];
-
-    grid.innerHTML = questoesVisiveis.map(q => {
-        const qStr = String(q.questao);
-        let bolhas = '';
-
-        if (q.tipo === 'multipla') {
-            const opcoes = (Array.isArray(q.opcoes) && q.opcoes.length >= 2)
-                ? q.opcoes.map((_, i) => LETRAS_MC[i]).filter(Boolean)
-                : LETRAS_MC.slice(0, 5);
-            bolhas = opcoes.map(letra =>
-                `<span class="ac-bolha" data-q="${escapeHtml(qStr)}" data-l="${letra}"
-                    onclick="marcarBolhaModal('${escapeHtml(qStr)}','${letra}')">${letra.toUpperCase()}</span>`
-            ).join('');
-            bolhas += `<span class="ac-bolha-vazia" data-q="${escapeHtml(qStr)}" data-l="-"
-                onclick="marcarBolhaModal('${escapeHtml(qStr)}','-')" title="Em branco">∅</span>`;
-        } else if (q.tipo === 'vf') {
-            const itens = Array.isArray(q.correta) ? q.correta.length : (q.itens || 4);
-            const count = typeof itens === 'number' ? itens : (Array.isArray(itens) ? itens.length : 4);
-            for (let i = 0; i < count; i++) {
-                const subQStr = `${qStr}_${i}`;
-                bolhas += `<span style="font-size:10px;color:var(--text-muted,#888)">${i+1}:</span>`;
-                bolhas += `<span class="ac-bolha" data-q="${escapeHtml(subQStr)}" data-l="V"
-                    onclick="marcarBolhaModal('${escapeHtml(subQStr)}','V')">V</span>`;
-                bolhas += `<span class="ac-bolha" data-q="${escapeHtml(subQStr)}" data-l="F"
-                    onclick="marcarBolhaModal('${escapeHtml(subQStr)}','F')">F</span>`;
-                bolhas += `<span style="display:inline-block;width:6px"></span>`;
-            }
-        }
-
-        return `<div class="ac-bolha-row">
-            <span class="ac-bolha-row-num">${escapeHtml(qStr)}.</span>
-            ${bolhas}
-            <span class="ac-bolha-row-tipo">${q.tipo === 'vf' ? 'V/F' : ''}</span>
-        </div>`;
-    }).join('');
-}
-
-function marcarBolhaModal(q, letra) {
-    /* Toggle: clique na mesma desmarca */
-    if (_regMarcacoes[q] === letra) {
-        delete _regMarcacoes[q];
-    } else {
-        /* Para múltipla escolha: desmarca qualquer outra letra da mesma questão */
-        for (const k of Object.keys(_regMarcacoes)) {
-            if (k === q || k.startsWith(q + '_') === false) {
-                /* mesmo q-base → limpa */
-                if (k === q) delete _regMarcacoes[k];
-            }
-        }
-        _regMarcacoes[q] = letra;
-    }
-
-    /* Atualiza visuais */
-    const grid = $('acRegBolhasGrid');
-    if (!grid) return;
-    grid.querySelectorAll(`.ac-bolha[data-q="${CSS.escape(q)}"], .ac-bolha-vazia[data-q="${CSS.escape(q)}"]`).forEach(el => {
-        const isSelected = el.dataset.l === _regMarcacoes[q];
-        el.classList.toggle('ac-bolha-marcada', isSelected);
-    });
-
     _atualizarBotaoRegistro();
 }
 
 function _atualizarBotaoRegistro() {
     const btn = $('acRegSalvarBtn');
     if (!btn) return;
-    /* Habilita se há variante selecionada (bolhas são opcionais — professor pode registrar em branco) */
-    const temVariante = !!$('acRegVariante')?.value;
-    btn.disabled = !temVariante;
+    const alunosId   = $('acRegVarianteAlunos')?.value;
+    const gabaritoId = $('acRegVarianteGabarito')?.value;
+    btn.disabled = !(alunosId && gabaritoId && alunosId !== gabaritoId);
 }
 
 function _regSetStatus(msg, tipo) {
@@ -1201,27 +1097,15 @@ function _regSetStatus(msg, tipo) {
 async function salvarRegistroManual() {
     if (!provaAtualId) return;
 
-    const varianteId = parseInt($('acRegVariante').value, 10);
-    if (!varianteId) { _regSetStatus('Selecione a variante.', 'err'); return; }
-
-    /* Monta marcacoes consolidando VF ({"1": ["V","F","V",...] }) */
-    const marcacoes = {};
-    if (_regGabarito) {
-        for (const q of _regGabarito) {
-            if (q.tipo !== 'multipla' && q.tipo !== 'vf') continue;
-            const qStr = String(q.questao);
-            if (q.tipo === 'multipla') {
-                if (_regMarcacoes[qStr] !== undefined) marcacoes[qStr] = _regMarcacoes[qStr];
-            } else if (q.tipo === 'vf') {
-                const count = Array.isArray(q.correta) ? q.correta.length : (q.itens || 4);
-                const n = typeof count === 'number' ? count : (Array.isArray(count) ? count.length : 4);
-                const arr = [];
-                for (let i = 0; i < n; i++) {
-                    arr.push(_regMarcacoes[`${qStr}_${i}`] || null);
-                }
-                if (arr.some(v => v !== null)) marcacoes[qStr] = arr;
-            }
-        }
+    const varianteAlunosId   = parseInt($('acRegVarianteAlunos').value, 10);
+    const varianteGabaritoId = parseInt($('acRegVarianteGabarito').value, 10);
+    if (!varianteAlunosId || !varianteGabaritoId) {
+        _regSetStatus('Selecione as duas variantes.', 'err');
+        return;
+    }
+    if (varianteAlunosId === varianteGabaritoId) {
+        _regSetStatus('Selecione variantes diferentes.', 'err');
+        return;
     }
 
     const btn = $('acRegSalvarBtn');
@@ -1236,7 +1120,7 @@ async function salvarRegistroManual() {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ varianteId, marcacoes }),
+            body: JSON.stringify({ varianteAlunosId, varianteGabaritoId }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao comparar.');

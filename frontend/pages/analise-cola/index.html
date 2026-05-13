@@ -80,19 +80,24 @@
                 <button class="modal-close" onclick="fecharModalRegistro()">✕</button>
             </div>
             <div class="modal-body">
-                <p style="margin:0;font-size:13px;color:var(--text-muted,#666);background:var(--bg-tertiary,#f0f4ff);padding:10px 14px;border-radius:8px;border-left:3px solid #3b82f6">
-                    Marque as respostas que você quer confrontar (de um gabarito físico, por exemplo)
-                    e veja quais alunos têm padrão de marcação similar. Nenhum dado é salvo.
+                <p class="ac-reg-instrucao">
+                    Selecione a variante cujos alunos serão analisados e a variante cujo gabarito servirá de padrão de comparação.
+                    Identifica cola entre variantes: se um aluno da variante A respondeu igual ao gabarito da variante B, ele provavelmente viu a prova errada.
+                    Nenhum dado é salvo.
                 </p>
-                <div>
-                    <label for="acRegVariante" class="form-label">Variante da prova</label>
-                    <select id="acRegVariante" class="form-select" onchange="onVarianteRegistroChange()">
-                        <option value="">Selecione a variante…</option>
-                    </select>
-                </div>
-                <div id="acRegBolhasWrap" style="display:none">
-                    <div class="ac-reg-bolhas-titulo">Marque as respostas para confrontar:</div>
-                    <div id="acRegBolhasGrid" class="ac-reg-bolhas-grid"></div>
+                <div class="ac-reg-selects-grid">
+                    <div>
+                        <label for="acRegVarianteAlunos" class="form-label">Variante dos alunos</label>
+                        <select id="acRegVarianteAlunos" class="form-select" onchange="onVarianteRegistroChange()">
+                            <option value="">Selecione a variante…</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="acRegVarianteGabarito" class="form-label">Comparar com gabarito de</label>
+                        <select id="acRegVarianteGabarito" class="form-select" onchange="onVarianteRegistroChange()">
+                            <option value="">Selecione a variante…</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="acRegStatus" class="ac-reg-status" style="display:none"></div>
                 <div id="acRegResultados" style="display:none" class="ac-reg-resultados"></div>
