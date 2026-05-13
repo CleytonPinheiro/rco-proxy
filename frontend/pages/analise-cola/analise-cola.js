@@ -182,6 +182,7 @@ document.addEventListener('click', e => {
 async function init() {
     acCreateCustomSelect($('acTurma'));
     acCreateCustomSelect($('acDisciplina'));
+    acCreateCustomSelect($('acProva'));
     await carregarCursos();
     _iniciarNotifPoll();
     _aplicarUrlParams();
@@ -384,6 +385,7 @@ async function _selecionarProvaPorId(provaId) {
                     await onCursoChange();
                 }
                 $('acProva').value = provaId;
+                acRefreshCustomSelect($('acProva'));
                 await onProvaChange();
                 return;
             }
