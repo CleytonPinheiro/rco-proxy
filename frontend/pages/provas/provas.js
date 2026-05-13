@@ -470,11 +470,11 @@ function prvSetModo(modo) {
     if (btnCards) btnCards.classList.toggle('prv-modo-ativo', !_modoLista);
     if (btnLista) btnLista.classList.toggle('prv-modo-ativo', _modoLista);
 
-    /* Mostra/oculta selects de turma e disciplina */
+    /* Selects de turma e disciplina ficam sempre visíveis */
     const selTurma = $('prvTurma');
     const selCurso = $('prvCurso');
-    if (selTurma?.parentElement) selTurma.parentElement.style.display = _modoLista ? 'none' : '';
-    if (selCurso?.parentElement) selCurso.parentElement.style.display = _modoLista ? 'none' : '';
+    if (selTurma?.parentElement) selTurma.parentElement.style.display = '';
+    if (selCurso?.parentElement) selCurso.parentElement.style.display = '';
 
     /* Oculta painel de flags pendentes no modo lista */
     const panel = $('prvFlagsPendentes');

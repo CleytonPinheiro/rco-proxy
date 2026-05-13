@@ -973,6 +973,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 } while (pageToken);
             } catch (_) { /* sem Classroom conectado — nomes ficam em branco */ }
 
+            const cursoIds = Object.keys(cursoNomes);
             const { rows } = await pool.query(
                 `SELECT p.*,
                         g.nome AS grupo_destino_nome,
@@ -987,8 +988,9 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                    FROM classroom_provas p
                    LEFT JOIN classroom_grupos g ON g.id = p.grupo_destino_id
                   WHERE p.criada_por_cpf = $1
+                     OR (p.criada_por_cpf IS NULL AND p.curso_id = ANY($2::text[]))
                   ORDER BY p.data_aplicacao DESC NULLS LAST, p.criada_em DESC`,
-                [cpf]
+                [cpf, cursoIds]
             );
 
             const provas = rows.map(p => ({
