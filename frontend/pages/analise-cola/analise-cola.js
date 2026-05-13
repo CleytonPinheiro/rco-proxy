@@ -183,10 +183,20 @@ async function _aplicarUrlParams() {
     const provaId  = params.get('provaId');
 
     if (courseId) {
-        const sel = $('acCurso');
-        if (sel && sel.querySelector(`option[value="${CSS.escape(courseId)}"]`)) {
-            sel.value = courseId;
-            await onCursoChange();
+        /* Find the curso in the loaded list */
+        const curso = cursos.find(c => c.id === courseId);
+        if (curso) {
+            const turma = _nomeTurma(curso.nome);
+            const selTurma = $('acTurma');
+            if (selTurma && selTurma.querySelector(`option[value="${CSS.escape(turma)}"]`)) {
+                selTurma.value = turma;
+                await onTurmaChange();
+                const selDisc = $('acDisciplina');
+                if (selDisc && selDisc.querySelector(`option[value="${CSS.escape(courseId)}"]`)) {
+                    selDisc.value = courseId;
+                    await onCursoChange();
+                }
+            }
         }
     }
 
@@ -200,9 +210,7 @@ async function _aplicarUrlParams() {
 
 async function _selecionarProvaPorId(provaId) {
     if (!provaId) return;
-    /* Find which curso owns this prova */
     try {
-        /* Try each curso until we find the prova */
         for (const curso of cursos) {
             const r = await fetch(`/api/classroom/provas?courseId=${encodeURIComponent(curso.id)}`, { credentials: 'include' });
             if (!r.ok) continue;
@@ -210,8 +218,18 @@ async function _selecionarProvaPorId(provaId) {
             const lista = Array.isArray(d.provas) ? d.provas : (Array.isArray(d) ? d : []);
             const found = lista.find(p => p.id === provaId);
             if (found) {
-                $('acCurso').value = curso.id;
-                await onCursoChange();
+                /* Select turma first, then disciplina */
+                const turma = _nomeTurma(curso.nome);
+                const selTurma = $('acTurma');
+                if (selTurma && selTurma.querySelector(`option[value="${CSS.escape(turma)}"]`)) {
+                    selTurma.value = turma;
+                    await onTurmaChange();
+                }
+                const selDisc = $('acDisciplina');
+                if (selDisc && selDisc.querySelector(`option[value="${CSS.escape(curso.id)}"]`)) {
+                    selDisc.value = curso.id;
+                    await onCursoChange();
+                }
                 $('acProva').value = provaId;
                 await onProvaChange();
                 return;
@@ -220,22 +238,65 @@ async function _selecionarProvaPorId(provaId) {
     } catch (_) {}
 }
 
+function _nomeTurma(nomeCompleto) {
+    const sep = nomeCompleto.indexOf(' - ');
+    return sep >= 0 ? nomeCompleto.slice(sep + 3) : '';
+}
+
+function _nomeDisciplina(nomeCompleto) {
+    const sep = nomeCompleto.indexOf(' - ');
+    return sep >= 0 ? nomeCompleto.slice(0, sep) : nomeCompleto;
+}
+
 async function carregarCursos() {
+    const escolaNav = localStorage.getItem('edusync_escola') || '';
     try {
         const r = await fetch('/api/classroom/courses', { credentials: 'include' });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao carregar cursos.');
-        cursos = Array.isArray(d.courses) ? d.courses : (Array.isArray(d) ? d : []);
-        const sel = $('acCurso');
-        sel.innerHTML = '<option value="">Selecione um curso…</option>' +
-            cursos.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+        const todos = Array.isArray(d.courses) ? d.courses : (Array.isArray(d) ? d : []);
+        cursos = escolaNav
+            ? todos.filter(c => (c.secao || '').includes(escolaNav) || escolaNav.includes(c.secao || ''))
+            : todos;
+        const turmasSet = new Set(cursos.map(c => _nomeTurma(c.nome)).filter(Boolean));
+        const turmas = [...turmasSet].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const selTurma = $('acTurma');
+        selTurma.innerHTML = '<option value="">Selecione uma turma…</option>' +
+            turmas.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+        $('acDisciplina').innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
+        $('acDisciplina').disabled = true;
     } catch (e) {
         console.error('Erro ao carregar cursos:', e);
     }
 }
 
+async function onTurmaChange() {
+    const turma = $('acTurma').value;
+    const selDisc = $('acDisciplina');
+    const provasSel = $('acProva');
+
+    cursoAtual = '';
+    provaAtualId = null;
+    _analise = null;
+    $('acPanel').style.display = 'none';
+    $('acEmpty').style.display = '';
+    provasSel.innerHTML = '<option value="">Selecione uma prova…</option>';
+    provasSel.disabled = true;
+
+    if (!turma) {
+        selDisc.innerHTML = '<option value="">Selecione uma turma primeiro…</option>';
+        selDisc.disabled = true;
+        return;
+    }
+
+    const filtrados = cursos.filter(c => _nomeTurma(c.nome) === turma);
+    selDisc.innerHTML = '<option value="">Selecione uma disciplina…</option>' +
+        filtrados.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(_nomeDisciplina(c.nome))}</option>`).join('');
+    selDisc.disabled = false;
+}
+
 async function onCursoChange() {
-    cursoAtual = $('acCurso').value;
+    cursoAtual = $('acDisciplina').value;
     const provasSel = $('acProva');
     provasSel.innerHTML = '<option value="">Carregando…</option>';
     provasSel.disabled = true;

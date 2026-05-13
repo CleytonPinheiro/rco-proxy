@@ -53,8 +53,11 @@
         <div class="ac-toolbar">
             <h1>🔍 Analise de gabarito</h1>
             <div class="ac-toolbar-right">
-                <select id="acCurso" onchange="onCursoChange()">
-                    <option value="">Selecione um curso…</option>
+                <select id="acTurma" onchange="onTurmaChange()">
+                    <option value="">Selecione uma turma…</option>
+                </select>
+                <select id="acDisciplina" onchange="onCursoChange()" disabled>
+                    <option value="">Selecione uma turma primeiro…</option>
                 </select>
                 <select id="acProva" onchange="onProvaChange()" disabled>
                     <option value="">Selecione uma prova…</option>
@@ -64,7 +67,7 @@
 
         <div id="acPanel" class="ac-panel" style="display:none"></div>
         <div id="acEmpty" class="ac-empty">
-            Selecione um curso e uma prova acima para ver a analise de gabarito.
+            Selecione uma turma, disciplina e prova acima para ver a analise de gabarito.
         </div>
     </main>
 
