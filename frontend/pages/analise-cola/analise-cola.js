@@ -1205,7 +1205,7 @@ async function salvarRegistroManual() {
         _regSetStatus(e.message, 'err');
     } finally {
         btn.disabled    = false;
-        btn.textContent = '🔍 Confrontar com a turma';
+        btn.textContent = '🔍 Confrontar gabaritos';
     }
 }
 

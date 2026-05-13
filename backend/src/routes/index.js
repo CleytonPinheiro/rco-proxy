@@ -97,6 +97,7 @@ export function createApiRouter(deps) {
             /^\/classroom\/provas\/cola-historico\//,
             /^\/classroom\/provas\/\d+\/analise-cola$/,
             /^\/classroom\/provas\/\d+\/cola-pdf$/,
+            /^\/classroom\/provas\/\d+\/comparar-respostas$/,
         ];
         if (podeAcessar(perfil, 'analise-cola') && COLA_PATHS.some(re => re.test(req.path))) return next();
         return res.status(403).json({ erro: 'Acesso ao módulo "provas" não permitido.' });

@@ -2249,7 +2249,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     });
 
     /* ── Confrontar gabarito (comparação em memória, sem gravação) ── */
-    router.post('/classroom/provas/:provaId/comparar-respostas', requireModulo('confrontar-gabarito'), async (req, res) => {
+    router.post('/classroom/provas/:provaId/comparar-respostas', async (req, res) => {
         const session = req.userSession;
         if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
 

@@ -137,13 +137,16 @@
 /* Buttons */
 .ac-btn {
     padding: 7px 14px; border: 1px solid var(--border, #ddd);
-    background: var(--bg-secondary, #f8f9fb); color: var(--text, #000);
+    background: var(--bg-secondary, #f8f9fb); color: var(--text-primary, #1f2937);
     border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 5px;
+    align-self: flex-start; white-space: nowrap;
 }
-.ac-btn:hover { background: var(--bg, #f5f5f5); }
+.ac-btn:hover { background: var(--bg-hover, #e9ecef); }
 .ac-btn:disabled { opacity: .5; cursor: not-allowed; }
-.ac-btn-primary { background: #4285F4; color: #fff; border-color: #4285F4; }
-.ac-btn-primary:hover { background: #3367d6; }
+.ac-btn-primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.ac-btn-primary:hover:not(:disabled) { background: #2563eb; border-color: #2563eb; }
+[data-theme="dark"] .ac-btn { color: var(--text-primary, #e5e7eb); }
 
 /* Stats */
 .ac-stats {
@@ -485,13 +488,39 @@
 [data-theme="dark"] .ac-reg-status.ok  { background: #14532d; color: #86efac; }
 [data-theme="dark"] .ac-reg-status.err { background: #7f1d1d; color: #fca5a5; }
 
-.ac-btn-primary {
-    background: #3b82f6;
-    color: #fff;
-    border: none;
+/* Botão "Adicionar gabarito" e outros secundários no modal */
+.ac-btn-sm {
+    font-size: 13px;
+    padding: 5px 12px;
 }
-.ac-btn-primary:hover:not(:disabled) { background: #2563eb; }
-.ac-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Container de gabaritos adicionados dinamicamente */
+.ac-reg-gabaritos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ac-reg-gabarito-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ac-reg-gabarito-row .form-select {
+    flex: 1;
+}
+.ac-reg-gab-remove {
+    flex-shrink: 0;
+    padding: 5px 9px;
+    font-size: 13px;
+    border: 1px solid var(--border, #ddd);
+    background: transparent;
+    color: var(--text-muted, #666);
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1;
+}
+.ac-reg-gab-remove:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+[data-theme="dark"] .ac-reg-gab-remove:hover { background: #7f1d1d; color: #fca5a5; border-color: #991b1b; }
 
 
 /* Área de resultados da comparação */
