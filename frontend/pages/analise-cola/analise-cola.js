@@ -529,7 +529,7 @@ async function onProvaChange() {
 
 function _btnRegistrarHtml() {
     return `<div style="text-align:right;margin-bottom:12px">
-        <button class="ac-btn ac-btn-primary" onclick="abrirModalRegistro()">📋 Registrar respostas manualmente</button>
+        <button class="ac-btn ac-btn-primary" onclick="abrirModalRegistro()">🔍 Confrontar gabarito</button>
     </div>`;
 }
 
@@ -603,7 +603,7 @@ function renderAnalise({ pares, suspeitosEntreVariantes, temDiscursiva }) {
             <div class="ac-controles-right">
                 ${flagCount > 0 ? `<button class="ac-btn" id="acExportCsvBtn" onclick="exportarCsv()">⬇️ Flags CSV (${flagCount})</button>` : ''}
                 <button class="ac-btn" id="acExportPdfBtn" onclick="exportarPdf()">📄 Exportar PDF</button>
-                <button class="ac-btn ac-btn-primary" id="acRegBtn" onclick="abrirModalRegistro()">📋 Registrar respostas</button>
+                <button class="ac-btn ac-btn-primary" id="acRegBtn" onclick="abrirModalRegistro()">🔍 Confrontar gabarito</button>
             </div>
         </div>
 
@@ -1075,10 +1075,9 @@ function abrirModalRegistro() {
         $('acRegSalvarBtn').disabled = true;
     }
 
-    /* Limpa campos */
-    $('acRegNome').value  = '';
-    $('acRegEmail').value = '';
     _regSetStatus('', '');
+    const res = $('acRegResultados');
+    if (res) res.style.display = 'none';
 
     $('acRegModal').style.display = '';
 }
@@ -1202,13 +1201,8 @@ function _regSetStatus(msg, tipo) {
 async function salvarRegistroManual() {
     if (!provaAtualId) return;
 
-    const nome     = ($('acRegNome').value  || '').trim();
-    const email    = ($('acRegEmail').value || '').trim();
     const varianteId = parseInt($('acRegVariante').value, 10);
-
-    if (!nome)      { _regSetStatus('Preencha o nome do aluno.', 'err'); return; }
-    if (!email)     { _regSetStatus('Preencha o e-mail ou RA do aluno.', 'err'); return; }
-    if (!varianteId){ _regSetStatus('Selecione a variante.', 'err'); return; }
+    if (!varianteId) { _regSetStatus('Selecione a variante.', 'err'); return; }
 
     /* Monta marcacoes consolidando VF ({"1": ["V","F","V",...] }) */
     const marcacoes = {};
@@ -1231,32 +1225,81 @@ async function salvarRegistroManual() {
     }
 
     const btn = $('acRegSalvarBtn');
-    btn.disabled   = true;
-    btn.textContent = 'Salvando…';
+    btn.disabled    = true;
+    btn.textContent = 'Comparando…';
     _regSetStatus('', '');
+    const resWrap = $('acRegResultados');
+    if (resWrap) resWrap.style.display = 'none';
 
     try {
-        const r = await fetch(`/api/classroom/provas/${provaAtualId}/submissoes/manual`, {
+        const r = await fetch(`/api/classroom/provas/${provaAtualId}/comparar-respostas`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ alunoNome: nome, alunoEmail: email, varianteId, marcacoes }),
+            body: JSON.stringify({ varianteId, marcacoes }),
         });
         const d = await r.json();
-        if (!r.ok) throw new Error(d.erro || 'Erro ao registrar.');
+        if (!r.ok) throw new Error(d.erro || 'Erro ao comparar.');
 
-        _regSetStatus(`✅ Registrado! Nota: ${d.nota}/${d.total}. Recarregando análise…`, 'ok');
-
-        /* Aguarda 1.5 s para o cola-check fire-and-forget rodar, depois recarrega */
-        setTimeout(async () => {
-            fecharModalRegistro();
-            await onProvaChange();
-        }, 1500);
+        _renderResultadosComparacao(d);
     } catch (e) {
         _regSetStatus(e.message, 'err');
-        btn.disabled   = false;
-        btn.textContent = '💾 Registrar';
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '🔍 Confrontar com a turma';
     }
+}
+
+function _renderResultadosComparacao({ similares, totalComparados }) {
+    const wrap = $('acRegResultados');
+    if (!wrap) return;
+
+    if (!similares || similares.length === 0) {
+        wrap.innerHTML = `<div class="ac-reg-res-vazio">
+            Nenhuma submissão encontrada nesta variante para comparar.
+        </div>`;
+        wrap.style.display = '';
+        return;
+    }
+
+    const LIMIAR_ALTO  = 85;
+    const LIMIAR_MEDIO = 70;
+
+    const rows = similares.map(s => {
+        const nivel = s.similaridade >= LIMIAR_ALTO  ? 'critico'
+                    : s.similaridade >= LIMIAR_MEDIO ? 'alerta' : '';
+        const profBadge = s.origem === 'professor'
+            ? '<span class="ac-badge-prof">📋 prof.</span>' : '';
+        return `<tr class="ac-reg-res-row ${nivel ? 'ac-reg-res-' + nivel : ''}">
+            <td class="ac-reg-res-nome">${escapeHtml(s.alunoNome)}${profBadge}</td>
+            <td class="ac-reg-res-num">
+                <span class="ac-badge ${nivel === 'critico' ? 'ac-badge-critico' : nivel === 'alerta' ? 'ac-badge-alerta' : ''}">${s.similaridade}%</span>
+            </td>
+            <td class="ac-reg-res-num">${s.identicas}/${s.total}</td>
+            <td class="ac-reg-res-num ${s.identicasErradas > 0 ? 'ac-reg-res-erros' : ''}">${s.identicasErradas}</td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+        <div class="ac-reg-res-header">
+            <span class="ac-reg-res-titulo">Resultados — ${totalComparados} aluno(s) comparado(s)</span>
+            <span class="ac-reg-res-legenda">
+                <span class="ac-badge ac-badge-alerta">≥70%</span> suspeito &nbsp;
+                <span class="ac-badge ac-badge-critico">≥85%</span> alto risco
+            </span>
+        </div>
+        <div class="ac-reg-res-table-wrap">
+            <table class="ac-reg-res-table">
+                <thead><tr>
+                    <th>Aluno</th>
+                    <th>Similaridade</th>
+                    <th>Iguais / Total</th>
+                    <th>Erros coinc.</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+    wrap.style.display = '';
 }
 
 async function excluirSubmissaoManual(provaId, subId, alunoEmail) {

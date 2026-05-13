@@ -2245,6 +2245,105 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* ── Confrontar gabarito (comparação em memória, sem gravação) ── */
+    router.post('/classroom/provas/:provaId/comparar-respostas', async (req, res) => {
+        const session = req.session?.usuario;
+        if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { varianteId, marcacoes } = req.body || {};
+        if (!varianteId || !marcacoes || typeof marcacoes !== 'object') {
+            return res.status(400).json({ erro: 'varianteId e marcacoes são obrigatórios.' });
+        }
+
+        try {
+            const provaId = parseInt(req.params.provaId, 10);
+
+            const { rows: [prova] } = await pool.query(
+                `SELECT id, criada_por_cpf FROM classroom_provas WHERE id = $1`, [provaId]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            const cpf = session.cpf || session.rco_cpf;
+            if (session.perfil !== 'admin' && prova.criada_por_cpf !== cpf) {
+                return res.status(403).json({ erro: 'Acesso negado.' });
+            }
+
+            const { rows: [variante] } = await pool.query(
+                `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE id = $1 AND prova_id = $2`,
+                [parseInt(varianteId, 10), provaId]
+            );
+            if (!variante) return res.status(404).json({ erro: 'Variante não encontrada.' });
+
+            const { rows: submissoes } = await pool.query(
+                `SELECT aluno_email, aluno_nome, marcacoes_json, COALESCE(origem, 'aluno') AS origem
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND variante_id = $2 AND eh_segundo_corretor = false
+                  ORDER BY aluno_nome`,
+                [provaId, variante.id]
+            );
+
+            if (submissoes.length === 0) {
+                return res.json({ similares: [], totalComparados: 0 });
+            }
+
+            const gabarito    = variante.gabarito_json || [];
+            const questoesComp = gabarito.filter(q => q.tipo === 'multipla' || q.tipo === 'vf');
+            const total        = questoesComp.length;
+
+            const similares = submissoes.map(sub => {
+                const marcB = sub.marcacoes_json || {};
+                let identicas = 0;
+                let identicasErradas = 0;
+
+                for (const q of questoesComp) {
+                    const qStr = String(q.questao);
+                    const respA = marcacoes[qStr] ?? null;
+                    const respB = marcB[qStr] ?? null;
+
+                    const normA = Array.isArray(respA)
+                        ? respA.map(x => String(x).toUpperCase()).join(',')
+                        : String(respA ?? '').toLowerCase();
+                    const normB = Array.isArray(respB)
+                        ? respB.map(x => String(x).toUpperCase()).join(',')
+                        : String(respB ?? '').toLowerCase();
+
+                    const igual = respA !== null && respB !== null && normA === normB;
+                    if (!igual) continue;
+
+                    identicas++;
+
+                    let corrA = false;
+                    if (q.tipo === 'multipla') {
+                        corrA = String(respA ?? '').toLowerCase() === String(q.correta || '').toLowerCase();
+                    } else if (q.tipo === 'vf' && Array.isArray(q.correta)) {
+                        corrA = Array.isArray(respA) && respA.length === q.correta.length &&
+                                respA.every((v, k) => String(v).toUpperCase() === String(q.correta[k]).toUpperCase());
+                    }
+                    if (!corrA) identicasErradas++;
+                }
+
+                const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
+                return {
+                    alunoNome:      sub.aluno_nome || sub.aluno_email,
+                    similaridade,
+                    identicas,
+                    identicasErradas,
+                    total,
+                    origem:         sub.origem,
+                };
+            });
+
+            similares.sort((a, b) =>
+                b.identicasErradas - a.identicasErradas || b.similaridade - a.similaridade
+            );
+
+            res.json({ similares, totalComparados: submissoes.length });
+        } catch (e) {
+            console.error('[PROVAS] Erro ao comparar respostas:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Excluir submissão registrada manualmente ── */
     router.delete('/classroom/provas/:provaId/submissoes/:subId/manual', async (req, res) => {
         const session = req.session?.usuario;

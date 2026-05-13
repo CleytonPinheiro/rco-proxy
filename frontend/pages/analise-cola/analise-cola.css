@@ -627,6 +627,83 @@
 .ac-btn-primary:hover:not(:disabled) { background: #2563eb; }
 .ac-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 
+/* Formulário só com variante (sem nome/email) */
+.ac-reg-form--variante {
+    grid-template-columns: 1fr;
+}
+.ac-reg-form--variante .ac-reg-label:last-child {
+    grid-column: auto;
+}
+
+/* Área de resultados da comparação */
+.ac-reg-resultados {
+    border-top: 1px solid var(--border, #e5e7eb);
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.ac-reg-res-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.ac-reg-res-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #111);
+}
+.ac-reg-res-legenda {
+    font-size: 12px;
+    color: var(--text-muted, #666);
+}
+.ac-reg-res-table-wrap {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+}
+.ac-reg-res-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.ac-reg-res-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary, #f5f7fa);
+    padding: 7px 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-muted, #555);
+    border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.ac-reg-res-row td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border, #f0f0f0);
+    vertical-align: middle;
+}
+.ac-reg-res-row:last-child td { border-bottom: none; }
+.ac-reg-res-row.ac-reg-res-critico { background: rgba(220,38,38,.06); }
+.ac-reg-res-row.ac-reg-res-alerta  { background: rgba(245,158,11,.06); }
+.ac-reg-res-nome { font-weight: 500; }
+.ac-reg-res-num  { text-align: center; }
+.ac-reg-res-erros { color: #dc2626; font-weight: 600; }
+.ac-reg-res-vazio {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted, #888);
+    font-size: 13px;
+}
+[data-theme="dark"] .ac-reg-res-table thead th {
+    background: var(--bg-secondary, #22253a);
+}
+[data-theme="dark"] .ac-reg-res-row.ac-reg-res-critico { background: rgba(220,38,38,.12); }
+[data-theme="dark"] .ac-reg-res-row.ac-reg-res-alerta  { background: rgba(245,158,11,.10); }
+
 /* Origem badge (prof inseriu) */
 .ac-badge-prof {
     display: inline-block;
