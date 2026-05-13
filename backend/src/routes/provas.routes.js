@@ -174,159 +174,149 @@ async function gpLogin() {
 
         const delay = ms => new Promise(r => setTimeout(r, ms));
 
-        try {
-            console.log('[PROVAS] Iniciando login GradePen via Google OAuth...');
-
-            /* ── 1. Navega para a página de login do GradePen ───────────────── */
-            await page.goto('https://gradepen.com/p/index.php',
-                { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
-
-            console.log('[PROVAS] URL index.php:', page.url().substring(0, 90));
-
-            /* Salva screenshot para diagnóstico */
-            await page.screenshot({ path: '/tmp/gradepen-debug-1.png', fullPage: false }).catch(() => null);
-
-            /* Dump de links e botões da página para diagnóstico */
-            const pageLinks = await page.evaluate(() => {
-                const items = [];
-                document.querySelectorAll('a, button').forEach(el => {
-                    const txt = (el.textContent || el.innerText || '').trim().substring(0, 80);
-                    const href = el.href || el.getAttribute('onclick') || '';
-                    if (txt || href) items.push({ tag: el.tagName, txt, href: href.substring(0, 100) });
-                });
-                return items.slice(0, 20);
-            }).catch(() => []);
-            console.log('[PROVAS] Links/botões na página:', JSON.stringify(pageLinks));
-
-            /* Procura botão "Sign in with Google" ou similar */
-            const googleBtn = await page.$(
-                'a[href*="google"], a[href*="oauth"], button[onclick*="google"], ' +
-                '#googleSignInButton, .g-signin2, [class*="google"], [id*="google"], ' +
-                'a[href*="accounts.google"], button[data-provider="google"]'
-            ).catch(() => null);
-
-            if (googleBtn) {
-                console.log('[PROVAS] Botão Google encontrado — clicando...');
-                await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 35000 }).catch(() => null),
-                    googleBtn.click(),
-                ]);
-            } else {
-                /* Fallback: vai direto ao endpoint OAuth */
-                console.log('[PROVAS] Botão Google não encontrado — tentando oauth.php diretamente...');
-                await page.goto('https://gradepen.com/p/oauth.php?provider=google',
-                    { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
-            }
-
-            console.log('[PROVAS] URL após clique/oauth:', page.url().substring(0, 90));
-            await page.screenshot({ path: '/tmp/gradepen-debug-2.png', fullPage: false }).catch(() => null);
-
-            /* Se ainda no GradePen, tenta clicar botão Google na página oauth */
-            if (/gradepen\.com/i.test(page.url())) {
-                const googleBtn2 = await page.$(
-                    'a[href*="google"], a[href*="accounts"], button[onclick*="google"], ' +
-                    '[class*="google-btn"], [id*="google"], .btn-google'
-                ).catch(() => null);
-                if (googleBtn2) {
-                    console.log('[PROVAS] Botão Google na página oauth — clicando...');
-                    await Promise.all([
-                        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 35000 }).catch(() => null),
-                        googleBtn2.click(),
-                    ]);
-                    console.log('[PROVAS] URL após clique oauth:', page.url().substring(0, 90));
-                } else {
-                    const oauthLinks = await page.evaluate(() => {
-                        const items = [];
-                        document.querySelectorAll('a, button').forEach(el => {
-                            items.push({ tag: el.tagName, txt: (el.textContent||'').trim().substring(0,60), href: (el.href||'').substring(0,100) });
-                        });
-                        return items.slice(0, 15);
-                    }).catch(() => []);
-                    console.log('[PROVAS] Links na página oauth:', JSON.stringify(oauthLinks));
-                }
-            }
-
-            /* ── 2. Tela "Escolher conta" do Google ──────────────────────────── */
-            /* Detecta: account chooser, email input ou password input */
-            const screen = await Promise.race([
-                page.waitForSelector('input[type="email"]',    { timeout: 5000 }).then(() => 'email').catch(() => null),
-                page.waitForSelector('input[type="password"]', { timeout: 5000 }).then(() => 'password').catch(() => null),
-                page.waitForSelector('[data-authuser]',        { timeout: 5000 }).then(() => 'chooser').catch(() => null),
-                page.waitForSelector('[data-email]',           { timeout: 5000 }).then(() => 'chooser').catch(() => null),
-                page.waitForSelector('li.ajSv3d',              { timeout: 5000 }).then(() => 'chooser').catch(() => null),
+        /* Helper: conduz o login Google dentro de uma página (main ou popup) */
+        async function handleGoogleLogin(p) {
+            const pScreen = await Promise.race([
+                p.waitForSelector('input[type="email"]',    { timeout: 8000 }).then(() => 'email').catch(() => null),
+                p.waitForSelector('input[type="password"]', { timeout: 8000 }).then(() => 'password').catch(() => null),
+                p.waitForSelector('[data-authuser]',        { timeout: 8000 }).then(() => 'chooser').catch(() => null),
+                p.waitForSelector('[data-email]',           { timeout: 8000 }).then(() => 'chooser').catch(() => null),
             ]).catch(() => null);
 
-            console.log('[PROVAS] Tela detectada:', screen, '— URL:', page.url().substring(0, 90));
+            console.log('[PROVAS] Tela Google detectada:', pScreen, '— URL:', p.url().substring(0, 90));
 
-            if (screen === 'chooser') {
-                /* Tenta selecionar a conta correta ou clica em "Usar outra conta" */
-                const accountEntry = await page.$(`[data-email="${email}"], [data-identifier="${email}"]`).catch(() => null);
-                if (accountEntry) {
-                    console.log('[PROVAS] Conta encontrada no seletor — clicando...');
+            if (pScreen === 'chooser') {
+                const accountBtn = await p.$(`[data-email="${email}"], [data-identifier="${email}"]`).catch(() => null);
+                if (accountBtn) {
                     await Promise.all([
-                        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
-                        accountEntry.click(),
+                        p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+                        accountBtn.click(),
                     ]);
                 } else {
-                    /* "Usar outra conta" */
-                    const otherBtn = await page.$('[data-identifier=""], #identifierLink, .w6VTHd, li:last-of-type').catch(() => null);
+                    const otherBtn = await p.$('#identifierLink, [data-identifier=""], .w6VTHd').catch(() => null);
                     if (otherBtn) {
-                        console.log('[PROVAS] Clicando em "Usar outra conta"...');
                         await Promise.all([
-                            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+                            p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
                             otherBtn.click(),
                         ]);
                     }
                 }
-                await delay(1500);
-                console.log('[PROVAS] Após escolha de conta, URL:', page.url().substring(0, 90));
-            }
-
-            /* ── 3. Campo de e-mail ──────────────────────────────────────────── */
-            if (screen !== 'password') {
-                await page.waitForSelector('input[type="email"]', { timeout: 40000 });
-                await page.type('input[type="email"]', email, { delay: 30 });
-                await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => null),
-                    page.click('#identifierNext, button[jsname="LgbsSe"]').catch(async () => {
-                        await page.keyboard.press('Enter');
-                    }),
-                ]);
                 await delay(1000);
             }
 
-            /* ── 4. Campo de senha ───────────────────────────────────────────── */
-            await page.waitForSelector('input[type="password"]', { timeout: 30000, visible: true });
-            await page.type('input[type="password"]', pwd, { delay: 30 });
-            await Promise.all([
-                page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 35000 }).catch(() => null),
-                page.click('#passwordNext, button[jsname="LgbsSe"]').catch(async () => {
-                    await page.keyboard.press('Enter');
-                }),
-            ]);
-            await delay(2000);
-
-            console.log('[PROVAS] Após senha, URL:', page.url().substring(0, 90));
-
-            /* ── 5. Consentimento / "Continuar" ─────────────────────────────── */
-            const consent = await page.$('button[jsname="LgbsSe"], #submit_approve_access').catch(() => null);
-            if (consent) {
-                console.log('[PROVAS] Tela de consentimento detectada — aceitando...');
+            if (pScreen !== 'password') {
+                await p.waitForSelector('input[type="email"]', { timeout: 30000 });
+                await p.type('input[type="email"]', email, { delay: 30 });
                 await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => null),
+                    p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+                    p.click('#identifierNext, button[jsname="LgbsSe"]').catch(() => p.keyboard.press('Enter')),
+                ]);
+                await delay(800);
+            }
+
+            await p.waitForSelector('input[type="password"]', { timeout: 25000, visible: true });
+            await p.type('input[type="password"]', pwd, { delay: 30 });
+            await Promise.all([
+                p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
+                p.click('#passwordNext, button[jsname="LgbsSe"]').catch(() => p.keyboard.press('Enter')),
+            ]);
+            await delay(1500);
+            console.log('[PROVAS] Senha enviada, URL:', p.url().substring(0, 90));
+
+            /* Consentimento OAuth, se aparecer */
+            const consent = await p.$('#submit_approve_access, button[jsname="LgbsSe"]').catch(() => null);
+            if (consent) {
+                await Promise.all([
+                    p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
                     consent.click(),
                 ]);
-                await delay(1500);
+                await delay(1000);
+            }
+        }
+
+        try {
+            console.log('[PROVAS] Iniciando login GradePen...');
+
+            /* ── 1. Carrega o GradePen ───────────────────────────────────────── */
+            await page.goto('https://gradepen.com/p/index.php',
+                { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
+
+            /* ── 2. Localiza o botão Google (pode estar em modal oculto) ─────── */
+            const googleBtn = await page.$(
+                '[class*="google"]:not(script), [id*="google"]:not(script), ' +
+                'a[href*="oauth.php"], a[href*="accounts.google"]'
+            ).catch(() => null);
+
+            if (!googleBtn) {
+                throw new Error(
+                    'Botão "Sign in with Google" não encontrado no GradePen. ' +
+                    'Verifique se GOOGLE_EMAIL/GOOGLE_PASSWORD estão configurados e se a conta não tem 2FA.'
+                );
             }
 
-            /* ── 6. Garante retorno ao GradePen ─────────────────────────────── */
-            const finalUrl = page.url();
-            console.log('[PROVAS] URL final após login:', finalUrl.substring(0, 90));
-            if (!/gradepen\.com/i.test(finalUrl)) {
-                await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 25000 });
+            /* ── 3. Configura interceptador de popup ANTES de clicar ─────────── */
+            const browser = page.browser();
+            let popupPage = null;
+            const popupPromise = new Promise(resolve => {
+                browser.once('targetcreated', async target => {
+                    const p = await target.page().catch(() => null);
+                    if (p) { popupPage = p; resolve(p); }
+                });
+            });
+
+            console.log('[PROVAS] Clicando no botão Google...');
+            await googleBtn.click();
+
+            /* ── 4. Aguarda popup (até 12 s) ou fallback para mesma aba ──────── */
+            const popup = await Promise.race([
+                popupPromise,
+                new Promise(r => setTimeout(() => r(null), 12000)),
+            ]);
+
+            if (popup) {
+                /* ── 4a. Login no POPUP ──────────────────────────────────────── */
+                console.log('[PROVAS] Popup detectado:', popup.url().substring(0, 90));
+                /* Aguarda navegação inicial do popup para accounts.google.com */
+                await popup.waitForFunction(
+                    () => location.hostname.includes('accounts.google.com') ||
+                          !!document.querySelector('input[type="email"]') ||
+                          !!document.querySelector('[data-authuser]'),
+                    { timeout: 30000 },
+                ).catch(() => null);
+
+                await handleGoogleLogin(popup);
+
+                /* Aguarda o popup fechar (OAuth completo) */
+                console.log('[PROVAS] Aguardando popup fechar...');
+                await Promise.race([
+                    new Promise(resolve => popup.once('close', resolve)),
+                    new Promise(resolve => setTimeout(resolve, 35000)),
+                ]);
+                console.log('[PROVAS] Popup fechado — verificando sessão GradePen...');
+                await delay(2000);
+
+            } else {
+                /* ── 4b. Fallback: Google abriu na mesma aba ─────────────────── */
+                console.log('[PROVAS] Nenhum popup detectado — tentando na aba principal...');
+                await page.waitForFunction(
+                    () => location.hostname.includes('accounts.google.com') ||
+                          !!document.querySelector('input[type="email"]'),
+                    { timeout: 20000 },
+                ).catch(() => null);
+                await handleGoogleLogin(page);
+                /* Garante retorno ao GradePen se necessário */
+                if (!/gradepen\.com/i.test(page.url())) {
+                    await page.goto('https://gradepen.com/p/index.php',
+                        { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => null);
+                }
             }
 
-            /* Verifica se está logado: faz request de teste no próprio contexto */
+            /* ── 5. Verifica sessão no GradePen ──────────────────────────────── */
+            if (!/gradepen\.com/i.test(page.url())) {
+                await page.goto('https://gradepen.com/p/index.php',
+                    { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => null);
+            }
+
             const ok = await page.evaluate(async () => {
                 try {
                     const r = await fetch('/p/requests/getAnswers.php', {
@@ -335,14 +325,17 @@ async function gpLogin() {
                         body: new URLSearchParams({ jobId: '0', index: '0', type: '0' }).toString(),
                     });
                     const j = await r.json().catch(() => ({}));
-                    /* Logado: errorCode != 3 (acesso negado por sessão); pode dar erro 'job não existe' (4/5) — qualquer um menos 3 vale */
                     return r.ok && j.errorCode !== 3;
                 } catch { return false; }
-            });
-            if (!ok) throw new Error('Login Google→GradePen não autenticou (verifique se 2FA está desativada).');
+            }).catch(() => false);
+
+            if (!ok) throw new Error(
+                'Login Google→GradePen não autenticou. Verifique se a conta ' +
+                `${email} não tem 2FA e se as credenciais estão corretas.`
+            );
 
             _gpPage    = page;
-            _gpPageExp = Date.now() + 25 * 60 * 1000; // 25 min
+            _gpPageExp = Date.now() + 25 * 60 * 1000;
             console.log('[PROVAS] Login GradePen via Google OK:', email);
         } catch (e) {
             try { await page.close(); } catch {}
