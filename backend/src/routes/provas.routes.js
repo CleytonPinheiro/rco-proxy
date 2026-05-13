@@ -171,56 +171,101 @@ async function gpLogin() {
         await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0 Safari/537.36');
         await page.setViewport({ width: 1280, height: 800 });
 
-        try {
-            console.log('[PROVAS] Abrindo GradePen para login Google...');
-            await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 30000 });
+        const delay = ms => new Promise(r => setTimeout(r, ms));
 
-            /* Botão "Sign in with Google" — abre OAuth na mesma janela */
-            const googleBtn = await page.$('a[href*="google"], button[onclick*="google"], #googleSignInButton, .g-signin2');
-            if (googleBtn) {
-                await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => null),
-                    googleBtn.click(),
-                ]);
-            } else {
-                /* fallback: vai direto pro endpoint OAuth do GradePen */
-                await page.goto('https://gradepen.com/p/oauth.php?provider=google', { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => null);
+        try {
+            console.log('[PROVAS] Iniciando login GradePen via Google OAuth...');
+
+            /* ── 1. Navega direto ao endpoint OAuth do GradePen ───────────────── */
+            await page.goto('https://gradepen.com/p/oauth.php?provider=google',
+                { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null);
+
+            /* Aguarda chegar em accounts.google.com (até 45 s) */
+            await page.waitForFunction(
+                () => location.hostname.includes('accounts.google.com') || location.hostname.includes('gradepen.com'),
+                { timeout: 45000 },
+            ).catch(() => null);
+
+            console.log('[PROVAS] URL após OAuth redirect:', page.url().substring(0, 90));
+
+            /* ── 2. Tela "Escolher conta" do Google ──────────────────────────── */
+            /* Detecta: account chooser, email input ou password input */
+            const screen = await Promise.race([
+                page.waitForSelector('input[type="email"]',    { timeout: 5000 }).then(() => 'email').catch(() => null),
+                page.waitForSelector('input[type="password"]', { timeout: 5000 }).then(() => 'password').catch(() => null),
+                page.waitForSelector('[data-authuser]',        { timeout: 5000 }).then(() => 'chooser').catch(() => null),
+                page.waitForSelector('[data-email]',           { timeout: 5000 }).then(() => 'chooser').catch(() => null),
+                page.waitForSelector('li.ajSv3d',              { timeout: 5000 }).then(() => 'chooser').catch(() => null),
+            ]).catch(() => null);
+
+            console.log('[PROVAS] Tela detectada:', screen, '— URL:', page.url().substring(0, 90));
+
+            if (screen === 'chooser') {
+                /* Tenta selecionar a conta correta ou clica em "Usar outra conta" */
+                const accountEntry = await page.$(`[data-email="${email}"], [data-identifier="${email}"]`).catch(() => null);
+                if (accountEntry) {
+                    console.log('[PROVAS] Conta encontrada no seletor — clicando...');
+                    await Promise.all([
+                        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
+                        accountEntry.click(),
+                    ]);
+                } else {
+                    /* "Usar outra conta" */
+                    const otherBtn = await page.$('[data-identifier=""], #identifierLink, .w6VTHd, li:last-of-type').catch(() => null);
+                    if (otherBtn) {
+                        console.log('[PROVAS] Clicando em "Usar outra conta"...');
+                        await Promise.all([
+                            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+                            otherBtn.click(),
+                        ]);
+                    }
+                }
+                await delay(1500);
+                console.log('[PROVAS] Após escolha de conta, URL:', page.url().substring(0, 90));
             }
 
-            /* Tela do Google: digita email */
-            await page.waitForSelector('input[type="email"]', { timeout: 20000 });
-            await page.type('input[type="email"]', email, { delay: 30 });
-            await Promise.all([
-                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => null),
-                page.click('#identifierNext, button[jsname="LgbsSe"]').catch(async () => {
-                    await page.keyboard.press('Enter');
-                }),
-            ]);
+            /* ── 3. Campo de e-mail ──────────────────────────────────────────── */
+            if (screen !== 'password') {
+                await page.waitForSelector('input[type="email"]', { timeout: 40000 });
+                await page.type('input[type="email"]', email, { delay: 30 });
+                await Promise.all([
+                    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => null),
+                    page.click('#identifierNext, button[jsname="LgbsSe"]').catch(async () => {
+                        await page.keyboard.press('Enter');
+                    }),
+                ]);
+                await delay(1000);
+            }
 
-            /* Tela da senha */
-            await page.waitForSelector('input[type="password"]', { timeout: 20000, visible: true });
+            /* ── 4. Campo de senha ───────────────────────────────────────────── */
+            await page.waitForSelector('input[type="password"]', { timeout: 30000, visible: true });
             await page.type('input[type="password"]', pwd, { delay: 30 });
             await Promise.all([
-                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => null),
+                page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 35000 }).catch(() => null),
                 page.click('#passwordNext, button[jsname="LgbsSe"]').catch(async () => {
                     await page.keyboard.press('Enter');
                 }),
             ]);
+            await delay(2000);
 
-            /* Pode haver tela de "continuar" ou consentimento — clica se aparecer */
-            await page.waitForTimeout?.(2000).catch(() => new Promise(r => setTimeout(r, 2000)));
-            const consent = await page.$('button[jsname="LgbsSe"], #submit_approve_access');
+            console.log('[PROVAS] Após senha, URL:', page.url().substring(0, 90));
+
+            /* ── 5. Consentimento / "Continuar" ─────────────────────────────── */
+            const consent = await page.$('button[jsname="LgbsSe"], #submit_approve_access').catch(() => null);
             if (consent) {
+                console.log('[PROVAS] Tela de consentimento detectada — aceitando...');
                 await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => null),
+                    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => null),
                     consent.click(),
                 ]);
+                await delay(1500);
             }
 
-            /* Garante que voltamos pro GradePen */
-            const url = page.url();
-            if (!/gradepen\.com/i.test(url)) {
-                await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 20000 });
+            /* ── 6. Garante retorno ao GradePen ─────────────────────────────── */
+            const finalUrl = page.url();
+            console.log('[PROVAS] URL final após login:', finalUrl.substring(0, 90));
+            if (!/gradepen\.com/i.test(finalUrl)) {
+                await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 25000 });
             }
 
             /* Verifica se está logado: faz request de teste no próprio contexto */
@@ -570,7 +615,7 @@ function decideFotoObrigatoria(prova) {
 
 function logProvas(req, acao, detalhes) {
     auditLogger.registrar({
-        usuarioId:   req.userSession?.id,
+        usuarioId:   req.userSession?.userId ?? null,
         usuarioNome: req.userSession?.nome || req.userSession?.cpf || 'Sistema',
         acao,
         modulo:      'provas',
