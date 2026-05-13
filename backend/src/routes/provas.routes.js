@@ -259,42 +259,64 @@ async function gpLogin() {
             }).catch(() => []);
             console.log('[PROVAS] Elementos "google" na página:', JSON.stringify(googleEls));
 
-            /* ── 3. Localiza o botão Google (pode estar em modal oculto) ─────── */
+            /* ── 3. Localiza o botão Google via ID exato (#triggerGoogle) ──────── */
+            /* Diagnóstico revelou: id="triggerGoogle" class="sign-in-social"      */
+            /* Evita a[href*="google"] que bate no link da Play Store antes        */
             const googleBtn = await page.$(
-                'a[href*="google"], a[href*="oauth"], button[onclick*="google"], ' +
-                '#googleSignInButton, .g-signin2, [class*="google"], [id*="google"], ' +
-                'a[href*="accounts.google"], button[data-provider="google"]'
+                '#triggerGoogle, [id="triggerGoogle"], ' +
+                'a.sign-in-social, button.sign-in-social, ' +
+                '#googleSignInButton, .g-signin2, button[data-provider="google"]'
             ).catch(() => null);
 
             if (!googleBtn) {
-                /* Fallback: tenta navegar direto ao endpoint oauth do GradePen */
-                console.log('[PROVAS] Botão Google não encontrado pelo seletor — elementos google acima. Tentando oauth.php...');
-                await page.goto('https://gradepen.com/p/oauth.php?provider=google',
-                    { waitUntil: 'networkidle2', timeout: 40000 }).catch(() => null);
-                console.log('[PROVAS] URL oauth.php:', page.url().substring(0, 90));
-                /* Se abriu accounts.google.com na mesma aba, vai para handleGoogleLogin */
-                if (/accounts\.google\.com/i.test(page.url())) {
-                    await handleGoogleLogin(page);
-                    if (!/gradepen\.com/i.test(page.url())) {
-                        await page.goto('https://gradepen.com/p/index.php', { waitUntil: 'networkidle2', timeout: 25000 }).catch(() => null);
-                    }
-                    /* Pula para verificação de sessão */
-                } else {
-                    throw new Error(
-                        'Botão "Sign in with Google" não encontrado no GradePen. ' +
-                        'Verifique se GOOGLE_EMAIL/GOOGLE_PASSWORD estão configurados e se a conta não tem 2FA.'
-                    );
-                }
+                throw new Error(
+                    'Botão "Sign in with Google" (#triggerGoogle) não encontrado no GradePen. ' +
+                    'Verifique se GOOGLE_EMAIL/GOOGLE_PASSWORD estão configurados e se a conta não tem 2FA.'
+                );
             }
+            console.log('[PROVAS] Botão Google localizado:', await page.evaluate(el => `${el.tagName}#${el.id}.${el.className}`, googleBtn).catch(() => '?'));
 
-            /* ── 3. Configura interceptador de popup ANTES de clicar ─────────── */
+            /* ── 4. Configura interceptador de popup ANTES de clicar ─────────── */
+            /* Filtra apenas popups do Google (ignora Play Store, etc.)           */
             const browser = page.browser();
             let popupPage = null;
             const popupPromise = new Promise(resolve => {
-                browser.once('targetcreated', async target => {
+                const handler = async target => {
+                    /* Filtra imediatamente pela URL de criação do target (antes de navegar) */
+                    const initialUrl = target.url();
+                    console.log('[PROVAS] Nova aba/popup detectada (URL inicial):', initialUrl.substring(0, 100));
+
+                    /* Descarta Play Store e links externos irrelevantes imediatamente */
+                    if (/play\.google\.com/i.test(initialUrl)) {
+                        const p = await target.page().catch(() => null);
+                        if (p) await p.close().catch(() => null);
+                        console.log('[PROVAS] Popup Play Store descartado.');
+                        return;
+                    }
+
                     const p = await target.page().catch(() => null);
-                    if (p) { popupPage = p; resolve(p); }
-                });
+                    if (!p) return;
+
+                    /* Aguarda a URL navegar para accounts.google.com (até 15s) */
+                    /* O popup pode passar por gradepen.com/oauth → accounts.google.com */
+                    try {
+                        await p.waitForFunction(
+                            () => /accounts\.google\.com|google\.com\/o\/oauth2/i.test(location.href),
+                            { timeout: 15000 },
+                        );
+                        const finalUrl = p.url();
+                        console.log('[PROVAS] Popup Google confirmado:', finalUrl.substring(0, 90));
+                        browser.off('targetcreated', handler);
+                        popupPage = p;
+                        resolve(p);
+                    } catch {
+                        /* Não chegou ao Google — pode ser outra aba irrelevante */
+                        console.log('[PROVAS] Popup não chegou ao Google, URL atual:', p.url().substring(0, 80));
+                    }
+                };
+                browser.on('targetcreated', handler);
+                /* Remove listener após 25s para não vazar */
+                setTimeout(() => browser.off('targetcreated', handler), 25000);
             });
 
             console.log('[PROVAS] Clicando no botão Google...');
