@@ -907,6 +907,11 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                     variantes = await scrapeProva(gradepenId);
                 } catch (e) {
                     await client.query('ROLLBACK');
+                    logProvas(req, 'GP_FETCH_ERROR', {
+                        gpErrorCode: e.gpErrorCode != null ? e.gpErrorCode : null,
+                        gpMensagem: e.gpMensagem || e.message || null,
+                        gradepenId,
+                    });
                     return res.status(422).json({
                         erro: 'Não foi possível ler a GradePen. Você pode cadastrar o gabarito manualmente.',
                         detalhe: e.message,
@@ -973,7 +978,17 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         try {
             const { rows: [prova] } = await pool.query(`SELECT * FROM classroom_provas WHERE id = $1`, [req.params.id]);
             if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
-            const variantes = await scrapeProva(prova.gradepen_id);
+            let variantes;
+            try {
+                variantes = await scrapeProva(prova.gradepen_id);
+            } catch (e) {
+                logProvas(req, 'GP_FETCH_ERROR', {
+                    gpErrorCode: e.gpErrorCode != null ? e.gpErrorCode : null,
+                    gpMensagem: e.gpMensagem || e.message || null,
+                    gradepenId: prova.gradepen_id,
+                });
+                throw e;
+            }
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');
