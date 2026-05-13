@@ -915,7 +915,7 @@ function toggleVariantesAc() {
 async function verHistoricoAluno(email, nome) {
     $('acHistTitulo').textContent = `Histórico de Cola — ${nome}`;
     $('acHistCorpo').innerHTML = '<div class="ac-loading">Carregando…</div>';
-    $('acHistModal').style.display = 'block';
+    $('acHistModal').style.display = '';
     try {
         const r = await fetch(`/api/classroom/provas/cola-historico/${encodeURIComponent(email)}`, { credentials: 'include' });
         const d = await r.json();

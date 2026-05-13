@@ -144,8 +144,6 @@
 .ac-btn:disabled { opacity: .5; cursor: not-allowed; }
 .ac-btn-primary { background: #4285F4; color: #fff; border-color: #4285F4; }
 .ac-btn-primary:hover { background: #3367d6; }
-.ac-btn-icon { background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted,#888);padding:4px; }
-.ac-btn-icon:hover { color: var(--text, #000); }
 
 /* Stats */
 .ac-stats {
@@ -341,28 +339,7 @@
 .ac-variantes-arrow { margin-left: auto; font-size: 12px; transition: transform .2s; color: var(--text-muted,#888); }
 .ac-variantes-body { padding: 14px 16px; }
 
-/* Modal */
-.ac-modal {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.45);
-    z-index: 900;
-    align-items: center; justify-content: center;
-}
-.ac-modal[style*="block"] { display: flex !important; }
-.ac-modal-card {
-    background: var(--bg-card, #fff);
-    color: var(--text, #000);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 640px; width: 94%;
-    max-height: 80vh; overflow-y: auto;
-    box-shadow: 0 12px 40px rgba(0,0,0,.18);
-}
-.ac-modal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 16px;
-}
-.ac-modal-header h3 { margin: 0; font-size: 18px; }
+
 .ac-hist-item {
     padding: 10px 12px;
     border: 1px solid var(--border, #eee);

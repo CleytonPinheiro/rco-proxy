@@ -105,11 +105,11 @@
     </div>
 
     <!-- Modal Histórico Aluno -->
-    <div id="acHistModal" class="ac-modal" style="display:none" onclick="if(event.target===this)fecharHistoricoModal()">
-        <div class="ac-modal-card">
-            <div class="ac-modal-header">
+    <div id="acHistModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharHistoricoModal()">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header">
                 <h3 id="acHistTitulo">Histórico de Cola</h3>
-                <button class="ac-btn-icon" onclick="fecharHistoricoModal()">✕</button>
+                <button class="modal-close" onclick="fecharHistoricoModal()">✕</button>
             </div>
             <div id="acHistCorpo" class="ac-hist-corpo"></div>
         </div>
