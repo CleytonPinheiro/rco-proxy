@@ -4368,3 +4368,42 @@ body.cl-popout .logo-icon { font-size: 15px; }
     font-size: .9rem;
     padding: 32px 0;
 }
+
+/* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
+[data-theme="dark"] .cl-ativ-pontos--vazio    { color: var(--text-secondary); }
+[data-theme="dark"] .cl-ativ-meta-chip        { color: var(--text-secondary); }
+[data-theme="dark"] .cl-stat-label            { color: var(--text-secondary); }
+[data-theme="dark"] .cl-nota-row--header      { color: var(--text-secondary); }
+[data-theme="dark"] .cl-num-chamada           { color: var(--text-secondary); }
+[data-theme="dark"] .cl-fonte-trigger-curso   { color: var(--text-secondary); }
+[data-theme="dark"] .cl-fmodal-item-pts       { color: var(--text-secondary); }
+[data-theme="dark"] .cl-fonte-peso-label      { color: var(--text-secondary); }
+[data-theme="dark"] .cl-fontes-empty          { color: var(--text-secondary); }
+[data-theme="dark"] .cl-tab                   { color: var(--text-secondary); }
+[data-theme="dark"] .cl-grupo-meta            { color: var(--text-secondary); }
+[data-theme="dark"] .cl-label-hint            { color: var(--text-secondary); }
+[data-theme="dark"] .cl-resumo-header         { color: var(--text-secondary); }
+[data-theme="dark"] .cl-passos-vazia          { color: var(--text-secondary); }
+[data-theme="dark"] .cl-legenda-item          { color: var(--text-secondary); }
+[data-theme="dark"] .cl-legenda-hint          { color: var(--text-secondary); }
+[data-theme="dark"] .cl-resumo-den            { color: var(--text-secondary); }
+[data-theme="dark"] .cl-detalhe-voltar        { color: var(--text-secondary); }
+[data-theme="dark"] .cl-detalhe-tab           { color: var(--text-secondary); }
+[data-theme="dark"] .cl-detalhe-tab-cnt       { color: var(--text-secondary); }
+[data-theme="dark"] .cl-detalhe-fonte-pts     { color: var(--text-secondary); }
+[data-theme="dark"] .cl-csel-arrow            { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-label           { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-hint            { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-summary-sep     { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-summary-detail  { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-ativ-data       { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-section-head    { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-rco-nome        { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-nota--vazia     { color: var(--text-secondary); }
+[data-theme="dark"] .cl-audit-sem-sub         { color: var(--text-secondary); }
+[data-theme="dark"] .cl-fechar-pendentes-aluno-atvs { color: var(--text-secondary); }
+[data-theme="dark"] .cl-rec-nota-badge--vazio { color: var(--text-secondary); }
+[data-theme="dark"] .cl-classe-item-cod       { color: var(--text-secondary); }
+[data-theme="dark"] .cl-quizizz-loading       { color: var(--text-secondary); }
+[data-theme="dark"] .cl-qz-badge--criador     { color: var(--text-secondary); }
+[data-theme="dark"] .cl-tardias-empty-desc    { color: var(--text-secondary); }

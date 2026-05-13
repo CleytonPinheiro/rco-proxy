@@ -747,3 +747,21 @@ body.drawer-aberto .aluno-drawer {
     text-decoration: none;
 }
 .ped-aluno-nome-btn:hover { color: #0ea5e9; text-decoration: underline; }
+
+/* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
+[data-theme="dark"] .ped-page-sub              { color: var(--text-secondary); }
+[data-theme="dark"] .ped-stat-label            { color: var(--text-secondary); }
+[data-theme="dark"] .ped-filtro-label          { color: var(--text-secondary); }
+[data-theme="dark"] .ped-tipo-btn              { color: var(--text-secondary); }
+[data-theme="dark"] .ped-empty-texto           { color: var(--text-secondary); }
+[data-theme="dark"] .ped-card-data             { color: var(--text-secondary); }
+[data-theme="dark"] .ped-meta-chip             { color: var(--text-secondary); }
+[data-theme="dark"] .ped-pontos--zero          { color: var(--text-secondary); }
+[data-theme="dark"] .ped-footer-label          { color: var(--text-secondary); }
+[data-theme="dark"] .ped-encaminhamento-label  { color: var(--text-secondary); }
+[data-theme="dark"] .ped-visto-em              { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-drawer-label        { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-drawer-turma        { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-drawer-fechar       { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-dstat-label         { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-hist-data           { color: var(--text-secondary); }

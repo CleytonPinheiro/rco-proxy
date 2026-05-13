@@ -472,3 +472,12 @@
     font-size: .9rem;
     border-radius: 8px;
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .atv-subtitulo                { color: var(--text-secondary); }
+[data-theme="dark"] .atv-table .tr-header-aulas th { color: var(--text-secondary); }
+[data-theme="dark"] .td-label-data                { color: var(--text-secondary); }
+[data-theme="dark"] .atv-table .tr-marcar-todos td { color: var(--text-secondary); }
+[data-theme="dark"] .td-num                       { color: var(--text-secondary); }
+[data-theme="dark"] .atv-placeholder,
+[data-theme="dark"] .atv-loading                  { color: var(--text-secondary); }

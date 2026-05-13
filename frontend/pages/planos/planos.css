@@ -938,3 +938,26 @@
 .pl-plano-badge--individual { background: #ede9fe; color: #6d28d9; }
 
 [data-theme="dark"] .pl-plano-badge--individual { background: rgba(109,40,217,.18); color: #a78bfa; }
+
+/* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
+[data-theme="dark"] .pl-hero-sub           { color: var(--text-secondary); }
+[data-theme="dark"] .pl-plan-desc          { color: var(--text-secondary); }
+[data-theme="dark"] .pl-price-per,
+[data-theme="dark"] .pl-price-cobranca     { color: var(--text-secondary); }
+[data-theme="dark"] .pl-feat--no .pl-feat-icon,
+[data-theme="dark"] .pl-feat--no           { color: var(--text-secondary); }
+[data-theme="dark"] .pl-faq summary::after { color: var(--text-secondary); }
+[data-theme="dark"] .pl-footer-note        { color: var(--text-secondary); }
+[data-theme="dark"] .pl-tr-section         { color: var(--text-secondary); }
+[data-theme="dark"] .pl-no                 { color: var(--text-secondary); }
+[data-theme="dark"] .pl-gestao-sub         { color: var(--text-secondary); }
+[data-theme="dark"] .pl-gestao-loading     { color: var(--text-secondary); }
+[data-theme="dark"] .pl-gestao-table th    { color: var(--text-secondary); }
+[data-theme="dark"] .pl-data-col           { color: var(--text-secondary); }
+[data-theme="dark"] .pl-resumo-label       { color: var(--text-secondary); }
+[data-theme="dark"] .pl-modal-fechar       { color: var(--text-secondary); }
+[data-theme="dark"] .pl-plano-badge--sem   { color: var(--text-secondary); }
+[data-theme="dark"] .pl-individual-sep-text { color: var(--text-secondary); }
+[data-theme="dark"] .pl-individual-desc    { color: var(--text-secondary); }
+[data-theme="dark"] .pl-individual-nota    { color: var(--text-secondary); }
+[data-theme="dark"] .pl-gestao-empty       { color: var(--text-secondary); }

@@ -288,7 +288,7 @@
 [data-theme="dark"] .material-form-section { background: var(--bg-card); border-color: var(--border); }
 
 [data-theme="dark"] .stats-number { color: var(--text-primary); }
-[data-theme="dark"] .stats-label { color: var(--text-muted); }
+[data-theme="dark"] .stats-label { color: var(--text-secondary); }
 
 [data-theme="dark"] .material-nome { color: var(--text-primary); }
 [data-theme="dark"] .material-info { color: var(--text-secondary); }

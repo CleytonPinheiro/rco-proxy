@@ -269,7 +269,7 @@
     background: #ffffff;
     border-color: #444;
 }
-[data-theme="dark"] .aluno-codigo-label { color: #555; }
+[data-theme="dark"] .aluno-codigo-label { color: var(--text-secondary); }
 
 /* ── Número de chamada no modal de alunos ────────────────────────────────── */
 .aluno-chamada {
@@ -326,3 +326,7 @@
 [data-theme="dark"] .card-cola-alerta:hover { border-color: #ff9800; }
 [data-theme="dark"] .cola-alert-badge-corner { background: #b36200; }
 
+
+/* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
+[data-theme="dark"] .colegio-selector-label { color: var(--text-secondary); }
+[data-theme="dark"] .section-count          { color: var(--text-secondary); }

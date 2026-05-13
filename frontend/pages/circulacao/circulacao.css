@@ -695,3 +695,28 @@
     animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .circ-sub           { color: var(--text-secondary); }
+[data-theme="dark"] .scanner-label      { color: var(--text-secondary); }
+[data-theme="dark"] .chip-loading       { color: var(--text-secondary); }
+[data-theme="dark"] .feedback-turma,
+[data-theme="dark"] .feedback-acao      { color: var(--text-secondary); }
+[data-theme="dark"] .amb-card-loading   { color: var(--text-secondary); }
+[data-theme="dark"] .grid-vazio         { color: var(--text-secondary); }
+[data-theme="dark"] .amb-card-tipo      { color: var(--text-secondary); }
+[data-theme="dark"] .ocup-texto         { color: var(--text-secondary); }
+[data-theme="dark"] .amb-dentro-header  { color: var(--text-secondary); }
+[data-theme="dark"] .amb-dentro-vazio   { color: var(--text-secondary); }
+[data-theme="dark"] .amb-dentro-turma   { color: var(--text-secondary); }
+[data-theme="dark"] .amb-dentro-timer   { color: var(--text-secondary); }
+[data-theme="dark"] .amb-hist-header    { color: var(--text-secondary); }
+[data-theme="dark"] .amb-hist-count     { color: var(--text-secondary); }
+[data-theme="dark"] .amb-hist-vazio     { color: var(--text-secondary); }
+[data-theme="dark"] .amb-hist-hora      { color: var(--text-secondary); }
+[data-theme="dark"] .hist-count         { color: var(--text-secondary); }
+[data-theme="dark"] .tabela-historico th { color: var(--text-secondary); }
+[data-theme="dark"] .empty-row          { color: var(--text-secondary); }
+[data-theme="dark"] .modal-close        { color: var(--text-secondary); }
+[data-theme="dark"] .amb-sub            { color: var(--text-secondary); }
+[data-theme="dark"] .btn-amb            { color: var(--text-secondary); }

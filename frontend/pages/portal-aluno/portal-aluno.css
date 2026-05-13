@@ -323,3 +323,9 @@
     color: var(--text-muted);
     margin-top: 2px;
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .pa-modo-btn        { color: var(--text-secondary); }
+[data-theme="dark"] .pa-msg             { color: var(--text-secondary); }
+[data-theme="dark"] .pa-disc-email      { color: var(--text-secondary); }
+[data-theme="dark"] .pa-disc-ativ-meta  { color: var(--text-secondary); }

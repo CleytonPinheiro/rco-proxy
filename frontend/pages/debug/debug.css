@@ -321,3 +321,15 @@
     border-radius: 8px;
     border: 1px solid var(--border);
 }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .debug-subtitle     { color: var(--text-secondary); }
+[data-theme="dark"] .form-group label   { color: var(--text-secondary); }
+[data-theme="dark"] .debug-loading      { color: var(--text-secondary); }
+[data-theme="dark"] .resumo-card .resumo-titulo  { color: var(--text-secondary); }
+[data-theme="dark"] .resumo-card .resumo-detalhe { color: var(--text-secondary); }
+[data-theme="dark"] .dtab               { color: var(--text-secondary); }
+[data-theme="dark"] .btn-copy           { color: var(--text-secondary); }
+[data-theme="dark"] .tab-info           { color: var(--text-secondary); }
+[data-theme="dark"] .jpunct             { color: var(--text-secondary); }
+[data-theme="dark"] .alunos-table th    { color: var(--text-secondary); }

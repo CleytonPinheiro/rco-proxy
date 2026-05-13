@@ -337,3 +337,9 @@
 }
 
 .pa-admin-link-btn:hover { background: #e0e7ff; }
+
+/* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
+[data-theme="dark"] .admin-tab              { color: var(--text-secondary); }
+[data-theme="dark"] .admin-table th         { color: var(--text-secondary); }
+[data-theme="dark"] .modal-box .form-group label { color: var(--text-secondary); }
+[data-theme="dark"] .pa-admin-modo-btn      { color: var(--text-secondary); }

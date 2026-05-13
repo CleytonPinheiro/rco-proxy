@@ -370,3 +370,26 @@ textarea.input-form { resize: vertical; font-family: inherit; }
     border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Tema Escuro ─────────────────────────────────────────────────────────── */
+[data-theme="dark"] .com-sub            { color: var(--text-secondary); }
+[data-theme="dark"] .stat-l             { color: var(--text-secondary); }
+[data-theme="dark"] .aba                { color: var(--text-secondary); }
+[data-theme="dark"] .btn-limpar-filtros { color: var(--text-secondary); }
+[data-theme="dark"] .check-all-label   { color: var(--text-secondary); }
+[data-theme="dark"] .count-sel          { color: var(--text-secondary); }
+[data-theme="dark"] .tabela-com th      { color: var(--text-secondary); }
+[data-theme="dark"] .loading-row,
+[data-theme="dark"] .empty-row          { color: var(--text-secondary); }
+[data-theme="dark"] .tabela-footer      { color: var(--text-secondary); }
+[data-theme="dark"] .td-turma           { color: var(--text-secondary); }
+[data-theme="dark"] .resp-texto         { color: var(--text-secondary); }
+[data-theme="dark"] .modal-close        { color: var(--text-secondary); }
+[data-theme="dark"] .modal-footer span  { color: var(--text-secondary); }
+[data-theme="dark"] .form-group label   { color: var(--text-secondary); }
+[data-theme="dark"] .hint               { color: var(--text-secondary); }
+[data-theme="dark"] .config-info        { color: var(--text-secondary); }
+[data-theme="dark"] .imp-alunos-header  { color: var(--text-secondary); }
+[data-theme="dark"] .imp-num            { color: var(--text-secondary); }
+[data-theme="dark"] .imp-tel            { color: var(--text-secondary); }
+[data-theme="dark"] .det-label          { color: var(--text-secondary); }

@@ -547,3 +547,22 @@
 [data-theme="dark"] .badge-emprestado { background: rgba(30,64,175,.25);  color: #93c5fd; }
 [data-theme="dark"] .badge-devolvido  { background: rgba(6,95,70,.25);    color: #6ee7b7; }
 [data-theme="dark"] .badge-perdido    { background: rgba(153,27,27,.2);    color: #fca5a5; }
+
+[data-theme="dark"] .livros-sub           { color: var(--text-secondary); }
+[data-theme="dark"] .livros-tab           { color: var(--text-secondary); }
+[data-theme="dark"] .stat-livro .sl       { color: var(--text-secondary); }
+[data-theme="dark"] .turma-header-count   { color: var(--text-secondary); }
+[data-theme="dark"] .turma-chevron        { color: var(--text-secondary); }
+[data-theme="dark"] .emp-livro-detalhe    { color: var(--text-secondary); }
+[data-theme="dark"] .emp-data-info        { color: var(--text-secondary); }
+[data-theme="dark"] .livros-table th      { color: var(--text-secondary); }
+[data-theme="dark"] .confirm-desc         { color: var(--text-secondary); }
+[data-theme="dark"] .livro-busca-item-meta { color: var(--text-secondary); }
+[data-theme="dark"] .livro-busca-status   { color: var(--text-secondary); }
+[data-theme="dark"] .livro-busca-divisor  { color: var(--text-secondary); }
+[data-theme="dark"] .modal-close-livros   { color: var(--text-secondary); }
+[data-theme="dark"] .form-group-livros label { color: var(--text-secondary); }
+[data-theme="dark"] .print-card-desc      { color: var(--text-secondary); }
+[data-theme="dark"] .print-filter-area h4 { color: var(--text-secondary); }
+[data-theme="dark"] .print-filter-group label { color: var(--text-secondary); }
+[data-theme="dark"] .empty-livros         { color: var(--text-secondary); }

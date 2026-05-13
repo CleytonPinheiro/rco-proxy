@@ -63,6 +63,45 @@ async function carregarDados() {
     renderizarTudo();
 }
 
+
+// ── Montar seletor de colégio ─────────────────────────────────────────────────
+function configurarSeletorColegio(colegios) {
+    const seletor      = document.getElementById('seletorColegio');
+    const tabs         = document.getElementById('colegioTabs');
+    const ativoHeader  = document.getElementById('colegioAtivo');
+    const ativoNome    = document.getElementById('colegioAtivoNome');
+
+    if (colegios.length <= 1) {
+        seletor.style.display = 'none';
+        if (colegios.length === 1) {
+            ativoHeader.style.display = 'block';
+            ativoNome.textContent = colegios[0];
+        }
+        return;
+    }
+
+    seletor.style.display = 'flex';
+    ativoHeader.style.display = 'none';
+
+    tabs.innerHTML = '';
+    colegios.forEach(colegio => {
+        const btn = document.createElement('button');
+        btn.className = 'colegio-tab' + (colegio === colegioSelecionado ? ' active' : '');
+        btn.textContent = colegio;
+        btn.addEventListener('click', () => selecionarColegio(colegio));
+        tabs.appendChild(btn);
+    });
+}
+
+function selecionarColegio(colegio) {
+    colegioSelecionado = colegio;
+    persistirEscolaContexto(colegio);
+    document.querySelectorAll('.colegio-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === colegio);
+    });
+    renderizarTudo();
+}
+
 // ── Preencher empty state com info do último sync ─────────────────────────────
 async function preencherEmptyState(msgErro) {
     const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -462,43 +501,6 @@ function extrairColegios(dados) {
     return [...set];
 }
 
-// ── Montar seletor de colégio ─────────────────────────────────────────────────
-function configurarSeletorColegio(colegios) {
-    const seletor      = document.getElementById('seletorColegio');
-    const tabs         = document.getElementById('colegioTabs');
-    const ativoHeader  = document.getElementById('colegioAtivo');
-    const ativoNome    = document.getElementById('colegioAtivoNome');
-
-    if (colegios.length <= 1) {
-        seletor.style.display = 'none';
-        if (colegios.length === 1) {
-            ativoHeader.style.display = 'block';
-            ativoNome.textContent = colegios[0];
-        }
-        return;
-    }
-
-    seletor.style.display = 'flex';
-    ativoHeader.style.display = 'none';
-
-    tabs.innerHTML = '';
-    colegios.forEach(colegio => {
-        const btn = document.createElement('button');
-        btn.className = 'colegio-tab' + (colegio === colegioSelecionado ? ' active' : '');
-        btn.textContent = colegio;
-        btn.addEventListener('click', () => selecionarColegio(colegio));
-        tabs.appendChild(btn);
-    });
-}
-
-function selecionarColegio(colegio) {
-    colegioSelecionado = colegio;
-    persistirEscolaContexto(colegio);
-    document.querySelectorAll('.colegio-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent === colegio);
-    });
-    renderizarTudo();
-}
 
 /* Salva o colégio selecionado e os codTurmas correspondentes no localStorage
    para que os outros menus usem o mesmo contexto de escola.

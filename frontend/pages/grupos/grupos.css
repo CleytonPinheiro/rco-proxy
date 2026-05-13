@@ -1014,7 +1014,7 @@
 
 [data-theme="dark"] .grupo-nome-input { background: transparent; color: var(--text-primary); border-color: var(--border); }
 [data-theme="dark"] .grupo-header { border-color: var(--border); }
-[data-theme="dark"] .grupo-sub { color: var(--text-muted); }
+[data-theme="dark"] .grupo-sub { color: var(--text-secondary); }
 
 [data-theme="dark"] .aluno-item {
     background: var(--bg-secondary); border-color: var(--border); color: var(--text-primary);
@@ -1029,7 +1029,7 @@
 
 [data-theme="dark"] .atividades-panel { background: var(--bg-secondary); border-color: var(--border); }
 [data-theme="dark"] .atividade-nome { color: var(--text-primary); }
-[data-theme="dark"] .atividade-meta { color: var(--text-muted); }
+[data-theme="dark"] .atividade-meta { color: var(--text-secondary); }
 
 [data-theme="dark"] .modal-grupos { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .modal-grupos-header { border-color: var(--border); }

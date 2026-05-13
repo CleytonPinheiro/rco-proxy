@@ -399,10 +399,10 @@
     background: var(--bg-card); border-color: var(--border);
 }
 [data-theme="dark"] .periodo-num { color: var(--text-primary); }
-[data-theme="dark"] .periodo-label { color: var(--text-muted); }
+[data-theme="dark"] .periodo-label { color: var(--text-secondary); }
 [data-theme="dark"] .periodo-sub { color: var(--text-faint); }
 
-[data-theme="dark"] .tab { background: var(--bg-card); border-color: var(--border); color: var(--text-muted); }
+[data-theme="dark"] .tab { background: var(--bg-card); border-color: var(--border); color: var(--text-secondary); }
 [data-theme="dark"] .tab.active { background: #007bff; border-color: #007bff; color: white; }
 
 [data-theme="dark"] .turma-card { background: var(--bg-card); border-left-color: inherit; }

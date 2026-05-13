@@ -878,3 +878,16 @@
         padding-right: 30mm !important;
     }
 }
+
+/* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
+[data-theme="dark"] .ms-sub            { color: var(--text-secondary); }
+[data-theme="dark"] .ms-config-label   { color: var(--text-secondary); }
+[data-theme="dark"] .ms-config-dica    { color: var(--text-secondary); }
+[data-theme="dark"] .ms-banco-titulo   { color: var(--text-secondary); }
+[data-theme="dark"] .ms-banco-vazio    { color: var(--text-secondary); }
+[data-theme="dark"] .ms-aluno-num      { color: var(--text-secondary); }
+[data-theme="dark"] .ms-chip-rem       { color: var(--text-secondary); }
+[data-theme="dark"] .ms-vazio-msg      { color: var(--text-secondary); }
+[data-theme="dark"] .ms-carteira-chamada { color: var(--text-secondary); }
+[data-theme="dark"] .ms-carteira-btn-rem { color: var(--text-secondary); }
+[data-theme="dark"] .ms-config-hint    { color: var(--text-secondary); }

@@ -527,7 +527,7 @@
 [data-theme="dark"] .ranking-nome { color: var(--text-primary); }
 [data-theme="dark"] .aluno-turma,
 [data-theme="dark"] .stat-sub,
-[data-theme="dark"] .ranking-nivel { color: var(--text-muted); }
+[data-theme="dark"] .ranking-nivel { color: var(--text-secondary); }
 
 /* ── Cards de aluno — dark mode ─────────────────────────────────────────── */
 [data-theme="dark"] .aluno-comp-card {
@@ -561,8 +561,8 @@
 /* Conteúdo interno */
 [data-theme="dark"] .card-nome    { color: var(--text-primary); }
 [data-theme="dark"] .card-pontos  { color: var(--text-secondary); }
-[data-theme="dark"] .card-ultima  { color: var(--text-muted); }
-[data-theme="dark"] .estrelas-label { color: var(--text-muted); }
+[data-theme="dark"] .card-ultima  { color: var(--text-secondary); }
+[data-theme="dark"] .estrelas-label { color: var(--text-secondary); }
 [data-theme="dark"] .estrela-empty  { color: #374151; }
 
 /* Rodapé */
@@ -582,7 +582,7 @@
     background: var(--bg-secondary);
     border-color: var(--border);
 }
-[data-theme="dark"] .legenda-hint { color: var(--text-muted); }
+[data-theme="dark"] .legenda-hint { color: var(--text-secondary); }
 [data-theme="dark"] .nivel-0 { background: #1b2030; color: #94a3b8; }
 [data-theme="dark"] .nivel-1 { background: #0a2818; color: #4ade80; }
 [data-theme="dark"] .nivel-2 { background: #0a1d3a; color: #60a5fa; }
@@ -600,7 +600,7 @@
 [data-theme="dark"] .modal-body-comp { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .modal-header h3 { color: var(--text-primary); }
 [data-theme="dark"] .modal-tabs { border-color: var(--border); }
-[data-theme="dark"] .modal-tab { color: var(--text-muted); }
+[data-theme="dark"] .modal-tab { color: var(--text-secondary); }
 [data-theme="dark"] .modal-tab:hover { color: var(--text-primary); }
 
 [data-theme="dark"] .tipo-btn { background: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary); }
@@ -616,7 +616,7 @@
 [data-theme="dark"] .cat-btn.selected { background: #1e1e3f; border-color: #4338ca; color: #a5b4fc; }
 
 [data-theme="dark"] .ocorrencia-item { border-color: var(--border); }
-[data-theme="dark"] .ocorrencia-data { color: var(--text-muted); }
+[data-theme="dark"] .ocorrencia-data { color: var(--text-secondary); }
 [data-theme="dark"] .ocorrencia-desc { color: var(--text-secondary); }
 
 [data-theme="dark"] .hist-stat-val { color: var(--text-primary); }

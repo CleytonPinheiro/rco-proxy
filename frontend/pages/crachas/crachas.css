@@ -557,3 +557,16 @@
 /* ── Área de impressão (oculta na tela) ──────────────────────── */
 .print-area { display: none; }
 @media print { .print-area { display: block; } }
+
+[data-theme="dark"] .crachas-sub         { color: var(--text-secondary); }
+[data-theme="dark"] .stat-l              { color: var(--text-secondary); }
+[data-theme="dark"] .tab-sel-hint        { color: var(--text-secondary); }
+[data-theme="dark"] .tab-grupo-label     { color: var(--text-secondary); }
+[data-theme="dark"] .tab-periodo-label   { color: var(--text-secondary); }
+[data-theme="dark"] .btn-toggle-periodo,
+[data-theme="dark"] .btn-toggle-secao    { color: var(--text-secondary); }
+[data-theme="dark"] .periodo-count       { color: var(--text-secondary); }
+[data-theme="dark"] .turma-secao-count   { color: var(--text-secondary); }
+[data-theme="dark"] .card-turma-mini     { color: var(--text-secondary); }
+[data-theme="dark"] .card-data-info      { color: var(--text-secondary); }
+[data-theme="dark"] .empty-crachas       { color: var(--text-secondary); }

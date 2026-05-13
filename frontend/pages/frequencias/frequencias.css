@@ -836,7 +836,7 @@
 [data-theme="dark"] .freq-tabela-wrapper { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .freq-tabela         { background: var(--bg-card); }
 [data-theme="dark"] .freq-tabela thead { background: var(--bg-secondary); border-color: var(--border); }
-[data-theme="dark"] .freq-tabela th { color: var(--text-muted); border-color: var(--border); }
+[data-theme="dark"] .freq-tabela th { color: var(--text-secondary); border-color: var(--border); }
 [data-theme="dark"] .freq-tabela tbody tr:hover { background: var(--bg-hover) !important; }
 [data-theme="dark"] .freq-tabela td { border-color: var(--border); color: var(--text-primary); }
 
@@ -893,14 +893,14 @@
 [data-theme="dark"] .drawer-resumo       { background: var(--bg-secondary); border-color: var(--border); }
 [data-theme="dark"] .drawer-resumo-stat  { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .drawer-resumo-bar-wrap  { background: var(--bg-tertiary); }
-[data-theme="dark"] .drawer-disc-label   { color: var(--text-muted); }
+[data-theme="dark"] .drawer-disc-label   { color: var(--text-secondary); }
 [data-theme="dark"] .drawer-disc-card    { border-color: var(--border); }
 [data-theme="dark"] .drawer-disc-card:hover { background: var(--bg-hover); }
 [data-theme="dark"] .drawer-disc-nome    { color: var(--text-primary); }
 [data-theme="dark"] .drawer-disc-bar-wrap { background: var(--bg-tertiary); }
-[data-theme="dark"] .drawer-placeholder  { color: var(--text-muted); }
-[data-theme="dark"] .drawer-nao-carregado { color: var(--text-muted); border-color: var(--border); }
-[data-theme="dark"] .rstat-label         { color: var(--text-muted); }
+[data-theme="dark"] .drawer-placeholder  { color: var(--text-secondary); }
+[data-theme="dark"] .drawer-nao-carregado { color: var(--text-secondary); border-color: var(--border); }
+[data-theme="dark"] .rstat-label         { color: var(--text-secondary); }
 [data-theme="dark"] .dstat-sep           { color: var(--border); }
 
 /* Highlight escuro */
@@ -1531,20 +1531,20 @@
 [data-theme="dark"] .turma-select.turma-ativa    { background: rgba(99,102,241,0.15); border-color: #818cf8; color: #a5b4fc; }
 [data-theme="dark"] .turma-ativa-badge           { background: rgba(109,40,217,0.2); color: #a78bfa; border-color: #7c3aed; }
 [data-theme="dark"] .geral-loading,
-[data-theme="dark"] .geral-vazio                 { background: var(--bg-card); border-color: var(--border); color: var(--text-muted); }
+[data-theme="dark"] .geral-vazio                 { background: var(--bg-card); border-color: var(--border); color: var(--text-secondary); }
 [data-theme="dark"] .geral-resumo-stat           { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .gres-val                    { color: var(--text-primary); }
-[data-theme="dark"] .gres-label                  { color: var(--text-muted); }
+[data-theme="dark"] .gres-label                  { color: var(--text-secondary); }
 [data-theme="dark"] .gres-filtrado               { background: #1e1b4b; border-color: #4338ca; }
 [data-theme="dark"] .aluno-geral-card            { background: var(--bg-card); border-color: var(--border); }
 [data-theme="dark"] .aluno-geral-card:hover      { border-color: #6366f1; }
 [data-theme="dark"] .aluno-geral-nome            { color: var(--text-primary); }
-[data-theme="dark"] .aluno-geral-meta            { color: var(--text-muted); }
+[data-theme="dark"] .aluno-geral-meta            { color: var(--text-secondary); }
 [data-theme="dark"] .aluno-chamada-num           { background: var(--bg-secondary); color: var(--text-secondary); }
 [data-theme="dark"] .aluno-geral-bar-wrap        { background: var(--bg-tertiary); }
-[data-theme="dark"] .aluno-geral-pct-label      { color: var(--text-muted); }
-[data-theme="dark"] .aluno-geral-sub            { color: var(--text-muted); }
-[data-theme="dark"] .aluno-ndiscs               { color: var(--text-muted); }
+[data-theme="dark"] .aluno-geral-pct-label      { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-geral-sub            { color: var(--text-secondary); }
+[data-theme="dark"] .aluno-ndiscs               { color: var(--text-secondary); }
 [data-theme="dark"] .aluno-turma-tag            { background: #0c2a3a; color: #38bdf8; }
 [data-theme="dark"] .aluno-geral-stats          { background: var(--bg-secondary); border-color: var(--border); }
 [data-theme="dark"] .ags-presenca               { background: #0d2e1a; }
@@ -1552,10 +1552,10 @@
 [data-theme="dark"] .ags-falta                  { background: #2a0d0d; }
 [data-theme="dark"] .ags-falta .ags-val         { color: #f87171; }
 [data-theme="dark"] .ags-total .ags-val         { color: var(--text-primary); }
-[data-theme="dark"] .ags-label                  { color: var(--text-muted); }
+[data-theme="dark"] .ags-label                  { color: var(--text-secondary); }
 [data-theme="dark"] .ags-sep                    { background: var(--border); }
 [data-theme="dark"] .disc-detalhe-lista         { border-color: var(--border); }
-[data-theme="dark"] .disc-detalhe-titulo        { color: var(--text-muted); }
+[data-theme="dark"] .disc-detalhe-titulo        { color: var(--text-secondary); }
 [data-theme="dark"] .disc-detalhe-row           { border-color: var(--border); }
 [data-theme="dark"] .disc-detalhe-nome          { color: var(--text-primary); }
 [data-theme="dark"] .disc-detalhe-bar-wrap      { background: var(--bg-tertiary); }
@@ -2021,14 +2021,14 @@
 }
 [data-theme="dark"] .fd-global-label  { color: #a5b4fc; }
 [data-theme="dark"] .fd-divider       { background: var(--border); }
-[data-theme="dark"] .fd-dias-titulo   { color: var(--text-muted); }
+[data-theme="dark"] .fd-dias-titulo   { color: var(--text-secondary); }
 [data-theme="dark"] .fd-dias-count    { background: rgba(99,102,241,.2); color: #a5b4fc; }
 [data-theme="dark"] .fd-dia           { background: var(--bg-hover); border-color: var(--border); }
 [data-theme="dark"] .fd-dia:hover     { background: var(--bg-tertiary); }
 [data-theme="dark"] .fd-dia--hoje     { border-color: #6366f1; background: rgba(99,102,241,.1); }
 [data-theme="dark"] .fd-dia-data      { color: var(--text-primary); }
 [data-theme="dark"] .fd-bar-wrap      { background: var(--bg-tertiary); }
-[data-theme="dark"] .fd-vazio         { color: var(--text-muted); }
+[data-theme="dark"] .fd-vazio         { color: var(--text-secondary); }
 [data-theme="dark"] .fd-aside-body { scrollbar-color: var(--border) transparent; }
 [data-theme="dark"] .fd-aside-body::-webkit-scrollbar-thumb { background: var(--border); }
 
