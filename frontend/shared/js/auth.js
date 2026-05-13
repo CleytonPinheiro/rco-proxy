@@ -48,9 +48,10 @@
     /* ── Dependência pai → filho. Espelha backend/src/config/permissions.js
          (MODULO_PAI). Servidor envia em /api/me como `modulosPai`. ── */
     const MODULO_PAI_DEFAULT = {
-        'portal-aluno':  'classroom',
-        'solicitacoes':  'classroom',
-        'portal-log':    'classroom',
+        'portal-aluno':      'classroom',
+        'solicitacoes':      'classroom',
+        'portal-log':        'classroom',
+        'confrontar-gabarito': 'analise-cola',
     };
     let MODULO_PAI = { ...MODULO_PAI_DEFAULT };
     try {
@@ -63,7 +64,7 @@
          `permissoesPerfis`) — usamos cache em localStorage para flash-free.   ── */
     const PERFIL_MODULOS_DEFAULT = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','analise-cola','qrcode','suporte','passeios'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','analise-cola','confrontar-gabarito','qrcode','suporte','passeios'],
         pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','qrcode','suporte','passeios'],
         secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte','passeios'],
         aux_turno:  ['circulacao','presenca','qrcode','suporte'],
@@ -300,7 +301,13 @@
         try { localStorage.setItem('edusync_modpai_cache', JSON.stringify(user.modulosPai)); } catch {}
     }
 
-    window.__edusync = { user };
+    window.__edusync = {
+        user,
+        podeAcessar: (modulo) => {
+            const p = user.impersonando ? user.impersonandoPerfil : user.perfil;
+            return podeAcessar(p, modulo);
+        },
+    };
 
     /* Perfil efetivo: ao impersonar, usa o perfil do alvo */
     const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;

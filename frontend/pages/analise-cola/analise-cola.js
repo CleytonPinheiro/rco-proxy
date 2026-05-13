@@ -524,7 +524,13 @@ async function onProvaChange() {
     }
 }
 
+function _podeConfrontarGabarito() {
+    if (!window.__edusync?.podeAcessar) return true;
+    return window.__edusync.podeAcessar('confrontar-gabarito');
+}
+
 function _btnRegistrarHtml() {
+    if (!_podeConfrontarGabarito()) return '';
     return `<div style="text-align:right;margin-bottom:12px">
         <button class="ac-btn ac-btn-primary" onclick="abrirModalRegistro()">🔍 Confrontar gabarito</button>
     </div>`;
@@ -600,7 +606,7 @@ function renderAnalise({ pares, suspeitosEntreVariantes, temDiscursiva }) {
             <div class="ac-controles-right">
                 ${flagCount > 0 ? `<button class="ac-btn" id="acExportCsvBtn" onclick="exportarCsv()">⬇️ Flags CSV (${flagCount})</button>` : ''}
                 <button class="ac-btn" id="acExportPdfBtn" onclick="exportarPdf()">📄 Exportar PDF</button>
-                <button class="ac-btn ac-btn-primary" id="acRegBtn" onclick="abrirModalRegistro()">🔍 Confrontar gabarito</button>
+                ${_podeConfrontarGabarito() ? `<button class="ac-btn ac-btn-primary" id="acRegBtn" onclick="abrirModalRegistro()">🔍 Confrontar gabarito</button>` : ''}
             </div>
         </div>
 

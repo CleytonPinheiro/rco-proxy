@@ -15,7 +15,7 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'confrontar-gabarito', 'qrcode', 'suporte', 'passeios'],
     },
     pedagogo: {
         nome: 'Pedagogo',
@@ -48,6 +48,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'retorno-pedagogico', nome: 'Retorno Pedagógico' },
     { id: 'provas',             nome: 'Gabarito & Correção' },
     { id: 'analise-cola',       nome: 'Analise de gabarito' },
+    { id: 'confrontar-gabarito', nome: 'Confrontar Gabarito' },
     { id: 'comunicados',        nome: 'Comunicados' },
     { id: 'crachas',            nome: 'Crachás' },
     { id: 'emprestimos',        nome: 'Empréstimos' },
@@ -71,9 +72,10 @@ export const MODULOS_DISPONIVEIS = [
  * o pai quando o admin marca o filho.
  */
 export const MODULO_PAI = {
-    'portal-aluno':  'classroom',
-    'solicitacoes':  'classroom',
-    'portal-log':    'classroom',
+    'portal-aluno':      'classroom',
+    'solicitacoes':      'classroom',
+    'portal-log':        'classroom',
+    'confrontar-gabarito': 'analise-cola',
 };
 
 /* ── Módulos em desenvolvimento (gerenciado pelo admin) ── */
