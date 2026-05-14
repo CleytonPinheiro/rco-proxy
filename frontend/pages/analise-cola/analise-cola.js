@@ -1685,6 +1685,21 @@ function _parsearEPreencherMapa(text) {
         return;
     }
 
+    /* ── 2b. Inferir discursivas a partir do PDF ──────────────────────
+     * A API do GradePen NÃO devolve questões discursivas, então
+     * gabarito_json só contém as objetivas (ex: 12 entradas para Q3–Q14).
+     * O PDF expõe a numeração real: a primeira posição objetiva encontrada
+     * revela quantas discursivas vêm antes (ex: firstObj=3 → Q1,Q2 discursivas).
+     * Atualizamos _mapaTotalQ e _mapaDiscursivas para refletir o total real. */
+    const allObjPos = canonical.questions.map(q => q.posicao);
+    const firstObj  = allObjPos.length > 0 ? Math.min(...allObjPos) : 1;
+    const lastQ     = allObjPos.length > 0 ? Math.max(...allObjPos) : _mapaTotalQ;
+
+    if (firstObj > 1 || lastQ > _mapaTotalQ) {
+        _mapaTotalQ      = Math.max(_mapaTotalQ, lastQ);
+        _mapaDiscursivas = new Set(Array.from({ length: firstObj - 1 }, (_, i) => i + 1));
+    }
+
     /* ── 3. Preenche o grid ── */
     for (let qf = 1; qf <= _mapaTotalQ; qf++) {
         if (!_mapaDiscursivas.has(qf)) _mapaGrid[qf] = {};
