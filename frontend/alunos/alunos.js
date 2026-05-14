@@ -152,15 +152,30 @@ async function tcorBuscar(provaId, input) {
             }
             if (msg) msg.textContent = '';
             res.style.display = '';
-            res.innerHTML = d.alunos.map(a => `
+            const nomeCount = {};
+            d.alunos.forEach(a => {
+                const k = (a.aluno_nome || '').trim().toLowerCase();
+                nomeCount[k] = (nomeCount[k] || 0) + 1;
+            });
+            res.innerHTML = d.alunos.map(a => {
+                const nomeDisplay = a.aluno_nome && a.aluno_nome.trim()
+                    ? escapeHtmlGam(a.aluno_nome)
+                    : `<em style="color:#888">(sem nome — ${escapeHtmlGam(a.email_mascarado || 'email desconhecido')})</em>`;
+                const nomeKey = (a.aluno_nome || '').trim().toLowerCase();
+                const duplicado = nomeKey && nomeCount[nomeKey] > 1;
+                const detalhe = duplicado
+                    ? `<span style="font-size:11px;color:#666;margin-left:6px">${escapeHtmlGam(a.variante_codigo || '')}${a.email_mascarado ? ' · ' + escapeHtmlGam(a.email_mascarado) : ''}</span>`
+                    : '';
+                return `
                 <div style="padding:9px 12px;border-bottom:1px solid #f0fdf4;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <span style="font-size:14px;color:#1a1a1a">${escapeHtmlGam(a.aluno_nome || '(sem nome)')}</span>
+                    <span style="font-size:14px;color:#1a1a1a">${nomeDisplay}${detalhe}</span>
                     <a href="/alunos/prova/?tcor=${encodeURIComponent(a.submissao_ref_id)}"
                        style="background:#22c55e;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">
                         Corrigir →
                     </a>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         } catch (_) {
             if (msg) msg.textContent = 'Erro ao buscar. Tente novamente.';
         }

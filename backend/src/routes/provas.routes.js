@@ -2258,6 +2258,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                  'manual:' + (cpf || 'professor'), 'manual-professor']
             );
 
+            if (!alunoNome || !String(alunoNome).trim()) {
+                console.warn(`[SUBMISSAO][SEM_NOME] submissao_id=${sub.id} prova_id=${provaId} aluno_email=${emailNorm} origem=professor`);
+            }
+
             res.json({ submissaoId: sub.id, nota, total, criada_em: sub.criada_em });
 
             setImmediate(() => {
@@ -3368,6 +3372,10 @@ export function createProvasPublicRouter() {
                  fotoUrlSalva, fotoObrig]
             );
 
+            if (!aluno.nome || !String(aluno.nome).trim()) {
+                console.warn(`[SUBMISSAO][SEM_NOME] submissao_id=${sub.id} prova_id=${prova.id} aluno_email=${aluno.email}`);
+            }
+
             /* ── Gamificação: XP imediato do 1º corretor ── */
             const xpEventos = [];
             try {
@@ -3860,6 +3868,11 @@ export function createProvasPublicRouter() {
                     s.id            AS submissao_ref_id,
                     s.foto_url,
                     s.aluno_nome,
+                    CASE
+                        WHEN s.aluno_email IS NOT NULL
+                        THEN CONCAT(LEFT(s.aluno_email, 2), '***@', SPLIT_PART(s.aluno_email, '@', 2))
+                        ELSE NULL
+                    END             AS email_mascarado,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
                     p.turma_corretora_2a_correcao,
@@ -3874,7 +3887,10 @@ export function createProvasPublicRouter() {
                   AND s.eh_segundo_corretor = false
                   AND s.eh_turma_corretora  = false
                   AND s.aluno_email != $2
-                  AND s.aluno_nome ILIKE $3
+                  AND (
+                      s.aluno_nome ILIKE $3
+                      OR s.aluno_nome IS NULL
+                  )
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc
                        WHERE tc.submissao_ref_id = s.id
@@ -3901,7 +3917,9 @@ export function createProvasPublicRouter() {
                         AND sc2.eh_segundo_corretor = false
                         AND sc2.eh_turma_corretora  = false
                   )
-                ORDER BY s.aluno_nome
+                ORDER BY (CASE WHEN s.aluno_nome IS NULL THEN 1 ELSE 0 END),
+                         COALESCE(s.aluno_nome, ''),
+                         v.codigo
                 LIMIT 10`,
                 [parseInt(prova_id, 10), aluno.email, `%${nomeTrimmed}%`]
             );
