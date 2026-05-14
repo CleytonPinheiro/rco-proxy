@@ -4513,12 +4513,17 @@ export function createProvasPublicRouter() {
             try {
                 do {
                     const r = await classroom.courses.students.list({
-                        courseId:  String(prova.curso_id),
-                        pageSize:  200,
+                        courseId: String(prova.curso_id),
+                        pageSize: 200,
                         pageToken,
+                        fields:   'students(userId,profile(name/fullName,emailAddress)),nextPageToken',
                     });
                     const total = (r.data.students || []).length;
                     console.log(`[LISTA-TURMA-ALVO] API retornou ${total} aluno(s) para curso ${prova.curso_id}`);
+                    if (total > 0) {
+                        const s0 = r.data.students[0];
+                        console.log(`[LISTA-TURMA-ALVO] amostra: userId=${s0.userId} email=${s0.profile?.emailAddress || '(vazio)'} nome=${s0.profile?.name?.fullName || '(vazio)'}`);
+                    }
                     for (const s of (r.data.students || [])) {
                         const email = (s.profile?.emailAddress || '').toLowerCase();
                         const nome  = s.profile?.name?.fullName || '';
