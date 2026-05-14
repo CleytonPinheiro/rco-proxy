@@ -169,6 +169,23 @@
 .pp-td-cor { text-align: left; }
 .pp-bolhas-row { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 6px; }
 
+/* Mini-quiz V/F grid */
+.pp-vf-grid { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.pp-vf-row { display: flex; align-items: center; gap: 4px; }
+.pp-vf-idx { font-size: 12px; color: var(--pp-muted); width: 18px; text-align: right; flex-shrink: 0; }
+.pp-bolha-vf {
+    display: inline-flex; align-items:center; justify-content:center;
+    width: 28px; height: 28px;
+    border: 2px solid var(--pp-border); border-radius: 6px;
+    cursor: pointer; font-size: 12px; font-weight: 700;
+    background: var(--pp-card); color: var(--pp-muted);
+    user-select: none; transition: .1s;
+}
+.pp-bolha-vf:hover { border-color: var(--pp-primary); }
+.pp-bolha-vf.pp-marcada {
+    background: var(--pp-primary); color: #fff; border-color: var(--pp-primary);
+}
+
 /* Enunciado expansível */
 .pp-qtxt {
     margin-bottom: 2px;

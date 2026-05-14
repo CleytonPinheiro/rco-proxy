@@ -178,6 +178,19 @@ function marcar(q, letra) {
     });
 }
 
+function marcarVF(q, subIdx, letra, vfCount) {
+    const chave = String(q);
+    const total = vfCount || (Array.isArray(estado.marcacoes[chave]) ? estado.marcacoes[chave].length : subIdx + 1);
+    if (!Array.isArray(estado.marcacoes[chave])) {
+        estado.marcacoes[chave] = new Array(total).fill(null);
+    }
+    estado.marcacoes[chave][subIdx] = letra;
+    /* Atualiza visual */
+    document.querySelectorAll(`.pp-bolha-vf[data-q="${q}"][data-sub="${subIdx}"]`).forEach(el => {
+        el.classList.toggle('pp-marcada', el.dataset.l === letra);
+    });
+}
+
 function voltarVariante() {
     estado.marcacoes = {};
     show('ppVariante');
@@ -452,12 +465,33 @@ async function iniciarSegundoCorretor(subRefId) {
         estado.segundo = pend;
         estado.qtdQuestoes = 0;
         estado.marcacoes = {};
+        estado.segMiniQuiz = false;
+        estado.segQuestoesMiniQuiz = null;
 
         if (pend.foto_url) {
             $('ppSegFoto').src = pend.foto_url;
             $('ppSegFoto').style.display = '';
+            const aviso = $('ppSegMiniQuizAviso');
+            if (aviso) aviso.style.display = 'none';
         } else {
             $('ppSegFoto').style.display = 'none';
+            estado.segMiniQuiz = true;
+
+            /* Busca as questões para o mini-quiz */
+            try {
+                const qr = await fetch(
+                    `/api/alunos-portal/segundo-corretor/${encodeURIComponent(subRefId)}/questoes`,
+                    { credentials: 'include' }
+                );
+                const qd = await qr.json();
+                if (qr.ok) {
+                    estado.segQuestoesMiniQuiz = qd.questoes || [];
+                    if (qd.qtd_questoes) pend.qtd_questoes = qd.qtd_questoes;
+                }
+            } catch (_) { /* usa fallback de qtd_questoes */ }
+
+            const aviso = $('ppSegMiniQuizAviso');
+            if (aviso) aviso.style.display = '';
         }
 
         estado.qtdQuestoes = pend.qtd_questoes || 12;
@@ -470,13 +504,28 @@ async function iniciarSegundoCorretor(subRefId) {
 function renderTabelaSegundo() {
     const wrap = $('ppSegTabela');
     const qt = estado.segQuestoesTxt || null;
+    const miniQuiz = estado.segMiniQuiz;
+    const mqQuestoes = estado.segQuestoesMiniQuiz || [];
+
+    const cabecalho = miniQuiz
+        ? 'Qual você acha que é a resposta correta?'
+        : 'O que está marcado na folha';
+
     let html = `<table class="pp-tabela pp-tabela-cor"><thead><tr>
         <th style="width:40px">#</th>
-        <th>O que está marcado na folha</th>
+        <th>${cabecalho}</th>
     </tr></thead><tbody>`;
+
     for (let q = 1; q <= estado.qtdQuestoes; q++) {
         const qInfo = qt ? qt[q] : null;
+        const mqInfo = miniQuiz ? (mqQuestoes[q - 1] || null) : null;
+        const tipo = mqInfo?.tipo || 'multipla';
+
         html += `<tr><td class="pp-q-num">${q}</td><td class="pp-td-cor">`;
+
+        /* Enunciado: prioridade 1 = localStorage cache (qInfo.enunciado),
+           prioridade 2 = endpoint mini-quiz (mqInfo.enunciado),
+           prioridade 3 = alternativas do endpoint sem enunciado */
         if (qInfo && qInfo.enunciado) {
             const resumo = escHtml(qInfo.enunciado.slice(0, 80));
             const enuncFull = escHtml(qInfo.enunciado);
@@ -487,13 +536,56 @@ function renderTabelaSegundo() {
                 }
             }
             html += `</details>`;
+        } else if (mqInfo && (mqInfo.enunciado || mqInfo.alternativas)) {
+            /* Enunciado e/ou alternativas vindos do endpoint mini-quiz */
+            const enuncFull  = mqInfo.enunciado ? escHtml(mqInfo.enunciado) : null;
+            const resumo     = mqInfo.enunciado
+                ? escHtml(mqInfo.enunciado.slice(0, 80)) + (mqInfo.enunciado.length > 80 ? '…' : '')
+                : 'Ver alternativas…';
+            const altObj = mqInfo.alternativas;
+            const temAlt = altObj && typeof altObj === 'object' && !Array.isArray(altObj)
+                && Object.keys(altObj).some(k => altObj[k]);
+            if (enuncFull || temAlt) {
+                html += `<details class="pp-qtxt"><summary class="pp-qtxt-summary">${resumo}</summary>`;
+                if (enuncFull) html += `<div class="pp-qtxt-body">${enuncFull}</div>`;
+                if (temAlt) {
+                    for (const letra of Object.keys(altObj).filter(k => altObj[k])) {
+                        html += `<div class="pp-qtxt-alt"><span class="pp-qtxt-letra">${letra.toUpperCase()}</span> ${escHtml(altObj[letra])}</div>`;
+                    }
+                }
+                html += `</details>`;
+            }
         }
+
         html += `<div class="pp-bolhas-row">`;
-        const temESeg = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
-        const letrasSeg = temESeg ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
-        for (const letra of letrasSeg) {
-            html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+
+        if (miniQuiz && tipo === 'vf') {
+            /* V/F mini-quiz: per-sub-item V/F selection, stored as array */
+            const vfCount = mqInfo?.vf_count || 4;
+            html += `</div><div class="pp-vf-grid">`;
+            for (let si = 0; si < vfCount; si++) {
+                html += `<div class="pp-vf-row">
+                    <span class="pp-vf-idx">${si + 1}</span>
+                    <span class="pp-bolha-vf" data-q="${q}" data-sub="${si}" data-l="V" onclick="marcarVF(${q},${si},'V',${vfCount})">V</span>
+                    <span class="pp-bolha-vf" data-q="${q}" data-sub="${si}" data-l="F" onclick="marcarVF(${q},${si},'F',${vfCount})">F</span>
+                </div>`;
+            }
+        } else if (miniQuiz && tipo === 'discursiva') {
+            /* Discursiva em mini-quiz: não há bolhas — o corretor só visualiza o enunciado */
+            html += `<span style="font-size:12px;color:var(--pp-muted);font-style:italic">Questão discursiva — não marcável</span>`;
+        } else {
+            /* multipla ou desconhecido: determina quantas letras */
+            let nAlts = mqInfo?.n_alternativas || null;
+            let temE = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
+            if (!temE && mqInfo && mqInfo.alternativas && typeof mqInfo.alternativas === 'object') {
+                temE = !!mqInfo.alternativas['e'];
+            }
+            const letrasSeg = nAlts === 5 || temE ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
+            for (const letra of letrasSeg) {
+                html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+            }
         }
+
         html += `</div></td></tr>`;
     }
     html += `</tbody></table>`;
@@ -554,6 +646,7 @@ window.enviarTurmaCorretora   = enviarTurmaCorretora;
 window.enviarSegundo          = enviarSegundo;
 window.toggleTema             = toggleTema;
 window.marcar                 = marcar;
+window.marcarVF               = marcarVF;
 window.voltarVariante         = voltarVariante;
 window.confirmarMarcacoes     = confirmarMarcacoes;
 window.previewFoto            = previewFoto;

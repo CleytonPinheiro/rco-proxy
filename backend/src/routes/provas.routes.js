@@ -1620,14 +1620,17 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
 
             const { rows } = await pool.query(
                 `SELECT
-                    p.id           AS submissao_id,
+                    p.id                AS submissao_id,
                     p.aluno_email,
-                    p.nota         AS nota_1,
-                    sc.nota        AS nota_2,
-                    sc.id          AS segunda_id
+                    p.nota              AS nota_1,
+                    sc.nota             AS nota_2,
+                    sc.id               AS segunda_id,
+                    sc.marcacoes_json   AS corretor_marcacoes,
+                    v.gabarito_json     AS gabarito
                    FROM classroom_prova_submissoes p
                    JOIN classroom_prova_submissoes sc
                      ON sc.submissao_ref_id = p.id AND sc.eh_segundo_corretor = true
+                   JOIN classroom_prova_variantes v ON v.id = p.variante_id
                   WHERE p.prova_id = $1
                     AND p.eh_segundo_corretor = false
                   ORDER BY ABS(sc.nota - p.nota) DESC`,
@@ -1688,20 +1691,42 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 console.warn('[PROVAS] divergencias flag lookup falhou:', e.message);
             }
 
+            function computeCorretorAcerto(gabarito, marcacoes) {
+                if (!Array.isArray(gabarito) || !gabarito.length || !marcacoes) return null;
+                let acertos = 0;
+                let total = 0;
+                for (const q of gabarito) {
+                    if (!q.correta || q.tipo === 'discursiva') continue;
+                    const marc = marcacoes[String(q.questao)];
+                    total++;
+                    if (q.tipo === 'vf') {
+                        if (Array.isArray(marc) && Array.isArray(q.correta) && marc.length === q.correta.length) {
+                            if (marc.every((v, i) => String(v).toUpperCase() === String(q.correta[i]).toUpperCase())) acertos++;
+                        }
+                    } else {
+                        if (marc != null && String(marc).toLowerCase() === String(q.correta).toLowerCase()) acertos++;
+                    }
+                }
+                if (total === 0) return null;
+                return Math.round((acertos / total) * 100);
+            }
+
             const divergencias = rows.map(r => {
                 const nota1 = Number(r.nota_1 || 0);
                 const nota2 = Number(r.nota_2 || 0);
                 const div   = Math.abs(nota1 - nota2);
                 const flagInfo = flagsMap[r.aluno_email] || null;
+                const corretorAcertoPct = computeCorretorAcerto(r.gabarito, r.corretor_marcacoes);
                 return {
-                    submissao_id:     r.submissao_id,
-                    aluno_email:      maskEmail(r.aluno_email),
-                    nota_1:           nota1,
-                    nota_2:           nota2,
-                    divergencia:      Math.round(div * 100) / 100,
-                    nivel:            nivelDiv(div),
-                    suspeito:         flagInfo?.suspeito || false,
-                    risco_cola_nivel: flagInfo?.risco_cola_nivel || null,
+                    submissao_id:       r.submissao_id,
+                    aluno_email:        maskEmail(r.aluno_email),
+                    nota_1:             nota1,
+                    nota_2:             nota2,
+                    divergencia:        Math.round(div * 100) / 100,
+                    nivel:              nivelDiv(div),
+                    suspeito:           flagInfo?.suspeito || false,
+                    risco_cola_nivel:   flagInfo?.risco_cola_nivel || null,
+                    corretor_acerto_pct: corretorAcertoPct,
                 };
             });
 
@@ -3611,6 +3636,111 @@ export function createProvasPublicRouter() {
                 [aluno.email]
             );
             res.json({ pendentes: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Questões para mini-quiz (quando a submissão não tem foto) */
+    router.get('/alunos-portal/segundo-corretor/:subRefId/questoes', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows: [ref] } = await pool.query(
+                `SELECT s.id, s.prova_id, s.variante_id, s.foto_url,
+                        v.gabarito_json, v.codigo AS variante_codigo,
+                        p.gradepen_id
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_prova_variantes v ON v.id = s.variante_id
+                   JOIN classroom_provas p           ON p.id = s.prova_id
+                  WHERE s.id = $1`,
+                [req.params.subRefId]
+            );
+            if (!ref) return res.status(404).json({ erro: 'Submissão não encontrada.' });
+
+            /* Guard: only applicable when there is no photo */
+            if (ref.foto_url) {
+                return res.status(400).json({ erro: 'Esta submissão tem foto — mini-quiz não aplicável.' });
+            }
+
+            const { rows: notif } = await pool.query(
+                `SELECT id FROM notificacoes_aluno
+                  WHERE aluno_email = $1
+                    AND tipo IN ('segundo_corretor','segundo_corretor_voluntario')
+                    AND (dados->>'submissaoRefId')::int = $2 LIMIT 1`,
+                [aluno.email, ref.id]
+            );
+            if (notif.length === 0) return res.status(403).json({ erro: 'Você não foi sorteado para esta correção.' });
+
+            const { rows: mapaQs } = await pool.query(
+                `SELECT qf.posicao, qf.alternativas_json
+                   FROM classroom_prova_mapa_questoes qf
+                  WHERE qf.prova_id = $1 AND qf.variante_id = $2
+                  ORDER BY qf.posicao`,
+                [ref.prova_id, ref.variante_id]
+            );
+
+            const altByPos = {};
+            for (const row of mapaQs) {
+                altByPos[row.posicao] = row.alternativas_json;
+            }
+
+            /* Best-effort: try to enrich with enunciados from GradePen if session is active */
+            let gpQuestoes = null;
+            try {
+                if (_gpPage && Date.now() < _gpPageExp && ref.gradepen_id) {
+                    const varIdx = parseInt(ref.variante_codigo, 10);
+                    if (!isNaN(varIdx)) {
+                        const gpData = await gpFetchAnswers(ref.gradepen_id, varIdx);
+                        if (gpData && Array.isArray(gpData.questions)) {
+                            gpQuestoes = gpData.questions;
+                        }
+                    }
+                }
+            } catch (_gpErr) {
+                /* GradePen unavailable or error — continue without enunciados */
+            }
+
+            const GP_LETRAS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+
+            const gabarito = ref.gabarito_json || [];
+            const questoes = gabarito.map((q, idx) => {
+                const pos   = idx + 1;
+                const tipo  = q.tipo || 'multipla';
+                /* vf_count tells the frontend how many sub-items to render for V/F questions */
+                const vfCount = (tipo === 'vf' && Array.isArray(q.correta)) ? q.correta.length : null;
+                const nAlts   = q.n_alternativas || (tipo === 'multipla' ? 4 : null);
+
+                let enunciado  = null;
+                let altTexts   = altByPos[pos] || null;
+
+                /* Enrich from GradePen data if available */
+                const gpQ = gpQuestoes ? (gpQuestoes[idx] || null) : null;
+                if (gpQ) {
+                    const raw = gpQ.statement || gpQ.text || gpQ.title || gpQ.stem || gpQ.question || null;
+                    if (raw && typeof raw === 'string' && raw.trim()) enunciado = raw.trim();
+                    /* Extract alternative texts from GradePen choices array if present */
+                    if (!altTexts && Array.isArray(gpQ.choices) && gpQ.choices.length > 0) {
+                        altTexts = {};
+                        gpQ.choices.forEach((ch, i) => {
+                            if (GP_LETRAS[i]) {
+                                altTexts[GP_LETRAS[i]] = typeof ch === 'string' ? ch : (ch.text || ch.label || String(ch));
+                            }
+                        });
+                    }
+                }
+
+                return {
+                    questao:       q.questao,
+                    tipo,
+                    vf_count:      vfCount,
+                    n_alternativas: nAlts,
+                    alternativas:  altTexts,
+                    enunciado,
+                };
+            });
+
+            res.json({ qtd_questoes: gabarito.length, questoes });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }

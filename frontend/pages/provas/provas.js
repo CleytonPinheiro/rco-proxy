@@ -1238,6 +1238,9 @@ function renderDivergencias(divergencias) {
         const suspeitoBadge = d.suspeito
             ? `<span class="prv-flag prv-flag-2cor" style="background:#fef3c7;color:#92400e" title="${escapeHtml(d.risco_cola_nivel || 'Flag de cola registrada')}">⚠️${d.risco_cola_nivel ? ' ' + escapeHtml(d.risco_cola_nivel) : ''}</span>`
             : '';
+        const autoridadeBadge = (d.corretor_acerto_pct != null && d.corretor_acerto_pct > 50)
+            ? `<span class="prv-flag" style="background:#eff6ff;color:#1d4ed8" title="Corretor acertou ${d.corretor_acerto_pct}% das questões no gabarito — divergência confirmada com autoridade">🎓 Confirmado com autoridade (${d.corretor_acerto_pct}%)</span>`
+            : '';
         return `<tr>
             <td>${escapeHtml(d.aluno_email)}${suspeitoBadge ? '<br>' + suspeitoBadge : ''}</td>
             <td style="text-align:center">${d.nota_1}</td>
@@ -1245,6 +1248,7 @@ function renderDivergencias(divergencias) {
             <td style="text-align:center">${d.divergencia}</td>
             <td style="text-align:center">
                 <span class="prv-flag" style="background:${nc.bg};color:${nc.cor}">${nc.label}</span>
+                ${autoridadeBadge}
             </td>
         </tr>`;
     }).join('');
@@ -1258,7 +1262,7 @@ function renderDivergencias(divergencias) {
                 <th style="text-align:center">Nota 1ª</th>
                 <th style="text-align:center">Nota 2ª</th>
                 <th style="text-align:center">Diferença</th>
-                <th style="text-align:center">Nível</th>
+                <th style="text-align:center">Nível / Autoridade</th>
             </tr></thead>
             <tbody>${linhas}</tbody>
         </table>
