@@ -3681,9 +3681,10 @@ export function createProvasPublicRouter() {
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
             const { rows: pendentesRaw } = await pool.query(
-                `SELECT n.id AS notif_id, n.criado_em, n.dados,
+                `SELECT n.id AS notif_id, n.tipo, n.criado_em, n.dados,
                         s.id AS submissao_ref_id, s.foto_url,
                         p.id AS prova_id, p.nome AS prova_nome,
+                        p.segundo_corretor_ativo,
                         v.id AS variante_id, v.codigo AS variante_codigo,
                         jsonb_array_length(v.gabarito_json) AS qtd_questoes,
                         v.gabarito_json
