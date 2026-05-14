@@ -507,7 +507,10 @@ async function carregarTarefasCorretor() {
             <div class="pa-solicita-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
                 <div>
                     <strong>${(p.prova_nome || 'Prova').replace(/[<>]/g, '')}</strong>
-                    <div style="font-size:0.85em;color:#666">Variante ${p.variante_codigo} · ${p.qtd_questoes} questões · sorteada em ${new Date(p.criado_em).toLocaleDateString('pt-BR')}</div>
+                    <div style="margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:6px;padding:2px 10px;font-size:0.9em;font-weight:700;color:#92400e">⚠️ Variante ${p.variante_codigo != null ? p.variante_codigo : '—'}</span>
+                        <span style="font-size:0.82em;color:#6b7280">${p.qtd_questoes} questões · sorteada em ${new Date(p.criado_em).toLocaleDateString('pt-BR')}</span>
+                    </div>
                 </div>
                 <a class="pa-btn pa-btn-primary" href="/alunos/prova/?seg=${p.submissao_ref_id}" style="background:#f59e0b;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600">Corrigir agora →</a>
             </div>
