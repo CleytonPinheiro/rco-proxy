@@ -4566,7 +4566,11 @@ export function createProvasPublicRouter() {
                         return { ...a, numchamada: matched ? matched[1] : null };
                     });
                 }
-            } catch (_) { /* Supabase indisponível — segue sem numchamada */ }
+            } catch (supErr) {
+                console.warn('[LISTA-TURMA-ALVO] Supabase erro:', supErr.message);
+            }
+
+            console.log(`[LISTA-TURMA-ALVO] após enriquecimento: ${rosterAlunos.length} aluno(s) | submissaoMap keys: ${Object.keys(submissaoMap).length}`);
 
             /* ── Monta resultado final ── */
             const result = rosterAlunos.map(a => {
@@ -4580,6 +4584,8 @@ export function createProvasPublicRouter() {
                     sem_submissao:    subId == null,
                 };
             });
+
+            console.log(`[LISTA-TURMA-ALVO] resultado final: ${result.length} aluno(s)`);
 
             /* Ordena: numchamada asc (nulos por último), depois nome */
             result.sort((a, b) => {
