@@ -1215,6 +1215,12 @@ async function salvarRegistroManual() {
     const marcacoesA = _montarMarcacoesParaApi(_regMarcacoesA, _regGabaritoA);
     const marcacoesB = _montarMarcacoesParaApi(_regMarcacoesB, _regGabaritoB);
 
+    const aVazia = Object.keys(marcacoesA).length === 0;
+    const bVazia = Object.keys(marcacoesB).length === 0;
+    if (aVazia && bVazia) { _regSetStatus('Preencha os gabaritos de ambos os alunos antes de confrontar.', 'err'); return; }
+    if (aVazia) { _regSetStatus('Preencha o gabarito do Aluno A antes de confrontar.', 'err'); return; }
+    if (bVazia) { _regSetStatus('Preencha o gabarito do Aluno B antes de confrontar.', 'err'); return; }
+
     const btn = $('acRegSalvarBtn');
     btn.disabled    = true;
     btn.textContent = 'Comparando…';
