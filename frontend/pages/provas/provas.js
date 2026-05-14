@@ -963,13 +963,23 @@ function renderDetalhe(d) {
                 const div = Math.abs((seg.nota || 0) - (s.nota || 0));
                 if (div > 0.01) flags.push(`<span class="prv-flag prv-flag-2cor">DIVERG ${div.toFixed(1)}</span>`);
                 else flags.push('<span class="prv-flag prv-flag-2cor">2º ✓</span>');
+            } else if (s.segundo_corretor_pendente_email) {
+                flags.push(`<span class="prv-flag prv-flag-2cor-pend" title="Corretor designado: ${escapeHtml(s.segundo_corretor_pendente_email)}">⏳ 2º aguardando</span>`);
             }
             const selVar = `<select id="prvVar_${s.id}" class="prv-sel-variante" title="Trocar variante recalcula a nota">
                 ${d.variantes.map(v => `<option value="${v.id}" ${v.id===s.variante_id?'selected':''}>.${escapeHtml(v.codigo)}</option>`).join('')}
             </select>
             <button class="prv-link-acao prv-act-trocar" data-sub="${s.id}" title="Recalcula a nota com o gabarito da variante escolhida">↻</button>`;
             const acoes = [];
-            if (p.segundo_corretor_ativo) acoes.push(seg ? '<small>2ª ok</small>' : `<button class="prv-link-acao prv-act-sortear" data-sub="${s.id}">Sortear 2º</button>`);
+            if (p.segundo_corretor_ativo) {
+                if (seg) {
+                    acoes.push('<small>2ª ok</small>');
+                } else if (s.segundo_corretor_pendente_email) {
+                    acoes.push(`<button class="prv-link-acao prv-act-sortear" data-sub="${s.id}" title="Corretor já sorteado (${escapeHtml(s.segundo_corretor_pendente_email)}). Clique para re-sortear outro.">Re-sortear</button>`);
+                } else {
+                    acoes.push(`<button class="prv-link-acao prv-act-sortear" data-sub="${s.id}">Sortear 2º</button>`);
+                }
+            }
             acoes.push(`<button class="prv-link-acao prv-link-danger prv-act-apagar" data-sub="${s.id}" data-aluno="${escapeHtml(s.aluno_nome || s.aluno_email)}" title="Apaga a submissão deste aluno para ele refazer">🗑</button>`);
             sub += `<tr>
                 <td>${escapeHtml(s.aluno_nome || s.aluno_email)}<br><small style="color:#888">${escapeHtml(s.aluno_email)}</small></td>

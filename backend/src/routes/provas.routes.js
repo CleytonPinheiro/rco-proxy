@@ -1280,9 +1280,19 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             );
 
             const { rows: submissoes } = await pool.query(
-                `SELECT s.*, v.codigo AS variante_codigo
+                `SELECT s.*, v.codigo AS variante_codigo,
+                        pend.aluno_email AS segundo_corretor_pendente_email
                    FROM classroom_prova_submissoes s
                    JOIN classroom_prova_variantes v ON v.id = s.variante_id
+                   LEFT JOIN LATERAL (
+                       SELECT aluno_email
+                         FROM notificacoes_aluno
+                        WHERE tipo IN ('segundo_corretor', 'segundo_corretor_voluntario')
+                          AND referencia = s.id::text
+                          AND lida = false
+                        ORDER BY criado_em DESC
+                        LIMIT 1
+                   ) pend ON true
                   WHERE s.prova_id = $1
                   ORDER BY s.eh_segundo_corretor, s.criada_em DESC`,
                 [prova.id]

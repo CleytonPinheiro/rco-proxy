@@ -155,8 +155,10 @@
 }
 .prv-flag-foto { background:#fef3c7; color:#92400e; }
 .prv-flag-2cor { background:#dbeafe; color:#1e40af; }
+.prv-flag-2cor-pend { background:#fef9c3; color:#854d0e; cursor:default; }
 [data-theme="dark"] .prv-flag-foto { background:#3b2a00; color:#fcd34d; }
 [data-theme="dark"] .prv-flag-2cor { background:#1e3a6e; color:#93c5fd; }
+[data-theme="dark"] .prv-flag-2cor-pend { background:#3b2a00; color:#fbbf24; }
 .prv-link-acao { color:#4285F4; cursor:pointer; text-decoration:underline; font-size:12px; background:none;border:none;padding:0; }
 
 .prv-info-box {
