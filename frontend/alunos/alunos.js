@@ -149,63 +149,45 @@ async function carregarTurmaCorretora() {
             if (tabCor) tabCor.classList.remove('pa-nav-tab--urgente');
         }
 
-        /* ── Renderiza cards ── */
-        const cardsAtivos = comPendentes.map(p => `
-            <div class="pa-tcor-card" id="tcorCard_${p.prova_id}">
+        /* ── Renderiza cards — busca sempre visível ── */
+        const todosCards = provas.map(p => {
+            const pend = Number(p.pendentes) || 0;
+            const badgePend = pend > 0
+                ? `<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:700">✅ ${pend} folha${pend !== 1 ? 's' : ''} para corrigir</span>`
+                : `<span style="background:#f1f5f9;color:#475569;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">Sua turma foi atribuída como corretora</span>`;
+            const badge2a = p.turma_corretora_2a_correcao
+                ? '<span style="background:#fef9c3;color:#854d0e;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">2ª conferência ativa</span>'
+                : '';
+            const dica = pend > 0
+                ? 'Digite o nome do aluno cuja folha física você tem em mãos:'
+                : 'Você pode buscar um aluno pelo nome assim que o professor liberar a folha (ou o aluno submeter pelo portal).';
+            const borderColor = pend > 0 ? '#86efac' : '#d1d5db';
+            return `
+            <div class="pa-tcor-card" id="tcorCard_${p.prova_id}" style="border-color:${borderColor}">
                 <div style="margin-bottom:12px">
                     <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:5px">
                         ${escapeHtmlGam(p.prova_nome || 'Prova')}
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
-                        <span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:700">
-                            ✅ ${p.pendentes} folha${p.pendentes != 1 ? 's' : ''} para corrigir
-                        </span>
-                        ${p.turma_corretora_2a_correcao
-                            ? '<span style="background:#fef9c3;color:#854d0e;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">2ª conferência ativa</span>'
-                            : ''}
+                        ${badgePend}${badge2a}
                     </div>
-                    <div style="font-size:0.85em;color:var(--pa-sub)">
-                        Digite o nome do aluno cuja folha física você tem em mãos:
-                    </div>
+                    <div style="font-size:0.85em;color:var(--pa-sub)">${dica}</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
                     <input type="text"
                            id="tcorBusca_${p.prova_id}"
                            placeholder="Nome do aluno dono da prova…"
                            autocomplete="off"
-                           style="flex:1;border:1.5px solid #86efac;border-radius:8px;padding:10px 14px;font-size:14px;outline:none;background:var(--pa-card);color:var(--pa-text);font-family:inherit"
+                           style="flex:1;border:1.5px solid ${borderColor};border-radius:8px;padding:10px 14px;font-size:14px;outline:none;background:var(--pa-card);color:var(--pa-text);font-family:inherit"
                            oninput="tcorBuscar(${p.prova_id}, this)">
                 </div>
                 <div id="tcorResultados_${p.prova_id}"
-                     style="display:none;margin-top:6px;border:1.5px solid #86efac;border-radius:8px;background:var(--pa-card);overflow:hidden"></div>
+                     style="display:none;margin-top:6px;border:1.5px solid ${borderColor};border-radius:8px;background:var(--pa-card);overflow:hidden"></div>
                 <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:var(--pa-sub);margin-top:6px;min-height:16px"></div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
 
-        const cardsAguardando = semSubmissoes.length > 0 ? `
-            <div style="margin-top:${comPendentes.length > 0 ? '20px' : '0'}">
-                <div style="font-size:0.82em;font-weight:700;color:var(--pa-sub);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-                    ⏳ Aguardando submissões dos alunos
-                </div>
-                ${semSubmissoes.map(p => `
-                <div class="pa-tcor-card" id="tcorCardAg_${p.prova_id}" style="border-color:#e5e7eb;background:var(--pa-card)">
-                    <div style="display:flex;align-items:flex-start;gap:12px">
-                        <div style="font-size:2em;line-height:1;flex-shrink:0">⏳</div>
-                        <div>
-                            <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:4px">
-                                ${escapeHtmlGam(p.prova_nome || 'Prova')}
-                            </div>
-                            <div style="background:#f1f5f9;color:#475569;border-radius:20px;display:inline-block;padding:2px 10px;font-size:0.78em;font-weight:600;margin-bottom:5px">
-                                Sua turma foi atribuída como corretora
-                            </div>
-                            <div style="font-size:0.82em;color:var(--pa-sub)">
-                                As folhas aparecerão aqui assim que os alunos as enviarem.
-                            </div>
-                        </div>
-                    </div>
-                </div>`).join('')}
-            </div>` : '';
-
-        lista.innerHTML = cardsAtivos + cardsAguardando;
+        lista.innerHTML = todosCards;
     } catch (_) {
         /* silencioso — módulo opcional */
     }
