@@ -1412,10 +1412,21 @@ function _renderMapaGrid() {
         ${_mapaVariantes.map(v => `<th class="ac-mapa-th-var">V${escapeHtml(String(v.codigo))}</th>`).join('')}
     </tr>`;
 
-    /* Dropdown mostra apenas posições objetivas (ex: 3, 4, … 14) */
-    const opts = Array.from({ length: _mapaTotalQ || _mapaN }, (_, i) => i + 1)
-        .filter(n => !_mapaDiscursivas.has(n))
-        .map(n => `<option value="${n}">${n}</option>`).join('');
+    /* Todas as posições objetivas possíveis (ex: [3,4,…,14]) */
+    const allObjPos = Array.from({ length: _mapaTotalQ || _mapaN }, (_, i) => i + 1)
+        .filter(n => !_mapaDiscursivas.has(n));
+
+    /* Pré-calcula quais posições já estão ocupadas em cada coluna/variante */
+    const usadosPorVariante = {};
+    for (const v of _mapaVariantes) {
+        const used = new Set();
+        for (let qf = 1; qf <= (_mapaTotalQ || _mapaN); qf++) {
+            if (_mapaDiscursivas.has(qf)) continue;
+            const pos = _mapaGrid[qf]?.[v.id];
+            if (pos) used.add(pos);
+        }
+        usadosPorVariante[v.id] = used;
+    }
 
     const nCols = _mapaVariantes.length;
     let html = '';
@@ -1431,20 +1442,30 @@ function _renderMapaGrid() {
                 </td>`;
             }
         } else {
-            /* Linha de questão objetiva — dropdowns editáveis */
+            /* Linha de questão objetiva — dropdowns com opções filtradas por coluna */
             for (const v of _mapaVariantes) {
-                const val = _mapaGrid[qf]?.[v.id] || '';
-                const conflict  = val && conflitos[v.id]?.has(parseInt(val, 10));
-                const vazia     = _mapaImportado && !val;
+                const val      = _mapaGrid[qf]?.[v.id] || '';
+                const valNum   = parseInt(val, 10);
+                const conflict = val && conflitos[v.id]?.has(valNum);
+                const vazia    = _mapaImportado && !val;
                 const celClasses = ['ac-mapa-td-cel',
                     conflict ? 'ac-mapa-conflict' : '',
                     vazia    ? 'ac-mapa-vazia'    : ''
                 ].filter(Boolean).join(' ');
+
+                /* Opções disponíveis = posições ainda não usadas nesta coluna
+                 * + valor atual da célula (para manter a seleção visível) */
+                const usado = usadosPorVariante[v.id];
+                const opcoesHtml = allObjPos
+                    .filter(n => !usado.has(n) || n === valNum)
+                    .map(n => `<option value="${n}"${n === valNum ? ' selected' : ''}>${n}</option>`)
+                    .join('');
+
                 html += `<td class="${celClasses}" title="${vazia ? 'Preencha esta posição manualmente' : ''}">
                     <select class="ac-mapa-sel"
                         onchange="onMapaCelChange(${qf},${v.id},this.value)">
-                        <option value="">–</option>
-                        ${opts.replace(`value="${val}"`, `value="${val}" selected`)}
+                        <option value=""${!val ? ' selected' : ''}>–</option>
+                        ${opcoesHtml}
                     </select>
                 </td>`;
             }
