@@ -19,6 +19,41 @@ function _lerQuestoesTxt(provaId, varianteCodigo) {
     } catch (_) { return null; }
 }
 
+function _salvarRascunho(chave, marcacoes) {
+    try { localStorage.setItem(chave, JSON.stringify(marcacoes)); } catch (_) {}
+}
+
+function _lerRascunho(chave) {
+    try {
+        const raw = localStorage.getItem(chave);
+        return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+}
+
+function _apagarRascunho(chave) {
+    try { localStorage.removeItem(chave); } catch (_) {}
+}
+
+function _chaveRascunhoProva() {
+    if (!estado.ansid || !estado.varianteSel) return null;
+    return `edusync_rascunho_prova_${estado.ansid}_${estado.varianteSel.codigo}`;
+}
+
+function _chaveRascunhoTcor() {
+    if (!estado.tcor) return null;
+    return `edusync_rascunho_tcor_${estado.tcor.submissao_ref_id}`;
+}
+
+function _mostrarAvisoRascunho(containerEl) {
+    if (!containerEl) return;
+    if (containerEl.querySelector('.pp-rascunho-restaurado')) return;
+    const aviso = document.createElement('div');
+    aviso.className = 'pp-rascunho-restaurado';
+    aviso.textContent = '📝 Rascunho restaurado — continue de onde parou.';
+    aviso.style.cssText = 'margin:8px 0 12px;padding:8px 12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:13px;color:#92400e;font-weight:500';
+    containerEl.insertBefore(aviso, containerEl.firstChild);
+}
+
 const TEMA_KEY = 'aluno_tema';
 function aplicarTema(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem(TEMA_KEY, t); }
 function toggleTema() { aplicarTema((document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'light' : 'dark'); }
@@ -145,6 +180,22 @@ async function selecionarVariante(v) {
         etapa1LinkWrap.style.display = 'none';
     }
     renderTabelaEtapa1();
+
+    /* Restaura rascunho se existir */
+    const chave = _chaveRascunhoProva();
+    if (chave) {
+        const rascunho = _lerRascunho(chave);
+        if (rascunho && Object.keys(rascunho).length > 0) {
+            estado.marcacoes = rascunho;
+            for (const [q, letra] of Object.entries(rascunho)) {
+                document.querySelectorAll(`.pp-bolha[data-q="${q}"]`).forEach(el => {
+                    el.classList.toggle('pp-marcada', el.dataset.l === letra);
+                });
+            }
+            _mostrarAvisoRascunho($('ppEtapa1'));
+        }
+    }
+
     show('ppEtapa1');
 }
 
@@ -177,6 +228,11 @@ function marcar(q, letra) {
     document.querySelectorAll(`.pp-bolha[data-q="${q}"]`).forEach(el => {
         el.classList.toggle('pp-marcada', el.dataset.l === letra);
     });
+    /* Persiste rascunho (não salva para o fluxo do segundo corretor) */
+    if (!estado.segundo) {
+        const chave = estado.tcor ? _chaveRascunhoTcor() : _chaveRascunhoProva();
+        if (chave) _salvarRascunho(chave, estado.marcacoes);
+    }
 }
 
 function marcarVF(q, subIdx, letra, vfCount) {
@@ -193,6 +249,8 @@ function marcarVF(q, subIdx, letra, vfCount) {
 }
 
 function voltarVariante() {
+    const chave = _chaveRascunhoProva();
+    if (chave) _apagarRascunho(chave);
     estado.marcacoes = {};
     show('ppVariante');
 }
@@ -270,6 +328,8 @@ async function enviarSubmissao() {
             show('ppFoto');
             return;
         }
+        const chaveProva = _chaveRascunhoProva();
+        if (chaveProva) _apagarRascunho(chaveProva);
         renderResultado(d);
     } catch (e) {
         notificar('Erro: ' + e.message, 'erro');
@@ -395,6 +455,22 @@ async function iniciarTurmaCorretora(subRefId) {
 
         estado.tcorQuestoesTxt = _lerQuestoesTxt(item.prova_id, item.variante_codigo);
         renderTabelaTcor();
+
+        /* Restaura rascunho de turma corretora se existir */
+        const chaveTcor = _chaveRascunhoTcor();
+        if (chaveTcor) {
+            const rascunho = _lerRascunho(chaveTcor);
+            if (rascunho && Object.keys(rascunho).length > 0) {
+                estado.marcacoes = rascunho;
+                for (const [q, letra] of Object.entries(rascunho)) {
+                    document.querySelectorAll(`.pp-bolha[data-q="${q}"]`).forEach(el => {
+                        el.classList.toggle('pp-marcada', el.dataset.l === letra);
+                    });
+                }
+                _mostrarAvisoRascunho($('ppTurmaCorretora'));
+            }
+        }
+
         show('ppTurmaCorretora');
     } catch (e) { showErro(e.message); }
 }
@@ -448,6 +524,8 @@ async function enviarTurmaCorretora() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao enviar.');
+        const chaveTcor = _chaveRascunhoTcor();
+        if (chaveTcor) _apagarRascunho(chaveTcor);
         let msg = '✅ Correção enviada! Obrigado pela ajuda.';
         if (d.xpGanho) msg += ` | +${d.xpGanho} XP ganho`;
         notificar(msg);
