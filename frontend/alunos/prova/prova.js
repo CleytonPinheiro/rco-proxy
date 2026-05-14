@@ -364,13 +364,14 @@ async function iniciarTurmaCorretora(subRefId) {
         if (btnPdf) {
             if (item.link_prova) {
                 estado.tcorPdfUrl = `/api/alunos-portal/turma-corretora/prova-pdf/${item.submissao_ref_id}`;
+                btnPdf.onclick = () => window.open(estado.tcorPdfUrl, '_blank');
                 btnPdf.disabled = false;
                 btnPdf.style.opacity = '';
                 btnPdf.style.cursor = 'pointer';
                 btnPdf.style.background = '#eff6ff';
                 btnPdf.style.color = '#1d4ed8';
                 btnPdf.style.borderColor = '#93c5fd';
-                if (dica) dica.textContent = 'Abra para consultar as questões enquanto corrige.';
+                if (dica) dica.textContent = 'Abra em nova aba e use a divisão de abas do navegador para corrigir ao lado da prova.';
             } else {
                 estado.tcorPdfUrl = null;
                 btnPdf.disabled = true;
@@ -619,29 +620,6 @@ async function enviarSegundo() {
     }
 }
 
-function toggleSplitPdf() {
-    if (!estado.tcorPdfUrl) return;
-    const pdfPane   = $('ppTcorPdfPane');
-    const splitWrap = $('ppTcorSplitWrap');
-    if (!pdfPane) return;
-    const isOpen = pdfPane.style.display !== 'none';
-    if (isOpen) {
-        fecharSplitPdf();
-    } else {
-        const frame = $('ppTcorPdfFrame');
-        if (frame && frame.src !== estado.tcorPdfUrl) frame.src = estado.tcorPdfUrl;
-        pdfPane.style.display = '';
-        if (splitWrap) splitWrap.classList.add('pp-split-active');
-    }
-}
-
-function fecharSplitPdf() {
-    const pdfPane   = $('ppTcorPdfPane');
-    const splitWrap = $('ppTcorSplitWrap');
-    if (pdfPane) pdfPane.style.display = 'none';
-    if (splitWrap) splitWrap.classList.remove('pp-split-active');
-}
-
 window.enviarTurmaCorretora   = enviarTurmaCorretora;
 window.enviarSegundo          = enviarSegundo;
 window.toggleTema             = toggleTema;
@@ -653,7 +631,5 @@ window.previewFoto            = previewFoto;
 window.enviarSubmissao        = enviarSubmissao;
 window.enviarFotoOuSubmissao  = enviarFotoOuSubmissao;
 window.verResultado           = verResultado;
-window.toggleSplitPdf         = toggleSplitPdf;
-window.fecharSplitPdf         = fecharSplitPdf;
 
 init();
