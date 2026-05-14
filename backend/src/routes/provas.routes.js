@@ -5028,6 +5028,25 @@ export function createProvasPublicRouter() {
             const rosterFiltrado = rosterAlunos.filter(a => !correctedSet.has(a.email));
             console.log(`[LISTA-TURMA-ALVO] já corrigidos pela turma corretora: ${correctedSet.size} | após filtro: ${rosterFiltrado.length}`);
 
+            /* ── Submissões já sorteadas para conferência às cegas (2º corretor) ── */
+            /* Alunos cujo submissao_ref_id já possui entrada em notificacoes_aluno
+               com tipo segundo_corretor / segundo_corretor_voluntario para esta prova
+               não devem mais aparecer no dropdown — não há nada a fazer por elas. */
+            const { rows: cegaRows } = await pool.query(
+                `SELECT DISTINCT (na.dados->>'submissaoRefId')::integer AS submissao_ref_id
+                   FROM notificacoes_aluno na
+                  WHERE na.tipo IN ('segundo_corretor', 'segundo_corretor_voluntario')
+                    AND (na.dados->>'provaId')::integer = $1
+                    AND na.dados->>'submissaoRefId' IS NOT NULL`,
+                [pid]
+            );
+            const cegaSubmissaoIds = new Set(cegaRows.map(r => r.submissao_ref_id).filter(id => id != null));
+            const rosterSemCega = rosterFiltrado.filter(a => {
+                const subId = submissaoMap[a.email] ?? null;
+                return subId == null || !cegaSubmissaoIds.has(subId);
+            });
+            console.log(`[LISTA-TURMA-ALVO] na fila às cegas: ${cegaSubmissaoIds.size} | após filtro cega: ${rosterSemCega.length}`);
+
             /* ── Se este corrector tem pré-atribuições abertas, exibir só essas folhas ── */
             const { rows: preAssigned } = await pool.query(
                 `SELECT submissao_ref_id FROM classroom_prova_submissoes
@@ -5037,11 +5056,11 @@ export function createProvasPublicRouter() {
             );
             const preAssignedIds = new Set(preAssigned.map(r => r.submissao_ref_id));
             const rosterFinal = preAssignedIds.size > 0
-                ? rosterFiltrado.filter(a => {
+                ? rosterSemCega.filter(a => {
                       const subId = submissaoMap[a.email] ?? null;
                       return subId != null && preAssignedIds.has(subId);
                   })
-                : rosterFiltrado;
+                : rosterSemCega;
 
             /* ── Monta resultado final — anonimiza quando há pré-atribuição ── */
             const result = rosterFinal.map(a => {
