@@ -3833,14 +3833,6 @@ export function createProvasPublicRouter() {
                         AND sc.eh_segundo_corretor = false
                         AND sc.eh_turma_corretora  = false
                   )
-                  AND EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes sc2
-                       JOIN classroom_provas pc2 ON pc2.id = sc2.prova_id
-                      WHERE sc2.aluno_email = $1
-                        AND pc2.curso_id = p.turma_corretora_id
-                        AND sc2.eh_segundo_corretor = false
-                        AND sc2.eh_turma_corretora  = false
-                  )
                 ORDER BY p.id`,
                 [aluno.email]
             );
@@ -3909,14 +3901,6 @@ export function createProvasPublicRouter() {
                         AND sc.eh_segundo_corretor = false
                         AND sc.eh_turma_corretora  = false
                   )
-                  AND EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes sc2
-                       JOIN classroom_provas pc2 ON pc2.id = sc2.prova_id
-                      WHERE sc2.aluno_email = $2
-                        AND pc2.curso_id = p.turma_corretora_id
-                        AND sc2.eh_segundo_corretor = false
-                        AND sc2.eh_turma_corretora  = false
-                  )
                 ORDER BY (CASE WHEN s.aluno_nome IS NULL THEN 1 ELSE 0 END),
                          COALESCE(s.aluno_nome, ''),
                          v.codigo
@@ -3974,14 +3958,6 @@ export function createProvasPublicRouter() {
                         AND pc.curso_id = p.curso_id
                         AND sc.eh_segundo_corretor = false
                         AND sc.eh_turma_corretora  = false
-                  )
-                  AND EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes sc2
-                       JOIN classroom_provas pc2 ON pc2.id = sc2.prova_id
-                      WHERE sc2.aluno_email = $2
-                        AND pc2.curso_id = p.turma_corretora_id
-                        AND sc2.eh_segundo_corretor = false
-                        AND sc2.eh_turma_corretora  = false
                   )`,
                 [parseInt(req.params.subRefId, 10), aluno.email]
             );
@@ -4049,22 +4025,6 @@ export function createProvasPublicRouter() {
             if (naAlvo.length > 0) {
                 await client.query('ROLLBACK');
                 return res.status(403).json({ erro: 'Alunos da turma-alvo não podem corrigir por este fluxo.' });
-            }
-
-            /* Verifica que o aluno PERTENCE à turma corretora (server-side, sym. ao GET) */
-            const { rows: naTcor } = await client.query(
-                `SELECT 1 FROM classroom_prova_submissoes sc
-                  JOIN classroom_provas pc ON pc.id = sc.prova_id
-                 WHERE sc.aluno_email = $1
-                   AND pc.curso_id = $2
-                   AND sc.eh_segundo_corretor = false
-                   AND sc.eh_turma_corretora  = false
-                 LIMIT 1`,
-                [aluno.email, ref.turma_corretora_id]
-            );
-            if (naTcor.length === 0) {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ erro: 'Você não pertence à turma corretora desta prova.' });
             }
 
             /* Verifica se já foi corrigida por turma corretora */

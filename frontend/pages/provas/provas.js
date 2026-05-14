@@ -877,7 +877,7 @@ function renderDetalhe(d) {
                     <button class="prv-btn prv-btn-primary" onclick="salvarTurmaCorretora()">Salvar</button>
                     ${currentTcId ? `<button class="prv-btn" onclick="salvarTurmaCorretora(true)">Remover turma corretora</button>` : ''}
                 </div>
-                <small style="color:#888">Alterações são aplicadas imediatamente. Alunos da turma corretora que já estejam com a fila aberta veem a mudança no próximo carregamento.</small>
+                <small style="color:#888">Alterações são aplicadas imediatamente. Os alunos da turma corretora encontram as folhas para corrigir diretamente no <strong>Portal do Aluno → aba "✏️ Correções"</strong> — não é necessário publicar atividade no Classroom para eles.</small>
             </div>
         </details>`;
 
