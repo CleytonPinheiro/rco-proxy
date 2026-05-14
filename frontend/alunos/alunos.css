@@ -2013,6 +2013,87 @@ html, body {
     border-color: #16a34a;
 }
 
+/* ── Custom student-select inside correction card ───────────── */
+.tcor-csel {
+    position: relative;
+    width: 100%;
+    border-radius: 12px;
+    background: var(--pa-card);
+    user-select: none;
+}
+.tcor-csel-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--pa-text);
+    font-family: inherit;
+    background: var(--pa-card);
+    transition: background 0.15s;
+}
+.tcor-csel-trigger:hover { background: var(--pa-card2); }
+.tcor-csel-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tcor-csel-arrow {
+    flex-shrink: 0;
+    color: var(--pa-sub);
+    font-size: 12px;
+    transition: transform 0.15s;
+}
+.tcor-csel--open .tcor-csel-arrow { transform: rotate(180deg); }
+
+.tcor-csel-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--pa-card);
+    border: 1px solid var(--pa-border);
+    border-radius: 10px;
+    box-shadow: 0 6px 20px var(--pa-shadow-lg);
+    z-index: 500;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+.tcor-csel-panel::-webkit-scrollbar       { width: 6px; }
+.tcor-csel-panel::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
+.tcor-csel-panel::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+.tcor-csel-item {
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--pa-text);
+    border-radius: 6px;
+    margin: 1px 4px;
+    transition: background 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tcor-csel-item:hover { background: var(--pa-card2); color: var(--pa-primary); }
+.tcor-csel-item--placeholder {
+    color: var(--pa-sub);
+    cursor: default;
+}
+.tcor-csel-item--placeholder:hover { background: transparent; color: var(--pa-sub); }
+.tcor-csel-item--selected { font-weight: 600; color: var(--pa-primary); }
+.tcor-csel-item--focused { background: var(--pa-card2); color: var(--pa-primary); }
+
+.tcor-csel--disabled .tcor-csel-trigger { cursor: default; opacity: 0.7; }
+.tcor-csel--disabled .tcor-csel-arrow  { opacity: 0.4; }
+
 /* ── Responsivo ────────────────────────────────────────────── */
 @media (max-width: 480px) {
     .pa-cq-panel-inner { width: 100vw; border-radius: 0; }

@@ -190,11 +190,19 @@ async function carregarTurmaCorretora() {
                 <label style="font-size:0.85em;color:var(--pa-sub);display:block;margin-bottom:6px">
                     Selecione o aluno cuja folha está em suas mãos:
                 </label>
-                <select id="tcorSelect_${p.prova_id}"
-                        onchange="tcorSelecionarAluno(${p.prova_id}, this)"
-                        style="width:100%;border:none;border-radius:12px;padding:10px 12px;font-size:14px;background:var(--pa-card);color:var(--pa-text);font-family:inherit;cursor:pointer;appearance:auto;box-shadow:0 0 0 1.5px ${borderColor}">
-                    <option value="">— Carregando alunos… —</option>
-                </select>
+                <div class="tcor-csel tcor-csel--disabled" id="tcorSelect_${p.prova_id}" style="box-shadow:0 0 0 1.5px ${borderColor}">
+                    <div class="tcor-csel-trigger"
+                         role="combobox"
+                         tabindex="0"
+                         aria-haspopup="listbox"
+                         aria-expanded="false"
+                         aria-disabled="true"
+                         onclick="tcorToggleSelect(this.closest('.tcor-csel'))">
+                        <span class="tcor-csel-value">— Carregando alunos… —</span>
+                        <span class="tcor-csel-arrow" aria-hidden="true">▾</span>
+                    </div>
+                    <div class="tcor-csel-panel" style="display:none"></div>
+                </div>
                 <div id="tcorAcao_${p.prova_id}" style="margin-top:10px"></div>
                 <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:var(--pa-sub);margin-top:4px;min-height:16px"></div>
             </div>`;
@@ -208,6 +216,116 @@ async function carregarTurmaCorretora() {
         /* silencioso — módulo opcional */
     }
 }
+
+/* ── Helpers for the custom student select widget ─── */
+function tcorCselClose(container) {
+    const panel = container.querySelector('.tcor-csel-panel');
+    if (panel) panel.style.display = 'none';
+    container.classList.remove('tcor-csel--open');
+    container.querySelector('.tcor-csel-trigger')?.setAttribute('aria-expanded', 'false');
+}
+
+function tcorCselSetPlaceholder(container, text) {
+    const valEl = container.querySelector('.tcor-csel-value');
+    const panel = container.querySelector('.tcor-csel-panel');
+    if (valEl) valEl.textContent = text;
+    if (panel) { panel.innerHTML = ''; panel.style.display = 'none'; }
+    container.classList.add('tcor-csel--disabled');
+    container.classList.remove('tcor-csel--open');
+    const trigger = container.querySelector('.tcor-csel-trigger');
+    if (trigger) { trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-disabled', 'true'); }
+}
+
+function tcorCselSetOptions(container, provaId, alunos) {
+    const valEl = container.querySelector('.tcor-csel-value');
+    const panel = container.querySelector('.tcor-csel-panel');
+    const trigger = container.querySelector('.tcor-csel-trigger');
+    if (valEl) valEl.textContent = '— Selecione o aluno —';
+    container.classList.remove('tcor-csel--disabled');
+    if (trigger) { trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-disabled', 'false'); }
+    if (!panel) return;
+    panel.setAttribute('role', 'listbox');
+    panel.innerHTML = '';
+    const ph = document.createElement('div');
+    ph.className = 'tcor-csel-item tcor-csel-item--placeholder';
+    ph.setAttribute('role', 'option');
+    ph.setAttribute('aria-disabled', 'true');
+    ph.textContent = '— Selecione o aluno —';
+    panel.appendChild(ph);
+
+    let focusedIdx = -1;
+
+    const items = alunos.map((a, i) => {
+        const num  = a.numchamada != null ? String(a.numchamada).padStart(2, '0') + ' · ' : '';
+        const tag  = a.sem_submissao ? ' ✎' : ' ✔';
+        const item = document.createElement('div');
+        item.className = 'tcor-csel-item';
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', 'false');
+        item.textContent = num + a.nome + tag;
+        item.dataset.value = String(i);
+        item.addEventListener('click', () => {
+            panel.querySelectorAll('.tcor-csel-item--selected').forEach(el => {
+                el.classList.remove('tcor-csel-item--selected');
+                el.setAttribute('aria-selected', 'false');
+            });
+            item.classList.add('tcor-csel-item--selected');
+            item.setAttribute('aria-selected', 'true');
+            if (valEl) valEl.textContent = item.textContent;
+            tcorCselClose(container);
+            tcorSelecionarAluno(provaId, { value: String(i) });
+        });
+        panel.appendChild(item);
+        return item;
+    });
+
+    function moveFocus(delta) {
+        const selectableItems = items;
+        if (!selectableItems.length) return;
+        focusedIdx = Math.max(0, Math.min(selectableItems.length - 1, focusedIdx + delta));
+        selectableItems.forEach((el, i) => el.classList.toggle('tcor-csel-item--focused', i === focusedIdx));
+        selectableItems[focusedIdx]?.scrollIntoView({ block: 'nearest' });
+    }
+
+    trigger?.addEventListener('keydown', e => {
+        const isOpen = container.classList.contains('tcor-csel--open');
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!isOpen) { tcorToggleSelect(container); focusedIdx = -1; moveFocus(1); }
+            else if (focusedIdx >= 0) { items[focusedIdx]?.click(); }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isOpen) { tcorToggleSelect(container); focusedIdx = -1; moveFocus(1); }
+            else moveFocus(1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (isOpen) moveFocus(-1);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            tcorCselClose(container);
+        }
+    });
+}
+
+function tcorToggleSelect(container) {
+    if (container.classList.contains('tcor-csel--disabled')) return;
+    const panel = container.querySelector('.tcor-csel-panel');
+    if (!panel || !panel.children.length) return;
+    const isOpen = container.classList.contains('tcor-csel--open');
+    document.querySelectorAll('.tcor-csel--open').forEach(el => tcorCselClose(el));
+    if (!isOpen) {
+        panel.style.display = '';
+        container.classList.add('tcor-csel--open');
+        container.querySelector('.tcor-csel-trigger')?.setAttribute('aria-expanded', 'true');
+    }
+}
+window.tcorToggleSelect = tcorToggleSelect;
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.tcor-csel')) {
+        document.querySelectorAll('.tcor-csel--open').forEach(el => tcorCselClose(el));
+    }
+});
 
 /* ── Carrega lista de alunos da turma alvo no select ─── */
 async function tcorCarregarListaAlunos(provaId) {
@@ -224,20 +342,20 @@ async function tcorCarregarListaAlunos(provaId) {
         /* Erro explícito do servidor */
         if (!r.ok || d.erro) {
             const textoErro = d.erro || `HTTP ${r.status}`;
-            sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
+            tcorCselSetPlaceholder(sel, '— Erro ao carregar —');
             if (msg) msg.textContent = textoErro;
             return;
         }
 
         /* Aviso sem alunos (ex.: token expirado) */
         if (d.aviso) {
-            sel.innerHTML = '<option value="">— Nenhum aluno disponível —</option>';
+            tcorCselSetPlaceholder(sel, '— Nenhum aluno disponível —');
             if (msg) msg.textContent = d.aviso;
             return;
         }
 
         if (!d.alunos) {
-            sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
+            tcorCselSetPlaceholder(sel, '— Erro ao carregar —');
             if (msg) msg.textContent = 'Resposta inesperada do servidor.';
             return;
         }
@@ -261,7 +379,7 @@ async function tcorCarregarListaAlunos(provaId) {
         }
 
         if (d.alunos.length === 0) {
-            sel.innerHTML = '<option value="">— Nenhum aluno disponível —</option>';
+            tcorCselSetPlaceholder(sel, '— Nenhum aluno disponível —');
             if (d.todos_corrigidos) {
                 sel.style.display = 'none';
                 const existing = sel.parentElement && sel.parentElement.querySelector('.tcor-todos-corrigidos');
@@ -282,15 +400,10 @@ async function tcorCarregarListaAlunos(provaId) {
         const oldCard = sel.parentElement && sel.parentElement.querySelector('.tcor-todos-corrigidos');
         if (oldCard) oldCard.remove();
         sel.style.display = '';
-        sel.innerHTML = '<option value="">— Selecione o aluno —</option>' +
-            d.alunos.map((a, i) => {
-                const num  = a.numchamada != null ? String(a.numchamada).padStart(2, '0') + ' · ' : '';
-                const tag  = a.sem_submissao ? ' ✎' : ' ✔';
-                return `<option value="${i}">${num}${escapeHtmlGam(a.nome)}${tag}</option>`;
-            }).join('');
+        tcorCselSetOptions(sel, provaId, d.alunos);
         if (msg) msg.textContent = '';
     } catch (err) {
-        if (sel) sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
+        if (sel) tcorCselSetPlaceholder(sel, '— Erro ao carregar —');
         if (msg) msg.textContent = `Erro de rede: ${err.message}`;
     }
 }
