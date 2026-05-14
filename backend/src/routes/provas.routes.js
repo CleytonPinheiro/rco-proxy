@@ -3929,6 +3929,7 @@ export function createProvasPublicRouter() {
                     s.aluno_nome,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
+                    p.link_prova,
                     p.turma_corretora_2a_correcao,
                     v.codigo        AS variante_codigo,
                     jsonb_array_length(v.gabarito_json) AS qtd_questoes

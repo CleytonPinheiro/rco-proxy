@@ -65,10 +65,24 @@
                 Sua turma foi designada para corrigir as folhas de outra turma. Confirme o nome do aluno
                 abaixo, olhe a foto da folha e marque o que vê assinalado em cada questão.
             </p>
-            <div id="ppTcorNomeWrap" style="display:none;margin:10px 0;padding:10px 14px;background:#dcfce7;border:1px solid #86efac;border-radius:8px">
-                <span style="font-size:0.88em;color:#166534;font-weight:600">📋 Aluno dono da folha:</span>
-                <span id="ppTcorNomeAluno" style="margin-left:8px;font-weight:700;color:#15803d;font-size:1em"></span>
-                <span style="font-size:0.8em;color:#166534;margin-left:8px">(confirme que é a folha certa antes de lançar)</span>
+            <div id="ppTcorNomeWrap" style="display:none;margin:10px 0;padding:10px 14px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;flex-wrap:wrap;gap:10px;align-items:center">
+                <div>
+                    <span style="font-size:0.88em;color:#166534;font-weight:600">📋 Aluno dono da folha:</span>
+                    <span id="ppTcorNomeAluno" style="margin-left:8px;font-weight:700;color:#15803d;font-size:1em"></span>
+                    <span style="font-size:0.8em;color:#166534;margin-left:8px">(confirme que é a folha certa antes de lançar)</span>
+                </div>
+                <div id="ppTcorVarianteWrap" style="display:none">
+                    <span style="font-size:0.82em;color:#166534;font-weight:600;background:#bbf7d0;padding:3px 10px;border-radius:20px;border:1px solid #86efac">
+                        Variante: <strong id="ppTcorVariante"></strong>
+                    </span>
+                </div>
+            </div>
+            <div id="ppTcorLinkWrap" style="display:none;margin:8px 0">
+                <a id="ppTcorLinkProva" href="#" target="_blank" rel="noopener"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:0.88em;font-weight:600;text-decoration:none">
+                    📄 Ver folha de prova (Variante <span id="ppTcorLinkVariante"></span>)
+                </a>
+                <span style="font-size:0.78em;color:#6b7280;margin-left:8px">Abra para consultar as questões enquanto corrige.</span>
             </div>
             <div id="ppTcorFotoWrap" style="margin:12px 0">
                 <img id="ppTcorFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha">

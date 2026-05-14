@@ -325,12 +325,28 @@ async function iniciarTurmaCorretora(subRefId) {
         estado.qtdQuestoes = item.qtd_questoes || 12;
         estado.marcacoes = {};
 
-        /* Exibe nome do aluno dono como confirmação visual */
+        /* Exibe nome + variante do aluno dono como confirmação visual */
         const nomeWrap = $('ppTcorNomeWrap');
         const nomeEl   = $('ppTcorNomeAluno');
         if (nomeWrap && nomeEl) {
             nomeEl.textContent = item.aluno_nome || '(sem nome)';
-            nomeWrap.style.display = '';
+            nomeWrap.style.display = 'flex';
+        }
+        const varWrap = $('ppTcorVarianteWrap');
+        const varEl   = $('ppTcorVariante');
+        if (varWrap && varEl && item.variante_codigo != null) {
+            varEl.textContent = item.variante_codigo;
+            varWrap.style.display = '';
+        }
+
+        /* Botão de consulta ao PDF da folha de prova (variante específica) */
+        const linkWrap = $('ppTcorLinkWrap');
+        const linkEl   = $('ppTcorLinkProva');
+        const linkVar  = $('ppTcorLinkVariante');
+        if (linkWrap && linkEl && item.link_prova) {
+            linkEl.href = item.link_prova;
+            if (linkVar) linkVar.textContent = item.variante_codigo || '';
+            linkWrap.style.display = '';
         }
 
         if (item.foto_url) {
