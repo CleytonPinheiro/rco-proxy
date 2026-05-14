@@ -3977,20 +3977,40 @@ export function createProvasPublicRouter() {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
-            /* ── Detecta cursos do aluno via Classroom API (credencial de qualquer professor) ── */
+            /* ── Detecta cursos do aluno via Classroom API ── */
             const meusCursoIds = new Set();
-            try {
-                const { rows: tkRows } = await pool.query(
-                    `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
-                );
-                if (tkRows[0]) {
+            let apiOk = false;
+
+            const { rows: tkRows } = await pool.query(
+                `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+            );
+
+            if (tkRows[0]) {
+                try {
                     const { google } = await import('googleapis');
                     const auth = new google.auth.OAuth2(
                         process.env.GOOGLE_CLIENT_ID,
                         process.env.GOOGLE_CLIENT_SECRET,
                         `${req.protocol}://${req.get('host')}/api/classroom/callback`
                     );
-                    auth.setCredentials(tkRows[0].tokens);
+                    const token = tkRows[0].tokens;
+                    auth.setCredentials(token);
+
+                    /* Renova o token se estiver expirado */
+                    if (token.expiry_date && token.expiry_date < Date.now()) {
+                        try {
+                            const { credentials } = await auth.refreshAccessToken();
+                            auth.setCredentials(credentials);
+                            await pool.query(
+                                `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW()
+                                  WHERE ctid = (SELECT ctid FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1)`,
+                                [JSON.stringify(credentials)]
+                            );
+                        } catch (refErr) {
+                            console.warn('[ATRIB] Falha ao renovar token do professor:', refErr.message);
+                        }
+                    }
+
                     const classroom = google.classroom({ version: 'v1', auth });
                     let pageToken;
                     do {
@@ -4004,7 +4024,10 @@ export function createProvasPublicRouter() {
                         pageToken = r.data.nextPageToken;
                     } while (pageToken);
 
-                    /* Atualiza cache para uso das notificações (fire-and-forget) */
+                    apiOk = true;
+                    console.log(`[ATRIB] ${aluno.email} — ${meusCursoIds.size} curso(s) via API`);
+
+                    /* Atualiza cache (fire-and-forget) */
                     if (meusCursoIds.size > 0) {
                         setImmediate(async () => {
                             try {
@@ -4022,18 +4045,29 @@ export function createProvasPublicRouter() {
                             } catch (_) {}
                         });
                     }
+                } catch (apiErr) {
+                    console.warn('[ATRIB] Classroom API falhou:', apiErr.message);
                 }
-            } catch (_) {
-                /* API indisponível: usa cache como fallback */
+            } else {
+                console.warn('[ATRIB] Nenhum token de professor em classroom_tokens');
+            }
+
+            /* Fallback para cache se API não funcionou */
+            if (!apiOk) {
                 const { rows: cached } = await pool.query(
                     `SELECT curso_id FROM aluno_cursos_cache WHERE aluno_email = $1`,
                     [aluno.email]
                 );
                 cached.forEach(r => meusCursoIds.add(r.curso_id));
+                console.log(`[ATRIB] ${aluno.email} — ${meusCursoIds.size} curso(s) via cache`);
             }
 
-            if (meusCursoIds.size === 0) return res.json({ provas: [] });
+            if (meusCursoIds.size === 0) {
+                console.log(`[ATRIB] ${aluno.email} — sem cursos detectados, retornando vazio`);
+                return res.json({ provas: [] });
+            }
 
+            /* Busca provas onde turma_corretora_id pertence aos cursos do aluno */
             const ids = [...meusCursoIds];
             const ph  = ids.map((_, i) => `$${i + 2}`).join(', ');
 
@@ -4067,8 +4101,11 @@ export function createProvasPublicRouter() {
                   ORDER BY pendentes DESC, p.id`,
                 [aluno.email, ...ids]
             );
+
+            console.log(`[ATRIB] ${aluno.email} — ${rows.length} prova(s) atribuída(s)`);
             res.json({ provas: rows });
         } catch (e) {
+            console.error('[ATRIB] Erro inesperado:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });
