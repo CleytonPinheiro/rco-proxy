@@ -1417,10 +1417,23 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             logProvas(req, 'PROVA_UPDATE', { provaId: req.params.id, campos: Object.keys(req.body) });
             res.json({ ok: true });
 
+            const provaId = req.params.id;
+
+            /* Invalida cache de PDF quando o mapeamento de páginas muda */
+            if (req.body.linkProvaPaginas !== undefined) {
+                setImmediate(async () => {
+                    try {
+                        const { invalidatePdfCache } = await import('../services/pdfVariante.service.js');
+                        invalidatePdfCache(provaId);
+                    } catch (e) {
+                        console.warn(`[PDF-CACHE] prova ${provaId}:`, e.message);
+                    }
+                });
+            }
+
             /* Notifica turma corretora quando professor atribui (fire-and-forget) */
             const novoTcId = req.body.turmaCorretoraId;
             if (novoTcId && String(novoTcId).trim()) {
-                const provaId = req.params.id;
                 setImmediate(async () => {
                     try {
                         await notificarAtribuicaoTurmaCorretora(pool, provaId, String(novoTcId).trim());

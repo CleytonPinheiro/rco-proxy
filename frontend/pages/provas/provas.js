@@ -869,17 +869,6 @@ function renderDetalhe(d) {
                         ${optsTC}
                     </select>
                 </label>
-                <label>
-                    <span style="font-weight:600;font-size:0.88em">📄 Páginas do PDF por variante <span style="font-weight:400;color:#888">(opcional)</span></span>
-                    <span style="font-size:0.76em;color:#666;display:block;margin:2px 0 4px">
-                        Quando o PDF do campo "Link da prova" contém todas as variantes, informe aqui quais páginas pertencem a cada uma — o aluno corretor verá <strong>somente</strong> as páginas da variante que está em mãos.
-                        Uma linha por variante. Formato: <code>0: 1-2</code> ou <code>A: 3, 4</code> (números de página começando em 1).
-                        Se deixar vazio, o sistema tentará detectar automaticamente pelo texto do PDF ("TIPO 0", "VARIANTE A" etc.).
-                    </span>
-                    <textarea id="prvTcorPaginasMap" rows="4"
-                              style="width:100%;font-family:monospace;font-size:13px;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;resize:vertical;box-sizing:border-box;margin-top:2px"
-                              placeholder="0: 1-2&#10;1: 3-4&#10;2: 5-6">${escapeHtml(paginasMapToText(p.link_prova_paginas))}</textarea>
-                </label>
                 <label style="display:flex;align-items:center;gap:6px">
                     <input id="prvTcor2a" type="checkbox" ${current2a ? 'checked' : ''}>
                     Aluno original faz 2ª conferência depois da turma corretora
@@ -912,6 +901,27 @@ function renderDetalhe(d) {
             </div>
         </details>`;
 
+        /* Mapeamento manual de páginas por variante */
+        const gabMapPaginas = `<details style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;padding:10px"${p.link_prova_paginas ? ' open' : ''}>
+            <summary style="cursor:pointer;font-weight:600">📄 Mapeamento de páginas por variante${p.link_prova_paginas ? ' — configurado' : ' — automático'}</summary>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+                <p style="margin:0;font-size:0.84em;color:#4b5563;line-height:1.5">
+                    Quando o PDF do campo "Link da prova" contém todas as variantes num único arquivo, informe aqui quais páginas pertencem a cada variante.
+                    O aluno corretor verá <strong>somente</strong> as páginas da variante que está em mãos.<br>
+                    <strong>Uma linha por variante.</strong> Formato: <code>0: 1-2</code> ou <code>A: 3, 4</code> (números de página começando em 1).
+                    Deixe vazio para que o sistema tente detectar automaticamente pelo texto do PDF ("TIPO 0", "VARIANTE A" etc.).
+                </p>
+                <textarea id="prvPaginasMapEditor" rows="5"
+                          style="width:100%;font-family:monospace;font-size:13px;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;resize:vertical;box-sizing:border-box"
+                          placeholder="0: 1-2&#10;1: 3-4&#10;2: 5-6">${escapeHtml(paginasMapToText(p.link_prova_paginas))}</textarea>
+                <div style="display:flex;gap:8px">
+                    <button class="prv-btn prv-btn-primary" onclick="salvarMapeamentoPaginas()">Salvar mapeamento</button>
+                    ${p.link_prova_paginas ? `<button class="prv-btn" onclick="salvarMapeamentoPaginas(true)">Limpar (usar auto-detecção)</button>` : ''}
+                </div>
+                <small style="color:#888">Salvar invalida o cache de PDF imediatamente — o aluno verá as páginas corretas na próxima abertura.</small>
+            </div>
+        </details>`;
+
         /* Gabarito por variante */
         let gabStr = `<h3>Gabarito por variante</h3>`;
         for (const v of d.variantes) {
@@ -923,7 +933,7 @@ function renderDetalhe(d) {
             </details>`;
         }
         /* Render everything together so prepend never gets wiped */
-        $('prvDetGabarito').innerHTML = gabCfg + gabStr;
+        $('prvDetGabarito').innerHTML = gabCfg + gabMapPaginas + gabStr;
     }
 
     /* Submissões (exclui explicitamente correções da turma corretora das linhas "principais") */
@@ -1038,12 +1048,32 @@ async function salvarTurmaCorretora(remover = false) {
             body: JSON.stringify({
                 turmaCorretoraId: turmaCorretoraId || '',
                 turmaCorretora2aCorrecao,
-                ...(!remover && { linkProvaPaginas: parsePaginasMap($('prvTcorPaginasMap')?.value || '') }),
             }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
         toast(remover ? 'Turma corretora removida.' : 'Turma corretora salva!', 'ok');
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
+}
+
+async function salvarMapeamentoPaginas(limpar = false) {
+    if (!provaAberta) return;
+    const mapa = limpar ? null : parsePaginasMap($('prvPaginasMapEditor')?.value || '');
+    if (!limpar && !mapa) {
+        toast('Informe ao menos uma linha no formato "variante: páginas" antes de salvar.', 'warn');
+        return;
+    }
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ linkProvaPaginas: mapa }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
+        toast(limpar ? 'Mapeamento removido — será usado auto-detecção.' : 'Mapeamento de páginas salvo!', 'ok');
         await abrirDetalhe(provaAberta.prova.id);
     } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
@@ -1956,6 +1986,7 @@ window.abrirDetalhe    = abrirDetalhe;
 window.sortear                = sortear;
 window.regabaritar            = regabaritar;
 window.salvarTurmaCorretora   = salvarTurmaCorretora;
+window.salvarMapeamentoPaginas = salvarMapeamentoPaginas;
 window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
 async function conferirFoto(submissaoId) {
