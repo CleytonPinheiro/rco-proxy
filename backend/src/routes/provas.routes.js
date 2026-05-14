@@ -1625,17 +1625,32 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
-    /* Sorteia 2º corretor para uma submissão específica */
-    router.post('/classroom/provas/:id/sortear-segundo', async (req, res) => {
-        const { submissaoId } = req.body || {};
+    /* Lista candidatos elegíveis para 2º corretor sem sortear */
+    router.get('/classroom/provas/:id/candidatos-segundo', async (req, res) => {
+        const { submissaoId } = req.query;
         if (!submissaoId) return res.status(400).json({ erro: 'submissaoId obrigatório.' });
         try {
-            const result = await sortearSegundoCorretor(pool, { submissaoId, provaId: req.params.id });
-            logProvas(req, 'PROVA_SORTEIO_2COR', { submissaoId, sorteado: result.sorteado });
-            res.json({ ok: true, sorteado: result.sorteado });
+            const { candidatos } = await obterCandidatosSegundoCorretor(pool, { submissaoId, provaId: req.params.id });
+            res.json({ candidatos });
         } catch (e) {
             if (e.message.includes('não encontrada nesta prova')) return res.status(404).json({ erro: e.message });
-            if (e.message.includes('Sem candidatos'))             return res.status(409).json({ erro: e.message });
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* Sorteia (ou atribui) 2º corretor para uma submissão específica */
+    router.post('/classroom/provas/:id/sortear-segundo', async (req, res) => {
+        const { submissaoId, emailEscolhido } = req.body || {};
+        if (!submissaoId) return res.status(400).json({ erro: 'submissaoId obrigatório.' });
+        try {
+            const result = await sortearSegundoCorretor(pool, { submissaoId, provaId: req.params.id, emailEscolhido: emailEscolhido || null });
+            logProvas(req, 'PROVA_SORTEIO_2COR', { submissaoId, sorteado: result.sorteado, manual: !!emailEscolhido });
+            res.json({ ok: true, sorteado: result.sorteado });
+        } catch (e) {
+            if (e.message.includes('não encontrada nesta prova'))  return res.status(404).json({ erro: e.message });
+            if (e.message.includes('Sem candidatos') ||
+                e.message.includes('Nenhum membro elegível'))      return res.status(409).json({ erro: e.message });
+            if (e.message.includes('não é elegível'))              return res.status(400).json({ erro: e.message });
             res.status(500).json({ erro: e.message });
         }
     });
@@ -3337,11 +3352,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
  *  ROUTER PÚBLICO (alunos — exigem cookie aluno_sid)
  * ═══════════════════════════════════════════════════════════════════ */
 
-/* Helper reutilizável: sorteia um 2º corretor para uma submissão.
- * Pode ser chamado pela rota manual e pelo gatilho automático pós-submissão.
- * Lança Error se não houver candidatos ou submissão inválida.
+/* Helper interno: retorna { sub, candidatos } sem sortear nem inserir nada.
+ * Compartilhado entre o endpoint de candidatos e o de sorteio.
  */
-async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
+async function obterCandidatosSegundoCorretor(pool, { submissaoId, provaId }) {
     const { rows: [sub] } = await pool.query(
         `SELECT s.*, p.curso_id FROM classroom_prova_submissoes s
           JOIN classroom_provas p ON p.id = s.prova_id
@@ -3364,8 +3378,8 @@ async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
 
             if (turmasDiferentes) {
                 /* Turma corretora é diferente da turma da prova:
-                   buscar todos os membros via Classroom API (como sortearAlunoTurmaCorretora)
-                   pois candidatos válidos podem ainda não ter submetido nenhum gabarito. */
+                   buscar todos os membros via Classroom API pois candidatos válidos
+                   podem ainda não ter submetido nenhum gabarito. */
                 let membros = [];
                 try {
                     const { rows: tkRows } = await pool.query(
@@ -3416,29 +3430,13 @@ async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
 
                 const emailDono = sub.aluno_email?.toLowerCase();
 
-                /* Filtrar: excluir dono da submissão e já atribuídos.
-                   Sem restrição de variante — são alunos de outra turma/prova. */
+                /* Filtrar: excluir dono da submissão e já atribuídos. */
                 candidatos = membros.filter(m => {
                     const email = (m.aluno_email || '').toLowerCase();
                     return email && email !== emailDono && !jaAtribuidosSet.has(email);
                 });
 
-                if (candidatos.length === 0) {
-                    throw new Error('Nenhum membro elegível na turma corretora selecionada.');
-                }
-
-                const escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
-
-                await pool.query(
-                    `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
-                     VALUES ($1,'segundo_corretor',$2,$3,$4,$5)`,
-                    [escolhido.aluno_email, String(sub.id),
-                     'Você foi sorteado para uma 2ª correção',
-                     'Ajude na verificação de uma prova (anônima). Acesse "Minhas tarefas de correção" no portal.',
-                     JSON.stringify({ submissaoRefId: sub.id, provaId: sub.prova_id })]
-                );
-
-                return { sorteado: escolhido.aluno_email };
+                return { sub, candidatos };
             }
 
             /* Mesma turma: restringir pool à turma específica via submissões existentes */
@@ -3493,11 +3491,30 @@ async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
         ));
     }
 
+    return { sub, candidatos };
+}
+
+/* Helper reutilizável: sorteia (ou atribui) um 2º corretor para uma submissão.
+ * Pode ser chamado pela rota manual e pelo gatilho automático pós-submissão.
+ * Lança Error se não houver candidatos ou submissão inválida.
+ * emailEscolhido (opcional): se fornecido, usa esse email em vez de sortear aleatoriamente,
+ * após validar que ele está na lista de candidatos elegíveis.
+ */
+async function sortearSegundoCorretor(pool, { submissaoId, provaId, emailEscolhido }) {
+    const { sub, candidatos } = await obterCandidatosSegundoCorretor(pool, { submissaoId, provaId });
+
     if (candidatos.length === 0) {
         throw new Error('Sem candidatos disponíveis (mesma variante, sem outras turmas elegíveis ou já corrigindo).');
     }
 
-    const escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
+    let escolhido;
+    if (emailEscolhido) {
+        const emailNorm = emailEscolhido.toLowerCase().trim();
+        escolhido = candidatos.find(c => (c.aluno_email || '').toLowerCase() === emailNorm);
+        if (!escolhido) throw new Error('Candidato selecionado não é elegível para esta correção.');
+    } else {
+        escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
+    }
 
     await pool.query(
         `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
