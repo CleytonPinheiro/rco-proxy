@@ -1334,6 +1334,7 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
 let _mapaGrid      = {};   // _mapaGrid[questao_fisica][variante_id] = posicao
 let _mapaVariantes = [];   // [{id, codigo, gabarito}, ...]
 let _mapaN         = 0;    // número de questões objetivas
+let _mapaImportado = false; // true após importação de PDF — destaca células vazias
 
 async function abrirModalMapa() {
     if (!provaAtualId || !_analise) return;
@@ -1344,6 +1345,7 @@ async function abrirModalMapa() {
     }
 
     _mapaVariantes = variantes;
+    _mapaImportado = false;
     _mapaN = Math.max(0, ...variantes.map(v =>
         (v.gabarito || []).filter(q => q.tipo !== 'discursiva').length
     ));
@@ -1406,8 +1408,13 @@ function _renderMapaGrid() {
         html += `<tr><td class="ac-mapa-td-q"><strong>Q${qf}</strong></td>`;
         for (const v of _mapaVariantes) {
             const val = _mapaGrid[qf]?.[v.id] || '';
-            const conflict = val && conflitos[v.id]?.has(parseInt(val, 10));
-            html += `<td class="ac-mapa-td-cel${conflict ? ' ac-mapa-conflict' : ''}">
+            const conflict  = val && conflitos[v.id]?.has(parseInt(val, 10));
+            const vazia     = _mapaImportado && !val;
+            const celClasses = ['ac-mapa-td-cel',
+                conflict ? 'ac-mapa-conflict' : '',
+                vazia    ? 'ac-mapa-vazia'    : ''
+            ].filter(Boolean).join(' ');
+            html += `<td class="${celClasses}" title="${vazia ? 'Preencha esta posição manualmente' : ''}">
                 <select class="ac-mapa-sel"
                     onchange="onMapaCelChange(${qf},${v.id},this.value)">
                     <option value="">–</option>
@@ -1430,6 +1437,7 @@ function onMapaCelChange(questaoFisica, varianteId, value) {
 
 function limparMapeamento() {
     for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+    _mapaImportado = false;
     _renderMapaGrid();
     _setMapaStatus('', '');
 }
@@ -1679,6 +1687,7 @@ function _parsearEPreencherMapa(text) {
         }
     }
 
+    _mapaImportado = true;
     _renderMapaGrid();
 
     const totalEsperado = (variantData.length - variantesAusentes.length) * canonical.questions.length;

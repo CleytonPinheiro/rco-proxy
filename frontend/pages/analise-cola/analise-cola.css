@@ -955,3 +955,38 @@
     background: var(--primary-dark, #2563eb);
     border-color: var(--primary-dark, #2563eb);
 }
+
+/* Célula vazia após importação de PDF — requer atenção do professor */
+.ac-mapa-vazia {
+    background: #fffbeb !important;
+    position: relative;
+}
+.ac-mapa-vazia::after {
+    content: '!';
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 9px;
+    font-weight: 900;
+    color: #b45309;
+    line-height: 1;
+    pointer-events: none;
+}
+.ac-mapa-vazia .ac-mapa-sel {
+    border-color: #f59e0b !important;
+    background: #fffbeb !important;
+    color: #92400e !important;
+}
+[data-theme="dark"] .ac-mapa-vazia { background: #2d1f00 !important; }
+[data-theme="dark"] .ac-mapa-vazia .ac-mapa-sel {
+    background: #2d1f00 !important;
+    color: #fcd34d !important;
+    border-color: #d97706 !important;
+}
+[data-theme="dark"] .ac-mapa-vazia::after { color: #fbbf24; }
+
+/* Linha inteira com ao menos uma célula vazia — destaque sutil na coluna Q física */
+tr:has(.ac-mapa-vazia) .ac-mapa-td-q {
+    color: #b45309;
+}
+[data-theme="dark"] tr:has(.ac-mapa-vazia) .ac-mapa-td-q { color: #fbbf24; }
