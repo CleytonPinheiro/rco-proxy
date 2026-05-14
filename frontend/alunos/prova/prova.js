@@ -339,23 +339,39 @@ async function iniciarTurmaCorretora(subRefId) {
             varWrap.style.display = '';
         }
 
-        /* Botão de consulta ao PDF da folha de prova — exibe somente as páginas da variante */
-        const linkWrap = $('ppTcorLinkWrap');
-        const linkEl   = $('ppTcorLinkProva');
-        const linkVar  = $('ppTcorLinkVariante');
-        if (linkWrap && linkEl && item.link_prova) {
-            linkEl.href = `/api/alunos-portal/turma-corretora/prova-pdf/${item.submissao_ref_id}`;
-            if (linkVar) linkVar.textContent = item.variante_codigo || '';
-            linkWrap.style.display = '';
+        /* Botão de consulta ao PDF da folha de prova — sempre visível, desabilitado se sem PDF */
+        const btnPdf  = $('ppTcorBtnPdf');
+        const linkVar = $('ppTcorLinkVariante');
+        const dica    = $('ppTcorLinkDica');
+        if (linkVar) linkVar.textContent = item.variante_codigo || '';
+        if (btnPdf) {
+            if (item.link_prova) {
+                estado.tcorPdfUrl = `/api/alunos-portal/turma-corretora/prova-pdf/${item.submissao_ref_id}`;
+                btnPdf.disabled = false;
+                btnPdf.style.opacity = '';
+                btnPdf.style.cursor = 'pointer';
+                btnPdf.style.background = '#eff6ff';
+                btnPdf.style.color = '#1d4ed8';
+                btnPdf.style.borderColor = '#93c5fd';
+                if (dica) dica.textContent = 'Abra para consultar as questões enquanto corrige.';
+            } else {
+                estado.tcorPdfUrl = null;
+                btnPdf.disabled = true;
+                btnPdf.style.opacity = '0.55';
+                btnPdf.style.cursor = 'not-allowed';
+                btnPdf.style.background = '#f3f4f6';
+                btnPdf.style.color = '#9ca3af';
+                btnPdf.style.borderColor = '#d1d5db';
+                btnPdf.innerHTML = '📄 Folha não anexada pelo professor';
+                if (dica) dica.textContent = '';
+            }
         }
 
         if (item.foto_url) {
             $('ppTcorFoto').src = item.foto_url;
             $('ppTcorFoto').style.display = '';
-            $('ppTcorSemFoto').style.display = 'none';
         } else {
             $('ppTcorFoto').style.display = 'none';
-            $('ppTcorSemFoto').style.display = '';
         }
 
         estado.tcorQuestoesTxt = _lerQuestoesTxt(item.prova_id, item.variante_codigo);
@@ -434,9 +450,9 @@ async function iniciarSegundoCorretor(subRefId) {
 
         if (pend.foto_url) {
             $('ppSegFoto').src = pend.foto_url;
+            $('ppSegFoto').style.display = '';
         } else {
             $('ppSegFoto').style.display = 'none';
-            $('ppSegSemFoto').style.display = '';
         }
 
         estado.qtdQuestoes = pend.qtd_questoes || 12;
@@ -505,6 +521,29 @@ async function enviarSegundo() {
     }
 }
 
+function toggleSplitPdf() {
+    if (!estado.tcorPdfUrl) return;
+    const pdfPane   = $('ppTcorPdfPane');
+    const splitWrap = $('ppTcorSplitWrap');
+    if (!pdfPane) return;
+    const isOpen = pdfPane.style.display !== 'none';
+    if (isOpen) {
+        fecharSplitPdf();
+    } else {
+        const frame = $('ppTcorPdfFrame');
+        if (frame && frame.src !== estado.tcorPdfUrl) frame.src = estado.tcorPdfUrl;
+        pdfPane.style.display = '';
+        if (splitWrap) splitWrap.classList.add('pp-split-active');
+    }
+}
+
+function fecharSplitPdf() {
+    const pdfPane   = $('ppTcorPdfPane');
+    const splitWrap = $('ppTcorSplitWrap');
+    if (pdfPane) pdfPane.style.display = 'none';
+    if (splitWrap) splitWrap.classList.remove('pp-split-active');
+}
+
 window.enviarTurmaCorretora   = enviarTurmaCorretora;
 window.enviarSegundo          = enviarSegundo;
 window.toggleTema             = toggleTema;
@@ -515,5 +554,7 @@ window.previewFoto            = previewFoto;
 window.enviarSubmissao        = enviarSubmissao;
 window.enviarFotoOuSubmissao  = enviarFotoOuSubmissao;
 window.verResultado           = verResultado;
+window.toggleSplitPdf         = toggleSplitPdf;
+window.fecharSplitPdf         = fecharSplitPdf;
 
 init();

@@ -77,21 +77,31 @@
                     </span>
                 </div>
             </div>
-            <div id="ppTcorLinkWrap" style="display:none;margin:8px 0">
-                <a id="ppTcorLinkProva" href="#" target="_blank" rel="noopener"
-                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:0.88em;font-weight:600;text-decoration:none">
+            <div id="ppTcorLinkWrap" style="margin:8px 0">
+                <button id="ppTcorBtnPdf" type="button" onclick="toggleSplitPdf()"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;color:#1d4ed8;font-size:0.88em;font-weight:600;cursor:pointer;text-decoration:none">
                     📄 Ver folha de prova (Variante <span id="ppTcorLinkVariante"></span>)
-                </a>
-                <span style="font-size:0.78em;color:#6b7280;margin-left:8px">Abra para consultar as questões enquanto corrige.</span>
+                </button>
+                <span id="ppTcorLinkDica" style="font-size:0.78em;color:#6b7280;margin-left:8px">Abra para consultar as questões enquanto corrige.</span>
             </div>
-            <div id="ppTcorFotoWrap" style="margin:12px 0">
-                <img id="ppTcorFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha">
-                <div id="ppTcorSemFoto" style="display:none" class="pp-aviso">⚠️ Sem foto disponível para esta folha. Avise o professor.</div>
-            </div>
-            <div id="ppTcorTabela" class="pp-tabela-wrap"></div>
-            <div class="pp-actions">
-                <a href="/alunos/" class="pp-btn">Cancelar</a>
-                <button class="pp-btn pp-btn-primary" id="ppTcorBtn" onclick="enviarTurmaCorretora()">Enviar correção</button>
+            <div id="ppTcorSplitWrap" class="pp-split-wrap">
+                <div id="ppTcorFormulario" class="pp-split-form">
+                    <div id="ppTcorFotoWrap" style="margin:12px 0">
+                        <img id="ppTcorFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha">
+                    </div>
+                    <div id="ppTcorTabela" class="pp-tabela-wrap"></div>
+                    <div class="pp-actions">
+                        <a href="/alunos/" class="pp-btn">Cancelar</a>
+                        <button class="pp-btn pp-btn-primary" id="ppTcorBtn" onclick="enviarTurmaCorretora()">Enviar correção</button>
+                    </div>
+                </div>
+                <div id="ppTcorPdfPane" class="pp-split-pdf" style="display:none">
+                    <div class="pp-split-pdf-header">
+                        <span style="font-size:0.85em;font-weight:600;color:var(--pp-muted)">📄 Folha de prova</span>
+                        <button type="button" class="pp-btn" style="padding:4px 10px;font-size:0.8em" onclick="fecharSplitPdf()">✕ Fechar PDF</button>
+                    </div>
+                    <iframe id="ppTcorPdfFrame" src="" class="pp-split-pdf-frame" title="Folha de prova"></iframe>
+                </div>
             </div>
         </section>
 
@@ -105,7 +115,6 @@
             </p>
             <div id="ppSegFotoWrap" style="margin:12px 0">
                 <img id="ppSegFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha do colega">
-                <div id="ppSegSemFoto" style="display:none" class="pp-aviso">⚠️ Sem foto disponível para esta prova. Avise o professor.</div>
             </div>
             <div id="ppSegTabela" class="pp-tabela-wrap"></div>
             <div class="pp-actions">

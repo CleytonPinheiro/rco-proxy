@@ -62,12 +62,13 @@ function detectPages(pageTexts, varianteCodigo) {
     const code = String(varianteCodigo).trim().toUpperCase();
     const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const patterns = [
-        new RegExp(`\\bTIPO\\s*${escaped}\\b`,      'i'),
-        new RegExp(`\\bVARIANTE\\s*${escaped}\\b`,  'i'),
-        new RegExp(`\\bFORMA\\s*${escaped}\\b`,      'i'),
-        new RegExp(`\\bTYPE\\s*${escaped}\\b`,       'i'),
-        new RegExp(`\\bGABARITO\\s*${escaped}\\b`,   'i'),
-        new RegExp(`\\bVERSAO\\s*${escaped}\\b`,     'i'),
+        new RegExp(`\\bTIPO\\s*${escaped}\\b`,                     'i'),
+        new RegExp(`\\bVARIANTE\\s*${escaped}\\b`,                 'i'),
+        new RegExp(`\\bFORMA\\s*${escaped}\\b`,                    'i'),
+        new RegExp(`\\bTYPE\\s*${escaped}\\b`,                     'i'),
+        new RegExp(`\\bGABARITO\\s*${escaped}\\b`,                 'i'),
+        new RegExp(`\\bVERSAO\\s*${escaped}\\b`,                   'i'),
+        new RegExp(`ansid=\\d+\\.\\s*${escaped}(?:[^0-9]|$)`,     'i'),
     ];
     return pageTexts
         .map((t, i) => ({ i, t }))
