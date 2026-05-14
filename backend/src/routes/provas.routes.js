@@ -4287,23 +4287,28 @@ export function createProvasPublicRouter() {
         try {
             const pid = parseInt(prova_id, 10);
 
-            /* Variantes disponíveis (para seletor quando sem_submissao=true) */
-            const { rows: variantes } = await pool.query(
-                `SELECT id, codigo FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
-                [pid]
-            );
+            /* Prova + variantes em paralelo */
+            const [{ rows: [prova] }, { rows: variantes }] = await Promise.all([
+                pool.query(
+                    `SELECT id, nome, curso_id, turma_corretora_id, turma_corretora_2a_correcao
+                       FROM classroom_provas
+                      WHERE id = $1 AND efetivada = false AND turma_corretora_id IS NOT NULL`,
+                    [pid]
+                ),
+                pool.query(
+                    `SELECT id, codigo FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
+                    [pid]
+                ),
+            ]);
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
 
-            const { rows } = await pool.query(
-                /* ── 1. Alunos COM submissão existente nesta prova ── */
+            /* ── Branch 1: alunos COM submissão nesta prova (DB, rápido) ── */
+            const { rows: comSubmissao } = await pool.query(
                 `SELECT
                     s.id            AS submissao_ref_id,
                     s.foto_url      AS foto_url,
                     s.aluno_nome,
-                    CASE
-                        WHEN s.aluno_email IS NOT NULL
-                        THEN CONCAT(LEFT(s.aluno_email, 2), '***@', SPLIT_PART(s.aluno_email, '@', 2))
-                        ELSE NULL
-                    END             AS email_mascarado,
+                    CONCAT(LEFT(s.aluno_email,2),'***@',SPLIT_PART(s.aluno_email,'@',2)) AS email_mascarado,
                     NULL::text      AS email_real,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
@@ -4315,21 +4320,17 @@ export function createProvasPublicRouter() {
                  JOIN classroom_prova_submissoes s ON s.prova_id = p.id
                  JOIN classroom_prova_variantes  v ON v.id = s.variante_id
                 WHERE p.id = $1
-                  AND p.turma_corretora_id IS NOT NULL
-                  AND p.efetivada = false
                   AND s.eh_segundo_corretor = false
                   AND s.eh_turma_corretora  = false
                   AND s.aluno_email != $2
                   AND (s.aluno_nome ILIKE $3 OR s.aluno_nome IS NULL)
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc
-                       WHERE tc.submissao_ref_id = s.id
-                         AND tc.eh_turma_corretora = true
+                       WHERE tc.submissao_ref_id = s.id AND tc.eh_turma_corretora = true
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc2
-                       WHERE tc2.submissao_ref_id = s.id
-                         AND tc2.aluno_email = $2
+                       WHERE tc2.submissao_ref_id = s.id AND tc2.aluno_email = $2
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes sc
@@ -4339,62 +4340,88 @@ export function createProvasPublicRouter() {
                         AND sc.eh_segundo_corretor = false
                         AND sc.eh_turma_corretora  = false
                   )
-
-                UNION
-
-                /* ── 2. Alunos SEM submissão nesta prova, descobertos via outras provas do mesmo curso ── */
-                /* UNION (não ALL) garante deduplicação por email; sem DISTINCT ON para compatibilidade */
-                SELECT
-                    NULL::integer   AS submissao_ref_id,
-                    NULL::text      AS foto_url,
-                    s.aluno_nome,
-                    CASE
-                        WHEN s.aluno_email IS NOT NULL
-                        THEN CONCAT(LEFT(s.aluno_email, 2), '***@', SPLIT_PART(s.aluno_email, '@', 2))
-                        ELSE NULL
-                    END             AS email_mascarado,
-                    s.aluno_email   AS email_real,
-                    p.id            AS prova_id,
-                    p.nome          AS prova_nome,
-                    p.turma_corretora_2a_correcao,
-                    NULL::text      AS variante_codigo,
-                    NULL::integer   AS qtd_questoes,
-                    true            AS sem_submissao
-                 FROM classroom_provas p
-                 JOIN classroom_prova_submissoes s
-                   ON s.prova_id != p.id
-                  AND s.eh_segundo_corretor = false
-                  AND s.eh_turma_corretora  = false
-                 JOIN classroom_provas p2 ON p2.id = s.prova_id AND p2.curso_id = p.curso_id
-                WHERE p.id = $1
-                  AND p.turma_corretora_id IS NOT NULL
-                  AND p.efetivada = false
-                  AND s.aluno_email != $2
-                  AND s.aluno_nome ILIKE $3
-                  AND NOT EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes es
-                       WHERE es.prova_id             = $1
-                         AND es.aluno_email           = s.aluno_email
-                         AND es.eh_segundo_corretor   = false
-                         AND es.eh_turma_corretora    = false
-                  )
-                  AND NOT EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes sc
-                       JOIN classroom_provas pc ON pc.id = sc.prova_id
-                      WHERE sc.aluno_email = $2
-                        AND pc.curso_id = p.curso_id
-                        AND sc.eh_segundo_corretor = false
-                        AND sc.eh_turma_corretora  = false
-                  )
-
-                ORDER BY sem_submissao ASC,
-                         (CASE WHEN aluno_nome IS NULL THEN 1 ELSE 0 END),
-                         COALESCE(aluno_nome, ''),
-                         variante_codigo NULLS LAST
+                ORDER BY COALESCE(s.aluno_nome,''), v.codigo
                 LIMIT 10`,
                 [pid, aluno.email, `%${nomeTrimmed}%`]
             );
-            res.json({ alunos: rows, variantes });
+
+            /* ── Branch 2: alunos SEM submissão via Google Classroom roster da turma alvo ── */
+            /* Inclui Paola e qualquer aluno que nunca acessou o portal digitalmente.          */
+            const semSubmissao = [];
+            try {
+                const { rows: tkRows } = await pool.query(
+                    `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                );
+                if (tkRows[0]?.tokens) {
+                    const { google } = await import('googleapis');
+                    const auth = new google.auth.OAuth2(
+                        process.env.GOOGLE_CLIENT_ID,
+                        process.env.GOOGLE_CLIENT_SECRET,
+                        process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
+                    );
+                    auth.setCredentials(tkRows[0].tokens);
+                    const classroom = google.classroom({ version: 'v1', auth });
+
+                    /* Emails que já aparecem no branch 1 — não duplicar */
+                    const jaEncontradosPorEmail = new Set(
+                        comSubmissao.map(r => (r.email_mascarado || '').toLowerCase())
+                    );
+
+                    /* Emails com submissão existente para esta prova (excluir do sem_submissao) */
+                    const { rows: existentes } = await pool.query(
+                        `SELECT LOWER(aluno_email) AS email
+                           FROM classroom_prova_submissoes
+                          WHERE prova_id = $1
+                            AND eh_segundo_corretor = false
+                            AND eh_turma_corretora  = false`,
+                        [pid]
+                    );
+                    const emailsComSub = new Set(existentes.map(r => r.email));
+
+                    const filtro = nomeTrimmed.toLowerCase();
+                    let pageToken;
+                    do {
+                        const r = await classroom.courses.students.list({
+                            courseId:  String(prova.curso_id),
+                            pageSize:  200,
+                            pageToken,
+                        });
+                        for (const s of (r.data.students || [])) {
+                            const email = (s.profile?.emailAddress || '').toLowerCase();
+                            const nomeCls = s.profile?.name?.fullName || '';
+                            if (!email) continue;
+                            if (email === aluno.email.toLowerCase()) continue; /* não se auto-corrigir */
+                            if (emailsComSub.has(email)) continue;             /* já tem submissão → branch 1 */
+                            if (!nomeCls.toLowerCase().includes(filtro)) continue;
+                            const emailMask = `${email.substring(0,2)}***@${email.split('@')[1]}`;
+                            if (jaEncontradosPorEmail.has(emailMask)) continue;
+                            semSubmissao.push({
+                                submissao_ref_id:            null,
+                                foto_url:                    null,
+                                aluno_nome:                  nomeCls,
+                                email_mascarado:             emailMask,
+                                email_real:                  email,
+                                prova_id:                    prova.id,
+                                prova_nome:                  prova.nome,
+                                turma_corretora_2a_correcao: prova.turma_corretora_2a_correcao,
+                                variante_codigo:             null,
+                                qtd_questoes:                null,
+                                sem_submissao:               true,
+                            });
+                        }
+                        pageToken = r.data.nextPageToken;
+                    } while (pageToken);
+
+                    /* Ordena por nome e limita */
+                    semSubmissao.sort((a, b) => (a.aluno_nome || '').localeCompare(b.aluno_nome || '', 'pt-BR'));
+                }
+            } catch (apiErr) {
+                console.warn('[BUSCAR-ALUNO] Classroom API falhou, sem resultados físicos:', apiErr.message);
+            }
+
+            /* Junta: com submissão primeiro, depois sem submissão, cap 10 */
+            const todos = [...comSubmissao, ...semSubmissao].slice(0, 10);
+            res.json({ alunos: todos, variantes });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
