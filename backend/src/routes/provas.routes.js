@@ -4577,8 +4577,19 @@ export function createProvasPublicRouter() {
 
             console.log(`[LISTA-TURMA-ALVO] após enriquecimento: ${rosterAlunos.length} aluno(s) | submissaoMap keys: ${Object.keys(submissaoMap).length}`);
 
+            /* ── Emails já cobertos por correção de turma corretora ── */
+            const { rows: corrRows } = await pool.query(
+                `SELECT LOWER(aluno_email) AS email
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_turma_corretora = true`,
+                [pid]
+            );
+            const correctedSet = new Set(corrRows.map(r => r.email));
+            const rosterFiltrado = rosterAlunos.filter(a => !correctedSet.has(a.email));
+            console.log(`[LISTA-TURMA-ALVO] já corrigidos pela turma corretora: ${correctedSet.size} | após filtro: ${rosterFiltrado.length}`);
+
             /* ── Monta resultado final ── */
-            const result = rosterAlunos.map(a => {
+            const result = rosterFiltrado.map(a => {
                 const subId = submissaoMap[a.email] ?? null;
                 return {
                     nome:             a.nome,

@@ -86,6 +86,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verificarStatus();
 });
 
+/* Recarrega a lista da turma corretora ao retornar de uma correção
+   via navegação do browser (BFCache restore), garantindo que o aluno
+   recém-corrigido suma imediatamente sem recarregar a página inteira. */
+window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    carregarTurmaCorretora();
+});
+
 /* ── Troca de aba (atividades / correções) ───────────────────── */
 function mudarAba(aba) {
     const tabAtiv  = $('paTabAtividades');
