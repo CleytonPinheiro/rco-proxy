@@ -339,12 +339,12 @@ async function iniciarTurmaCorretora(subRefId) {
             varWrap.style.display = '';
         }
 
-        /* Botão de consulta ao PDF da folha de prova (variante específica) */
+        /* Botão de consulta ao PDF da folha de prova — exibe somente as páginas da variante */
         const linkWrap = $('ppTcorLinkWrap');
         const linkEl   = $('ppTcorLinkProva');
         const linkVar  = $('ppTcorLinkVariante');
         if (linkWrap && linkEl && item.link_prova) {
-            linkEl.href = item.link_prova;
+            linkEl.href = `/api/alunos-portal/turma-corretora/prova-pdf/${item.submissao_ref_id}`;
             if (linkVar) linkVar.textContent = item.variante_codigo || '';
             linkWrap.style.display = '';
         }

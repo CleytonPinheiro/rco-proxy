@@ -90,6 +90,7 @@ async function migrarTabelas() {
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS grupo_avaliacao_id INTEGER REFERENCES classroom_grupos(id) ON DELETE SET NULL`);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS pontos_avaliacao   NUMERIC NOT NULL DEFAULT 6.0`);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS link_prova TEXT`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS link_prova_paginas JSONB`);
         await pool.query(`
             CREATE UNIQUE INDEX IF NOT EXISTS idx_provasub_2cor_unico
                 ON classroom_prova_submissoes(submissao_ref_id, aluno_email)
@@ -1387,6 +1388,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             segundoCorretorAtivo: 'segundo_corretor_ativo', segundoCorretorPct: 'segundo_corretor_pct',
             permitirOutraTurma: 'permitir_outra_turma',
             turmaCorretoraId: 'turma_corretora_id', turmaCorretora2aCorrecao: 'turma_corretora_2a_correcao',
+            linkProvaPaginas: 'link_prova_paginas',
         };
         const sets = [], vals = [];
         let i = 1;

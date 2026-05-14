@@ -957,6 +957,40 @@ function renderDetalhe(d) {
     $('prvBtnEfetivar').textContent = p.efetivada ? 'Reabrir como rascunho' : 'Efetivar notas';
 }
 
+/* Converte o JSON de mapeamento (armazenado no banco) para texto legível pelo professor */
+function paginasMapToText(json) {
+    if (!json) return '';
+    try {
+        const map = typeof json === 'string' ? JSON.parse(json) : json;
+        return Object.entries(map)
+            .sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }))
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+            .join('\n');
+    } catch { return ''; }
+}
+
+/* Converte o texto livre do professor para JSON { "0": [1,2], "1": [3,4] } */
+function parsePaginasMap(text) {
+    if (!text || !text.trim()) return null;
+    const map = {};
+    for (const line of text.split('\n')) {
+        const m = line.match(/^\s*([^:\n]+?)\s*:\s*(.+)$/);
+        if (!m) continue;
+        const code  = m[1].trim();
+        const pages = [];
+        for (const part of m[2].split(',')) {
+            const range = part.trim().split('-').map(s => parseInt(s.trim(), 10));
+            if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
+                for (let p = range[0]; p <= range[1]; p++) pages.push(p);
+            } else if (!isNaN(range[0])) {
+                pages.push(range[0]);
+            }
+        }
+        if (code && pages.length > 0) map[code] = pages;
+    }
+    return Object.keys(map).length > 0 ? map : null;
+}
+
 async function salvarTurmaCorretora(remover = false) {
     if (!provaAberta) return;
     const turmaCorretoraId        = remover ? null : ($('prvTcorCurso')?.value || null);
