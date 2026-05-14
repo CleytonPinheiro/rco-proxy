@@ -4,8 +4,8 @@
  *
  * Prioridade:
  *   1. Mapeamento manual configurado pelo professor (link_prova_paginas JSONB)
- *   2. Auto-detecção por link de anotação no rodapé (ansid=XXXXX.N)
- *   3. Auto-detecção por texto visível ("TIPO X", "VARIANTE X" etc.) via pdf-parse
+ *   2. Auto-detecção por link de anotação no rodapé (ansid=XXXXX.N)  ← via pdf-lib annotations
+ *   3. Auto-detecção por texto visível ("TIPO X", "VARIANTE X" etc.) ← via PDFParse.getText()
  *   4. Fallback: PDF completo
  */
 
@@ -13,6 +13,9 @@ import { createRequire } from 'module';
 import { PDFDocument, PDFName, PDFArray, PDFDict, PDFString, PDFHexString } from 'pdf-lib';
 
 const _require = createRequire(import.meta.url);
+
+const DEBUG = process.env.DEBUG_PDF_VARIANTE === 'true';
+function dbg(...args) { if (DEBUG) console.log('[PDF-VARIANTE][DEBUG]', ...args); }
 
 /* ── Cache em memória (30 min TTL) ──────────────────────────── */
 const _cache   = new Map();
@@ -39,21 +42,34 @@ async function fetchPdfBuffer(url) {
     }
 }
 
-/* ── Extrai texto visível de cada página via pdf-parse ────────── */
+/* ── Extrai texto visível de cada página via PDFParse.getText() ───
+ *
+ * Substitui a abordagem anterior de pagerender callback do pdf-parse, que
+ * populava um array via .push() em callbacks assíncronos sem garantia de
+ * ordenação, causando array vazio ou mal-alinhado para PDFs como GradePen.
+ *
+ * PDFParse.getText() retorna { pages: [{num (1-indexed), text}], total }
+ * onde cada página já está associada ao seu índice correto, sem callbacks.
+ *
+ * Retorna: array de strings indexado por 0-based page index.
+ */
 async function extractPageTexts(pdfBuffer) {
     const texts = [];
     try {
-        const pdfParse = _require('pdf-parse');
-        await pdfParse(pdfBuffer, {
-            pagerender: (pageData) =>
-                pageData.getTextContent().then(c => {
-                    const t = c.items.map(i => i.str).join(' ');
-                    texts.push(t);
-                    return t;
-                }),
-        });
+        const { PDFParse } = _require('pdf-parse');
+        const parser = new PDFParse({ verbosity: 0, data: pdfBuffer });
+        const result = await parser.getText();
+
+        if (Array.isArray(result?.pages) && result.pages.length > 0) {
+            const maxNum = result.pages.reduce((m, p) => Math.max(m, p.num ?? 0), 0);
+            for (let i = 0; i < maxNum; i++) texts.push('');
+            for (const { num, text } of result.pages) {
+                if (typeof num === 'number' && num >= 1) texts[num - 1] = text ?? '';
+            }
+        }
+        dbg(`extractPageTexts → ${texts.length} página(s), método: PDFParse.getText()`);
     } catch (e) {
-        console.warn('[PDF-VARIANTE] Extração de texto falhou (usando PDF completo):', e.message);
+        console.warn('[PDF-VARIANTE] Extração de texto falhou:', e.message);
     }
     return texts;
 }
@@ -101,6 +117,8 @@ async function extractPageAnnotationTexts(pdfBuffer) {
 
             pageTexts.push(uris.join(' '));
         }
+        dbg(`extractPageAnnotationTexts → ${pageTexts.length} página(s), ` +
+            `${pageTexts.filter(t => t).length} com anotações`);
     } catch (e) {
         console.warn('[PDF-VARIANTE] Extração de anotações falhou:', e.message);
     }
@@ -111,7 +129,10 @@ async function extractPageAnnotationTexts(pdfBuffer) {
  *
  * Aceita tanto texto visível quanto URLs de anotações.
  * Para URLs do tipo ansid=XXXXX.N detecta via captura do número após o ponto,
- * comparando-o ao varianteCodigo (aceita diferença de indexação: 0→"1", 1→"2" etc).
+ * comparando-o ao varianteCodigo com três tentativas de indexação:
+ *   - Direta:  N == code
+ *   - +1:      N == parseInt(code)+1  (DB 0-based, PDF 1-based)
+ *   - -1:      N == parseInt(code)-1  (DB 1-based, PDF 0-based)
  */
 function detectPages(pageTexts, annotTexts, varianteCodigo) {
     const code    = String(varianteCodigo).trim().toUpperCase();
@@ -132,45 +153,60 @@ function detectPages(pageTexts, annotTexts, varianteCodigo) {
     const ansidAnnotRe = /ansid=\d+\.(\d+)/i;
 
     const matched = new Set();
+    const reasons = {};
+
+    const codeNum     = parseInt(code, 10);
+    const offsetPlus  = isNaN(codeNum) ? null : String(codeNum + 1);
+    const offsetMinus = isNaN(codeNum) ? null : (codeNum > 0 ? String(codeNum - 1) : null);
 
     const total = Math.max(pageTexts.length, annotTexts.length);
     for (let i = 0; i < total; i++) {
         const txt   = pageTexts[i]  || '';
         const annot = annotTexts[i] || '';
 
+        dbg(`  pg${i + 1}: txt="${txt.slice(0, 80)}" annot="${annot.slice(0, 120)}"`);
+
         /* 1. Texto visível */
         if (txt && textPatterns.some(p => p.test(txt))) {
             matched.add(i);
+            reasons[i] = 'texto-visível';
             continue;
         }
 
-        /* 2. URL de anotação — tenta correspondência direta e por offset +1 */
+        /* 2. URL de anotação */
         if (annot) {
-            /* Correspondência direta: ansid=XXXXX.N onde N == varianteCodigo */
+            /* 2a. Padrões de texto também cobrem ansid no texto de anotação */
             if (textPatterns.some(p => p.test(annot))) {
                 matched.add(i);
+                reasons[i] = 'annot-padrão-texto';
                 continue;
             }
 
-            /* Correspondência numérica: se varianteCodigo é numérico (ex: "0")
-             * o PDF pode usar 1-indexed (ex: ".1"). Tenta N = parseInt(code) + 1. */
-            const codeNum = parseInt(code, 10);
-            if (!isNaN(codeNum)) {
-                const offsetCode = String(codeNum + 1);
-                const m = annot.match(ansidAnnotRe);
-                if (m && m[1] === offsetCode) {
-                    matched.add(i);
-                    continue;
+            /* 2b. Correspondência numérica via captura do grupo ansid */
+            const m = annot.match(ansidAnnotRe);
+            if (m) {
+                const n = m[1];
+                if (n === code) {
+                    matched.add(i); reasons[i] = 'annot-direto';
+                } else if (offsetPlus  !== null && n === offsetPlus) {
+                    matched.add(i); reasons[i] = 'annot-offset+1';
+                } else if (offsetMinus !== null && n === offsetMinus) {
+                    matched.add(i); reasons[i] = 'annot-offset-1';
                 }
-                /* Também aceita correspondência direta pelo número */
-                if (m && m[1] === code) {
-                    matched.add(i);
-                }
+                if (matched.has(i)) continue;
             }
         }
     }
 
-    return [...matched].sort((a, b) => a - b);
+    const result = [...matched].sort((a, b) => a - b);
+    if (DEBUG) {
+        if (result.length) {
+            result.forEach(i => dbg(`  → pg${i + 1} matched via ${reasons[i]}`));
+        } else {
+            dbg('  → nenhuma página correspondeu ao varianteCodigo');
+        }
+    }
+    return result;
 }
 
 /* ── Monta um novo PDF com apenas as páginas indicadas ─────────── */
@@ -219,19 +255,27 @@ export async function getPdfForVariante(linkProva, varianteCodigo, provaId, manu
         const pdfBuffer    = await fetchPdfBuffer(linkProva);
         const pageTexts    = await extractPageTexts(pdfBuffer);
         const annotTexts   = await extractPageAnnotationTexts(pdfBuffer);
+        dbg(`cache miss prova=${provaId}: ${pageTexts.length} págs texto, ${annotTexts.length} págs annot`);
         entry = { pdfBuffer, pageTexts, annotTexts, cachedAt: Date.now() };
         _cache.set(cacheKey, entry);
+    } else {
+        dbg(`cache hit prova=${provaId}`);
     }
 
     const { pdfBuffer, pageTexts, annotTexts } = entry;
+    dbg(`detectPages prova=${provaId} variante=${code}: ${pageTexts.length} págs-texto, ${annotTexts.length} págs-annot`);
     const indices = detectPages(pageTexts, annotTexts, code);
+
     if (indices.length > 0) {
-        console.log(`[PDF-VARIANTE] prova=${provaId} variante=${code} → páginas [${indices.map(i=>i+1).join(',')}]`);
+        console.log(`[PDF-VARIANTE] prova=${provaId} variante=${code} → páginas [${indices.map(i => i + 1).join(',')}]`);
         return await buildSubPdf(pdfBuffer, indices);
     }
 
     /* 3. Fallback: PDF completo ────────────────────────────────── */
-    console.warn(`[PDF-VARIANTE] prova=${provaId} variante=${code} → nenhuma página detectada, retornando PDF completo`);
+    console.warn(
+        `[PDF-VARIANTE] prova=${provaId} variante=${code} → nenhuma página detectada` +
+        ` (texto:${pageTexts.length}págs annot:${annotTexts.length}págs), retornando PDF completo`
+    );
     return pdfBuffer;
 }
 
