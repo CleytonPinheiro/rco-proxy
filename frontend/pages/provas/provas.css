@@ -84,7 +84,21 @@
     max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto;
     box-shadow: 0 8px 32px var(--shadow-lg, rgba(0,0,0,0.18));
 }
-.prv-modal-large { max-width: 880px; }
+.prv-modal-large {
+    max-width: 880px;
+    height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.prv-modal-large .prv-det-header {
+    flex-shrink: 0;
+}
+.prv-modal-large .prv-det-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
 .prv-modal-title {
     margin: 0 0 14px; font-size: 18px; font-weight: 700;
     color: var(--text-primary, #111);
