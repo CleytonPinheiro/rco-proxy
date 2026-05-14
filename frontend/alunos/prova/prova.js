@@ -158,7 +158,8 @@ function renderTabelaEtapa1() {
     </tr></thead><tbody>`;
     for (let q = 1; q <= estado.qtdQuestoes; q++) {
         const qInfo = qt ? qt[q] : null;
-        const temE = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
+        const nAlts = estado.varianteSel?.questoes_n_alts?.[q - 1];
+        const temE = nAlts === 5 || (qInfo && qInfo.alternativas && qInfo.alternativas['e']);
         const letras = temE ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
         html += `<tr><td class="pp-q-num">${q}</td><td>`;
         for (const letra of letras) {
@@ -420,7 +421,8 @@ function renderTabelaTcor() {
             html += `</details>`;
         }
         html += `<div class="pp-bolhas-row">`;
-        const temETcor = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
+        const nAltsTcor = estado.tcor?.questoes_n_alts?.[q - 1];
+        const temETcor = nAltsTcor === 5 || (qInfo && qInfo.alternativas && qInfo.alternativas['e']);
         const letrasTcor = temETcor ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
         for (const letra of letrasTcor) {
             html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
@@ -576,7 +578,7 @@ function renderTabelaSegundo() {
             html += `<span style="font-size:12px;color:var(--pp-muted);font-style:italic">Questão discursiva — não marcável</span>`;
         } else {
             /* multipla ou desconhecido: determina quantas letras */
-            let nAlts = mqInfo?.n_alternativas || null;
+            let nAlts = mqInfo?.n_alternativas || estado.segundo?.questoes_n_alts?.[q - 1] || null;
             let temE = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
             if (!temE && mqInfo && mqInfo.alternativas && typeof mqInfo.alternativas === 'object') {
                 temE = !!mqInfo.alternativas['e'];

@@ -3395,11 +3395,16 @@ export function createProvasPublicRouter() {
                escolhe a mais recente — depois podemos refinar com cursoId */
             const prova = provas[0];
 
-            const { rows: variantes } = await pool.query(
-                `SELECT id, codigo, jsonb_array_length(gabarito_json) AS qtd_questoes
+            const { rows: variantesRaw } = await pool.query(
+                `SELECT id, codigo, jsonb_array_length(gabarito_json) AS qtd_questoes, gabarito_json
                    FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
                 [prova.id]
             );
+            const variantes = variantesRaw.map(v => {
+                const gab = Array.isArray(v.gabarito_json) ? v.gabarito_json : [];
+                const questoes_n_alts = gab.map(q => (q && q.n_alternativas) ? Number(q.n_alternativas) : 4);
+                return { id: v.id, codigo: v.codigo, qtd_questoes: v.qtd_questoes, questoes_n_alts };
+            });
 
             const { rows: subs } = await pool.query(
                 `SELECT id, nota, total_max, criada_em, foto_obrigatoria, foto_url
@@ -3614,12 +3619,13 @@ export function createProvasPublicRouter() {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
-            const { rows } = await pool.query(
+            const { rows: pendentesRaw } = await pool.query(
                 `SELECT n.id AS notif_id, n.criado_em, n.dados,
                         s.id AS submissao_ref_id, s.foto_url,
                         p.id AS prova_id, p.nome AS prova_nome,
                         v.id AS variante_id, v.codigo AS variante_codigo,
-                        jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                        jsonb_array_length(v.gabarito_json) AS qtd_questoes,
+                        v.gabarito_json
                    FROM notificacoes_aluno n
                    JOIN classroom_prova_submissoes s ON s.id = (n.dados->>'submissaoRefId')::int
                    JOIN classroom_provas p           ON p.id = s.prova_id
@@ -3635,7 +3641,12 @@ export function createProvasPublicRouter() {
                   ORDER BY n.criado_em DESC`,
                 [aluno.email]
             );
-            res.json({ pendentes: rows });
+            const pendentes = pendentesRaw.map(row => {
+                const { gabarito_json: gab, ...rest } = row;
+                const gabArr = Array.isArray(gab) ? gab : [];
+                return { ...rest, questoes_n_alts: gabArr.map(q => (q && q.n_alternativas) ? Number(q.n_alternativas) : 4) };
+            });
+            res.json({ pendentes });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
@@ -4885,7 +4896,7 @@ export function createProvasPublicRouter() {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
-            const { rows: [item] } = await pool.query(
+            const { rows: [itemRaw] } = await pool.query(
                 `SELECT
                     s.id            AS submissao_ref_id,
                     s.foto_url,
@@ -4895,7 +4906,8 @@ export function createProvasPublicRouter() {
                     p.link_prova,
                     p.turma_corretora_2a_correcao,
                     v.codigo        AS variante_codigo,
-                    jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                    jsonb_array_length(v.gabarito_json) AS qtd_questoes,
+                    v.gabarito_json
                  FROM classroom_provas p
                  JOIN classroom_prova_submissoes s ON s.prova_id = p.id
                  JOIN classroom_prova_variantes  v ON v.id = s.variante_id
@@ -4925,7 +4937,10 @@ export function createProvasPublicRouter() {
                   )`,
                 [parseInt(req.params.subRefId, 10), aluno.email]
             );
-            if (!item) return res.status(404).json({ erro: 'Folha não encontrada ou já foi corrigida por outro aluno.' });
+            if (!itemRaw) return res.status(404).json({ erro: 'Folha não encontrada ou já foi corrigida por outro aluno.' });
+            const { gabarito_json: _gabTcor, ...itemBase } = itemRaw;
+            const gabTcorArr = Array.isArray(_gabTcor) ? _gabTcor : [];
+            const item = { ...itemBase, questoes_n_alts: gabTcorArr.map(q => (q && q.n_alternativas) ? Number(q.n_alternativas) : 4) };
             res.json({ item });
         } catch (e) {
             res.status(500).json({ erro: e.message });
