@@ -105,6 +105,13 @@ async function migrarTabelas() {
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_2a_id TEXT`);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_liberacao TIMESTAMPTZ`);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS segundo_corretor_liberacao TIMESTAMPTZ`);
+        /* Índice único para garantir que cada corrector seja pré-atribuído apenas uma vez por submissão.
+           Cobre tanto pré-atribuições (nota IS NULL) quanto correções concluídas (nota IS NOT NULL). */
+        await pool.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_provasub_tcor_unico
+                ON classroom_prova_submissoes(submissao_ref_id, aluno_email)
+                WHERE eh_turma_corretora = true
+        `);
         /* Gamificação: snapshot de variante original + flags de XP creditado + foto conferida + flag voluntária */
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS variante_id_original INTEGER`);
         await pool.query(`UPDATE classroom_prova_submissoes SET variante_id_original = variante_id WHERE variante_id_original IS NULL`);
@@ -3421,6 +3428,166 @@ async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
     return { sorteado: escolhido.aluno_email };
 }
 
+/**
+ * sortearAlunoTurmaCorretora
+ * ──────────────────────────
+ * Sorteia UM membro da turma corretora para corrigir uma submissão específica,
+ * cria o registro de pré-atribuição em classroom_prova_submissoes e notifica
+ * o sorteado. Retorna o e-mail do sorteado ou null se nenhum elegível disponível.
+ *
+ * Balanceamento de carga: conta quantas pré-atribuições de eh_turma_corretora=true
+ * cada membro já tem para esta prova. Sorteia aleatoriamente entre os de menor contagem.
+ */
+async function sortearAlunoTurmaCorretora(pool, { submissaoId, prova }) {
+    /* Busca todos os membros da turma corretora via Classroom API */
+    let membros = [];
+    try {
+        const { rows: tkRows } = await pool.query(
+            `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+        );
+        if (tkRows[0]) {
+            const { google } = await import('googleapis');
+            const auth = new google.auth.OAuth2(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
+            );
+            auth.setCredentials(tkRows[0].tokens);
+            const classroom = google.classroom({ version: 'v1', auth });
+            let pageToken;
+            do {
+                const r = await classroom.courses.students.list({
+                    courseId:  String(prova.turma_corretora_id),
+                    pageSize:  100,
+                    pageToken,
+                });
+                (r.data.students || []).forEach(s => {
+                    const email = s.profile?.emailAddress;
+                    const nome  = s.profile?.name?.fullName || null;
+                    if (email) membros.push({ email: email.toLowerCase(), nome });
+                });
+                pageToken = r.data.nextPageToken;
+            } while (pageToken);
+        }
+    } catch (apiErr) {
+        /* Fallback: alunos que já visitaram o portal (cache local) */
+        console.warn('[SORTEAR-TC] API indisponível, usando cache:', apiErr.message);
+        const { rows: cached } = await pool.query(
+            `SELECT DISTINCT aluno_email AS email FROM aluno_cursos_cache WHERE curso_id = $1`,
+            [String(prova.turma_corretora_id)]
+        );
+        membros = cached.map(r => ({ email: r.email, nome: null }));
+    }
+
+    if (membros.length === 0) {
+        console.warn(`[SORTEAR-TC] Nenhum membro encontrado na turma corretora ${prova.turma_corretora_id}`);
+        return null;
+    }
+
+    /* Busca o e-mail do aluno dono da submissão para não sortear o próprio aluno */
+    const { rows: [subOriginal] } = await pool.query(
+        `SELECT aluno_email FROM classroom_prova_submissoes WHERE id = $1`, [submissaoId]
+    );
+    const emailDono = subOriginal?.aluno_email?.toLowerCase();
+
+    /* Conta correções históricas (concluídas) de cada membro para balanceamento */
+    const { rows: atribuicoes } = await pool.query(
+        `SELECT tc.aluno_email, COUNT(*)::int AS total
+           FROM classroom_prova_submissoes tc
+          WHERE tc.prova_id = $1
+            AND tc.eh_turma_corretora = true
+            AND tc.nota IS NOT NULL
+         GROUP BY tc.aluno_email`,
+        [prova.id]
+    );
+    const contagemMap = {};
+    for (const row of atribuicoes) {
+        contagemMap[row.aluno_email.toLowerCase()] = row.total;
+    }
+
+    /* Correctors com atribuição pendente (nota IS NULL) → indisponíveis no momento */
+    const { rows: pendentes } = await pool.query(
+        `SELECT DISTINCT LOWER(aluno_email) AS email
+           FROM classroom_prova_submissoes
+          WHERE prova_id = $1 AND eh_turma_corretora = true AND nota IS NULL`,
+        [prova.id]
+    );
+    const ocupadosSet = new Set(pendentes.map(r => r.email));
+
+    /* Correctors já atribuídos a ESTA submissão específica */
+    const { rows: jaAtribuidos } = await pool.query(
+        `SELECT aluno_email FROM classroom_prova_submissoes
+          WHERE submissao_ref_id = $1 AND eh_turma_corretora = true`,
+        [submissaoId]
+    );
+    const jaAtribuidosSet = new Set(jaAtribuidos.map(r => r.aluno_email.toLowerCase()));
+
+    /* Filtra: remove dono, ocupados (nota IS NULL) e já atribuídos a esta submissão */
+    const elegíveis = membros.filter(m =>
+        m.email !== emailDono && !ocupadosSet.has(m.email) && !jaAtribuidosSet.has(m.email)
+    );
+
+    if (elegíveis.length === 0) {
+        console.warn(`[SORTEAR-TC] Nenhum elegível para sub ${submissaoId} — todos ocupados ou já atribuídos`);
+        return null;
+    }
+
+    /* Balanceamento: menor contagem de correções CONCLUÍDAS; sorteia entre empatados */
+    const minContagem = Math.min(...elegíveis.map(m => contagemMap[m.email] ?? 0));
+    const candidatos  = elegíveis.filter(m => (contagemMap[m.email] ?? 0) === minContagem);
+
+    /* Sorteia um aleatoriamente entre os de menor carga */
+    const sorteado = candidatos[Math.floor(Math.random() * candidatos.length)];
+
+    /* Recupera dados da submissão-referência para montar o registro de pré-atribuição */
+    const { rows: [ref] } = await pool.query(
+        `SELECT prova_id, variante_id, total_max FROM classroom_prova_submissoes WHERE id = $1`,
+        [submissaoId]
+    );
+    if (!ref) return null;
+
+    /* Insere pré-atribuição com nota=NULL (marcador de "atribuída mas não corrigida") */
+    try {
+        await pool.query(
+            `INSERT INTO classroom_prova_submissoes
+               (prova_id, variante_id, variante_id_original, aluno_email, aluno_nome,
+                marcacoes_json, nota, total_max, ip, user_agent,
+                eh_segundo_corretor, eh_turma_corretora, submissao_ref_id, origem)
+             VALUES ($1,$2,$2,$3,$4,'{}',NULL,$5,'','',false,true,$6,'tcor-sortio')
+             ON CONFLICT (submissao_ref_id, aluno_email) WHERE eh_turma_corretora = true
+             DO NOTHING`,
+            [ref.prova_id, ref.variante_id, sorteado.email, sorteado.nome || '',
+             ref.total_max, submissaoId]
+        );
+    } catch (e) {
+        console.warn(`[SORTEAR-TC] Erro ao inserir pré-atribuição: ${e.message}`);
+        return null;
+    }
+
+    /* Notifica o sorteado — referencia = prova.id para compatibilidade com o filtro
+       de atribuicoes (n.referencia = p.id::text); submissaoRefId fica em dados.
+       Deduplica apenas sobre notificações NÃO LIDAS para permitir re-notificação
+       quando o corrector conclui a primeira folha e recebe uma segunda. */
+    await pool.query(
+        `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+         SELECT $1, 'turma_corretora_atribuida', $2, $3, $4, $5
+          WHERE NOT EXISTS (
+              SELECT 1 FROM notificacoes_aluno
+               WHERE aluno_email = $1
+                 AND tipo        = 'turma_corretora_atribuida'
+                 AND referencia  = $2
+                 AND lida        = false
+          )`,
+        [sorteado.email, String(prova.id),
+         '✏️ Você tem uma folha para corrigir!',
+         `Você foi sorteado para corrigir uma folha da prova "${prova.nome}". Acesse a aba "✏️ Correções" no Portal do Aluno.`,
+         JSON.stringify({ provaId: prova.id, provaNome: prova.nome, submissaoRefId: submissaoId })]
+    );
+
+    console.log(`[SORTEAR-TC] Sorteado: ${sorteado.email} → sub ${submissaoId} (prova ${prova.id})`);
+    return sorteado.email;
+}
+
 export function createProvasPublicRouter() {
     const router = Router();
 
@@ -3610,13 +3777,23 @@ export function createProvasPublicRouter() {
                 }
             });
 
-            /* ── Notifica turma corretora sobre nova folha (fire-and-forget) ── */
+            /* ── Sorteia e atribui corretor da turma corretora (fire-and-forget) ── */
             if (prova.turma_corretora_id) {
                 setImmediate(async () => {
                     try {
-                        await notificarTurmaCorretora(pool, prova, aluno.email);
+                        const sorteado = await sortearAlunoTurmaCorretora(pool, {
+                            submissaoId: sub.id,
+                            prova,
+                        });
+                        if (sorteado) {
+                            console.log(`[SORTEAR-TC] Sub ${sub.id}: atribuída a ${sorteado}`);
+                        } else {
+                            /* Fallback: nenhum elegível — notifica toda a turma */
+                            console.warn(`[SORTEAR-TC] Sub ${sub.id}: sem elegível, usando fallback genérico`);
+                            await notificarTurmaCorretora(pool, prova, aluno.email);
+                        }
                     } catch (e) {
-                        console.warn(`[NOTIF-TC] Falhou ao notificar turma corretora (prova ${prova.id}): ${e.message}`);
+                        console.warn(`[SORTEAR-TC] Falhou (prova ${prova.id}): ${e.message}`);
                     }
                 });
             }
@@ -4258,12 +4435,25 @@ export function createProvasPublicRouter() {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
 
-        /* Sub-query de pendentes reutilizada */
+        /* Sub-query de pendentes reutilizada.
+         * Conta:
+         *   a) Pré-atribuições deste corrector ainda não concluídas (nota IS NULL)
+         *   b) Submissões sem qualquer atribuição de tc (fallback genérico)
+         */
         const PENDENTES_SQ = `
             COALESCE((
                 SELECT COUNT(*)::int
+                  FROM classroom_prova_submissoes tc
+                 WHERE tc.prova_id = p.id
+                   AND tc.eh_turma_corretora = true
+                   AND tc.aluno_email = $1
+                   AND tc.nota IS NULL
+            ), 0)
+            +
+            COALESCE((
+                SELECT COUNT(*)::int
                   FROM classroom_prova_submissoes ps
-                 WHERE ps.prova_id           = p.id
+                 WHERE ps.prova_id            = p.id
                    AND ps.eh_segundo_corretor = false
                    AND ps.eh_turma_corretora  = false
                    AND ps.aluno_email         != $1
@@ -4276,15 +4466,41 @@ export function createProvasPublicRouter() {
                        SELECT 1 FROM classroom_prova_submissoes tc2
                         WHERE tc2.submissao_ref_id = ps.id
                           AND tc2.aluno_email      = $1
+                          AND tc2.nota             IS NOT NULL
                    )
             ), 0)`;
+
+        /* Sub-query de "todos corrigidos": nenhuma submissão-alvo sem correção concluída */
+        const TODOS_CORRIGIDOS_SQ = `
+            (
+                SELECT COUNT(*) FROM classroom_prova_submissoes ps
+                 WHERE ps.prova_id = p.id
+                   AND ps.eh_segundo_corretor = false
+                   AND ps.eh_turma_corretora  = false
+            ) > 0
+            AND NOT EXISTS (
+                SELECT 1 FROM classroom_prova_submissoes ps2
+                 WHERE ps2.prova_id = p.id
+                   AND ps2.eh_segundo_corretor = false
+                   AND ps2.eh_turma_corretora  = false
+                   AND NOT EXISTS (
+                       SELECT 1 FROM classroom_prova_submissoes tc
+                        WHERE tc.submissao_ref_id = ps2.id
+                          AND tc.eh_turma_corretora = true
+                          AND tc.nota IS NOT NULL
+                   )
+            )`;
 
         try {
             /* ── Passo 1: notificacoes_aluno (fonte primária, sem API) ── */
             const { rows } = await pool.query(
                 `SELECT p.id AS prova_id, p.nome AS prova_nome,
                         p.turma_corretora_2a_correcao, p.link_prova,
-                        ${PENDENTES_SQ} AS pendentes
+                        (SELECT DISTINCT acc.curso_nome FROM aluno_cursos_cache acc
+                          WHERE acc.curso_id = p.turma_corretora_id::text LIMIT 1
+                        ) AS turma_corretora_nome,
+                        ${PENDENTES_SQ} AS pendentes,
+                        (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
                    FROM classroom_provas p
                   WHERE p.efetivada = false
                     AND (p.turma_corretora_liberacao IS NULL OR p.turma_corretora_liberacao <= NOW())
@@ -4421,7 +4637,11 @@ export function createProvasPublicRouter() {
             const { rows: resultado } = await pool.query(
                 `SELECT p.id AS prova_id, p.nome AS prova_nome,
                         p.turma_corretora_2a_correcao, p.link_prova,
-                        ${PENDENTES_SQ} AS pendentes
+                        (SELECT DISTINCT acc.curso_nome FROM aluno_cursos_cache acc
+                          WHERE acc.curso_id = p.turma_corretora_id::text LIMIT 1
+                        ) AS turma_corretora_nome,
+                        ${PENDENTES_SQ} AS pendentes,
+                        (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
                    FROM classroom_provas p
                   WHERE p.id IN (${ph}) AND p.efetivada = false
                   ORDER BY pendentes DESC, p.id`,
@@ -4797,20 +5017,49 @@ export function createProvasPublicRouter() {
 
             console.log(`[LISTA-TURMA-ALVO] após enriquecimento: ${rosterAlunos.length} aluno(s) | submissaoMap keys: ${Object.keys(submissaoMap).length}`);
 
-            /* ── Emails já cobertos por correção de turma corretora ── */
+            /* ── Emails já cobertos por correção CONCLUÍDA de turma corretora ── */
             const { rows: corrRows } = await pool.query(
                 `SELECT LOWER(aluno_email) AS email
                    FROM classroom_prova_submissoes
-                  WHERE prova_id = $1 AND eh_turma_corretora = true`,
+                  WHERE prova_id = $1 AND eh_turma_corretora = true AND nota IS NOT NULL`,
                 [pid]
             );
             const correctedSet = new Set(corrRows.map(r => r.email));
             const rosterFiltrado = rosterAlunos.filter(a => !correctedSet.has(a.email));
             console.log(`[LISTA-TURMA-ALVO] já corrigidos pela turma corretora: ${correctedSet.size} | após filtro: ${rosterFiltrado.length}`);
 
-            /* ── Monta resultado final ── */
-            const result = rosterFiltrado.map(a => {
+            /* ── Se este corrector tem pré-atribuições abertas, exibir só essas folhas ── */
+            const { rows: preAssigned } = await pool.query(
+                `SELECT submissao_ref_id FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_turma_corretora = true
+                    AND aluno_email = $2 AND nota IS NULL`,
+                [pid, aluno.email]
+            );
+            const preAssignedIds = new Set(preAssigned.map(r => r.submissao_ref_id));
+            const rosterFinal = preAssignedIds.size > 0
+                ? rosterFiltrado.filter(a => {
+                      const subId = submissaoMap[a.email] ?? null;
+                      return subId != null && preAssignedIds.has(subId);
+                  })
+                : rosterFiltrado;
+
+            /* ── Monta resultado final — anonimiza quando há pré-atribuição ── */
+            const result = rosterFinal.map(a => {
                 const subId = submissaoMap[a.email] ?? null;
+                /* Correção às cegas: quando o corrector foi sorteado, não revelar a
+                   identidade do aluno-alvo em nenhuma etapa (listagem inclusive). */
+                if (preAssignedIds.size > 0 && subId != null && preAssignedIds.has(subId)) {
+                    const anonNum = String(((subId % 999) + 1)).padStart(3, '0');
+                    return {
+                        nome:             `Aluno #${anonNum}`,
+                        email_mascarado:  '**@**',
+                        email_real:       null,
+                        numchamada:       null,
+                        submissao_ref_id: subId,
+                        sem_submissao:    false,
+                        pre_atribuida:    true,
+                    };
+                }
                 return {
                     nome:             a.nome,
                     email_mascarado:  `${a.email.substring(0,2)}***@${a.email.split('@')[1]}`,
@@ -4818,6 +5067,7 @@ export function createProvasPublicRouter() {
                     numchamada:       a.numchamada ?? null,
                     submissao_ref_id: subId,
                     sem_submissao:    subId == null,
+                    pre_atribuida:    false,
                 };
             });
 
@@ -4975,11 +5225,29 @@ export function createProvasPublicRouter() {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
+            const subRefId = parseInt(req.params.subRefId, 10);
+
+            /* Verifica se este corrector tem uma pré-atribuição (sorteio automático) */
+            const { rows: [preAtrib] } = await pool.query(
+                `SELECT 1 FROM classroom_prova_submissoes
+                  WHERE submissao_ref_id = $1
+                    AND aluno_email = $2
+                    AND eh_turma_corretora = true
+                    AND nota IS NULL`,
+                [subRefId, aluno.email]
+            );
+            const temPreAtribuicao = !!preAtrib;
+
+            /* Condições de acesso:
+             *  – Se há pré-atribuição para este corrector: permite acesso direto
+             *  – Caso contrário: usa as regras antigas (disponível para qualquer membro elegível)
+             * Em ambos os casos: bloqueia se a submissão já foi completamente corrigida. */
             const { rows: [itemRaw] } = await pool.query(
                 `SELECT
                     s.id            AS submissao_ref_id,
                     s.foto_url,
-                    s.aluno_nome,
+                    -- Anonimiza o aluno: exibe "Aluno #NNN" determinístico pelo ID da submissão
+                    ('Aluno #' || LPAD(((s.id % 999) + 1)::text, 3, '0')) AS aluno_nome,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
                     p.link_prova,
@@ -5000,21 +5268,33 @@ export function createProvasPublicRouter() {
                       SELECT 1 FROM classroom_prova_submissoes tc
                        WHERE tc.submissao_ref_id = s.id
                          AND tc.eh_turma_corretora = true
+                         AND tc.nota IS NOT NULL
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc2
                        WHERE tc2.submissao_ref_id = s.id
                          AND tc2.aluno_email = $2
+                         AND tc2.nota IS NOT NULL
                   )
-                  AND NOT EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes sc
-                       JOIN classroom_provas pc ON pc.id = sc.prova_id
-                      WHERE sc.aluno_email = $2
-                        AND pc.curso_id = p.curso_id
-                        AND sc.eh_segundo_corretor = false
-                        AND sc.eh_turma_corretora  = false
+                  AND (
+                      $3 = true
+                      OR (
+                          NOT EXISTS (
+                              SELECT 1 FROM classroom_prova_submissoes tc3
+                               WHERE tc3.submissao_ref_id = s.id
+                                 AND tc3.eh_turma_corretora = true
+                          )
+                          AND NOT EXISTS (
+                              SELECT 1 FROM classroom_prova_submissoes sc
+                               JOIN classroom_provas pc ON pc.id = sc.prova_id
+                              WHERE sc.aluno_email = $2
+                                AND pc.curso_id = p.curso_id
+                                AND sc.eh_segundo_corretor = false
+                                AND sc.eh_turma_corretora  = false
+                          )
+                      )
                   )`,
-                [parseInt(req.params.subRefId, 10), aluno.email]
+                [subRefId, aluno.email, temPreAtribuicao]
             );
             if (!itemRaw) return res.status(404).json({ erro: 'Folha não encontrada ou já foi corrigida por outro aluno.' });
             const { gabarito_json: _gabTcor, ...itemBase } = itemRaw;
@@ -5085,10 +5365,10 @@ export function createProvasPublicRouter() {
                 return res.status(403).json({ erro: 'Alunos da turma-alvo não podem corrigir por este fluxo.' });
             }
 
-            /* Verifica se já foi corrigida por turma corretora */
+            /* Verifica se já foi corrigida por turma corretora (correção concluída) */
             const { rows: jaCorrigida } = await client.query(
                 `SELECT 1 FROM classroom_prova_submissoes
-                  WHERE submissao_ref_id = $1 AND eh_turma_corretora = true LIMIT 1`,
+                  WHERE submissao_ref_id = $1 AND eh_turma_corretora = true AND nota IS NOT NULL LIMIT 1`,
                 [ref.id]
             );
             if (jaCorrigida.length > 0) {
@@ -5096,10 +5376,10 @@ export function createProvasPublicRouter() {
                 return res.status(409).json({ erro: 'Esta folha já foi corrigida pela turma corretora.' });
             }
 
-            /* Verifica se este aluno já corrigiu esta folha */
+            /* Verifica se este aluno já concluiu a correção desta folha */
             const { rows: jaFez } = await client.query(
                 `SELECT 1 FROM classroom_prova_submissoes
-                  WHERE submissao_ref_id = $1 AND aluno_email = $2 LIMIT 1`,
+                  WHERE submissao_ref_id = $1 AND aluno_email = $2 AND nota IS NOT NULL LIMIT 1`,
                 [ref.id, aluno.email]
             );
             if (jaFez.length > 0) {
@@ -5109,12 +5389,34 @@ export function createProvasPublicRouter() {
 
             const { nota, total } = calcularNota(ref.gabarito_json, marcacoes);
 
+            /* Verifica se há pré-atribuição aberta: se existir, só o sorteado pode submeter */
+            const { rows: preAtrib } = await client.query(
+                `SELECT aluno_email FROM classroom_prova_submissoes
+                  WHERE submissao_ref_id = $1 AND eh_turma_corretora = true AND nota IS NULL LIMIT 1`,
+                [ref.id]
+            );
+            if (preAtrib.length > 0 && preAtrib[0].aluno_email.toLowerCase() !== aluno.email.toLowerCase()) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ erro: 'Esta folha foi sorteada para outro corretor.' });
+            }
+
+            /* Faz UPSERT: atualiza pré-atribuição se existir, ou insere novo registro */
             const { rows: [novaSub] } = await client.query(
                 `INSERT INTO classroom_prova_submissoes
-                   (prova_id, variante_id, aluno_email, aluno_nome,
+                   (prova_id, variante_id, variante_id_original, aluno_email, aluno_nome,
                     marcacoes_json, nota, total_max, ip, user_agent,
-                    eh_segundo_corretor, eh_turma_corretora, submissao_ref_id)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false,true,$10) RETURNING id`,
+                    eh_segundo_corretor, eh_turma_corretora, submissao_ref_id, origem)
+                 VALUES ($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,false,true,$10,'tcor-submissao')
+                 ON CONFLICT (submissao_ref_id, aluno_email) WHERE eh_turma_corretora = true
+                 DO UPDATE SET
+                     marcacoes_json      = EXCLUDED.marcacoes_json,
+                     nota                = EXCLUDED.nota,
+                     total_max           = EXCLUDED.total_max,
+                     ip                  = EXCLUDED.ip,
+                     user_agent          = EXCLUDED.user_agent,
+                     aluno_nome          = EXCLUDED.aluno_nome,
+                     origem              = EXCLUDED.origem
+                 RETURNING id`,
                 [ref.prova_id, ref.variante_id_real, aluno.email, aluno.nome,
                  JSON.stringify(marcacoes), nota, total,
                  req.ip, req.get('user-agent') || '', ref.id]

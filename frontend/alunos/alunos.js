@@ -141,6 +141,20 @@ async function carregarTurmaCorretora() {
 
         if (!provas || provas.length === 0) {
             sec.style.display = 'none';
+            if (alert) alert.style.display = 'none';
+            _correcoesPendentes.turma = 0;
+            _atualizarBadgeCorrecoes();
+            return;
+        }
+
+        /* Oculta cards onde todos os alunos-alvo já foram corrigidos */
+        const provasVisiveis = provas.filter(p => !p.todos_corrigidos);
+
+        if (provasVisiveis.length === 0) {
+            sec.style.display = 'none';
+            if (alert) alert.style.display = 'none';
+            _correcoesPendentes.turma = 0;
+            _atualizarBadgeCorrecoes();
             return;
         }
 
@@ -148,8 +162,8 @@ async function carregarTurmaCorretora() {
         if (nav) nav.style.display = '';
         sec.style.display = '';
 
-        const comPendentes  = provas.filter(p => Number(p.pendentes) > 0);
-        const semSubmissoes = provas.filter(p => Number(p.pendentes) === 0);
+        const comPendentes  = provasVisiveis.filter(p => Number(p.pendentes) > 0);
+        const semSubmissoes = provasVisiveis.filter(p => Number(p.pendentes) === 0);
 
         /* Badge, alerta e destaque visual quando há folhas para corrigir */
         _correcoesPendentes.turma = comPendentes.length;
@@ -167,7 +181,7 @@ async function carregarTurmaCorretora() {
         }
 
         /* ── Renderiza cards com select de alunos ── */
-        const todosCards = provas.map(p => {
+        const todosCards = provasVisiveis.map(p => {
             const pend = Number(p.pendentes) || 0;
             const badgePend = pend > 0
                 ? `<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:700">✅ ${pend} folha${pend !== 1 ? 's' : ''} para corrigir</span>`
@@ -179,9 +193,10 @@ async function carregarTurmaCorretora() {
             return `
             <div class="pa-tcor-card" id="tcorCard_${p.prova_id}" style="border-color:${borderColor}">
                 <div style="margin-bottom:12px">
-                    <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:5px">
+                    <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:2px">
                         ${escapeHtmlGam(p.prova_nome || 'Prova')}
                     </div>
+                    ${p.turma_corretora_nome ? `<div style="font-size:0.78em;color:var(--pa-sub);margin-bottom:5px">Turma corretora: <strong>${escapeHtmlGam(p.turma_corretora_nome)}</strong></div>` : ''}
                     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
                         ${badgePend}${badge2a}
                     </div>
@@ -210,8 +225,8 @@ async function carregarTurmaCorretora() {
 
         lista.innerHTML = todosCards;
 
-        /* Carrega lista de alunos para cada prova (em paralelo) */
-        provas.forEach(p => tcorCarregarListaAlunos(p.prova_id));
+        /* Carrega lista de alunos para cada prova visível (em paralelo) */
+        provasVisiveis.forEach(p => tcorCarregarListaAlunos(p.prova_id));
     } catch (_) {
         /* silencioso — módulo opcional */
     }
@@ -376,6 +391,29 @@ async function tcorCarregarListaAlunos(provaId) {
             } else {
                 progDiv.innerHTML = '';
             }
+        }
+
+        /* ── Pré-atribuições: correção às cegas com botão direto ── */
+        const preAtribuidas = d.alunos.filter(a => a.pre_atribuida && a.submissao_ref_id);
+        if (preAtribuidas.length > 0) {
+            sel.style.display = 'none';
+            const labelEl = sel.previousElementSibling;
+            if (labelEl && labelEl.tagName === 'LABEL') labelEl.style.display = 'none';
+            const acaoDiv = document.getElementById(`tcorAcao_${provaId}`);
+            if (acaoDiv) {
+                const btns = preAtribuidas.map(a =>
+                    `<div style="margin-bottom:8px">
+                        <span style="font-size:0.85em;color:var(--pa-sub);display:block;margin-bottom:6px">Folha sorteada para você corrigir:</span>
+                        <a href="/alunos/prova/?tcor=${encodeURIComponent(a.submissao_ref_id)}"
+                           style="display:inline-block;background:#22c55e;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700">
+                            ${escapeHtmlGam(a.nome)} → Corrigir
+                        </a>
+                    </div>`
+                ).join('');
+                acaoDiv.innerHTML = btns;
+            }
+            if (msg) msg.textContent = '';
+            return;
         }
 
         if (d.alunos.length === 0) {
