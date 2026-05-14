@@ -4302,13 +4302,15 @@ export function createProvasPublicRouter() {
             ]);
             if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
 
-            /* ── Branch 1: alunos COM submissão nesta prova (DB, rápido) ── */
-            const { rows: comSubmissao } = await pool.query(
+            /* ── Branch 1: alunos COM submissão nesta prova (DB) ── */
+            /* Retorna email interno para deduplicação; removido antes de enviar ao cliente. */
+            const { rows: comSubmissaoRaw } = await pool.query(
                 `SELECT
                     s.id            AS submissao_ref_id,
                     s.foto_url      AS foto_url,
                     s.aluno_nome,
                     CONCAT(LEFT(s.aluno_email,2),'***@',SPLIT_PART(s.aluno_email,'@',2)) AS email_mascarado,
+                    s.aluno_email   AS _email_interno,
                     NULL::text      AS email_real,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
@@ -4325,28 +4327,21 @@ export function createProvasPublicRouter() {
                   AND s.aluno_email != $2
                   AND (s.aluno_nome ILIKE $3 OR s.aluno_nome IS NULL)
                   AND NOT EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes tc
-                       WHERE tc.submissao_ref_id = s.id AND tc.eh_turma_corretora = true
-                  )
-                  AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc2
                        WHERE tc2.submissao_ref_id = s.id AND tc2.aluno_email = $2
-                  )
-                  AND NOT EXISTS (
-                      SELECT 1 FROM classroom_prova_submissoes sc
-                       JOIN classroom_provas pc ON pc.id = sc.prova_id
-                      WHERE sc.aluno_email = $2
-                        AND pc.curso_id = p.curso_id
-                        AND sc.eh_segundo_corretor = false
-                        AND sc.eh_turma_corretora  = false
                   )
                 ORDER BY COALESCE(s.aluno_nome,''), v.codigo
                 LIMIT 10`,
                 [pid, aluno.email, `%${nomeTrimmed}%`]
             );
+            /* Emails já cobertos pelo branch 1 — para deduplicar o roster */
+            const emailsBranch1 = new Set(comSubmissaoRaw.map(r => r._email_interno?.toLowerCase()).filter(Boolean));
+            /* Remove campo interno antes de enviar ao cliente */
+            const comSubmissao = comSubmissaoRaw.map(({ _email_interno, ...rest }) => rest);
 
-            /* ── Branch 2: alunos SEM submissão via Google Classroom roster da turma alvo ── */
-            /* Inclui Paola e qualquer aluno que nunca acessou o portal digitalmente.          */
+            /* ── Branch 2: Google Classroom roster da turma alvo ── */
+            /* Busca TODOS os alunos da turma alvo pelo nome, independente de submissão.  */
+            /* Inclui Paola e qualquer aluno que nunca acessou o portal digitalmente.     */
             const semSubmissao = [];
             try {
                 const { rows: tkRows } = await pool.query(
@@ -4362,22 +4357,6 @@ export function createProvasPublicRouter() {
                     auth.setCredentials(tkRows[0].tokens);
                     const classroom = google.classroom({ version: 'v1', auth });
 
-                    /* Emails que já aparecem no branch 1 — não duplicar */
-                    const jaEncontradosPorEmail = new Set(
-                        comSubmissao.map(r => (r.email_mascarado || '').toLowerCase())
-                    );
-
-                    /* Emails com submissão existente para esta prova (excluir do sem_submissao) */
-                    const { rows: existentes } = await pool.query(
-                        `SELECT LOWER(aluno_email) AS email
-                           FROM classroom_prova_submissoes
-                          WHERE prova_id = $1
-                            AND eh_segundo_corretor = false
-                            AND eh_turma_corretora  = false`,
-                        [pid]
-                    );
-                    const emailsComSub = new Set(existentes.map(r => r.email));
-
                     const filtro = nomeTrimmed.toLowerCase();
                     let pageToken;
                     do {
@@ -4391,15 +4370,13 @@ export function createProvasPublicRouter() {
                             const nomeCls = s.profile?.name?.fullName || '';
                             if (!email) continue;
                             if (email === aluno.email.toLowerCase()) continue; /* não se auto-corrigir */
-                            if (emailsComSub.has(email)) continue;             /* já tem submissão → branch 1 */
+                            if (emailsBranch1.has(email)) continue;            /* já aparece no branch 1 */
                             if (!nomeCls.toLowerCase().includes(filtro)) continue;
-                            const emailMask = `${email.substring(0,2)}***@${email.split('@')[1]}`;
-                            if (jaEncontradosPorEmail.has(emailMask)) continue;
                             semSubmissao.push({
                                 submissao_ref_id:            null,
                                 foto_url:                    null,
                                 aluno_nome:                  nomeCls,
-                                email_mascarado:             emailMask,
+                                email_mascarado:             `${email.substring(0,2)}***@${email.split('@')[1]}`,
                                 email_real:                  email,
                                 prova_id:                    prova.id,
                                 prova_nome:                  prova.nome,
@@ -4412,7 +4389,6 @@ export function createProvasPublicRouter() {
                         pageToken = r.data.nextPageToken;
                     } while (pageToken);
 
-                    /* Ordena por nome e limita */
                     semSubmissao.sort((a, b) => (a.aluno_nome || '').localeCompare(b.aluno_nome || '', 'pt-BR'));
                 }
             } catch (apiErr) {
