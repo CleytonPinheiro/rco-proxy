@@ -3916,6 +3916,49 @@ export function createProvasPublicRouter() {
     });
 
     /**
+     * GET /api/alunos-portal/turma-corretora/prova-pdf/:subRefId
+     * Serve o PDF da prova filtrando apenas as páginas da variante do aluno alvo.
+     * Prioridade: mapeamento manual → auto-detecção por texto → PDF completo.
+     */
+    router.get('/alunos-portal/turma-corretora/prova-pdf/:subRefId', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).send('Não autenticado.');
+        try {
+            const { rows: [item] } = await pool.query(
+                `SELECT p.link_prova,
+                        p.link_prova_paginas,
+                        p.id            AS prova_id,
+                        v.codigo        AS variante_codigo
+                   FROM classroom_provas p
+                   JOIN classroom_prova_submissoes s ON s.prova_id   = p.id
+                   JOIN classroom_prova_variantes  v ON v.id         = s.variante_id
+                  WHERE s.id            = $1
+                    AND s.aluno_email  != $2
+                    AND p.turma_corretora_id IS NOT NULL
+                    AND p.link_prova   IS NOT NULL`,
+                [parseInt(req.params.subRefId, 10), aluno.email]
+            );
+            if (!item) return res.status(404).send('Submissão não encontrada ou PDF não configurado.');
+
+            const { getPdfForVariante } = await import('../services/pdfVariante.service.js');
+            const pdfBuf = await getPdfForVariante(
+                item.link_prova,
+                item.variante_codigo,
+                item.prova_id,
+                item.link_prova_paginas
+            );
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition',
+                `inline; filename="prova-variante-${item.variante_codigo}.pdf"`);
+            res.send(pdfBuf);
+        } catch (e) {
+            console.error('[PDF-VARIANTE]', e.message);
+            res.status(500).send('Erro ao processar PDF: ' + e.message);
+        }
+    });
+
+    /**
      * GET /api/alunos-portal/turma-corretora/submissao/:subRefId
      * Retorna os detalhes de uma submissão específica para o corretor lançar as respostas.
      * Aplica as mesmas regras de elegibilidade do buscar-aluno. Expõe o nome do dono.

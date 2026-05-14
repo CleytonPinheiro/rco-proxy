@@ -869,6 +869,17 @@ function renderDetalhe(d) {
                         ${optsTC}
                     </select>
                 </label>
+                <label>
+                    <span style="font-weight:600;font-size:0.88em">📄 Páginas do PDF por variante <span style="font-weight:400;color:#888">(opcional)</span></span>
+                    <span style="font-size:0.76em;color:#666;display:block;margin:2px 0 4px">
+                        Quando o PDF do campo "Link da prova" contém todas as variantes, informe aqui quais páginas pertencem a cada uma — o aluno corretor verá <strong>somente</strong> as páginas da variante que está em mãos.
+                        Uma linha por variante. Formato: <code>0: 1-2</code> ou <code>A: 3, 4</code> (números de página começando em 1).
+                        Se deixar vazio, o sistema tentará detectar automaticamente pelo texto do PDF ("TIPO 0", "VARIANTE A" etc.).
+                    </span>
+                    <textarea id="prvTcorPaginasMap" rows="4"
+                              style="width:100%;font-family:monospace;font-size:13px;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;resize:vertical;box-sizing:border-box;margin-top:2px"
+                              placeholder="0: 1-2&#10;1: 3-4&#10;2: 5-6">${escapeHtml(paginasMapToText(p.link_prova_paginas))}</textarea>
+                </label>
                 <label style="display:flex;align-items:center;gap:6px">
                     <input id="prvTcor2a" type="checkbox" ${current2a ? 'checked' : ''}>
                     Aluno original faz 2ª conferência depois da turma corretora
@@ -1004,7 +1015,11 @@ async function salvarTurmaCorretora(remover = false) {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ turmaCorretoraId: turmaCorretoraId || '', turmaCorretora2aCorrecao }),
+            body: JSON.stringify({
+                turmaCorretoraId: turmaCorretoraId || '',
+                turmaCorretora2aCorrecao,
+                ...(!remover && { linkProvaPaginas: parsePaginasMap($('prvTcorPaginasMap')?.value || '') }),
+            }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
