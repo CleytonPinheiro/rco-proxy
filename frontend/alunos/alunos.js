@@ -359,11 +359,14 @@ async function carregarTarefasCorretor() {
         const r = await fetch('/api/alunos-portal/segundo-corretor/pendentes', { credentials: 'include' });
         if (!r.ok) return;
         const { pendentes } = await r.json();
-        const sec   = document.getElementById('paCorretorSection');
-        const lista = document.getElementById('paCorretorLista');
+        const sec        = document.getElementById('paCorretorSection');
+        const lista      = document.getElementById('paCorretorLista');
+        const corrAlert  = $('paCorretorAlert');
+        const corrAlertTxt = $('paCorretorAlertTxt');
         if (!sec || !lista) return;
         if (!pendentes || pendentes.length === 0) {
             sec.style.display = 'none';
+            if (corrAlert) corrAlert.style.display = 'none';
             _correcoesPendentes.corretor = 0;
             _atualizarBadgeCorrecoes();
             return;
@@ -375,6 +378,17 @@ async function carregarTarefasCorretor() {
         if (nav) nav.style.display = '';
         _correcoesPendentes.corretor = pendentes.length;
         _atualizarBadgeCorrecoes();
+
+        /* Banner de alerta na aba Atividades */
+        if (corrAlert) {
+            corrAlert.style.display = '';
+            if (corrAlertTxt) {
+                const n = pendentes.length;
+                corrAlertTxt.textContent = n === 1
+                    ? 'Você tem 1 correção anônima pendente'
+                    : `Você tem ${n} correções anônimas pendentes`;
+            }
+        }
 
         lista.innerHTML = pendentes.map(p => `
             <div class="pa-solicita-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
