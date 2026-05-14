@@ -5129,6 +5129,9 @@ export function createProvasPublicRouter() {
             });
         } catch (e) {
             try { await client.query('ROLLBACK'); } catch (_) {}
+            if (e.code === '23505') {
+                return res.status(409).json({ erro: 'Você já corrigiu esta folha.' });
+            }
             res.status(500).json({ erro: e.message });
         } finally {
             client.release();
