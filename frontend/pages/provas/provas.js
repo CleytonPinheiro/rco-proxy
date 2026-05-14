@@ -1010,6 +1010,7 @@ function renderDetalhe(d) {
         }
         /* Render everything together so prepend never gets wiped */
         $('prvDetGabarito').innerHTML = gabCfg + gabSegundoCorretor + gabMapPaginas + gabStr;
+        if ($('prvSc2TurmaSel')) prvCreateCustomSelect($('prvSc2TurmaSel'));
     }
 
     /* Submissões (exclui explicitamente correções da turma corretora das linhas "principais") */
