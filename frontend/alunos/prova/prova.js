@@ -414,7 +414,12 @@ async function iniciarTurmaCorretora(subRefId) {
             { credentials: 'include' }
         );
         const d = await r.json();
-        if (!r.ok) return showErro(d.erro || 'Folha não encontrada ou já foi corrigida por outro aluno.');
+        if (!r.ok) {
+            if (r.status === 404 || r.status === 403) {
+                try { localStorage.removeItem(`edusync_rascunho_tcor_${subRefId}`); } catch (_) {}
+            }
+            return showErro(d.erro || 'Folha não encontrada ou já foi corrigida por outro aluno.');
+        }
 
         const item = d.item;
         estado.tcor = item;
@@ -632,6 +637,13 @@ async function enviarTurmaCorretora() {
             body: JSON.stringify({ marcacoes: limpo }),
         });
         const d = await r.json();
+        if (r.status === 409 && (d.erro || '').includes('já corrigiu')) {
+            const chaveTcor = _chaveRascunhoTcor();
+            if (chaveTcor) _apagarRascunho(chaveTcor);
+            notificar('✅ Correção já registrada!');
+            setTimeout(() => { location.href = '/alunos/'; }, 2000);
+            return;
+        }
         if (!r.ok) throw new Error(d.erro || 'Erro ao enviar.');
         const chaveTcor = _chaveRascunhoTcor();
         if (chaveTcor) _apagarRascunho(chaveTcor);
