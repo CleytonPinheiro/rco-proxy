@@ -295,14 +295,25 @@ async function verResultado() {
 
 async function iniciarTurmaCorretora(subRefId) {
     try {
-        const r = await fetch('/api/alunos-portal/turma-corretora/disponiveis', { credentials: 'include' });
+        const r = await fetch(
+            `/api/alunos-portal/turma-corretora/submissao/${encodeURIComponent(subRefId)}`,
+            { credentials: 'include' }
+        );
         const d = await r.json();
-        const item = (d.disponiveis || []).find(s => String(s.submissao_ref_id) === String(subRefId));
-        if (!item) return showErro('Folha não encontrada ou já foi corrigida por outro aluno.');
+        if (!r.ok) return showErro(d.erro || 'Folha não encontrada ou já foi corrigida por outro aluno.');
 
+        const item = d.item;
         estado.tcor = item;
         estado.qtdQuestoes = item.qtd_questoes || 12;
         estado.marcacoes = {};
+
+        /* Exibe nome do aluno dono como confirmação visual */
+        const nomeWrap = $('ppTcorNomeWrap');
+        const nomeEl   = $('ppTcorNomeAluno');
+        if (nomeWrap && nomeEl) {
+            nomeEl.textContent = item.aluno_nome || '(sem nome)';
+            nomeWrap.style.display = '';
+        }
 
         if (item.foto_url) {
             $('ppTcorFoto').src = item.foto_url;

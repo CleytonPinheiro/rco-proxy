@@ -91,30 +91,83 @@ async function carregarTurmaCorretora() {
     try {
         const r = await fetch('/api/alunos-portal/turma-corretora/disponiveis', { credentials: 'include' });
         if (!r.ok) return;
-        const { disponiveis } = await r.json();
+        const { provas } = await r.json();
         const sec   = document.getElementById('paTurmaCorretoraSec');
         const lista = document.getElementById('paTurmaCorretoraLista');
         if (!sec || !lista) return;
-        if (!disponiveis || disponiveis.length === 0) {
+        if (!provas || provas.length === 0) {
             sec.style.display = 'none';
             return;
         }
         sec.style.display = '';
-        lista.innerHTML = disponiveis.map(s => `
-            <div class="pa-solicita-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #22c55e;border-radius:8px;margin-bottom:8px;background:#f0fdf4">
-                <div>
-                    <strong>${escapeHtmlGam(s.prova_nome || 'Prova')}</strong>
-                    <div style="font-size:0.85em;color:#666">Variante ${escapeHtmlGam(String(s.variante_codigo))} · ${s.qtd_questoes} questões${s.turma_corretora_2a_correcao ? ' · aluno conferirá depois' : ''}</div>
+        lista.innerHTML = provas.map(p => `
+            <div class="pa-solicita-card" style="padding:12px;border:1px solid #22c55e;border-radius:8px;margin-bottom:8px;background:#f0fdf4">
+                <div style="margin-bottom:10px">
+                    <strong>${escapeHtmlGam(p.prova_nome || 'Prova')}</strong>
+                    ${p.turma_corretora_2a_correcao ? '<span style="font-size:0.82em;color:#166534;margin-left:6px">(aluno dono confirmará depois)</span>' : ''}
+                    <div style="font-size:0.82em;color:#555;margin-top:2px">Identifique o aluno cuja folha você tem em mãos:</div>
                 </div>
-                <a class="pa-btn pa-btn-primary"
-                   href="/alunos/prova/?tcor=${encodeURIComponent(s.submissao_ref_id)}"
-                   style="background:#22c55e;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap">Corrigir agora →</a>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <input type="text"
+                           id="tcorBusca_${p.prova_id}"
+                           placeholder="Digite o nome do aluno dono da prova…"
+                           autocomplete="off"
+                           style="flex:1;border:1px solid #86efac;border-radius:6px;padding:8px 12px;font-size:14px;outline:none;background:#fff"
+                           oninput="tcorBuscar(${p.prova_id}, this)">
+                </div>
+                <div id="tcorResultados_${p.prova_id}" style="display:none;margin-top:4px;border:1px solid #86efac;border-radius:6px;background:#fff;overflow:hidden"></div>
+                <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:#888;margin-top:4px;min-height:16px"></div>
             </div>
         `).join('');
     } catch (_) {
         /* silencioso — módulo opcional */
     }
 }
+
+const _tcorDebounce = {};
+
+async function tcorBuscar(provaId, input) {
+    const nome = input.value.trim();
+    const msg  = document.getElementById(`tcorMsg_${provaId}`);
+    const res  = document.getElementById(`tcorResultados_${provaId}`);
+    if (nome.length < 2) {
+        if (res) res.style.display = 'none';
+        if (msg) msg.textContent = nome.length > 0 ? 'Digite ao menos 2 letras.' : '';
+        return;
+    }
+    clearTimeout(_tcorDebounce[provaId]);
+    _tcorDebounce[provaId] = setTimeout(async () => {
+        try {
+            if (msg) msg.textContent = 'Buscando…';
+            const r = await fetch(
+                `/api/alunos-portal/turma-corretora/buscar-aluno?prova_id=${provaId}&nome=${encodeURIComponent(nome)}`,
+                { credentials: 'include' }
+            );
+            const d = await r.json();
+            if (!res) return;
+            if (!d.alunos || d.alunos.length === 0) {
+                res.style.display = 'none';
+                if (msg) msg.textContent = 'Nenhum aluno elegível encontrado com esse nome.';
+                return;
+            }
+            if (msg) msg.textContent = '';
+            res.style.display = '';
+            res.innerHTML = d.alunos.map(a => `
+                <div style="padding:9px 12px;border-bottom:1px solid #f0fdf4;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <span style="font-size:14px;color:#1a1a1a">${escapeHtmlGam(a.aluno_nome || '(sem nome)')}</span>
+                    <a href="/alunos/prova/?tcor=${encodeURIComponent(a.submissao_ref_id)}"
+                       style="background:#22c55e;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">
+                        Corrigir →
+                    </a>
+                </div>
+            `).join('');
+        } catch (_) {
+            if (msg) msg.textContent = 'Erro ao buscar. Tente novamente.';
+        }
+    }, 300);
+}
+
+window.tcorBuscar = tcorBuscar;
 
 /* ── Tarefas de 2ª correção (sortição) ───────────────── */
 async function carregarTarefasCorretor() {

@@ -3787,33 +3787,21 @@ export function createProvasPublicRouter() {
 
     /**
      * GET /api/alunos-portal/turma-corretora/disponiveis
-     * Retorna as submissões da turma-alvo disponíveis para o aluno corrigir
-     * como Corretor 1 (enquanto membro da turma corretora).
+     * Retorna as PROVAS (metadados) onde o aluno pode atuar como turma corretora.
+     * Não expõe submissões individuais — o aluno identifica o dono pelo nome via buscar-aluno.
      */
     router.get('/alunos-portal/turma-corretora/disponiveis', async (req, res) => {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
-            /* Seleciona submissões da turma-alvo disponíveis para este aluno:
-             * - prova tem turma_corretora_id definido e não está efetivada
-             * - submissão é de Corretor 1 original (não é 2ª correção nem turma-corretora)
-             * - a submissão ainda não foi corrigida por ninguém via turma-corretora
-             * - o aluno não é o dono da submissão
-             * - o aluno NÃO pertence à turma-alvo (não submeteu prova nesse curso)
-             * - o aluno PERTENCE à turma corretora (submeteu alguma prova nesse curso)
-             */
             const { rows } = await pool.query(
-                `SELECT
-                    s.id            AS submissao_ref_id,
-                    s.foto_url,
+                `SELECT DISTINCT
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
-                    p.turma_corretora_2a_correcao,
-                    v.codigo        AS variante_codigo,
-                    jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                    p.turma_corretora_id,
+                    p.turma_corretora_2a_correcao
                  FROM classroom_provas p
                  JOIN classroom_prova_submissoes s ON s.prova_id = p.id
-                 JOIN classroom_prova_variantes  v ON v.id = s.variante_id
                 WHERE p.turma_corretora_id IS NOT NULL
                   AND p.efetivada = false
                   AND s.eh_segundo_corretor = false
@@ -3845,10 +3833,142 @@ export function createProvasPublicRouter() {
                         AND sc2.eh_segundo_corretor = false
                         AND sc2.eh_turma_corretora  = false
                   )
-                ORDER BY p.id, s.criada_em`,
+                ORDER BY p.id`,
                 [aluno.email]
             );
-            res.json({ disponiveis: rows });
+            res.json({ provas: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /**
+     * GET /api/alunos-portal/turma-corretora/buscar-aluno?prova_id=&nome=
+     * Busca alunos elegíveis da turma-alvo cujo nome contém o texto informado.
+     * Mínimo 2 caracteres. Retorna até 10 resultados com submissao_ref_id para redirecionar.
+     */
+    router.get('/alunos-portal/turma-corretora/buscar-aluno', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { prova_id, nome } = req.query;
+        if (!prova_id) return res.status(400).json({ erro: 'prova_id obrigatório.' });
+        const nomeTrimmed = String(nome || '').trim();
+        if (nomeTrimmed.length < 2) return res.status(400).json({ erro: 'nome mínimo 2 caracteres.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT
+                    s.id            AS submissao_ref_id,
+                    s.foto_url,
+                    s.aluno_nome,
+                    p.id            AS prova_id,
+                    p.nome          AS prova_nome,
+                    p.turma_corretora_2a_correcao,
+                    v.codigo        AS variante_codigo,
+                    jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                 FROM classroom_provas p
+                 JOIN classroom_prova_submissoes s ON s.prova_id = p.id
+                 JOIN classroom_prova_variantes  v ON v.id = s.variante_id
+                WHERE p.id = $1
+                  AND p.turma_corretora_id IS NOT NULL
+                  AND p.efetivada = false
+                  AND s.eh_segundo_corretor = false
+                  AND s.eh_turma_corretora  = false
+                  AND s.aluno_email != $2
+                  AND s.aluno_nome ILIKE $3
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes tc
+                       WHERE tc.submissao_ref_id = s.id
+                         AND tc.eh_turma_corretora = true
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes tc2
+                       WHERE tc2.submissao_ref_id = s.id
+                         AND tc2.aluno_email = $2
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc
+                       JOIN classroom_provas pc ON pc.id = sc.prova_id
+                      WHERE sc.aluno_email = $2
+                        AND pc.curso_id = p.curso_id
+                        AND sc.eh_segundo_corretor = false
+                        AND sc.eh_turma_corretora  = false
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc2
+                       JOIN classroom_provas pc2 ON pc2.id = sc2.prova_id
+                      WHERE sc2.aluno_email = $2
+                        AND pc2.curso_id = p.turma_corretora_id
+                        AND sc2.eh_segundo_corretor = false
+                        AND sc2.eh_turma_corretora  = false
+                  )
+                ORDER BY s.aluno_nome
+                LIMIT 10`,
+                [parseInt(prova_id, 10), aluno.email, `%${nomeTrimmed}%`]
+            );
+            res.json({ alunos: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /**
+     * GET /api/alunos-portal/turma-corretora/submissao/:subRefId
+     * Retorna os detalhes de uma submissão específica para o corretor lançar as respostas.
+     * Aplica as mesmas regras de elegibilidade do buscar-aluno. Expõe o nome do dono.
+     */
+    router.get('/alunos-portal/turma-corretora/submissao/:subRefId', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows: [item] } = await pool.query(
+                `SELECT
+                    s.id            AS submissao_ref_id,
+                    s.foto_url,
+                    s.aluno_nome,
+                    p.id            AS prova_id,
+                    p.nome          AS prova_nome,
+                    p.turma_corretora_2a_correcao,
+                    v.codigo        AS variante_codigo,
+                    jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                 FROM classroom_provas p
+                 JOIN classroom_prova_submissoes s ON s.prova_id = p.id
+                 JOIN classroom_prova_variantes  v ON v.id = s.variante_id
+                WHERE s.id = $1
+                  AND p.turma_corretora_id IS NOT NULL
+                  AND p.efetivada = false
+                  AND s.eh_segundo_corretor = false
+                  AND s.eh_turma_corretora  = false
+                  AND s.aluno_email != $2
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes tc
+                       WHERE tc.submissao_ref_id = s.id
+                         AND tc.eh_turma_corretora = true
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes tc2
+                       WHERE tc2.submissao_ref_id = s.id
+                         AND tc2.aluno_email = $2
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc
+                       JOIN classroom_provas pc ON pc.id = sc.prova_id
+                      WHERE sc.aluno_email = $2
+                        AND pc.curso_id = p.curso_id
+                        AND sc.eh_segundo_corretor = false
+                        AND sc.eh_turma_corretora  = false
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc2
+                       JOIN classroom_provas pc2 ON pc2.id = sc2.prova_id
+                      WHERE sc2.aluno_email = $2
+                        AND pc2.curso_id = p.turma_corretora_id
+                        AND sc2.eh_segundo_corretor = false
+                        AND sc2.eh_turma_corretora  = false
+                  )`,
+                [parseInt(req.params.subRefId, 10), aluno.email]
+            );
+            if (!item) return res.status(404).json({ erro: 'Folha não encontrada ou já foi corrigida por outro aluno.' });
+            res.json({ item });
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
@@ -3873,7 +3993,8 @@ export function createProvasPublicRouter() {
             const { rows: [ref] } = await client.query(
                 `SELECT s.*, v.gabarito_json, v.id AS variante_id_real,
                         p.turma_corretora_id, p.turma_corretora_2a_correcao,
-                        p.curso_id AS prova_curso_id
+                        p.curso_id AS prova_curso_id,
+                        p.segundo_corretor_ativo, p.segundo_corretor_pct
                    FROM classroom_prova_submissoes s
                    JOIN classroom_prova_variantes v ON v.id = s.variante_id
                    JOIN classroom_provas p           ON p.id = s.prova_id
@@ -3963,7 +4084,7 @@ export function createProvasPublicRouter() {
                  req.ip, req.get('user-agent') || '', ref.id]
             );
 
-            /* Se configurado, notifica o aluno original para 2ª correção */
+            /* Se configurado, notifica o aluno original para auto-verificação */
             if (ref.turma_corretora_2a_correcao) {
                 await client.query(
                     `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
@@ -3977,6 +4098,19 @@ export function createProvasPublicRouter() {
             }
 
             await client.query('COMMIT');
+
+            /* Sorteio anônimo de 2º corretor (fire-and-forget), se a prova tiver esse recurso ativo */
+            setImmediate(async () => {
+                try {
+                    if (!ref.segundo_corretor_ativo) return;
+                    const pct = Number(ref.segundo_corretor_pct ?? 15);
+                    if (pct <= 0 || Math.random() * 100 >= pct) return;
+                    await sortearSegundoCorretor(pool, { submissaoId: ref.id, provaId: ref.prova_id });
+                    console.log(`[PROVAS] Turma-corretora: sorteio 2º corretor OK para sub ${ref.id}`);
+                } catch (e) {
+                    console.warn(`[PROVAS] Turma-corretora: sorteio 2º corretor falhou (sub ${ref.id}): ${e.message}`);
+                }
+            });
 
             /* XP para o corretor (fire-and-forget) */
             const xpEventos = [];

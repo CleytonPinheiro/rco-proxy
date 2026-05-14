@@ -62,9 +62,14 @@
         <section id="ppTurmaCorretora" class="pp-card" style="display:none">
             <h2>🏫 Correção como Turma Corretora</h2>
             <p class="pp-muted">
-                Sua turma foi designada para corrigir as folhas de outra turma. Olhe a foto da folha abaixo
-                e marque o que vê assinalado em cada questão. <strong>Você não vê o nome do aluno nem a nota original.</strong>
+                Sua turma foi designada para corrigir as folhas de outra turma. Confirme o nome do aluno
+                abaixo, olhe a foto da folha e marque o que vê assinalado em cada questão.
             </p>
+            <div id="ppTcorNomeWrap" style="display:none;margin:10px 0;padding:10px 14px;background:#dcfce7;border:1px solid #86efac;border-radius:8px">
+                <span style="font-size:0.88em;color:#166534;font-weight:600">📋 Aluno dono da folha:</span>
+                <span id="ppTcorNomeAluno" style="margin-left:8px;font-weight:700;color:#15803d;font-size:1em"></span>
+                <span style="font-size:0.8em;color:#166534;margin-left:8px">(confirme que é a folha certa antes de lançar)</span>
+            </div>
             <div id="ppTcorFotoWrap" style="margin:12px 0">
                 <img id="ppTcorFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha">
                 <div id="ppTcorSemFoto" style="display:none" class="pp-aviso">⚠️ Sem foto disponível para esta folha. Avise o professor.</div>
