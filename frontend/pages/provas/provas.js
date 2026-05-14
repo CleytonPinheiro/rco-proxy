@@ -809,13 +809,21 @@ function renderDetalhe(d) {
         <span>📊 ${d.variantes.length} variantes • ${d.submissoes.filter(s=>!s.eh_segundo_corretor && !s.eh_turma_corretora).length} alunos corrigiram</span>
         <span>📷 Foto: ${p.foto_modo}${p.foto_modo === 'sorteio' ? ` (${p.foto_sorteio_pct}%)` : ''}</span>
         <span>👁 2º corretor: ${p.segundo_corretor_ativo
-            ? `ativo · ${p.segundo_corretor_pct === 100 ? '100% automático' : (p.segundo_corretor_pct || 15) + '% automático'}${p.permitir_outra_turma ? ' · cross-turma ON' : ''}`
+            ? `ativo · ${p.segundo_corretor_pct === 100 ? '100% automático' : (p.segundo_corretor_pct || 15) + '% automático'}${p.permitir_outra_turma ? ' · cross-turma ON' : ''}${p.segundo_corretor_liberacao ? ` · ${new Date(p.segundo_corretor_liberacao) > new Date() ? '⏳ sorteio em ' + new Date(p.segundo_corretor_liberacao).toLocaleString('pt-BR') : '✅ sorteio liberado'}` : ''}`
             : 'desativado'}</span>
         ${p.turma_corretora_id ? (() => {
             const tcSubs  = d.submissoes.filter(s => s.eh_turma_corretora);
             const total   = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora).length;
             const tcNome  = (cursos.find(c => c.id === p.turma_corretora_id) || {}).nome || p.turma_corretora_id;
-            return `<span>🏫 Turma corretora: <strong>${escapeHtml(tcNome)}</strong> · ${tcSubs.length}/${total} folhas corrigidas${p.turma_corretora_2a_correcao ? ' · aluno confere depois' : ''}</span>`;
+            const tcLibStr = p.turma_corretora_liberacao
+                ? (new Date(p.turma_corretora_liberacao) > new Date()
+                    ? ` · ⏳ portal em ${new Date(p.turma_corretora_liberacao).toLocaleString('pt-BR')}`
+                    : ' · ✅ portal liberado')
+                : '';
+            const tc2aNome = p.turma_corretora_2a_id
+                ? ((cursos.find(c => c.id === p.turma_corretora_2a_id) || {}).nome || p.turma_corretora_2a_id)
+                : '';
+            return `<span>🏫 Turma corretora: <strong>${escapeHtml(tcNome)}</strong> · ${tcSubs.length}/${total} folhas corrigidas${p.turma_corretora_2a_correcao ? ' · aluno confere depois' : ''}${tc2aNome ? ` · 2º sorteio de ${escapeHtml(tc2aNome)}` : ''}${tcLibStr}</span>`;
         })() : ''}
     `;
     $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Analise de gabarito</strong> para carregar.</div>';
@@ -860,8 +868,10 @@ function renderDetalhe(d) {
         const tcNome  = currentTcId ? ((cursos.find(c => c.id === currentTcId) || {}).nome || currentTcId) : 'nenhuma';
         const tcSubs  = d.submissoes.filter(s => s.eh_turma_corretora).length;
         const tcTotal = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora).length;
+        const tcLib  = p.turma_corretora_liberacao
+            ? new Date(p.turma_corretora_liberacao).toISOString().slice(0,16) : '';
         const gabCfg = `<details style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;padding:10px">
-            <summary style="cursor:pointer;font-weight:600">🏫 Turma corretora${currentTcId ? ` — ${escapeHtml(tcNome)} (${tcSubs}/${tcTotal} corrigidas)` : ' — nenhuma configurada'}</summary>
+            <summary style="cursor:pointer;font-weight:600">🏫 Turma corretora${currentTcId ? ` — ${escapeHtml(tcNome)} (${tcSubs}/${tcTotal} corrigidas)${tcLib && new Date(p.turma_corretora_liberacao) > new Date() ? ' · ⏳ agendado' : ''}` : ' — nenhuma configurada'}</summary>
             <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
                 <label>Turma que irá corrigir as folhas
                     <select id="prvTcorCurso" class="form-select" style="margin-top:4px">
@@ -872,6 +882,14 @@ function renderDetalhe(d) {
                 <label style="display:flex;align-items:center;gap:6px">
                     <input id="prvTcor2a" type="checkbox" ${current2a ? 'checked' : ''}>
                     Aluno original faz 2ª conferência depois da turma corretora
+                </label>
+                <label style="display:flex;flex-direction:column;gap:4px">
+                    <span>Liberar no portal em (opcional — deixe vazio para liberar imediatamente)</span>
+                    <input id="prvTcorLiberacao" type="datetime-local" value="${escapeHtml(tcLib)}"
+                           style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9em;max-width:230px">
+                    ${tcLib && new Date(p.turma_corretora_liberacao) > new Date()
+                        ? `<small style="color:#d97706;font-weight:600">⏳ Agendado para ${new Date(p.turma_corretora_liberacao).toLocaleString('pt-BR')}</small>`
+                        : (tcLib ? `<small style="color:#16a34a;font-weight:600">✅ Já liberado</small>` : '')}
                 </label>
                 <div style="display:flex;gap:8px">
                     <button class="prv-btn prv-btn-primary" onclick="salvarTurmaCorretora()">Salvar</button>
@@ -902,12 +920,20 @@ function renderDetalhe(d) {
         </details>`;
 
         /* ── 2º Corretor às cegas (editável) ── */
-        const scAtivo = !!p.segundo_corretor_ativo;
-        const scPct   = p.segundo_corretor_pct || 15;
-        const scOutra = !!p.permitir_outra_turma;
-        const scLabel = scAtivo
-            ? `ativo — ${scPct}% automático${scOutra ? ' · cross-turma ON' : ''}`
+        const scAtivo  = !!p.segundo_corretor_ativo;
+        const scPct    = p.segundo_corretor_pct || 15;
+        const scOutra  = !!p.permitir_outra_turma;
+        const sc2aId   = p.turma_corretora_2a_id || '';
+        const scLib    = p.segundo_corretor_liberacao
+            ? new Date(p.segundo_corretor_liberacao).toISOString().slice(0,16) : '';
+        const scLabel  = scAtivo
+            ? `ativo — ${scPct}% automático${scOutra ? ' · cross-turma ON' : ''}${scLib ? ' · agendado' : ''}`
             : 'desativado';
+        /* Options for turma selector (excluding own class) */
+        const outrosCursos2a = cursos.filter(c => c.id !== p.curso_id);
+        const opts2a = outrosCursos2a
+            .map(c => `<option value="${escapeHtml(c.id)}" ${c.id === sc2aId ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`)
+            .join('');
         const gabSegundoCorretor = `<details style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;padding:10px">
             <summary style="cursor:pointer;font-weight:600">👁 2º Corretor às cegas — ${escapeHtml(scLabel)}</summary>
             <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
@@ -923,8 +949,25 @@ function renderDetalhe(d) {
                     </label>
                 </div>
                 <label style="display:flex;align-items:center;gap:6px">
-                    <input id="prvSc2OutraTurma" type="checkbox" ${scOutra ? 'checked' : ''}>
+                    <input id="prvSc2OutraTurma" type="checkbox" ${scOutra ? 'checked' : ''}
+                           onchange="document.getElementById('prvSc2TurmaWrap').style.display=this.checked?'':'none'">
                     Permitir alunos de outra turma como 2º corretor
+                </label>
+                <div id="prvSc2TurmaWrap" style="display:${scOutra ? '' : 'none'};flex-direction:column;gap:4px">
+                    <label>Turma específica para o sorteio (opcional — deixe em branco para qualquer turma do professor)
+                        <select id="prvSc2TurmaSel" class="form-select" style="margin-top:4px">
+                            <option value="">Qualquer turma do professor</option>
+                            ${opts2a}
+                        </select>
+                    </label>
+                </div>
+                <label style="display:flex;flex-direction:column;gap:4px">
+                    <span>Liberar sorteio em (opcional — deixe vazio para liberar imediatamente)</span>
+                    <input id="prvSc2Liberacao" type="datetime-local" value="${escapeHtml(scLib)}"
+                           style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9em;max-width:230px">
+                    ${scLib && new Date(p.segundo_corretor_liberacao) > new Date()
+                        ? `<small style="color:#d97706;font-weight:600">⏳ Agendado para ${new Date(p.segundo_corretor_liberacao).toLocaleString('pt-BR')}</small>`
+                        : (scLib ? `<small style="color:#16a34a;font-weight:600">✅ Já liberado</small>` : '')}
                 </label>
                 <div id="prvSc2Erro" style="color:#dc2626;font-size:0.85em;display:none"></div>
                 <div>
@@ -1077,8 +1120,9 @@ function parsePaginasMap(text) {
 
 async function salvarTurmaCorretora(remover = false) {
     if (!provaAberta) return;
-    const turmaCorretoraId        = remover ? null : ($('prvTcorCurso')?.value || null);
+    const turmaCorretoraId         = remover ? null : ($('prvTcorCurso')?.value || null);
     const turmaCorretora2aCorrecao = !remover && !!$('prvTcor2a')?.checked;
+    const liberacaoRaw             = remover ? '' : ($('prvTcorLiberacao')?.value || '');
     if (!remover && !turmaCorretoraId) {
         toast('Selecione a turma corretora ou clique em "Remover".', 'warn');
         return;
@@ -1091,6 +1135,7 @@ async function salvarTurmaCorretora(remover = false) {
             body: JSON.stringify({
                 turmaCorretoraId: turmaCorretoraId || '',
                 turmaCorretora2aCorrecao,
+                turmaCorretoraLiberacao: liberacaoRaw || '',
             }),
         });
         const d = await r.json();
@@ -1102,10 +1147,12 @@ async function salvarTurmaCorretora(remover = false) {
 
 async function salvarSegundoCorretor() {
     if (!provaAberta) return;
-    const ativo  = !!$('prvSc2Ativo')?.checked;
-    const pctRaw = parseInt($('prvSc2Pct')?.value, 10);
-    const outra  = !!$('prvSc2OutraTurma')?.checked;
-    const erroEl = $('prvSc2Erro');
+    const ativo         = !!$('prvSc2Ativo')?.checked;
+    const pctRaw        = parseInt($('prvSc2Pct')?.value, 10);
+    const outra         = !!$('prvSc2OutraTurma')?.checked;
+    const turma2aId     = outra ? ($('prvSc2TurmaSel')?.value || '') : '';
+    const liberacaoRaw  = $('prvSc2Liberacao')?.value || '';
+    const erroEl        = $('prvSc2Erro');
     if (erroEl) erroEl.style.display = 'none';
     if (ativo && (!Number.isInteger(pctRaw) || pctRaw < 1 || pctRaw > 100)) {
         if (erroEl) { erroEl.textContent = 'O percentual deve ser entre 1 e 100.'; erroEl.style.display = ''; }
@@ -1118,9 +1165,11 @@ async function salvarSegundoCorretor() {
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-                segundoCorretorAtivo: ativo,
-                segundoCorretorPct:   pct,
-                permitirOutraTurma:   outra,
+                segundoCorretorAtivo:    ativo,
+                segundoCorretorPct:      pct,
+                permitirOutraTurma:      outra,
+                turmaCorretora2aId:      turma2aId || '',
+                segundoCorretorLiberacao: liberacaoRaw || '',
             }),
         });
         const d = await r.json();

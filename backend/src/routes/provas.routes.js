@@ -102,6 +102,9 @@ async function migrarTabelas() {
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_id TEXT`);
         await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_2a_correcao BOOLEAN NOT NULL DEFAULT false`);
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS eh_turma_corretora BOOLEAN NOT NULL DEFAULT false`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_2a_id TEXT`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_liberacao TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS segundo_corretor_liberacao TIMESTAMPTZ`);
         /* Gamificação: snapshot de variante original + flags de XP creditado + foto conferida + flag voluntária */
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS variante_id_original INTEGER`);
         await pool.query(`UPDATE classroom_prova_submissoes SET variante_id_original = variante_id WHERE variante_id_original IS NULL`);
@@ -1400,13 +1403,17 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     router.put('/classroom/provas/:id', async (req, res) => {
         const fields = ['nome', 'grupo_destino_id', 'data_aplicacao', 'foto_modo',
                         'foto_sorteio_pct', 'segundo_corretor_ativo', 'segundo_corretor_pct',
-                        'permitir_outra_turma', 'turma_corretora_id', 'turma_corretora_2a_correcao'];
+                        'permitir_outra_turma', 'turma_corretora_id', 'turma_corretora_2a_correcao',
+                        'turma_corretora_2a_id', 'turma_corretora_liberacao', 'segundo_corretor_liberacao'];
         const map = {
             nome: 'nome', grupoDestinoId: 'grupo_destino_id', dataAplicacao: 'data_aplicacao',
             fotoModo: 'foto_modo', fotoSorteioPct: 'foto_sorteio_pct',
             segundoCorretorAtivo: 'segundo_corretor_ativo', segundoCorretorPct: 'segundo_corretor_pct',
             permitirOutraTurma: 'permitir_outra_turma',
             turmaCorretoraId: 'turma_corretora_id', turmaCorretora2aCorrecao: 'turma_corretora_2a_correcao',
+            turmaCorretora2aId: 'turma_corretora_2a_id',
+            turmaCorretoraLiberacao: 'turma_corretora_liberacao',
+            segundoCorretorLiberacao: 'segundo_corretor_liberacao',
             linkProvaPaginas: 'link_prova_paginas',
         };
         const sets = [], vals = [];
@@ -1414,9 +1421,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         for (const [k, col] of Object.entries(map)) {
             if (req.body[k] !== undefined) {
                 sets.push(`${col} = $${i++}`);
-                /* Coerce empty string to null for nullable TEXT columns */
+                /* Coerce empty string to null for nullable TEXT/TIMESTAMPTZ columns */
                 let val = req.body[k];
-                if (col === 'turma_corretora_id' && (val === '' || val === null)) val = null;
+                if (['turma_corretora_id', 'turma_corretora_2a_id', 'turma_corretora_liberacao', 'segundo_corretor_liberacao'].includes(col)
+                    && (val === '' || val === null)) val = null;
                 vals.push(val);
             }
         }
@@ -3336,28 +3344,49 @@ async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
     if (!sub) throw new Error('Submissão não encontrada nesta prova.');
 
     const { rows: [provaCfg] } = await pool.query(
-        `SELECT permitir_outra_turma, criada_por_cpf FROM classroom_provas WHERE id = $1`,
+        `SELECT permitir_outra_turma, criada_por_cpf, turma_corretora_2a_id FROM classroom_provas WHERE id = $1`,
         [sub.prova_id]
     );
 
     let candidatos;
     if (provaCfg?.permitir_outra_turma && provaCfg?.criada_por_cpf) {
-        ({ rows: candidatos } = await pool.query(
-            `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
-               FROM classroom_prova_submissoes s
-               JOIN classroom_provas p ON p.id = s.prova_id
-              WHERE s.aluno_email <> $1
-                AND s.eh_segundo_corretor = false
-                AND p.criada_por_cpf = $2
-                AND (s.prova_id <> $3 OR s.variante_id <> $4)
-                AND NOT EXISTS (
-                    SELECT 1 FROM classroom_prova_submissoes c
-                     WHERE c.submissao_ref_id = $5
-                       AND c.eh_segundo_corretor = true
-                       AND c.aluno_email = s.aluno_email
-                )`,
-            [sub.aluno_email, provaCfg.criada_por_cpf, sub.prova_id, sub.variante_id, sub.id]
-        ));
+        if (provaCfg.turma_corretora_2a_id) {
+            /* Restringir pool à turma específica escolhida pelo professor */
+            ({ rows: candidatos } = await pool.query(
+                `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_provas p ON p.id = s.prova_id
+                  WHERE s.aluno_email <> $1
+                    AND s.eh_segundo_corretor = false
+                    AND p.criada_por_cpf = $2
+                    AND p.curso_id = $3
+                    AND (s.prova_id <> $4 OR s.variante_id <> $5)
+                    AND NOT EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = $6
+                           AND c.eh_segundo_corretor = true
+                           AND c.aluno_email = s.aluno_email
+                    )`,
+                [sub.aluno_email, provaCfg.criada_por_cpf, provaCfg.turma_corretora_2a_id, sub.prova_id, sub.variante_id, sub.id]
+            ));
+        } else {
+            ({ rows: candidatos } = await pool.query(
+                `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_provas p ON p.id = s.prova_id
+                  WHERE s.aluno_email <> $1
+                    AND s.eh_segundo_corretor = false
+                    AND p.criada_por_cpf = $2
+                    AND (s.prova_id <> $3 OR s.variante_id <> $4)
+                    AND NOT EXISTS (
+                        SELECT 1 FROM classroom_prova_submissoes c
+                         WHERE c.submissao_ref_id = $5
+                           AND c.eh_segundo_corretor = true
+                           AND c.aluno_email = s.aluno_email
+                    )`,
+                [sub.aluno_email, provaCfg.criada_por_cpf, sub.prova_id, sub.variante_id, sub.id]
+            ));
+        }
     } else {
         ({ rows: candidatos } = await pool.query(
             `SELECT s.aluno_email, s.aluno_nome FROM classroom_prova_submissoes s
@@ -3664,6 +3693,7 @@ export function createProvasPublicRouter() {
                    JOIN classroom_prova_variantes v  ON v.id = s.variante_id
                   WHERE n.aluno_email = $1
                     AND n.tipo IN ('segundo_corretor','segundo_corretor_voluntario')
+                    AND (p.segundo_corretor_liberacao IS NULL OR p.segundo_corretor_liberacao <= NOW())
                     AND NOT EXISTS (
                         SELECT 1 FROM classroom_prova_submissoes c
                          WHERE c.submissao_ref_id = s.id
@@ -4256,6 +4286,7 @@ export function createProvasPublicRouter() {
                         ${PENDENTES_SQ} AS pendentes
                    FROM classroom_provas p
                   WHERE p.efetivada = false
+                    AND (p.turma_corretora_liberacao IS NULL OR p.turma_corretora_liberacao <= NOW())
                     AND EXISTS (
                         SELECT 1 FROM notificacoes_aluno n
                          WHERE n.aluno_email = $1
@@ -4275,7 +4306,8 @@ export function createProvasPublicRouter() {
             const { rows: provasAtivas } = await pool.query(
                 `SELECT id, nome, turma_corretora_id
                    FROM classroom_provas
-                  WHERE turma_corretora_id IS NOT NULL AND efetivada = false`
+                  WHERE turma_corretora_id IS NOT NULL AND efetivada = false
+                    AND (turma_corretora_liberacao IS NULL OR turma_corretora_liberacao <= NOW())`
             );
 
             if (provasAtivas.length === 0) {
