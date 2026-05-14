@@ -3883,11 +3883,47 @@ export function createProvasPublicRouter() {
         );
         if (!prova) return;
 
-        /* Busca corretores via cache de cursos (populado quando alunos acessam o portal) */
-        const { rows: correctors } = await pool.query(
-            `SELECT DISTINCT aluno_email FROM aluno_cursos_cache WHERE curso_id = $1`,
-            [String(turmaCorretoraId)]
-        );
+        /* Busca corretores via Classroom API — notifica TODOS os alunos da turma,
+         * inclusive os que nunca visitaram o portal. Fallback para cache local. */
+        let correctorEmails = [];
+        try {
+            const { rows: tkRows } = await pool.query(
+                `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+            );
+            if (tkRows[0]) {
+                const { google } = await import('googleapis');
+                const auth = new google.auth.OAuth2(
+                    process.env.GOOGLE_CLIENT_ID,
+                    process.env.GOOGLE_CLIENT_SECRET,
+                    process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
+                );
+                auth.setCredentials(tkRows[0].tokens);
+                const classroom = google.classroom({ version: 'v1', auth });
+                let pageToken;
+                do {
+                    const r = await classroom.courses.students.list({
+                        courseId:  String(turmaCorretoraId),
+                        pageSize:  100,
+                        pageToken,
+                    });
+                    (r.data.students || []).forEach(s => {
+                        const email = s.profile?.emailAddress;
+                        if (email) correctorEmails.push(email.toLowerCase());
+                    });
+                    pageToken = r.data.nextPageToken;
+                } while (pageToken);
+                console.log(`[NOTIF-TC-ATRIB] ${correctorEmails.length} aluno(s) na turma ${turmaCorretoraId} via Classroom API`);
+            }
+        } catch (apiErr) {
+            /* Fallback: apenas alunos que já visitaram o portal (cache local) */
+            console.warn('[NOTIF-TC-ATRIB] API indisponível, usando cache:', apiErr.message);
+            const { rows: cached } = await pool.query(
+                `SELECT DISTINCT aluno_email FROM aluno_cursos_cache WHERE curso_id = $1`,
+                [String(turmaCorretoraId)]
+            );
+            correctorEmails = cached.map(r => r.aluno_email);
+        }
+        const correctors = correctorEmails.map(e => ({ aluno_email: e }));
         if (correctors.length === 0) return;
 
         const titulo   = '🏫 Você foi atribuído como corretor!';

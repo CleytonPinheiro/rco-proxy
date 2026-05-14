@@ -148,7 +148,7 @@ async function carregarTurmaCorretora() {
 
         /* ── Renderiza cards ── */
         const cardsAtivos = comPendentes.map(p => `
-            <div class="pa-tcor-card">
+            <div class="pa-tcor-card" id="tcorCard_${p.prova_id}">
                 <div style="margin-bottom:12px">
                     <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:5px">
                         ${escapeHtmlGam(p.prova_nome || 'Prova')}
@@ -184,7 +184,7 @@ async function carregarTurmaCorretora() {
                     ⏳ Aguardando submissões dos alunos
                 </div>
                 ${semSubmissoes.map(p => `
-                <div class="pa-tcor-card" style="border-color:#e5e7eb;background:var(--pa-card)">
+                <div class="pa-tcor-card" id="tcorCardAg_${p.prova_id}" style="border-color:#e5e7eb;background:var(--pa-card)">
                     <div style="display:flex;align-items:flex-start;gap:12px">
                         <div style="font-size:2em;line-height:1;flex-shrink:0">⏳</div>
                         <div>
@@ -996,18 +996,21 @@ function mostrarProximaNotif() {
         btnAcao.href    = '#';
         btnAcao.onclick = (e) => {
             e.preventDefault();
+            const provaId = _notifAtual.dados?.provaId;
             confirmarNotif();
+            /* Abre aba de correções */
+            mudarAba('correcoes');
             setTimeout(() => {
-                const sec = document.getElementById('paTurmaCorretoraSec');
-                if (sec) {
-                    sec.style.display = '';
-                    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }, 150);
+                /* Tenta rolar ao card ativo; se ainda não há folhas, ao card de aguardando */
+                const card = provaId
+                    ? (document.getElementById(`tcorCard_${provaId}`) ||
+                       document.getElementById(`tcorCardAg_${provaId}`))
+                    : null;
+                const alvo = card || document.getElementById('paTurmaCorretoraSec');
+                if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
         };
-        btnAcao.textContent   = _notifAtual.tipo === 'turma_corretora_atribuida'
-            ? 'Ver aba de correções →'
-            : 'Abrir fila de correções →';
+        btnAcao.textContent   = 'Abrir fila de correções →';
         btnAcao.style.display = '';
     } else {
         btnAcao.style.display = 'none';
