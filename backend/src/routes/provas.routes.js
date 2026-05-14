@@ -3969,39 +3969,43 @@ export function createProvasPublicRouter() {
 
     /**
      * GET /api/alunos-portal/turma-corretora/atribuicoes
-     * Retorna todas as provas onde o aluno foi atribuído como turma corretora.
-     * Fonte de verdade: notificacoes_aluno (tipo = 'turma_corretora_atribuida'),
-     * populada quando o professor atribui a turma corretora — sem dependência
-     * de classroom_tokens, Google API ou cache de cursos.
+     * Estratégia híbrida:
+     *   1. Consulta notificacoes_aluno (rápido, sem API) — funciona após primeira
+     *      atribuição com token válido ou após primeira visita com API.
+     *   2. Se vazio, tenta Classroom API (courses.students.get por prova ativa) e
+     *      cria a notificação para requisições futuras (auto-bootstrap).
      */
     router.get('/alunos-portal/turma-corretora/atribuicoes', async (req, res) => {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        /* Sub-query de pendentes reutilizada */
+        const PENDENTES_SQ = `
+            COALESCE((
+                SELECT COUNT(*)::int
+                  FROM classroom_prova_submissoes ps
+                 WHERE ps.prova_id           = p.id
+                   AND ps.eh_segundo_corretor = false
+                   AND ps.eh_turma_corretora  = false
+                   AND ps.aluno_email         != $1
+                   AND NOT EXISTS (
+                       SELECT 1 FROM classroom_prova_submissoes tc
+                        WHERE tc.submissao_ref_id   = ps.id
+                          AND tc.eh_turma_corretora = true
+                   )
+                   AND NOT EXISTS (
+                       SELECT 1 FROM classroom_prova_submissoes tc2
+                        WHERE tc2.submissao_ref_id = ps.id
+                          AND tc2.aluno_email      = $1
+                   )
+            ), 0)`;
+
         try {
+            /* ── Passo 1: notificacoes_aluno (fonte primária, sem API) ── */
             const { rows } = await pool.query(
-                `SELECT
-                     p.id            AS prova_id,
-                     p.nome          AS prova_nome,
-                     p.turma_corretora_2a_correcao,
-                     p.link_prova,
-                     COALESCE((
-                         SELECT COUNT(*)::int
-                           FROM classroom_prova_submissoes ps
-                          WHERE ps.prova_id           = p.id
-                            AND ps.eh_segundo_corretor = false
-                            AND ps.eh_turma_corretora  = false
-                            AND ps.aluno_email         != $1
-                            AND NOT EXISTS (
-                                SELECT 1 FROM classroom_prova_submissoes tc
-                                 WHERE tc.submissao_ref_id   = ps.id
-                                   AND tc.eh_turma_corretora = true
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1 FROM classroom_prova_submissoes tc2
-                                 WHERE tc2.submissao_ref_id = ps.id
-                                   AND tc2.aluno_email      = $1
-                            )
-                     ), 0) AS pendentes
+                `SELECT p.id AS prova_id, p.nome AS prova_nome,
+                        p.turma_corretora_2a_correcao, p.link_prova,
+                        ${PENDENTES_SQ} AS pendentes
                    FROM classroom_provas p
                   WHERE p.efetivada = false
                     AND EXISTS (
@@ -4013,10 +4017,141 @@ export function createProvasPublicRouter() {
                   ORDER BY pendentes DESC, p.id`,
                 [aluno.email]
             );
-            console.log(`[ATRIB] ${aluno.email} — ${rows.length} prova(s) atribuída(s)`);
-            res.json({ provas: rows });
+
+            if (rows.length > 0) {
+                console.log(`[ATRIB] ${aluno.email} — ${rows.length} prova(s) via notificações`);
+                return res.json({ provas: rows });
+            }
+
+            /* ── Passo 2: Classroom API — auto-bootstrap se aluno ainda não tem notif ── */
+            const { rows: provasAtivas } = await pool.query(
+                `SELECT id, nome, turma_corretora_id
+                   FROM classroom_provas
+                  WHERE turma_corretora_id IS NOT NULL AND efetivada = false`
+            );
+
+            if (provasAtivas.length === 0) {
+                return res.json({ provas: [] });
+            }
+
+            /* Carrega token do professor (tabela → fallback arquivo legado) */
+            const { google } = await import('googleapis');
+            const clientId  = process.env.GOOGLE_CLIENT_ID;
+            const clientSec = process.env.GOOGLE_CLIENT_SECRET;
+            if (!clientId || !clientSec) {
+                console.warn('[ATRIB] GOOGLE_CLIENT_ID/SECRET ausentes');
+                return res.json({ provas: [] });
+            }
+
+            let token     = null;
+            let cpfFromDb = null;
+            try {
+                const { rows: tk } = await pool.query(
+                    `SELECT cpf, tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                );
+                if (tk[0]) { token = tk[0].tokens; cpfFromDb = tk[0].cpf; }
+            } catch (_) {}
+
+            /* Fallback: arquivo legado (mesmo que getTeacherAuth usa) */
+            if (!token) {
+                try {
+                    const fsSync = (await import('fs')).default;
+                    const filePath = new URL('../../data/classroom_token.json', import.meta.url).pathname;
+                    if (fsSync.existsSync(filePath))
+                        token = JSON.parse(fsSync.readFileSync(filePath, 'utf8'));
+                } catch (_) {}
+            }
+
+            if (!token) {
+                console.warn('[ATRIB] Nenhum token de professor disponível — aluno não descoberto via API');
+                return res.json({ provas: [] });
+            }
+
+            const uri  = `${req.protocol}://${req.get('host')}/api/classroom/callback`;
+            const auth = new google.auth.OAuth2(clientId, clientSec, uri);
+            auth.setCredentials(token);
+
+            /* Renova token se expirado */
+            if (token.expiry_date && token.expiry_date < Date.now()) {
+                try {
+                    const { credentials } = await auth.refreshAccessToken();
+                    auth.setCredentials(credentials);
+                    if (cpfFromDb) {
+                        await pool.query(
+                            `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW() WHERE cpf = $2`,
+                            [JSON.stringify(credentials), cpfFromDb]
+                        );
+                    }
+                } catch (refErr) {
+                    console.warn('[ATRIB] Falha ao renovar token:', refErr.message);
+                }
+            }
+
+            const classroom = google.classroom({ version: 'v1', auth });
+            const provasDoAluno = [];
+
+            for (const prova of provasAtivas) {
+                try {
+                    await classroom.courses.students.get({
+                        courseId: String(prova.turma_corretora_id),
+                        userId:   aluno.email,
+                    });
+                    /* Aluno é membro desta turma corretora! */
+                    provasDoAluno.push(prova);
+
+                    /* Cria notificação para requests futuros (fire-and-forget) */
+                    setImmediate(async () => {
+                        try {
+                            const titulo   = '🏫 Você foi atribuído como corretor!';
+                            const mensagem = `O professor atribuiu sua turma para corrigir a prova "${prova.nome}". Acesse a aba "✏️ Correções" no Portal do Aluno.`;
+                            const dados    = JSON.stringify({ provaId: Number(prova.id), provaNome: prova.nome });
+                            await pool.query(
+                                `INSERT INTO notificacoes_aluno
+                                       (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                                 SELECT $1,'turma_corretora_atribuida',$2,$3,$4,$5
+                                  WHERE NOT EXISTS (
+                                      SELECT 1 FROM notificacoes_aluno
+                                       WHERE aluno_email = $1
+                                         AND tipo        = 'turma_corretora_atribuida'
+                                         AND referencia  = $2
+                                  )`,
+                                [aluno.email, String(prova.id), titulo, mensagem, dados]
+                            );
+                            console.log(`[ATRIB] Auto-notif criada: ${aluno.email} → prova ${prova.id}`);
+                        } catch (_) {}
+                    });
+                } catch (apiErr) {
+                    const code = apiErr.code || apiErr.status;
+                    if (code !== 404 && code !== '404') {
+                        console.warn(`[ATRIB] Erro ao verificar curso ${prova.turma_corretora_id}:`, apiErr.message);
+                    }
+                    /* 404 = aluno não está neste curso — normal, pula */
+                }
+            }
+
+            if (provasDoAluno.length === 0) {
+                console.log(`[ATRIB] ${aluno.email} — não é membro de nenhuma turma_corretora ativa`);
+                return res.json({ provas: [] });
+            }
+
+            /* Busca detalhes completos para as provas encontradas */
+            const ids = provasDoAluno.map(p => p.id);
+            const ph  = ids.map((_, i) => `$${i + 2}`).join(', ');
+            const { rows: resultado } = await pool.query(
+                `SELECT p.id AS prova_id, p.nome AS prova_nome,
+                        p.turma_corretora_2a_correcao, p.link_prova,
+                        ${PENDENTES_SQ} AS pendentes
+                   FROM classroom_provas p
+                  WHERE p.id IN (${ph}) AND p.efetivada = false
+                  ORDER BY pendentes DESC, p.id`,
+                [aluno.email, ...ids]
+            );
+
+            console.log(`[ATRIB] ${aluno.email} — ${resultado.length} prova(s) descoberta(s) via API`);
+            res.json({ provas: resultado });
+
         } catch (e) {
-            console.error('[ATRIB] Erro:', e.message);
+            console.error('[ATRIB] Erro inesperado:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

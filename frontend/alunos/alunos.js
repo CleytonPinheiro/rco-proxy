@@ -131,7 +131,8 @@ async function carregarTurmaCorretora() {
         const comPendentes  = provas.filter(p => Number(p.pendentes) > 0);
         const semSubmissoes = provas.filter(p => Number(p.pendentes) === 0);
 
-        /* Badge e alerta apenas quando há folhas reais para corrigir */
+        /* Badge, alerta e destaque visual quando há folhas para corrigir */
+        const tabCor = $('paTabCorrecoes');
         if (comPendentes.length > 0) {
             if (badge)    { badge.style.display = ''; badge.textContent = comPendentes.length; }
             if (alert)    alert.style.display = '';
@@ -141,9 +142,11 @@ async function carregarTurmaCorretora() {
                     ? '1 prova com folhas aguardando sua correção — clique para abrir a fila.'
                     : `${n} provas com folhas aguardando sua correção — clique para abrir a fila.`;
             }
+            if (tabCor) tabCor.classList.add('pa-nav-tab--urgente');
         } else {
-            if (badge) badge.style.display = 'none';
-            if (alert) alert.style.display = 'none';
+            if (badge)  badge.style.display = 'none';
+            if (alert)  alert.style.display = 'none';
+            if (tabCor) tabCor.classList.remove('pa-nav-tab--urgente');
         }
 
         /* ── Renderiza cards ── */
