@@ -3908,6 +3908,77 @@ export function createProvasPublicRouter() {
         console.log(`[NOTIF-TC-ATRIB] Atribuição notificada para ${correctors.length} corretor(es) — prova ${provaId}`);
     }
 
+    /* ── Backfill na inicialização: garante que provas já atribuídas notifiquem ──
+     * Deduplicado via NOT EXISTS no INSERT — seguro chamar a cada restart. */
+    setImmediate(async () => {
+        try {
+            const { rows: existentes } = await pool.query(
+                `SELECT id, nome, turma_corretora_id
+                   FROM classroom_provas
+                  WHERE turma_corretora_id IS NOT NULL AND efetivada = false`
+            );
+            for (const p of existentes) {
+                await notificarAtribuicaoTurmaCorretora(pool, p.id, p.turma_corretora_id);
+            }
+            if (existentes.length > 0)
+                console.log(`[NOTIF-TC-BACKFILL] ${existentes.length} prova(s) verificada(s) na inicialização`);
+        } catch (e) {
+            console.warn('[NOTIF-TC-BACKFILL]', e.message);
+        }
+    });
+
+    /**
+     * GET /api/alunos-portal/turma-corretora/atribuicoes
+     * Retorna TODAS as provas onde o aluno é corretor atribuído (inclusive sem
+     * submissões ainda). Campo `pendentes` indica quantas folhas aguardam correção.
+     */
+    router.get('/alunos-portal/turma-corretora/atribuicoes', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT
+                     p.id            AS prova_id,
+                     p.nome          AS prova_nome,
+                     p.turma_corretora_2a_correcao,
+                     p.link_prova,
+                     COALESCE((
+                         SELECT COUNT(*)::int
+                           FROM classroom_prova_submissoes ps
+                          WHERE ps.prova_id         = p.id
+                            AND ps.eh_segundo_corretor = false
+                            AND ps.eh_turma_corretora  = false
+                            AND ps.aluno_email         != $1
+                            AND NOT EXISTS (
+                                SELECT 1 FROM classroom_prova_submissoes tc
+                                 WHERE tc.submissao_ref_id  = ps.id
+                                   AND tc.eh_turma_corretora = true
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1 FROM classroom_prova_submissoes tc2
+                                 WHERE tc2.submissao_ref_id = ps.id
+                                   AND tc2.aluno_email      = $1
+                            )
+                     ), 0) AS pendentes
+                   FROM classroom_provas p
+                  WHERE p.turma_corretora_id IN (
+                      SELECT DISTINCT pc.curso_id
+                        FROM classroom_prova_submissoes sc
+                        JOIN classroom_provas pc ON pc.id = sc.prova_id
+                       WHERE sc.aluno_email         = $1
+                         AND sc.eh_segundo_corretor = false
+                         AND sc.eh_turma_corretora  = false
+                  )
+                    AND p.efetivada = false
+                  ORDER BY pendentes DESC, p.id`,
+                [aluno.email]
+            );
+            res.json({ provas: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     router.get('/alunos-portal/turma-corretora/disponiveis', async (req, res) => {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });

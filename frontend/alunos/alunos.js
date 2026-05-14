@@ -106,44 +106,63 @@ window.mudarAba = mudarAba;
 /* ── Fila da Turma Corretora ─────────────────────────── */
 async function carregarTurmaCorretora() {
     try {
-        const r = await fetch('/api/alunos-portal/turma-corretora/disponiveis', { credentials: 'include' });
+        /* /atribuicoes retorna TODAS as provas atribuídas (inclusive sem submissões) */
+        const r = await fetch('/api/alunos-portal/turma-corretora/atribuicoes', { credentials: 'include' });
         if (!r.ok) return;
         const { provas } = await r.json();
-        const sec   = document.getElementById('paTurmaCorretoraSec');
-        const lista = document.getElementById('paTurmaCorretoraLista');
-        if (!sec || !lista) return;
+
+        const nav      = $('paNavMenu');
+        const badge    = $('paNavBadge');
+        const alert    = $('paCorrecaoAlert');
+        const alertTxt = $('paAlertTxt');
+        const lista    = $('paTurmaCorretoraLista');
+        const sec      = $('paTurmaCorretoraSec');
+        if (!lista || !sec) return;
+
         if (!provas || provas.length === 0) {
             sec.style.display = 'none';
             return;
         }
 
-        /* Mostra barra de navegação com badge pulsante */
-        const nav   = $('paNavMenu');
-        const badge = $('paNavBadge');
-        const alert = $('paCorrecaoAlert');
-        const alertTxt = $('paAlertTxt');
-        if (nav)    nav.style.display = '';
-        if (badge)  { badge.style.display = ''; badge.textContent = provas.length; }
-        if (alert)  alert.style.display = '';
-        if (alertTxt) {
-            const n = provas.length;
-            alertTxt.textContent = n === 1
-                ? '1 prova aguardando sua correção — clique para abrir a fila.'
-                : `${n} provas aguardando sua correção — clique para abrir a fila.`;
+        /* Sempre mostra o menu nav quando o aluno é corretor atribuído */
+        if (nav) nav.style.display = '';
+        sec.style.display = '';
+
+        const comPendentes  = provas.filter(p => Number(p.pendentes) > 0);
+        const semSubmissoes = provas.filter(p => Number(p.pendentes) === 0);
+
+        /* Badge e alerta apenas quando há folhas reais para corrigir */
+        if (comPendentes.length > 0) {
+            if (badge)    { badge.style.display = ''; badge.textContent = comPendentes.length; }
+            if (alert)    alert.style.display = '';
+            if (alertTxt) {
+                const n = comPendentes.length;
+                alertTxt.textContent = n === 1
+                    ? '1 prova com folhas aguardando sua correção — clique para abrir a fila.'
+                    : `${n} provas com folhas aguardando sua correção — clique para abrir a fila.`;
+            }
+        } else {
+            if (badge) badge.style.display = 'none';
+            if (alert) alert.style.display = 'none';
         }
 
-        sec.style.display = '';
-        lista.innerHTML = provas.map(p => `
+        /* ── Renderiza cards ── */
+        const cardsAtivos = comPendentes.map(p => `
             <div class="pa-tcor-card">
                 <div style="margin-bottom:12px">
-                    <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:3px">
+                    <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:5px">
                         ${escapeHtmlGam(p.prova_nome || 'Prova')}
                     </div>
-                    ${p.turma_corretora_2a_correcao
-                        ? '<div style="font-size:0.8em;color:#166534;margin-bottom:4px">O aluno dono da folha irá confirmar após sua correção.</div>'
-                        : ''}
+                    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
+                        <span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:700">
+                            ✅ ${p.pendentes} folha${p.pendentes != 1 ? 's' : ''} para corrigir
+                        </span>
+                        ${p.turma_corretora_2a_correcao
+                            ? '<span style="background:#fef9c3;color:#854d0e;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">2ª conferência ativa</span>'
+                            : ''}
+                    </div>
                     <div style="font-size:0.85em;color:var(--pa-sub)">
-                        Digite o nome do aluno cuja folha você tem em mãos:
+                        Digite o nome do aluno cuja folha física você tem em mãos:
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
@@ -157,8 +176,33 @@ async function carregarTurmaCorretora() {
                 <div id="tcorResultados_${p.prova_id}"
                      style="display:none;margin-top:6px;border:1.5px solid #86efac;border-radius:8px;background:var(--pa-card);overflow:hidden"></div>
                 <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:var(--pa-sub);margin-top:6px;min-height:16px"></div>
-            </div>
-        `).join('');
+            </div>`).join('');
+
+        const cardsAguardando = semSubmissoes.length > 0 ? `
+            <div style="margin-top:${comPendentes.length > 0 ? '20px' : '0'}">
+                <div style="font-size:0.82em;font-weight:700;color:var(--pa-sub);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+                    ⏳ Aguardando submissões dos alunos
+                </div>
+                ${semSubmissoes.map(p => `
+                <div class="pa-tcor-card" style="border-color:#e5e7eb;background:var(--pa-card)">
+                    <div style="display:flex;align-items:flex-start;gap:12px">
+                        <div style="font-size:2em;line-height:1;flex-shrink:0">⏳</div>
+                        <div>
+                            <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:4px">
+                                ${escapeHtmlGam(p.prova_nome || 'Prova')}
+                            </div>
+                            <div style="background:#f1f5f9;color:#475569;border-radius:20px;display:inline-block;padding:2px 10px;font-size:0.78em;font-weight:600;margin-bottom:5px">
+                                Sua turma foi atribuída como corretora
+                            </div>
+                            <div style="font-size:0.82em;color:var(--pa-sub)">
+                                As folhas aparecerão aqui assim que os alunos as enviarem.
+                            </div>
+                        </div>
+                    </div>
+                </div>`).join('')}
+            </div>` : '';
+
+        lista.innerHTML = cardsAtivos + cardsAguardando;
     } catch (_) {
         /* silencioso — módulo opcional */
     }
