@@ -943,3 +943,15 @@
     color: #166534;
 }
 [data-theme="dark"] .ac-conf-aviso-ok { background: #0a2e1a; border-color: #14532d; color: #86efac; }
+
+/* Botão "Importar PDF" — destaque visual diferente dos outros botões do grupo */
+.ac-btn-destaque {
+    background: var(--primary, #3b82f6);
+    color: #fff;
+    border-color: var(--primary, #3b82f6);
+    font-weight: 600;
+}
+.ac-btn-destaque:hover {
+    background: var(--primary-dark, #2563eb);
+    border-color: var(--primary-dark, #2563eb);
+}

@@ -1516,6 +1516,186 @@ function _setMapaStatus(msg, tipo) {
     el.style.display = '';
 }
 
+/* ══════════════════════════════════════════════════════════════════
+ *  IMPORTAÇÃO DE PDF GRADEPEN — mapeamento automático por enunciado
+ * ═════════════════════════════════════════════════════════════════
+ *
+ *  O GradePen gera PDFs com:
+ *    • Marcador de variante:  "Prova: <jobId>.<varIndex>"
+ *    • Marcador de questão:   "Q.<N> (<valor>) - <enunciado>"
+ *  Q.1 e Q.2 são sempre discursivas (ignoradas).
+ *  O enunciado de cada questão é idêntico entre variantes; só a
+ *  posição (N) muda. Fazemos matching pelos primeiros ~35 chars
+ *  normalizados do enunciado.
+ * ═════════════════════════════════════════════════════════════════ */
+
+let _pdfJsCarregado = false;
+
+async function _carregarPdfJs() {
+    if (_pdfJsCarregado && window.pdfjsLib) return window.pdfjsLib;
+    await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload  = resolve;
+        s.onerror = () => reject(new Error('Falha ao carregar PDF.js da CDN. Verifique a conexão.'));
+        document.head.appendChild(s);
+    });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    _pdfJsCarregado = true;
+    return window.pdfjsLib;
+}
+
+async function importarPdfMapa(input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+    input.value = ''; /* permite reimportar o mesmo arquivo */
+
+    _setMapaStatus('Lendo PDF…', '');
+    try {
+        const pdfjs = await _carregarPdfJs();
+        const buffer = await file.arrayBuffer();
+        const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+
+        /* Extrai texto de todas as páginas preservando ordem de leitura.
+         * Agrupa itens por faixa de Y (~3 pt) para respeitar linhas,
+         * depois concatena linhas de cima para baixo. */
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+            const page    = await pdf.getPage(p);
+            const content = await page.getTextContent();
+
+            const buckets = {};
+            for (const item of content.items) {
+                const str = item.str;
+                if (!str?.trim()) continue;
+                const y = Math.round(item.transform[5] / 3) * 3;
+                if (!buckets[y]) buckets[y] = [];
+                buckets[y].push({ x: item.transform[4], str });
+            }
+            /* Linhas de cima (Y alto) para baixo (Y baixo), esquerda p/ direita */
+            const ys = Object.keys(buckets).map(Number).sort((a, b) => b - a);
+            for (const y of ys) {
+                const sorted = buckets[y].sort((a, b) => a.x - b.x);
+                fullText += sorted.map(i => i.str).join(' ') + '\n';
+            }
+        }
+
+        _parsearEPreencherMapa(fullText);
+    } catch (e) {
+        _setMapaStatus(`Erro ao ler PDF: ${e.message}`, 'err');
+    }
+}
+
+/* Normaliza o enunciado para matching: minúsculas, sem acentos, só alphanum+espaço */
+function _normalizarStem(s) {
+    return s
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/* Compara os primeiros N caracteres normalizados de dois enunciados */
+function _stemMatch(a, b) {
+    if (!a || !b) return false;
+    const n = Math.min(35, a.length, b.length);
+    if (n < 10) return false;
+    return a.slice(0, n) === b.slice(0, n);
+}
+
+function _parsearEPreencherMapa(text) {
+    /* ── 1. Localiza marcadores de variante "Prova: XXXXX.Y" ── */
+    const markers = [];
+    const provaRe = /Prova[:\s]+(\d+)\.(\d+)/g;
+    let pm;
+    while ((pm = provaRe.exec(text)) !== null) {
+        markers.push({ varIndex: parseInt(pm[2], 10), at: pm.index });
+    }
+
+    if (markers.length === 0) {
+        _setMapaStatus('Nenhuma variante encontrada. Verifique se é um PDF exportado pelo GradePen.', 'err');
+        return;
+    }
+
+    /* ── 2. Extrai questões de cada seção de variante ── */
+    /* Regex: "Q.N (valor) - enunciado" — captura o início do enunciado */
+    const qRe = /Q\.?\s*(\d{1,2})\s*\(\s*[\d.]+\s*\)\s*[-–]?\s*([^\n]{8,})/g;
+
+    const variantData = markers.map((mk, i) => {
+        const section = text.slice(mk.at, i + 1 < markers.length ? markers[i + 1].at : text.length);
+        const questions = [];
+        const seen = new Set();
+        let qm;
+        qRe.lastIndex = 0;
+        while ((qm = qRe.exec(section)) !== null) {
+            const pos = parseInt(qm[1], 10);
+            if (pos < 3 || pos > 80) continue;  /* pula Q.1/Q.2 discursivas */
+            if (seen.has(pos)) continue;          /* deduplicação */
+            const stem = _normalizarStem(qm[2]);
+            if (stem.length >= 8) { questions.push({ posicao: pos, stem }); seen.add(pos); }
+        }
+        return { varIndex: mk.varIndex, questions };
+    });
+
+    const canonical = variantData[0];
+    if (!canonical?.questions?.length) {
+        _setMapaStatus('Não foi possível extrair questões. Tente um PDF gerado diretamente pelo GradePen.', 'err');
+        return;
+    }
+
+    /* ── 3. Preenche o grid ── */
+    for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+
+    let mapeadas = 0;
+    const variantesAusentes = [];
+
+    for (const vd of variantData) {
+        const dbVar = _mapaVariantes.find(v => String(v.codigo) === String(vd.varIndex));
+        if (!dbVar) { variantesAusentes.push(vd.varIndex); continue; }
+
+        if (vd === canonical) {
+            /* Variante canônica: questão física = posição (identidade) */
+            for (const q of canonical.questions) {
+                if (_mapaGrid[q.posicao] !== undefined) {
+                    _mapaGrid[q.posicao][dbVar.id] = q.posicao;
+                    mapeadas++;
+                }
+            }
+        } else {
+            /* Outras variantes: matching por enunciado */
+            const usados = new Set(); /* evita duplicar posicao canônica */
+            for (const q of vd.questions) {
+                const matched = canonical.questions.find(
+                    cq => !usados.has(cq.posicao) && _stemMatch(cq.stem, q.stem)
+                );
+                if (matched && _mapaGrid[matched.posicao] !== undefined) {
+                    _mapaGrid[matched.posicao][dbVar.id] = q.posicao;
+                    usados.add(matched.posicao);
+                    mapeadas++;
+                }
+            }
+        }
+    }
+
+    _renderMapaGrid();
+
+    const totalEsperado = (variantData.length - variantesAusentes.length) * canonical.questions.length;
+    const pct = totalEsperado > 0 ? Math.round((mapeadas / totalEsperado) * 100) : 0;
+    const avisoAus = variantesAusentes.length
+        ? ` ⚠️ Variantes do PDF sem correspondência no banco: [${variantesAusentes.join(', ')}].`
+        : '';
+    const avisoInc = pct < 100
+        ? ` Algumas questões não foram identificadas (${mapeadas}/${totalEsperado}) — ajuste manualmente as células vazias.`
+        : '';
+
+    _setMapaStatus(
+        `✅ PDF importado — ${variantData.length - variantesAusentes.length} variante(s), ${mapeadas} correspondências (${pct}%).${avisoAus}${avisoInc} Salve ao confirmar.`,
+        pct >= 80 ? 'ok' : ''
+    );
+}
+
 async function excluirSubmissaoManual(provaId, subId, alunoEmail) {
     if (!confirm(`Excluir a submissão manual de "${alunoEmail}"? Esta ação não pode ser desfeita.`)) return;
     try {

@@ -135,6 +135,8 @@
                     <br><small style="color:var(--text-muted)">💡 A sugestão automática usa a taxa de acerto dos alunos como heurística — sempre confira e ajuste antes de salvar.</small>
                 </p>
                 <div class="ac-mapa-topo">
+                    <input type="file" id="acMapaPdfInput" accept=".pdf" style="display:none" onchange="importarPdfMapa(this)">
+                    <button type="button" class="ac-btn ac-btn-sm ac-btn-destaque" onclick="document.getElementById('acMapaPdfInput').click()">📄 Importar PDF GradePen</button>
                     <button type="button" class="ac-btn ac-btn-sm" id="acMapaSugerirBtn" onclick="sugerirMapeamento()">✨ Sugerir via respostas dos alunos</button>
                     <button type="button" class="ac-btn ac-btn-sm" onclick="limparMapeamento()">🗑️ Limpar tudo</button>
                 </div>
