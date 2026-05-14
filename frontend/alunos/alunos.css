@@ -1852,9 +1852,153 @@ html, body {
     box-shadow:  0 8px 24px rgba(255,165,0,.5);
 }
 
+/* ── Nav tabs (turma corretora) ──────────────────────────────── */
+.pa-nav-menu {
+    position: sticky;
+    top: var(--pa-header-h);
+    z-index: 90;
+    background: var(--pa-header-bg);
+    border-bottom: 2px solid var(--pa-border);
+    display: flex;
+    padding: 0 20px;
+    box-shadow: 0 2px 6px var(--pa-shadow);
+    transition: background .25s, border-color .25s;
+}
+
+.pa-nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--pa-sub);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color .2s, border-color .2s;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.pa-nav-tab:hover { color: var(--pa-text); }
+.pa-nav-tab--active {
+    color: var(--pa-primary);
+    border-bottom-color: var(--pa-primary);
+}
+
+.pa-nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 20px;
+    animation: pa-badge-pulse 1.8s ease-in-out infinite;
+}
+@keyframes pa-badge-pulse {
+    0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0   rgba(239,68,68,.5); }
+    50%       { transform: scale(1.12); box-shadow: 0 0 0 6px rgba(239,68,68,0);   }
+}
+
+/* ── Alerta mini (correções disponíveis, aba Atividades) ─────── */
+.pa-correcao-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #f0fdf4;
+    border: 1.5px solid #22c55e;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #15803d;
+    flex-wrap: wrap;
+}
+[data-theme="dark"] .pa-correcao-alert {
+    background: #052e16;
+    border-color: #16a34a;
+    color: #86efac;
+}
+.pa-correcao-alert-btn {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .2s, transform .15s;
+    font-family: inherit;
+}
+.pa-correcao-alert-btn:hover {
+    background: #16a34a;
+    transform: translateY(-1px);
+}
+
+/* ── Hero da aba Correções ───────────────────────────────────── */
+#paSecCorrecoes { padding-top: 4px; }
+
+.pa-tcor-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 2px solid #22c55e;
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+}
+[data-theme="dark"] .pa-tcor-hero {
+    background: linear-gradient(135deg, #052e16 0%, #064e24 100%);
+    border-color: #16a34a;
+}
+.pa-tcor-hero-icon { font-size: 2.8rem; flex-shrink: 0; line-height: 1; }
+.pa-tcor-hero-text h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #14532d;
+    margin-bottom: 6px;
+}
+[data-theme="dark"] .pa-tcor-hero-text h2 { color: #86efac; }
+.pa-tcor-hero-text p {
+    font-size: 13px;
+    color: #166534;
+    line-height: 1.5;
+    margin: 0;
+}
+[data-theme="dark"] .pa-tcor-hero-text p { color: #4ade80; }
+
+/* ── Cards da turma corretora (na aba dedicada) ──────────────── */
+#paTurmaCorretoraLista .pa-tcor-card {
+    padding: 14px 16px;
+    border: 1.5px solid #22c55e;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: #f0fdf4;
+}
+[data-theme="dark"] #paTurmaCorretoraLista .pa-tcor-card {
+    background: #052e16;
+    border-color: #16a34a;
+}
+
 /* ── Responsivo ────────────────────────────────────────────── */
 @media (max-width: 480px) {
     .pa-cq-panel-inner { width: 100vw; border-radius: 0; }
     .pa-celebracao-card { padding: 30px 20px; }
     .pa-celebracao-titulo { font-size: 1.3rem; }
+    .pa-nav-tab { padding: 12px 14px; font-size: 13px; }
+    .pa-tcor-hero { flex-direction: column; gap: 10px; padding: 16px; }
+    .pa-tcor-hero-icon { font-size: 2rem; }
+    .pa-correcao-alert { flex-direction: column; align-items: flex-start; }
 }

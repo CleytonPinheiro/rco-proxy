@@ -95,6 +95,19 @@
         </div>
     </header>
 
+    <!-- ── BARRA DE NAVEGAÇÃO (visível só para turma corretora) ── -->
+    <nav id="paNavMenu" class="pa-nav-menu" style="display:none" aria-label="Menu do portal">
+        <button id="paTabAtividades" class="pa-nav-tab pa-nav-tab--active"
+                onclick="mudarAba('atividades')" aria-selected="true">
+            📚 Minhas Atividades
+        </button>
+        <button id="paTabCorrecoes" class="pa-nav-tab"
+                onclick="mudarAba('correcoes')" aria-selected="false">
+            ✏️ Correções
+            <span id="paNavBadge" class="pa-nav-badge" style="display:none">0</span>
+        </button>
+    </nav>
+
     <!-- TELA DE LOGIN -->
     <section id="paTelalogin" class="pa-section pa-login-screen" style="display:none">
         <div class="pa-login-card">
@@ -120,134 +133,153 @@
     <!-- TELA PRINCIPAL (logado) -->
     <main id="paTelaAtividades" class="pa-section" style="display:none">
 
-        <!-- Resumo -->
-        <div class="pa-resumo-bar">
-            <div class="pa-resumo" id="paResumo">
-                <div class="pa-resumo-inner">
-                    <div class="pa-resumo-num" id="paResumoNum">0</div>
-                    <div class="pa-resumo-label">pendentes</div>
-                </div>
+        <!-- ══ ABA: MINHAS ATIVIDADES ══════════════════════════════ -->
+        <div id="paSecAtividades">
+
+            <!-- Alerta de correções pendentes (aparece quando é turma corretora) -->
+            <div id="paCorrecaoAlert" class="pa-correcao-alert" style="display:none">
+                <span>🏫 <span id="paAlertTxt">Sua turma tem folhas aguardando correção</span></span>
+                <button class="pa-correcao-alert-btn" onclick="mudarAba('correcoes')">Ver Correções ✏️</button>
             </div>
-            <div class="pa-resumo pa-resumo--zeradas" id="paResumoZeradas" style="display:none">
-                <div class="pa-resumo-inner">
-                    <div class="pa-resumo-num" id="paResumoZeradasNum">0</div>
-                    <div class="pa-resumo-label">⚠️ zeradas</div>
+
+            <!-- Resumo -->
+            <div class="pa-resumo-bar">
+                <div class="pa-resumo" id="paResumo">
+                    <div class="pa-resumo-inner">
+                        <div class="pa-resumo-num" id="paResumoNum">0</div>
+                        <div class="pa-resumo-label">pendentes</div>
+                    </div>
                 </div>
-            </div>
-            <div class="pa-resumo pa-resumo--aguardando" id="paResumoAguardando" style="display:none">
-                <div class="pa-resumo-inner">
-                    <div class="pa-resumo-num" id="paResumoAguardandoNum">0</div>
-                    <div class="pa-resumo-label">⏳ aguardando</div>
+                <div class="pa-resumo pa-resumo--zeradas" id="paResumoZeradas" style="display:none">
+                    <div class="pa-resumo-inner">
+                        <div class="pa-resumo-num" id="paResumoZeradasNum">0</div>
+                        <div class="pa-resumo-label">⚠️ zeradas</div>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Estado vazio -->
-        <div id="paVazio" class="pa-vazio" style="display:none">
-            <div class="pa-vazio-icon">🎉</div>
-            <p class="pa-vazio-titulo">Nenhuma atividade pendente!</p>
-            <p class="pa-vazio-sub">Você está em dia com todas as suas atividades no Google Classroom.</p>
-        </div>
-
-        <!-- Aviso professor não conectado -->
-        <div id="paSemConexao" class="pa-aviso-info" style="display:none">
-            <span class="pa-aviso-icon">ℹ️</span>
-            <span id="paSemConexaoMsg"></span>
-        </div>
-
-        <!-- Tarefas pendentes de 2ª correção (sortição anônima) -->
-        <div id="paReputacaoSection" style="display:none;margin-bottom:16px"></div>
-        <div id="paVoluntariarSection" style="display:none;margin-bottom:16px"></div>
-        <div id="paCorretorSection" style="display:none">
-            <div class="pa-aguardando-titulo" style="background:#fff3cd;border-left:4px solid #f59e0b">
-                <span class="pa-aguardando-icon">👁</span>
-                <div>
-                    <strong>Você foi sorteado pra ajudar a corrigir</strong>
-                    <span class="pa-aguardando-desc">Verifique a folha de prova de um colega de forma anônima — você não vê o nome nem a nota original.</span>
-                </div>
-            </div>
-            <div id="paCorretorLista" class="pa-solicita-lista"></div>
-        </div>
-
-        <!-- Fila de correção como Turma Corretora -->
-        <div id="paTurmaCorretoraSec" style="display:none;margin-top:12px">
-            <div class="pa-aguardando-titulo" style="background:#f0fdf4;border-left:4px solid #22c55e">
-                <span class="pa-aguardando-icon">🏫</span>
-                <div>
-                    <strong>Sua turma é corretora de outra turma</strong>
-                    <span class="pa-aguardando-desc">Corrija as folhas abaixo. Cada folha aparece só uma vez — quem pegar primeiro corrige.</span>
-                </div>
-            </div>
-            <div id="paTurmaCorretoraLista" class="pa-solicita-lista"></div>
-        </div>
-
-        <!-- Cards por disciplina — pendentes -->
-        <div id="paCursos" class="pa-cursos-grid"></div>
-
-        <!-- Seção de atividades zeradas -->
-        <div id="paZeradasSection" style="display:none">
-            <div class="pa-zeradas-titulo">
-                <span class="pa-zeradas-icon">🎮</span>
-                <div>
-                    <strong>Entrou mas não realizou</strong>
-                    <span class="pa-zeradas-desc">Você acessou essas atividades mas saiu com 0 pontos. Refaça antes que o prazo encerre.</span>
-                </div>
-            </div>
-            <div id="paCursosZerados" class="pa-cursos-grid"></div>
-        </div>
-
-        <!-- Seção de atividades entregues aguardando correção -->
-        <div id="paAguardandoSection" style="display:none">
-            <div class="pa-aguardando-titulo">
-                <span class="pa-aguardando-icon">⏳</span>
-                <div>
-                    <strong>Aguardando correção</strong>
-                    <span class="pa-aguardando-desc">Você entregou essas atividades e está aguardando a nota do professor.</span>
-                </div>
-            </div>
-            <div id="paCursosAguardando" class="pa-cursos-grid"></div>
-        </div>
-
-        <!-- Seção de solicitações de reabertura -->
-        <div id="paSolicitaSection" style="display:none">
-            <div class="pa-solicita-titulo">
-                <span class="pa-solicita-icon">↩</span>
-                <div>
-                    <strong>Minhas solicitações de reabertura</strong>
-                    <span class="pa-solicita-desc">Atividades para as quais você solicitou uma nova tentativa.</span>
-                </div>
-            </div>
-            <div id="paSolicitaLista" class="pa-solicita-lista"></div>
-        </div>
-
-        <!-- ── Meus Projetos do Grupo ────────────────────────────────────── -->
-        <div id="paProjetosSection" style="display:none;margin-top:28px">
-            <div class="pa-aguardando-titulo" style="background:#fff7ed;border-left:4px solid #f59e0b">
-                <span class="pa-aguardando-icon">📂</span>
-                <div>
-                    <strong>Projetos do meu grupo</strong>
-                    <span class="pa-aguardando-desc">Submeta o link do seu projeto para o professor acompanhar.</span>
+                <div class="pa-resumo pa-resumo--aguardando" id="paResumoAguardando" style="display:none">
+                    <div class="pa-resumo-inner">
+                        <div class="pa-resumo-num" id="paResumoAguardandoNum">0</div>
+                        <div class="pa-resumo-label">⏳ aguardando</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Formulário de submissão -->
-            <div id="paProjetosForm" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin:12px 0 16px">
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
-                    <input id="paProjetoUrl"  type="url"  placeholder="URL do projeto (GitHub, Replit, Vercel...)"
-                           style="flex:2;min-width:200px;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;outline:none" autocomplete="off">
-                    <input id="paProjetoNome" type="text" placeholder="Nome do projeto" maxlength="80"
-                           style="flex:1;min-width:140px;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;outline:none">
-                    <button onclick="submeterProjetoAluno()"
-                            style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-                        Enviar
-                    </button>
-                </div>
-                <p id="paProjetoMsg" style="font-size:12px;margin:0;color:#6b7280"></p>
+            <!-- Estado vazio -->
+            <div id="paVazio" class="pa-vazio" style="display:none">
+                <div class="pa-vazio-icon">🎉</div>
+                <p class="pa-vazio-titulo">Nenhuma atividade pendente!</p>
+                <p class="pa-vazio-sub">Você está em dia com todas as suas atividades no Google Classroom.</p>
             </div>
 
-            <!-- Lista das minhas sugestões -->
-            <div id="paProjetosLista"></div>
-        </div>
+            <!-- Aviso professor não conectado -->
+            <div id="paSemConexao" class="pa-aviso-info" style="display:none">
+                <span class="pa-aviso-icon">ℹ️</span>
+                <span id="paSemConexaoMsg"></span>
+            </div>
+
+            <!-- Tarefas pendentes de 2ª correção (sortição anônima) -->
+            <div id="paReputacaoSection" style="display:none;margin-bottom:16px"></div>
+            <div id="paVoluntariarSection" style="display:none;margin-bottom:16px"></div>
+            <div id="paCorretorSection" style="display:none">
+                <div class="pa-aguardando-titulo" style="background:#fff3cd;border-left:4px solid #f59e0b">
+                    <span class="pa-aguardando-icon">👁</span>
+                    <div>
+                        <strong>Você foi sorteado pra ajudar a corrigir</strong>
+                        <span class="pa-aguardando-desc">Verifique a folha de prova de um colega de forma anônima — você não vê o nome nem a nota original.</span>
+                    </div>
+                </div>
+                <div id="paCorretorLista" class="pa-solicita-lista"></div>
+            </div>
+
+            <!-- Cards por disciplina — pendentes -->
+            <div id="paCursos" class="pa-cursos-grid"></div>
+
+            <!-- Seção de atividades zeradas -->
+            <div id="paZeradasSection" style="display:none">
+                <div class="pa-zeradas-titulo">
+                    <span class="pa-zeradas-icon">🎮</span>
+                    <div>
+                        <strong>Entrou mas não realizou</strong>
+                        <span class="pa-zeradas-desc">Você acessou essas atividades mas saiu com 0 pontos. Refaça antes que o prazo encerre.</span>
+                    </div>
+                </div>
+                <div id="paCursosZerados" class="pa-cursos-grid"></div>
+            </div>
+
+            <!-- Seção de atividades entregues aguardando correção -->
+            <div id="paAguardandoSection" style="display:none">
+                <div class="pa-aguardando-titulo">
+                    <span class="pa-aguardando-icon">⏳</span>
+                    <div>
+                        <strong>Aguardando correção</strong>
+                        <span class="pa-aguardando-desc">Você entregou essas atividades e está aguardando a nota do professor.</span>
+                    </div>
+                </div>
+                <div id="paCursosAguardando" class="pa-cursos-grid"></div>
+            </div>
+
+            <!-- Seção de solicitações de reabertura -->
+            <div id="paSolicitaSection" style="display:none">
+                <div class="pa-solicita-titulo">
+                    <span class="pa-solicita-icon">↩</span>
+                    <div>
+                        <strong>Minhas solicitações de reabertura</strong>
+                        <span class="pa-solicita-desc">Atividades para as quais você solicitou uma nova tentativa.</span>
+                    </div>
+                </div>
+                <div id="paSolicitaLista" class="pa-solicita-lista"></div>
+            </div>
+
+            <!-- ── Meus Projetos do Grupo ────────────────────────────────────── -->
+            <div id="paProjetosSection" style="display:none;margin-top:28px">
+                <div class="pa-aguardando-titulo" style="background:#fff7ed;border-left:4px solid #f59e0b">
+                    <span class="pa-aguardando-icon">📂</span>
+                    <div>
+                        <strong>Projetos do meu grupo</strong>
+                        <span class="pa-aguardando-desc">Submeta o link do seu projeto para o professor acompanhar.</span>
+                    </div>
+                </div>
+
+                <!-- Formulário de submissão -->
+                <div id="paProjetosForm" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin:12px 0 16px">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+                        <input id="paProjetoUrl"  type="url"  placeholder="URL do projeto (GitHub, Replit, Vercel...)"
+                               style="flex:2;min-width:200px;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;outline:none" autocomplete="off">
+                        <input id="paProjetoNome" type="text" placeholder="Nome do projeto" maxlength="80"
+                               style="flex:1;min-width:140px;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;outline:none">
+                        <button onclick="submeterProjetoAluno()"
+                                style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                            Enviar
+                        </button>
+                    </div>
+                    <p id="paProjetoMsg" style="font-size:12px;margin:0;color:#6b7280"></p>
+                </div>
+
+                <!-- Lista das minhas sugestões -->
+                <div id="paProjetosLista"></div>
+            </div>
+
+        </div><!-- /paSecAtividades -->
+
+        <!-- ══ ABA: CORREÇÕES (turma corretora) ════════════════════ -->
+        <div id="paSecCorrecoes" style="display:none">
+
+            <!-- Cabeçalho destacado -->
+            <div class="pa-tcor-hero">
+                <div class="pa-tcor-hero-icon">🏫</div>
+                <div class="pa-tcor-hero-text">
+                    <h2>Correção de Folhas — Turma Corretora</h2>
+                    <p>Identifique o aluno cuja folha está em suas mãos e registre as alternativas marcadas.
+                       Cada folha aparece uma única vez — quem pegar primeiro corrige.</p>
+                </div>
+            </div>
+
+            <!-- Lista de provas + busca por aluno -->
+            <div id="paTurmaCorretoraSec">
+                <div id="paTurmaCorretoraLista" class="pa-solicita-lista"></div>
+            </div>
+
+        </div><!-- /paSecCorrecoes -->
 
     </main>
 

@@ -86,6 +86,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verificarStatus();
 });
 
+/* ── Troca de aba (atividades / correções) ───────────────────── */
+function mudarAba(aba) {
+    const tabAtiv  = $('paTabAtividades');
+    const tabCor   = $('paTabCorrecoes');
+    const secAtiv  = $('paSecAtividades');
+    const secCor   = $('paSecCorrecoes');
+    if (!tabAtiv || !secAtiv) return;
+    const eAtiv = aba === 'atividades';
+    tabAtiv.classList.toggle('pa-nav-tab--active',  eAtiv);
+    tabCor .classList.toggle('pa-nav-tab--active', !eAtiv);
+    tabAtiv.setAttribute('aria-selected', eAtiv);
+    tabCor .setAttribute('aria-selected', !eAtiv);
+    secAtiv.style.display = eAtiv  ? '' : 'none';
+    secCor .style.display = !eAtiv ? '' : 'none';
+}
+window.mudarAba = mudarAba;
+
 /* ── Fila da Turma Corretora ─────────────────────────── */
 async function carregarTurmaCorretora() {
     try {
@@ -99,24 +116,47 @@ async function carregarTurmaCorretora() {
             sec.style.display = 'none';
             return;
         }
+
+        /* Mostra barra de navegação com badge pulsante */
+        const nav   = $('paNavMenu');
+        const badge = $('paNavBadge');
+        const alert = $('paCorrecaoAlert');
+        const alertTxt = $('paAlertTxt');
+        if (nav)    nav.style.display = '';
+        if (badge)  { badge.style.display = ''; badge.textContent = provas.length; }
+        if (alert)  alert.style.display = '';
+        if (alertTxt) {
+            const n = provas.length;
+            alertTxt.textContent = n === 1
+                ? '1 prova aguardando sua correção — clique para abrir a fila.'
+                : `${n} provas aguardando sua correção — clique para abrir a fila.`;
+        }
+
         sec.style.display = '';
         lista.innerHTML = provas.map(p => `
-            <div class="pa-solicita-card" style="padding:12px;border:1px solid #22c55e;border-radius:8px;margin-bottom:8px;background:#f0fdf4">
-                <div style="margin-bottom:10px">
-                    <strong>${escapeHtmlGam(p.prova_nome || 'Prova')}</strong>
-                    ${p.turma_corretora_2a_correcao ? '<span style="font-size:0.82em;color:#166534;margin-left:6px">(aluno dono confirmará depois)</span>' : ''}
-                    <div style="font-size:0.82em;color:#555;margin-top:2px">Identifique o aluno cuja folha você tem em mãos:</div>
+            <div class="pa-tcor-card">
+                <div style="margin-bottom:12px">
+                    <div style="font-size:1rem;font-weight:700;color:var(--pa-text);margin-bottom:3px">
+                        ${escapeHtmlGam(p.prova_nome || 'Prova')}
+                    </div>
+                    ${p.turma_corretora_2a_correcao
+                        ? '<div style="font-size:0.8em;color:#166534;margin-bottom:4px">O aluno dono da folha irá confirmar após sua correção.</div>'
+                        : ''}
+                    <div style="font-size:0.85em;color:var(--pa-sub)">
+                        Digite o nome do aluno cuja folha você tem em mãos:
+                    </div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
                     <input type="text"
                            id="tcorBusca_${p.prova_id}"
-                           placeholder="Digite o nome do aluno dono da prova…"
+                           placeholder="Nome do aluno dono da prova…"
                            autocomplete="off"
-                           style="flex:1;border:1px solid #86efac;border-radius:6px;padding:8px 12px;font-size:14px;outline:none;background:#fff"
+                           style="flex:1;border:1.5px solid #86efac;border-radius:8px;padding:10px 14px;font-size:14px;outline:none;background:var(--pa-card);color:var(--pa-text);font-family:inherit"
                            oninput="tcorBuscar(${p.prova_id}, this)">
                 </div>
-                <div id="tcorResultados_${p.prova_id}" style="display:none;margin-top:4px;border:1px solid #86efac;border-radius:6px;background:#fff;overflow:hidden"></div>
-                <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:#888;margin-top:4px;min-height:16px"></div>
+                <div id="tcorResultados_${p.prova_id}"
+                     style="display:none;margin-top:6px;border:1.5px solid #86efac;border-radius:8px;background:var(--pa-card);overflow:hidden"></div>
+                <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:var(--pa-sub);margin-top:6px;min-height:16px"></div>
             </div>
         `).join('');
     } catch (_) {
