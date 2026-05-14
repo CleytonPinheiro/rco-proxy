@@ -901,6 +901,39 @@ function renderDetalhe(d) {
             </div>
         </details>`;
 
+        /* ── 2º Corretor às cegas (editável) ── */
+        const scAtivo = !!p.segundo_corretor_ativo;
+        const scPct   = p.segundo_corretor_pct || 15;
+        const scOutra = !!p.permitir_outra_turma;
+        const scLabel = scAtivo
+            ? `ativo — ${scPct}% automático${scOutra ? ' · cross-turma ON' : ''}`
+            : 'desativado';
+        const gabSegundoCorretor = `<details style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;padding:10px">
+            <summary style="cursor:pointer;font-weight:600">👁 2º Corretor às cegas — ${escapeHtml(scLabel)}</summary>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input id="prvSc2Ativo" type="checkbox" ${scAtivo ? 'checked' : ''}
+                           onchange="document.getElementById('prvSc2PctWrap').style.display=this.checked?'flex':'none'">
+                    Ativar 2º corretor às cegas
+                </label>
+                <div id="prvSc2PctWrap" style="display:${scAtivo ? 'flex' : 'none'};flex-direction:column;gap:4px">
+                    <label>Percentual de submissões sorteadas para 2ª correção (1–100)
+                        <input id="prvSc2Pct" type="number" min="1" max="100" value="${scPct}"
+                               class="form-input" style="margin-top:4px;width:90px;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px">
+                    </label>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input id="prvSc2OutraTurma" type="checkbox" ${scOutra ? 'checked' : ''}>
+                    Permitir alunos de outra turma como 2º corretor
+                </label>
+                <div id="prvSc2Erro" style="color:#dc2626;font-size:0.85em;display:none"></div>
+                <div>
+                    <button class="prv-btn prv-btn-primary" onclick="salvarSegundoCorretor()">Salvar</button>
+                </div>
+                <small style="color:#888">O percentual define quantas submissões serão sorteadas aleatoriamente para receber uma 2ª correção anônima.</small>
+            </div>
+        </details>`;
+
         /* Mapeamento manual de páginas por variante */
         const gabMapPaginas = `<details style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;padding:10px"${p.link_prova_paginas ? ' open' : ''}>
             <summary style="cursor:pointer;font-weight:600">📄 Mapeamento de páginas por variante${p.link_prova_paginas ? ' — configurado' : ' — automático'}</summary>
@@ -933,7 +966,7 @@ function renderDetalhe(d) {
             </details>`;
         }
         /* Render everything together so prepend never gets wiped */
-        $('prvDetGabarito').innerHTML = gabCfg + gabMapPaginas + gabStr;
+        $('prvDetGabarito').innerHTML = gabCfg + gabSegundoCorretor + gabMapPaginas + gabStr;
     }
 
     /* Submissões (exclui explicitamente correções da turma corretora das linhas "principais") */
@@ -1063,6 +1096,36 @@ async function salvarTurmaCorretora(remover = false) {
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
         toast(remover ? 'Turma corretora removida.' : 'Turma corretora salva!', 'ok');
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
+}
+
+async function salvarSegundoCorretor() {
+    if (!provaAberta) return;
+    const ativo  = !!$('prvSc2Ativo')?.checked;
+    const pctRaw = parseInt($('prvSc2Pct')?.value, 10);
+    const outra  = !!$('prvSc2OutraTurma')?.checked;
+    const erroEl = $('prvSc2Erro');
+    if (erroEl) erroEl.style.display = 'none';
+    if (ativo && (!Number.isInteger(pctRaw) || pctRaw < 1 || pctRaw > 100)) {
+        if (erroEl) { erroEl.textContent = 'O percentual deve ser entre 1 e 100.'; erroEl.style.display = ''; }
+        return;
+    }
+    const pct = ativo ? pctRaw : (provaAberta.prova.segundo_corretor_pct || 15);
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                segundoCorretorAtivo: ativo,
+                segundoCorretorPct:   pct,
+                permitirOutraTurma:   outra,
+            }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
+        toast('2º corretor salvo!', 'ok');
         await abrirDetalhe(provaAberta.prova.id);
     } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
@@ -1996,6 +2059,7 @@ window.abrirDetalhe    = abrirDetalhe;
 window.sortear                = sortear;
 window.regabaritar            = regabaritar;
 window.salvarTurmaCorretora   = salvarTurmaCorretora;
+window.salvarSegundoCorretor  = salvarSegundoCorretor;
 window.salvarMapeamentoPaginas = salvarMapeamentoPaginas;
 window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
