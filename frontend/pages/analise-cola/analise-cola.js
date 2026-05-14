@@ -1331,10 +1331,12 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
  *  MODAL — MAPEAMENTO DE QUESTÕES FÍSICAS
  * ═════════════════════════════════════════════════════════════════ */
 
-let _mapaGrid      = {};   // _mapaGrid[questao_fisica][variante_id] = posicao
-let _mapaVariantes = [];   // [{id, codigo, gabarito}, ...]
-let _mapaN         = 0;    // número de questões objetivas
-let _mapaImportado = false; // true após importação de PDF — destaca células vazias
+let _mapaGrid        = {};         // _mapaGrid[questao_fisica][variante_id] = posicao
+let _mapaVariantes   = [];         // [{id, codigo, gabarito}, ...]
+let _mapaN           = 0;          // número de questões objetivas
+let _mapaTotalQ      = 0;          // total de questões (discursivas + objetivas)
+let _mapaDiscursivas = new Set();  // posições físicas (1-based) das questões discursivas
+let _mapaImportado   = false;      // true após importação de PDF — destaca células vazias
 
 async function abrirModalMapa() {
     if (!provaAtualId || !_analise) return;
@@ -1346,14 +1348,23 @@ async function abrirModalMapa() {
 
     _mapaVariantes = variantes;
     _mapaImportado = false;
-    _mapaN = Math.max(0, ...variantes.map(v =>
+
+    /* Calcula totais e identifica quais posições são discursivas */
+    const gabRef = variantes[0]?.gabarito || [];
+    _mapaTotalQ  = Math.max(0, ...variantes.map(v => (v.gabarito || []).length));
+    _mapaN       = Math.max(0, ...variantes.map(v =>
         (v.gabarito || []).filter(q => q.tipo !== 'discursiva').length
     ));
+    _mapaDiscursivas = new Set(
+        gabRef.map((q, i) => q.tipo === 'discursiva' ? i + 1 : null).filter(Boolean)
+    );
     if (_mapaN === 0) { alert('Nenhuma questão objetiva encontrada nas variantes.'); return; }
 
-    /* Inicializa grid vazio */
+    /* Inicializa grid — apenas questões objetivas têm entradas editáveis */
     _mapaGrid = {};
-    for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+    for (let qf = 1; qf <= _mapaTotalQ; qf++) {
+        if (!_mapaDiscursivas.has(qf)) _mapaGrid[qf] = {};
+    }
 
     _setMapaStatus('', '');
     $('acMapaModal').style.display = '';
@@ -1384,11 +1395,12 @@ function _renderMapaGrid() {
     const body = $('acMapaBody');
     if (!head || !body) return;
 
-    /* Detecta conflitos: mesma posição repetida na mesma coluna */
+    /* Detecta conflitos: mesma posição repetida na mesma coluna (só objetivas) */
     const conflitos = {};
     for (const v of _mapaVariantes) {
         const seen = {}, dupes = new Set();
-        for (let qf = 1; qf <= _mapaN; qf++) {
+        for (let qf = 1; qf <= _mapaTotalQ; qf++) {
+            if (_mapaDiscursivas.has(qf)) continue;
             const pos = _mapaGrid[qf]?.[v.id];
             if (pos) { if (seen[pos]) dupes.add(pos); else seen[pos] = true; }
         }
@@ -1400,28 +1412,44 @@ function _renderMapaGrid() {
         ${_mapaVariantes.map(v => `<th class="ac-mapa-th-var">V${escapeHtml(String(v.codigo))}</th>`).join('')}
     </tr>`;
 
-    const opts = Array.from({ length: _mapaN }, (_, i) => i + 1)
+    /* Dropdown mostra apenas posições objetivas (ex: 3, 4, … 14) */
+    const opts = Array.from({ length: _mapaTotalQ || _mapaN }, (_, i) => i + 1)
+        .filter(n => !_mapaDiscursivas.has(n))
         .map(n => `<option value="${n}">${n}</option>`).join('');
 
+    const nCols = _mapaVariantes.length;
     let html = '';
-    for (let qf = 1; qf <= _mapaN; qf++) {
+    for (let qf = 1; qf <= (_mapaTotalQ || _mapaN); qf++) {
+        const isDisc = _mapaDiscursivas.has(qf);
         html += `<tr><td class="ac-mapa-td-q"><strong>Q${qf}</strong></td>`;
-        for (const v of _mapaVariantes) {
-            const val = _mapaGrid[qf]?.[v.id] || '';
-            const conflict  = val && conflitos[v.id]?.has(parseInt(val, 10));
-            const vazia     = _mapaImportado && !val;
-            const celClasses = ['ac-mapa-td-cel',
-                conflict ? 'ac-mapa-conflict' : '',
-                vazia    ? 'ac-mapa-vazia'    : ''
-            ].filter(Boolean).join(' ');
-            html += `<td class="${celClasses}" title="${vazia ? 'Preencha esta posição manualmente' : ''}">
-                <select class="ac-mapa-sel"
-                    onchange="onMapaCelChange(${qf},${v.id},this.value)">
-                    <option value="">–</option>
-                    ${opts.replace(`value="${val}"`, `value="${val}" selected`)}
-                </select>
-            </td>`;
+
+        if (isDisc) {
+            /* Linha de questão discursiva — exibe badge em todas as colunas */
+            for (let c = 0; c < nCols; c++) {
+                html += `<td class="ac-mapa-discursiva-cel">
+                    <span class="ac-mapa-discursiva-badge">Discursiva</span>
+                </td>`;
+            }
+        } else {
+            /* Linha de questão objetiva — dropdowns editáveis */
+            for (const v of _mapaVariantes) {
+                const val = _mapaGrid[qf]?.[v.id] || '';
+                const conflict  = val && conflitos[v.id]?.has(parseInt(val, 10));
+                const vazia     = _mapaImportado && !val;
+                const celClasses = ['ac-mapa-td-cel',
+                    conflict ? 'ac-mapa-conflict' : '',
+                    vazia    ? 'ac-mapa-vazia'    : ''
+                ].filter(Boolean).join(' ');
+                html += `<td class="${celClasses}" title="${vazia ? 'Preencha esta posição manualmente' : ''}">
+                    <select class="ac-mapa-sel"
+                        onchange="onMapaCelChange(${qf},${v.id},this.value)">
+                        <option value="">–</option>
+                        ${opts.replace(`value="${val}"`, `value="${val}" selected`)}
+                    </select>
+                </td>`;
+            }
         }
+
         html += '</tr>';
     }
     body.innerHTML = html;
@@ -1436,7 +1464,9 @@ function onMapaCelChange(questaoFisica, varianteId, value) {
 }
 
 function limparMapeamento() {
-    for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+    for (let qf = 1; qf <= _mapaTotalQ; qf++) {
+        if (!_mapaDiscursivas.has(qf)) _mapaGrid[qf] = {};
+    }
     _mapaImportado = false;
     _renderMapaGrid();
     _setMapaStatus('', '');
@@ -1452,7 +1482,9 @@ async function sugerirMapeamento() {
         if (!r.ok) throw new Error(d.erro || 'Erro ao sugerir mapeamento.');
 
         /* Preenche grid com a sugestão */
-        for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+        for (let qf = 1; qf <= _mapaTotalQ; qf++) {
+            if (!_mapaDiscursivas.has(qf)) _mapaGrid[qf] = {};
+        }
         for (const item of (d.mapa || [])) {
             if (!_mapaGrid[item.questao_fisica]) _mapaGrid[item.questao_fisica] = {};
             _mapaGrid[item.questao_fisica][item.variante_id] = item.posicao;
@@ -1654,7 +1686,9 @@ function _parsearEPreencherMapa(text) {
     }
 
     /* ── 3. Preenche o grid ── */
-    for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+    for (let qf = 1; qf <= _mapaTotalQ; qf++) {
+        if (!_mapaDiscursivas.has(qf)) _mapaGrid[qf] = {};
+    }
 
     let mapeadas = 0;
     const variantesAusentes = [];
