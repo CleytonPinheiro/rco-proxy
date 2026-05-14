@@ -86,6 +86,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verificarStatus();
 });
 
+/* ── Fila da Turma Corretora ─────────────────────────── */
+async function carregarTurmaCorretora() {
+    try {
+        const r = await fetch('/api/alunos-portal/turma-corretora/disponiveis', { credentials: 'include' });
+        if (!r.ok) return;
+        const { disponiveis } = await r.json();
+        const sec   = document.getElementById('paTurmaCorretoraSec');
+        const lista = document.getElementById('paTurmaCorretoraLista');
+        if (!sec || !lista) return;
+        if (!disponiveis || disponiveis.length === 0) {
+            sec.style.display = 'none';
+            return;
+        }
+        sec.style.display = '';
+        lista.innerHTML = disponiveis.map(s => `
+            <div class="pa-solicita-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #22c55e;border-radius:8px;margin-bottom:8px;background:#f0fdf4">
+                <div>
+                    <strong>${escapeHtmlGam(s.prova_nome || 'Prova')}</strong>
+                    <div style="font-size:0.85em;color:#666">Variante ${escapeHtmlGam(String(s.variante_codigo))} · ${s.qtd_questoes} questões${s.turma_corretora_2a_correcao ? ' · aluno conferirá depois' : ''}</div>
+                </div>
+                <a class="pa-btn pa-btn-primary"
+                   href="/alunos/prova/?tcor=${encodeURIComponent(s.submissao_ref_id)}"
+                   style="background:#22c55e;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap">Corrigir agora →</a>
+            </div>
+        `).join('');
+    } catch (_) {
+        /* silencioso — módulo opcional */
+    }
+}
+
 /* ── Tarefas de 2ª correção (sortição) ───────────────── */
 async function carregarTarefasCorretor() {
     try {
@@ -218,6 +248,7 @@ async function verificarStatus() {
             mostrarTelaLogado(data.aluno);
             carregarAtividades();
             carregarTarefasCorretor();
+            carregarTurmaCorretora();
             carregarReputacao();
             carregarVoluntariar();
             carregarProjetosAluno();

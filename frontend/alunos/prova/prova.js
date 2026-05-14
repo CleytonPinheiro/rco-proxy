@@ -23,7 +23,7 @@ let estado = {
 };
 
 function show(id) {
-    ['ppLoading','ppLogin','ppErro','ppJaFeita','ppVariante','ppEtapa1','ppFoto','ppEtapa2','ppSegundo']
+    ['ppLoading','ppLogin','ppErro','ppJaFeita','ppVariante','ppEtapa1','ppFoto','ppEtapa2','ppSegundo','ppTurmaCorretora']
         .forEach(s => { const el = $(s); if (el) el.style.display = (s === id ? '' : 'none'); });
 }
 
@@ -36,7 +36,8 @@ async function init() {
     const params = new URLSearchParams(location.search);
     const ansid = params.get('ansid');
     const seg   = params.get('seg');
-    if (!ansid && !seg) return showErro('Link inválido — falta o código da prova.');
+    const tcor  = params.get('tcor');
+    if (!ansid && !seg && !tcor) return showErro('Link inválido — falta o código da prova.');
 
     /* Verifica login (compartilhado) */
     try {
@@ -51,7 +52,8 @@ async function init() {
         return showErro('Não foi possível verificar o login.');
     }
 
-    if (seg) return iniciarSegundoCorretor(seg);
+    if (tcor) return iniciarTurmaCorretora(tcor);
+    if (seg)  return iniciarSegundoCorretor(seg);
 
     estado.ansid = ansid;
     const [job, varCod] = ansid.split('.');
@@ -291,6 +293,74 @@ async function verResultado() {
     } catch (e) { notificar('Erro: ' + e.message, 'erro'); }
 }
 
+async function iniciarTurmaCorretora(subRefId) {
+    try {
+        const r = await fetch('/api/alunos-portal/turma-corretora/disponiveis', { credentials: 'include' });
+        const d = await r.json();
+        const item = (d.disponiveis || []).find(s => String(s.submissao_ref_id) === String(subRefId));
+        if (!item) return showErro('Folha não encontrada ou já foi corrigida por outro aluno.');
+
+        estado.tcor = item;
+        estado.qtdQuestoes = item.qtd_questoes || 12;
+        estado.marcacoes = {};
+
+        if (item.foto_url) {
+            $('ppTcorFoto').src = item.foto_url;
+            $('ppTcorFoto').style.display = '';
+            $('ppTcorSemFoto').style.display = 'none';
+        } else {
+            $('ppTcorFoto').style.display = 'none';
+            $('ppTcorSemFoto').style.display = '';
+        }
+
+        renderTabelaTcor();
+        show('ppTurmaCorretora');
+    } catch (e) { showErro(e.message); }
+}
+
+function renderTabelaTcor() {
+    const wrap = $('ppTcorTabela');
+    let html = `<table class="pp-tabela"><thead><tr>
+        <th style="width:40px">#</th>
+        <th>O que está marcado na folha</th>
+    </tr></thead><tbody>`;
+    for (let q = 1; q <= estado.qtdQuestoes; q++) {
+        html += `<tr><td class="pp-q-num">${q}</td><td>`;
+        for (const letra of LETRAS.slice(0, 5)) {
+            html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+        }
+        html += `<span class="pp-bolha" data-q="${q}" data-l="-" onclick="marcar(${q},'-')" title="Em branco">∅</span>`;
+        html += `</td></tr>`;
+    }
+    html += `</tbody></table>`;
+    wrap.innerHTML = html;
+}
+
+async function enviarTurmaCorretora() {
+    const limpo = {};
+    for (const [k, v] of Object.entries(estado.marcacoes)) {
+        if (v && v !== '-') limpo[k] = v;
+    }
+    $('ppTcorBtn').disabled = true;
+    try {
+        const r = await fetch(`/api/alunos-portal/turma-corretora/${estado.tcor.submissao_ref_id}/submeter`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ marcacoes: limpo }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao enviar.');
+        let msg = '✅ Correção enviada! Obrigado pela ajuda.';
+        if (d.xpGanho) msg += ` | +${d.xpGanho} XP ganho`;
+        notificar(msg);
+        setTimeout(() => { location.href = '/alunos/'; }, 2000);
+    } catch (e) {
+        notificar('Erro: ' + e.message, 'erro');
+        $('ppTcorBtn').disabled = false;
+    }
+}
+
 async function iniciarSegundoCorretor(subRefId) {
     try {
         const r = await fetch('/api/alunos-portal/segundo-corretor/pendentes', { credentials: 'include' });
@@ -360,14 +430,15 @@ async function enviarSegundo() {
     }
 }
 
-window.enviarSegundo        = enviarSegundo;
-window.toggleTema           = toggleTema;
-window.marcar               = marcar;
-window.voltarVariante       = voltarVariante;
-window.confirmarMarcacoes   = confirmarMarcacoes;
-window.previewFoto          = previewFoto;
+window.enviarTurmaCorretora   = enviarTurmaCorretora;
+window.enviarSegundo          = enviarSegundo;
+window.toggleTema             = toggleTema;
+window.marcar                 = marcar;
+window.voltarVariante         = voltarVariante;
+window.confirmarMarcacoes     = confirmarMarcacoes;
+window.previewFoto            = previewFoto;
 window.enviarSubmissao        = enviarSubmissao;
 window.enviarFotoOuSubmissao  = enviarFotoOuSubmissao;
-window.verResultado         = verResultado;
+window.verResultado           = verResultado;
 
 init();

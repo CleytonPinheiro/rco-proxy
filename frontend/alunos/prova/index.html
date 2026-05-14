@@ -58,6 +58,24 @@
             <button class="pp-btn pp-btn-primary" onclick="verResultado()">Ver minha correção</button>
         </section>
 
+        <!-- Estado: Turma Corretora (Corretor 1 de outra turma) -->
+        <section id="ppTurmaCorretora" class="pp-card" style="display:none">
+            <h2>🏫 Correção como Turma Corretora</h2>
+            <p class="pp-muted">
+                Sua turma foi designada para corrigir as folhas de outra turma. Olhe a foto da folha abaixo
+                e marque o que vê assinalado em cada questão. <strong>Você não vê o nome do aluno nem a nota original.</strong>
+            </p>
+            <div id="ppTcorFotoWrap" style="margin:12px 0">
+                <img id="ppTcorFoto" style="max-width:100%;border:1px solid #ccc;border-radius:8px" alt="Foto da folha">
+                <div id="ppTcorSemFoto" style="display:none" class="pp-aviso">⚠️ Sem foto disponível para esta folha. Avise o professor.</div>
+            </div>
+            <div id="ppTcorTabela" class="pp-tabela-wrap"></div>
+            <div class="pp-actions">
+                <a href="/alunos/" class="pp-btn">Cancelar</a>
+                <button class="pp-btn pp-btn-primary" id="ppTcorBtn" onclick="enviarTurmaCorretora()">Enviar correção</button>
+            </div>
+        </section>
+
         <!-- Estado: 2º corretor cego -->
         <section id="ppSegundo" class="pp-card" style="display:none">
             <h2>👁 2ª correção (anônima)</h2>

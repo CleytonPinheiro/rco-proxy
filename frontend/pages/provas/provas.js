@@ -302,6 +302,23 @@ function prvToggleSegundo(ativo) {
     if (!ativo) $('prvfOutraTurma').checked = false;
 }
 
+function prvToggleTurmaCorretora(ativo) {
+    $('prvfTurmaCorretoraCfg').style.display = ativo ? '' : 'none';
+    if (!ativo) {
+        $('prvfTurmaCorretoraCurso').value = '';
+        $('prvfTurmaCorretora2a').checked = false;
+    } else {
+        /* Popula o select com todos os cursos disponíveis, exceto o atual */
+        const sel = $('prvfTurmaCorretoraCurso');
+        const valorAtual = sel.value;
+        sel.innerHTML = '<option value="">Selecione a turma que irá corrigir…</option>' +
+            cursos.filter(c => c.id !== cursoAtual)
+                  .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.nome)}</option>`)
+                  .join('');
+        if (valorAtual) sel.value = valorAtual;
+    }
+}
+
 function _aplicarResumo(resumo) {
     const sel = $('prvCurso');
     if (sel) {
@@ -405,6 +422,7 @@ function renderBadgesProva(p) {
                 ? '<span class="prv-badge prv-badge-efetiva">Efetivada</span>'
                 : '<span class="prv-badge prv-badge-rascunho">Rascunho</span>'}
             ${p.segundo_corretor_ativo ? '<span class="prv-badge prv-badge-2cor">2º corretor</span>' : ''}
+            ${p.turma_corretora_id ? '<span class="prv-badge prv-badge-tcor" title="Uma turma inteira é Corretor 1 desta prova">🏫 turma corretora</span>' : ''}
             ${p.pares_suspeitos > 0 ? `<span class="prv-badge prv-badge-cola" title="Pares com ≥${p.pares_suspeitos_threshold ?? 70}% de similaridade — abra a aba Analise de gabarito para detalhes">⚠️ ${p.pares_suspeitos} par${p.pares_suspeitos > 1 ? 'es' : ''} suspeito${p.pares_suspeitos > 1 ? 's' : ''}</span>` : ''}
             ${p.pares_flagged_investigar > 0 ? `<span class="prv-badge prv-badge-flagged" title="Pares suspeitos ainda em investigação">🔍 ${p.pares_flagged_investigar} pendente${p.pares_flagged_investigar > 1 ? 's' : ''}</span>` : ''}
             ${p.pares_flagged_resolvido > 0 ? `<span class="prv-badge prv-badge-resolvido" title="Pares suspeitos já resolvidos pelo professor">✅ ${p.pares_flagged_resolvido} resolvido${p.pares_flagged_resolvido > 1 ? 's' : ''}</span>` : ''}`;
@@ -681,6 +699,10 @@ function abrirNova() {
     $('prvfOutraTurma').checked = false;
     $('prvfOutraTurmaWrap').style.display = 'none';
     $('prvfSegundoPctWrap').style.display = 'none';
+    $('prvfUsarTurmaCorretora').checked = false;
+    $('prvfTurmaCorretoraCfg').style.display = 'none';
+    $('prvfTurmaCorretoraCurso').value = '';
+    $('prvfTurmaCorretora2a').checked = false;
     $('prvNovaErro').style.display = 'none';
     $('prvModalNova').style.display = '';
 }
@@ -692,18 +714,24 @@ async function salvarNova() {
         return mostraErro('O percentual do 2º corretor deve ser entre 1 e 100.');
     }
     const linkProvaRaw = $('prvfLinkProva').value.trim();
+    const usarTurmaCorretora = $('prvfUsarTurmaCorretora').checked;
     const body = {
-        courseId:             cursoAtual,
-        nome:                 $('prvfNome').value.trim(),
-        gradepenId:           $('prvfAnsid').value.trim().split('.')[0],
-        dataAplicacao:        $('prvfData').value || null,
-        fotoModo:             $('prvfFoto').value,
-        fotoSorteioPct:       parseInt($('prvfFotoPct').value, 10) || 20,
-        segundoCorretorAtivo: $('prvfSegundo').checked,
-        segundoCorretorPct:   segundoPct,
-        permitirOutraTurma:   $('prvfOutraTurma').checked,
-        linkProva:            linkProvaRaw || null,
+        courseId:                cursoAtual,
+        nome:                    $('prvfNome').value.trim(),
+        gradepenId:              $('prvfAnsid').value.trim().split('.')[0],
+        dataAplicacao:           $('prvfData').value || null,
+        fotoModo:                $('prvfFoto').value,
+        fotoSorteioPct:          parseInt($('prvfFotoPct').value, 10) || 20,
+        segundoCorretorAtivo:    $('prvfSegundo').checked,
+        segundoCorretorPct:      segundoPct,
+        permitirOutraTurma:      $('prvfOutraTurma').checked,
+        turmaCorretoraId:        usarTurmaCorretora ? ($('prvfTurmaCorretoraCurso').value || null) : null,
+        turmaCorretora2aCorrecao: usarTurmaCorretora && $('prvfTurmaCorretora2a').checked,
+        linkProva:               linkProvaRaw || null,
     };
+    if (usarTurmaCorretora && !body.turmaCorretoraId) {
+        return mostraErro('Selecione a turma corretora ou desmarque a opção "Usar turma corretora".');
+    }
     if (!body.nome || !body.gradepenId) {
         return mostraErro('Preencha nome e ID GradePen.');
     }
@@ -778,11 +806,17 @@ function renderDetalhe(d) {
     $('prvDetMeta').innerHTML = `
         <span>📋 GradePen #${escapeHtml(p.gradepen_id)}</span>
         <span>📅 ${p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : 'Sem data'}</span>
-        <span>📊 ${d.variantes.length} variantes • ${d.submissoes.filter(s=>!s.eh_segundo_corretor).length} alunos corrigiram</span>
+        <span>📊 ${d.variantes.length} variantes • ${d.submissoes.filter(s=>!s.eh_segundo_corretor && !s.eh_turma_corretora).length} alunos corrigiram</span>
         <span>📷 Foto: ${p.foto_modo}${p.foto_modo === 'sorteio' ? ` (${p.foto_sorteio_pct}%)` : ''}</span>
         <span>👁 2º corretor: ${p.segundo_corretor_ativo
             ? `ativo · ${p.segundo_corretor_pct === 100 ? '100% automático' : (p.segundo_corretor_pct || 15) + '% automático'}${p.permitir_outra_turma ? ' · cross-turma ON' : ''}`
             : 'desativado'}</span>
+        ${p.turma_corretora_id ? (() => {
+            const tcSubs  = d.submissoes.filter(s => s.eh_turma_corretora);
+            const total   = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora).length;
+            const tcNome  = (cursos.find(c => c.id === p.turma_corretora_id) || {}).nome || p.turma_corretora_id;
+            return `<span>🏫 Turma corretora: <strong>${escapeHtml(tcNome)}</strong> · ${tcSubs.length}/${total} folhas corrigidas${p.turma_corretora_2a_correcao ? ' · aluno confere depois' : ''}</span>`;
+        })() : ''}
     `;
     $('prvDetCola').innerHTML = '<div class="prv-empty">Clique em <strong>🔍 Analise de gabarito</strong> para carregar.</div>';
     $('prvDetDivergencias').innerHTML = '<div class="prv-empty">Carregando divergências…</div>';
@@ -815,21 +849,55 @@ function renderDetalhe(d) {
 
     prvAtivarAba('gabarito');
 
-    /* Gabarito */
-    let gab = `<h3>Gabarito por variante</h3>`;
-    for (const v of d.variantes) {
-        const linhas = (v.gabarito_json || []).map(q =>
-            `<tr><td>${q.questao}</td><td><strong>${(q.correta || '?').toString().toUpperCase()}</strong></td><td>${(q.valor||0).toFixed(2)}</td></tr>`
-        ).join('');
-        gab += `<details><summary>Variante .${escapeHtml(v.codigo)} — ${v.gabarito_json.length} questões</summary>
-            <table class="prv-tabela"><thead><tr><th>Q</th><th>Correta</th><th>Valor</th></tr></thead><tbody>${linhas}</tbody></table>
+    /* ── Configuração de Turma Corretora (editável) + Gabarito ── */
+    {
+        const currentTcId  = p.turma_corretora_id || '';
+        const current2a    = !!p.turma_corretora_2a_correcao;
+        const outrosCursos = cursos.filter(c => c.id !== p.curso_id);
+        const optsTC = outrosCursos
+            .map(c => `<option value="${escapeHtml(c.id)}" ${c.id === currentTcId ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`)
+            .join('');
+        const tcNome  = currentTcId ? ((cursos.find(c => c.id === currentTcId) || {}).nome || currentTcId) : 'nenhuma';
+        const tcSubs  = d.submissoes.filter(s => s.eh_turma_corretora).length;
+        const tcTotal = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora).length;
+        const gabCfg = `<details style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:8px;padding:10px">
+            <summary style="cursor:pointer;font-weight:600">🏫 Turma corretora${currentTcId ? ` — ${escapeHtml(tcNome)} (${tcSubs}/${tcTotal} corrigidas)` : ' — nenhuma configurada'}</summary>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+                <label>Turma que irá corrigir as folhas
+                    <select id="prvTcorCurso" class="form-select" style="margin-top:4px">
+                        <option value="">Sem turma corretora</option>
+                        ${optsTC}
+                    </select>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input id="prvTcor2a" type="checkbox" ${current2a ? 'checked' : ''}>
+                    Aluno original faz 2ª conferência depois da turma corretora
+                </label>
+                <div style="display:flex;gap:8px">
+                    <button class="prv-btn prv-btn-primary" onclick="salvarTurmaCorretora()">Salvar</button>
+                    ${currentTcId ? `<button class="prv-btn" onclick="salvarTurmaCorretora(true)">Remover turma corretora</button>` : ''}
+                </div>
+                <small style="color:#888">Alterações são aplicadas imediatamente. Alunos da turma corretora que já estejam com a fila aberta veem a mudança no próximo carregamento.</small>
+            </div>
         </details>`;
-    }
-    $('prvDetGabarito').innerHTML = gab;
 
-    /* Submissões */
-    const principais = d.submissoes.filter(s => !s.eh_segundo_corretor);
-    const segundas   = d.submissoes.filter(s =>  s.eh_segundo_corretor);
+        /* Gabarito por variante */
+        let gabStr = `<h3>Gabarito por variante</h3>`;
+        for (const v of d.variantes) {
+            const linhas = (v.gabarito_json || []).map(q =>
+                `<tr><td>${q.questao}</td><td><strong>${(q.correta || '?').toString().toUpperCase()}</strong></td><td>${(q.valor||0).toFixed(2)}</td></tr>`
+            ).join('');
+            gabStr += `<details><summary>Variante .${escapeHtml(v.codigo)} — ${v.gabarito_json.length} questões</summary>
+                <table class="prv-tabela"><thead><tr><th>Q</th><th>Correta</th><th>Valor</th></tr></thead><tbody>${linhas}</tbody></table>
+            </details>`;
+        }
+        /* Render everything together so prepend never gets wiped */
+        $('prvDetGabarito').innerHTML = gabCfg + gabStr;
+    }
+
+    /* Submissões (exclui explicitamente correções da turma corretora das linhas "principais") */
+    const principais = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora);
+    const segundas   = d.submissoes.filter(s =>  s.eh_segundo_corretor && !s.eh_turma_corretora);
     let sub = `<h3>Submissões dos alunos</h3>`;
     if (!p.efetivada) {
         sub += `<div class="prv-info-box">⚠️ <strong>As notas estão como rascunho.</strong> Quando estiver pronto, clique em <strong>"Efetivar notas"</strong> abaixo. Depois lance as notas no Classroom (ou use o botão <strong>📢 Publicar no Classroom</strong> que cria a atividade no grupo dedicado da avaliação).</div>`;
@@ -887,6 +955,28 @@ function renderDetalhe(d) {
         b.addEventListener('click', () => conferirFoto(parseInt(b.dataset.sub, 10))));
 
     $('prvBtnEfetivar').textContent = p.efetivada ? 'Reabrir como rascunho' : 'Efetivar notas';
+}
+
+async function salvarTurmaCorretora(remover = false) {
+    if (!provaAberta) return;
+    const turmaCorretoraId        = remover ? null : ($('prvTcorCurso')?.value || null);
+    const turmaCorretora2aCorrecao = !remover && !!$('prvTcor2a')?.checked;
+    if (!remover && !turmaCorretoraId) {
+        toast('Selecione a turma corretora ou clique em "Remover".', 'warn');
+        return;
+    }
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ turmaCorretoraId: turmaCorretoraId || '', turmaCorretora2aCorrecao }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
+        toast(remover ? 'Turma corretora removida.' : 'Turma corretora salva!', 'ok');
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
 }
 
 async function sortear(submissaoId) {
@@ -1765,8 +1855,9 @@ window.abrirNova       = abrirNova;
 window.fecharNova      = fecharNova;
 window.salvarNova      = salvarNova;
 window.abrirDetalhe    = abrirDetalhe;
-window.sortear         = sortear;
-window.regabaritar     = regabaritar;
+window.sortear                = sortear;
+window.regabaritar            = regabaritar;
+window.salvarTurmaCorretora   = salvarTurmaCorretora;
 window.toggleEfetivar  = toggleEfetivar;
 window.excluirProva    = excluirProva;
 async function conferirFoto(submissaoId) {

@@ -197,6 +197,26 @@
                 <input id="prvfSegundoPct" type="number" class="form-input" min="1" max="100" value="15">
                 <small id="prvfSegundoPctDica" style="color:#666">15% = sorteio aleatório para ~1 em cada 7 alunos. <strong>100% = todos os alunos recebem 2ª correção automática.</strong></small>
             </label>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e5e7eb">
+                <label class="prv-toggle">
+                    <input id="prvfUsarTurmaCorretora" type="checkbox" onchange="prvToggleTurmaCorretora(this.checked)">
+                    <span>Usar turma corretora <small style="color:#666">(Corretor 1 é outra turma)</small></span>
+                </label>
+                <div id="prvfTurmaCorretoraCfg" style="display:none;margin-left:24px;margin-top:8px">
+                    <label style="display:block;margin-bottom:10px">Turma corretora
+                        <select id="prvfTurmaCorretoraCurso" class="form-select" style="margin-top:4px">
+                            <option value="">Selecione a turma que irá corrigir…</option>
+                        </select>
+                        <small>Os alunos dessa turma veem a fila de folhas no Portal do Aluno para corrigir.</small>
+                    </label>
+                    <label class="prv-toggle">
+                        <input id="prvfTurmaCorretora2a" type="checkbox">
+                        <span>Aluno original faz 2ª correção depois<br>
+                            <small style="color:#666">Após a turma corretora finalizar uma folha, o aluno da turma-alvo recebe notificação para conferir.</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
             <div class="prv-modal-actions">
                 <button class="prv-btn" onclick="fecharNova()">Cancelar</button>
                 <button class="prv-btn prv-btn-primary" id="prvBtnSalvarNova" onclick="salvarNova()">Cadastrar e importar gabarito</button>

@@ -98,6 +98,9 @@ async function migrarTabelas() {
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_prova ON classroom_prova_submissoes(prova_id)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_email ON classroom_prova_submissoes(aluno_email)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_provasub_ref   ON classroom_prova_submissoes(submissao_ref_id)`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_id TEXT`);
+        await pool.query(`ALTER TABLE classroom_provas ADD COLUMN IF NOT EXISTS turma_corretora_2a_correcao BOOLEAN NOT NULL DEFAULT false`);
+        await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS eh_turma_corretora BOOLEAN NOT NULL DEFAULT false`);
         /* Gamificação: snapshot de variante original + flags de XP creditado + foto conferida + flag voluntária */
         await pool.query(`ALTER TABLE classroom_prova_submissoes ADD COLUMN IF NOT EXISTS variante_id_original INTEGER`);
         await pool.query(`UPDATE classroom_prova_submissoes SET variante_id_original = variante_id WHERE variante_id_original IS NULL`);
@@ -1288,6 +1291,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             fotoModo = 'sorteio', fotoSorteioPct = 20,
             segundoCorretorAtivo = false, segundoCorretorPct = 15,
             permitirOutraTurma = false,
+            turmaCorretoraId = null, turmaCorretora2aCorrecao = false,
             linkProva,           // opcional: URL da prova para os alunos lerem as questões
             variantesManuais,    // opcional: [{codigo, gabarito: [{questao, tipo, correta, valor, n_alternativas}]}]
         } = req.body || {};
@@ -1304,16 +1308,19 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         try {
             await client.query('BEGIN');
             const linkProvaVal = (linkProva && typeof linkProva === 'string' && linkProva.trim()) ? linkProva.trim() : null;
+            const turmaCorretoraIdVal = (turmaCorretoraId && typeof turmaCorretoraId === 'string' && turmaCorretoraId.trim()) ? turmaCorretoraId.trim() : null;
             const { rows: [prova] } = await client.query(
                 `INSERT INTO classroom_provas
                    (curso_id, gradepen_id, nome, grupo_destino_id, data_aplicacao,
                     foto_modo, foto_sorteio_pct, segundo_corretor_ativo, segundo_corretor_pct,
-                    permitir_outra_turma, link_prova, criada_por_cpf, criada_por_nome)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                    permitir_outra_turma, link_prova, turma_corretora_id, turma_corretora_2a_correcao,
+                    criada_por_cpf, criada_por_nome)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
                  RETURNING *`,
                 [courseId, String(gradepenId), nome, grupoDestinoId || null, dataAplicacao || null,
                  fotoModo, fotoSorteioPct, !!segundoCorretorAtivo, segundoCorretorPct,
-                 !!permitirOutraTurma, linkProvaVal, req.userSession?.cpf || null, req.userSession?.nome || null]
+                 !!permitirOutraTurma, linkProvaVal, turmaCorretoraIdVal, !!turmaCorretora2aCorrecao,
+                 req.userSession?.cpf || null, req.userSession?.nome || null]
             );
 
             let variantes;
@@ -1373,19 +1380,23 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     router.put('/classroom/provas/:id', async (req, res) => {
         const fields = ['nome', 'grupo_destino_id', 'data_aplicacao', 'foto_modo',
                         'foto_sorteio_pct', 'segundo_corretor_ativo', 'segundo_corretor_pct',
-                        'permitir_outra_turma'];
+                        'permitir_outra_turma', 'turma_corretora_id', 'turma_corretora_2a_correcao'];
         const map = {
             nome: 'nome', grupoDestinoId: 'grupo_destino_id', dataAplicacao: 'data_aplicacao',
             fotoModo: 'foto_modo', fotoSorteioPct: 'foto_sorteio_pct',
             segundoCorretorAtivo: 'segundo_corretor_ativo', segundoCorretorPct: 'segundo_corretor_pct',
             permitirOutraTurma: 'permitir_outra_turma',
+            turmaCorretoraId: 'turma_corretora_id', turmaCorretora2aCorrecao: 'turma_corretora_2a_correcao',
         };
         const sets = [], vals = [];
         let i = 1;
         for (const [k, col] of Object.entries(map)) {
             if (req.body[k] !== undefined) {
                 sets.push(`${col} = $${i++}`);
-                vals.push(req.body[k]);
+                /* Coerce empty string to null for nullable TEXT columns */
+                let val = req.body[k];
+                if (col === 'turma_corretora_id' && (val === '' || val === null)) val = null;
+                vals.push(val);
             }
         }
         if (sets.length === 0) return res.json({ ok: true });
@@ -3499,16 +3510,35 @@ export function createProvasPublicRouter() {
 
         try {
             const { rows: [ref] } = await pool.query(
-                `SELECT s.*, v.gabarito_json, v.id AS variante_id_real
+                `SELECT s.*, v.gabarito_json, v.id AS variante_id_real,
+                        p.turma_corretora_2a_correcao
                    FROM classroom_prova_submissoes s
                    JOIN classroom_prova_variantes v ON v.id = s.variante_id
+                   JOIN classroom_provas p           ON p.id = s.prova_id
                   WHERE s.id = $1`,
                 [req.params.subRefId]
             );
             if (!ref) return res.status(404).json({ erro: 'Submissão de referência não encontrada.' });
-            if (ref.aluno_email.toLowerCase() === aluno.email.toLowerCase()) {
-                return res.status(403).json({ erro: 'Você não pode corrigir sua própria prova.' });
+
+            const ehProprioAluno = ref.aluno_email.toLowerCase() === aluno.email.toLowerCase();
+
+            /* Auto-conferência permitida APENAS quando a prova tem turma_corretora_2a_correcao=true
+             * E a turma corretora já corrigiu esta folha (eh_turma_corretora=true) */
+            if (ehProprioAluno) {
+                if (!ref.turma_corretora_2a_correcao) {
+                    return res.status(403).json({ erro: 'Você não pode corrigir sua própria prova.' });
+                }
+                /* Verifica se a turma corretora já corrigiu esta folha */
+                const { rows: tcorFeita } = await pool.query(
+                    `SELECT 1 FROM classroom_prova_submissoes
+                      WHERE submissao_ref_id = $1 AND eh_turma_corretora = true LIMIT 1`,
+                    [ref.id]
+                );
+                if (tcorFeita.length === 0) {
+                    return res.status(403).json({ erro: 'Aguarde a turma corretora corrigir sua folha antes de conferir.' });
+                }
             }
+
             /* Exige que exista uma notificação de sorteio para este aluno+submissão */
             const { rows: notif } = await pool.query(
                 `SELECT id FROM notificacoes_aluno
@@ -3743,6 +3773,227 @@ export function createProvasPublicRouter() {
             );
             await client.query('COMMIT');
             res.json({ ok: true, submissaoRefId: alvo.id });
+        } catch (e) {
+            try { await client.query('ROLLBACK'); } catch (_) {}
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    /* ════════════════════════════════════════════════════════════════
+     *  TURMA CORRETORA — fila e submissão
+     * ════════════════════════════════════════════════════════════════ */
+
+    /**
+     * GET /api/alunos-portal/turma-corretora/disponiveis
+     * Retorna as submissões da turma-alvo disponíveis para o aluno corrigir
+     * como Corretor 1 (enquanto membro da turma corretora).
+     */
+    router.get('/alunos-portal/turma-corretora/disponiveis', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            /* Seleciona submissões da turma-alvo disponíveis para este aluno:
+             * - prova tem turma_corretora_id definido e não está efetivada
+             * - submissão é de Corretor 1 original (não é 2ª correção nem turma-corretora)
+             * - a submissão ainda não foi corrigida por ninguém via turma-corretora
+             * - o aluno não é o dono da submissão
+             * - o aluno NÃO pertence à turma-alvo (não submeteu prova nesse curso)
+             * - o aluno PERTENCE à turma corretora (submeteu alguma prova nesse curso)
+             */
+            const { rows } = await pool.query(
+                `SELECT
+                    s.id            AS submissao_ref_id,
+                    s.foto_url,
+                    p.id            AS prova_id,
+                    p.nome          AS prova_nome,
+                    p.turma_corretora_2a_correcao,
+                    v.codigo        AS variante_codigo,
+                    jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                 FROM classroom_provas p
+                 JOIN classroom_prova_submissoes s ON s.prova_id = p.id
+                 JOIN classroom_prova_variantes  v ON v.id = s.variante_id
+                WHERE p.turma_corretora_id IS NOT NULL
+                  AND p.efetivada = false
+                  AND s.eh_segundo_corretor = false
+                  AND s.eh_turma_corretora  = false
+                  AND s.aluno_email != $1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes tc
+                       WHERE tc.submissao_ref_id = s.id
+                         AND tc.eh_turma_corretora = true
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes tc2
+                       WHERE tc2.submissao_ref_id = s.id
+                         AND tc2.aluno_email = $1
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc
+                       JOIN classroom_provas pc ON pc.id = sc.prova_id
+                      WHERE sc.aluno_email = $1
+                        AND pc.curso_id = p.curso_id
+                        AND sc.eh_segundo_corretor = false
+                        AND sc.eh_turma_corretora  = false
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc2
+                       JOIN classroom_provas pc2 ON pc2.id = sc2.prova_id
+                      WHERE sc2.aluno_email = $1
+                        AND pc2.curso_id = p.turma_corretora_id
+                        AND sc2.eh_segundo_corretor = false
+                        AND sc2.eh_turma_corretora  = false
+                  )
+                ORDER BY p.id, s.criada_em`,
+                [aluno.email]
+            );
+            res.json({ disponiveis: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /**
+     * POST /api/alunos-portal/turma-corretora/:subRefId/submeter
+     * Aluno da turma corretora marca as respostas da folha e envia.
+     * Body: { marcacoes: { "1":"a", ... } }
+     */
+    router.post('/alunos-portal/turma-corretora/:subRefId/submeter', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { marcacoes } = req.body || {};
+        if (!marcacoes) return res.status(400).json({ erro: 'marcacoes obrigatório.' });
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            /* Bloqueia a linha da submissão-referência para evitar corrida */
+            const { rows: [ref] } = await client.query(
+                `SELECT s.*, v.gabarito_json, v.id AS variante_id_real,
+                        p.turma_corretora_id, p.turma_corretora_2a_correcao,
+                        p.curso_id AS prova_curso_id
+                   FROM classroom_prova_submissoes s
+                   JOIN classroom_prova_variantes v ON v.id = s.variante_id
+                   JOIN classroom_provas p           ON p.id = s.prova_id
+                  WHERE s.id = $1
+                    AND s.eh_segundo_corretor = false
+                    AND s.eh_turma_corretora  = false
+                  FOR UPDATE`,
+                [req.params.subRefId]
+            );
+            if (!ref) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ erro: 'Submissão de referência não encontrada.' });
+            }
+            if (!ref.turma_corretora_id) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ erro: 'Esta prova não tem turma corretora configurada.' });
+            }
+            if (ref.aluno_email.toLowerCase() === aluno.email.toLowerCase()) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ erro: 'Você não pode corrigir sua própria folha.' });
+            }
+
+            /* Impede que aluno da turma-alvo use este fluxo */
+            const { rows: naAlvo } = await client.query(
+                `SELECT 1 FROM classroom_prova_submissoes sc
+                  JOIN classroom_provas pc ON pc.id = sc.prova_id
+                 WHERE sc.aluno_email = $1
+                   AND pc.curso_id = $2
+                   AND sc.eh_segundo_corretor = false
+                   AND sc.eh_turma_corretora  = false
+                 LIMIT 1`,
+                [aluno.email, ref.prova_curso_id]
+            );
+            if (naAlvo.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ erro: 'Alunos da turma-alvo não podem corrigir por este fluxo.' });
+            }
+
+            /* Verifica que o aluno PERTENCE à turma corretora (server-side, sym. ao GET) */
+            const { rows: naTcor } = await client.query(
+                `SELECT 1 FROM classroom_prova_submissoes sc
+                  JOIN classroom_provas pc ON pc.id = sc.prova_id
+                 WHERE sc.aluno_email = $1
+                   AND pc.curso_id = $2
+                   AND sc.eh_segundo_corretor = false
+                   AND sc.eh_turma_corretora  = false
+                 LIMIT 1`,
+                [aluno.email, ref.turma_corretora_id]
+            );
+            if (naTcor.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ erro: 'Você não pertence à turma corretora desta prova.' });
+            }
+
+            /* Verifica se já foi corrigida por turma corretora */
+            const { rows: jaCorrigida } = await client.query(
+                `SELECT 1 FROM classroom_prova_submissoes
+                  WHERE submissao_ref_id = $1 AND eh_turma_corretora = true LIMIT 1`,
+                [ref.id]
+            );
+            if (jaCorrigida.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ erro: 'Esta folha já foi corrigida pela turma corretora.' });
+            }
+
+            /* Verifica se este aluno já corrigiu esta folha */
+            const { rows: jaFez } = await client.query(
+                `SELECT 1 FROM classroom_prova_submissoes
+                  WHERE submissao_ref_id = $1 AND aluno_email = $2 LIMIT 1`,
+                [ref.id, aluno.email]
+            );
+            if (jaFez.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ erro: 'Você já corrigiu esta folha.' });
+            }
+
+            const { nota, total } = calcularNota(ref.gabarito_json, marcacoes);
+
+            const { rows: [novaSub] } = await client.query(
+                `INSERT INTO classroom_prova_submissoes
+                   (prova_id, variante_id, aluno_email, aluno_nome,
+                    marcacoes_json, nota, total_max, ip, user_agent,
+                    eh_segundo_corretor, eh_turma_corretora, submissao_ref_id)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false,true,$10) RETURNING id`,
+                [ref.prova_id, ref.variante_id_real, aluno.email, aluno.nome,
+                 JSON.stringify(marcacoes), nota, total,
+                 req.ip, req.get('user-agent') || '', ref.id]
+            );
+
+            /* Se configurado, notifica o aluno original para 2ª correção */
+            if (ref.turma_corretora_2a_correcao) {
+                await client.query(
+                    `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                     VALUES ($1,'segundo_corretor',$2,$3,$4,$5)
+                     ON CONFLICT DO NOTHING`,
+                    [ref.aluno_email, String(ref.id),
+                     'Sua folha foi corrigida — confira agora',
+                     'A turma corretora analisou sua folha. Acesse "Minhas tarefas de correção" no portal para conferir.',
+                     JSON.stringify({ submissaoRefId: ref.id, provaId: ref.prova_id })]
+                );
+            }
+
+            await client.query('COMMIT');
+
+            /* XP para o corretor (fire-and-forget) */
+            const xpEventos = [];
+            try {
+                const r1 = await reputacao.creditar({
+                    alunoEmail: aluno.email, alunoNome: aluno.nome,
+                    evento: 'CORRECAO_ENVIADA', submissaoId: novaSub.id,
+                });
+                if (r1.creditado) xpEventos.push(r1);
+            } catch (e) { console.warn('[REPUTACAO] turma-corretora enviada:', e.message); }
+
+            res.json({
+                ok: true,
+                nota, total,
+                xpGanho: xpEventos.reduce((a, e) => a + (e.xp || 0), 0),
+                aviso: 'XP de precisão será creditado quando o professor efetivar a prova.',
+            });
         } catch (e) {
             try { await client.query('ROLLBACK'); } catch (_) {}
             res.status(500).json({ erro: e.message });
