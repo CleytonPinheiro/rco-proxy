@@ -1347,6 +1347,7 @@ let _mapaN           = 0;          // número de questões objetivas
 let _mapaTotalQ      = 0;          // total de questões (discursivas + objetivas)
 let _mapaDiscursivas = new Set();  // posições físicas (1-based) das questões discursivas
 let _mapaImportado   = false;      // true após importação de PDF — destaca células vazias
+let _mapaQuestoesTxt = {};         // _mapaQuestoesTxt[varianteCodigo][questaoNum] = {enunciado, alternativas}
 
 async function abrirModalMapa() {
     if (!provaAtualId || !_analise) return;
@@ -1580,6 +1581,12 @@ async function salvarMapeamento() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
+        /* Persiste texto das questões no localStorage para uso na tela de correção */
+        if (provaAtualId && Object.keys(_mapaQuestoesTxt).length > 0) {
+            try {
+                localStorage.setItem(`edusync_qt_${provaAtualId}`, JSON.stringify(_mapaQuestoesTxt));
+            } catch (_) {}
+        }
         _setMapaStatus(`✅ Mapeamento salvo — ${d.salvo} correspondências. O "Confrontar gabarito" agora usará questões físicas para variantes diferentes.`, 'ok');
     } catch (e) {
         _setMapaStatus(e.message, 'err');
@@ -1698,6 +1705,18 @@ function _extrairAlternativas(bloco) {
     return Object.keys(alts).length >= 2 ? alts : null;
 }
 
+/* Versão raw: retorna texto original (sem normalização) para exibição ao corretor */
+function _extrairAlternativasRaw(bloco) {
+    const altRe = /\b([a-e])\s*\)\s*(?:\(\s*\)\s*)?([^\n]{5,150})/gi;
+    const alts = {};
+    let m;
+    while ((m = altRe.exec(bloco)) !== null) {
+        const letra = m[1].toLowerCase();
+        if (!alts[letra]) alts[letra] = m[2].trim().slice(0, 150);
+    }
+    return alts;
+}
+
 /* Mapeia letras impressas de uma variante para letras canônicas (variante 0).
  * Retorna {letra_var: letra_canon, ...} ou null se matching insuficiente. */
 function _construirMapaAlternativas(canAlts, varAlts) {
@@ -1755,8 +1774,10 @@ function _parsearEPreencherMapa(text) {
             const stem = stemMatch ? _normalizarStem(stemMatch[1]) : '';
             if (stem.length < 8) continue;
 
-            const alternativas = _extrairAlternativas(block);
-            questions.push({ posicao: pos, stem, alternativas });
+            const rawEnunciado     = stemMatch ? stemMatch[1].trim().slice(0, 300) : '';
+            const alternativas     = _extrairAlternativas(block);
+            const rawAlternativas  = _extrairAlternativasRaw(block);
+            questions.push({ posicao: pos, stem, alternativas, rawEnunciado, rawAlternativas });
         }
         return { varIndex: mk.varIndex, questions };
     });
@@ -1834,6 +1855,20 @@ function _parsearEPreencherMapa(text) {
                     if (altMapa) altsMapeadas++;
                 }
             }
+        }
+    }
+
+    /* ── 4. Salva texto raw por variante (para exibir ao corretor via localStorage) ── */
+    _mapaQuestoesTxt = {};
+    for (const vd of variantData) {
+        const dbVar = _mapaVariantes.find(v => String(v.codigo) === String(vd.varIndex));
+        if (!dbVar) continue;
+        _mapaQuestoesTxt[vd.varIndex] = {};
+        for (const q of vd.questions) {
+            _mapaQuestoesTxt[vd.varIndex][q.posicao] = {
+                enunciado:    q.rawEnunciado || '',
+                alternativas: q.rawAlternativas || {},
+            };
         }
     }
 

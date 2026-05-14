@@ -1,6 +1,24 @@
 'use strict';
 /* Portal do Aluno — Tela de Correção de Prova (estilo GradePen) */
 
+function escHtml(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function _lerQuestoesTxt(provaId, varianteCodigo) {
+    try {
+        const raw = localStorage.getItem(`edusync_qt_${provaId}`);
+        if (!raw) return null;
+        const qt = JSON.parse(raw);
+        return qt[varianteCodigo] || null;
+    } catch (_) { return null; }
+}
+
 const TEMA_KEY = 'aluno_tema';
 function aplicarTema(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem(TEMA_KEY, t); }
 function toggleTema() { aplicarTema((document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'light' : 'dark'); }
@@ -324,6 +342,7 @@ async function iniciarTurmaCorretora(subRefId) {
             $('ppTcorSemFoto').style.display = '';
         }
 
+        estado.tcorQuestoesTxt = _lerQuestoesTxt(item.prova_id, item.variante_codigo);
         renderTabelaTcor();
         show('ppTurmaCorretora');
     } catch (e) { showErro(e.message); }
@@ -331,17 +350,31 @@ async function iniciarTurmaCorretora(subRefId) {
 
 function renderTabelaTcor() {
     const wrap = $('ppTcorTabela');
-    let html = `<table class="pp-tabela"><thead><tr>
+    const qt = estado.tcorQuestoesTxt || null;
+    let html = `<table class="pp-tabela pp-tabela-cor"><thead><tr>
         <th style="width:40px">#</th>
         <th>O que está marcado na folha</th>
     </tr></thead><tbody>`;
     for (let q = 1; q <= estado.qtdQuestoes; q++) {
-        html += `<tr><td class="pp-q-num">${q}</td><td>`;
+        const qInfo = qt ? qt[q] : null;
+        html += `<tr><td class="pp-q-num">${q}</td><td class="pp-td-cor">`;
+        if (qInfo && qInfo.enunciado) {
+            const resumo = escHtml(qInfo.enunciado.slice(0, 80));
+            const enuncFull = escHtml(qInfo.enunciado);
+            html += `<details class="pp-qtxt"><summary class="pp-qtxt-summary">${resumo}…</summary><div class="pp-qtxt-body">${enuncFull}</div>`;
+            for (const letra of ['a', 'b', 'c', 'd', 'e']) {
+                if (qInfo.alternativas && qInfo.alternativas[letra]) {
+                    html += `<div class="pp-qtxt-alt"><span class="pp-qtxt-letra">${letra.toUpperCase()}</span> ${escHtml(qInfo.alternativas[letra])}</div>`;
+                }
+            }
+            html += `</details>`;
+        }
+        html += `<div class="pp-bolhas-row">`;
         for (const letra of LETRAS.slice(0, 5)) {
             html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
         }
         html += `<span class="pp-bolha" data-q="${q}" data-l="-" onclick="marcar(${q},'-')" title="Em branco">∅</span>`;
-        html += `</td></tr>`;
+        html += `</div></td></tr>`;
     }
     html += `</tbody></table>`;
     wrap.innerHTML = html;
@@ -391,6 +424,7 @@ async function iniciarSegundoCorretor(subRefId) {
         }
 
         estado.qtdQuestoes = pend.qtd_questoes || 12;
+        estado.segQuestoesTxt = _lerQuestoesTxt(pend.prova_id, pend.variante_codigo);
         renderTabelaSegundo();
         show('ppSegundo');
     } catch (e) { showErro(e.message); }
@@ -398,17 +432,31 @@ async function iniciarSegundoCorretor(subRefId) {
 
 function renderTabelaSegundo() {
     const wrap = $('ppSegTabela');
-    let html = `<table class="pp-tabela"><thead><tr>
+    const qt = estado.segQuestoesTxt || null;
+    let html = `<table class="pp-tabela pp-tabela-cor"><thead><tr>
         <th style="width:40px">#</th>
         <th>O que está marcado na folha</th>
     </tr></thead><tbody>`;
     for (let q = 1; q <= estado.qtdQuestoes; q++) {
-        html += `<tr><td class="pp-q-num">${q}</td><td>`;
+        const qInfo = qt ? qt[q] : null;
+        html += `<tr><td class="pp-q-num">${q}</td><td class="pp-td-cor">`;
+        if (qInfo && qInfo.enunciado) {
+            const resumo = escHtml(qInfo.enunciado.slice(0, 80));
+            const enuncFull = escHtml(qInfo.enunciado);
+            html += `<details class="pp-qtxt"><summary class="pp-qtxt-summary">${resumo}…</summary><div class="pp-qtxt-body">${enuncFull}</div>`;
+            for (const letra of ['a', 'b', 'c', 'd', 'e']) {
+                if (qInfo.alternativas && qInfo.alternativas[letra]) {
+                    html += `<div class="pp-qtxt-alt"><span class="pp-qtxt-letra">${letra.toUpperCase()}</span> ${escHtml(qInfo.alternativas[letra])}</div>`;
+                }
+            }
+            html += `</details>`;
+        }
+        html += `<div class="pp-bolhas-row">`;
         for (const letra of LETRAS.slice(0, 5)) {
             html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
         }
         html += `<span class="pp-bolha" data-q="${q}" data-l="-" onclick="marcar(${q},'-')" title="Em branco">∅</span>`;
-        html += `</td></tr>`;
+        html += `</div></td></tr>`;
     }
     html += `</tbody></table>`;
     wrap.innerHTML = html;
