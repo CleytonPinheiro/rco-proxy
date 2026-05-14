@@ -877,6 +877,7 @@ const NOTIF_ICONE = {
     prazo_dias:                 '📅',
     verificacao_professor:      '📋',
     turma_corretora_disponivel: '✏️',
+    turma_corretora_atribuida:  '🏫',
 };
 const NOTIF_COR = {
     reabertura_aprovada:        'verde',
@@ -885,6 +886,7 @@ const NOTIF_COR = {
     prazo_dias:                 'amarelo',
     verificacao_professor:      'azul',
     turma_corretora_disponivel: 'verde',
+    turma_corretora_atribuida:  'azul',
 };
 
 function iniciarPollingNotificacoes() {
@@ -945,7 +947,8 @@ function mostrarProximaNotif() {
         btnAcao.href          = link;
         btnAcao.textContent   = 'Ver atividade →';
         btnAcao.style.display = '';
-    } else if (_notifAtual.tipo === 'turma_corretora_disponivel') {
+    } else if (_notifAtual.tipo === 'turma_corretora_disponivel' ||
+               _notifAtual.tipo === 'turma_corretora_atribuida') {
         btnAcao.href    = '#';
         btnAcao.onclick = (e) => {
             e.preventDefault();
@@ -958,7 +961,9 @@ function mostrarProximaNotif() {
                 }
             }, 150);
         };
-        btnAcao.textContent   = 'Abrir fila de correções →';
+        btnAcao.textContent   = _notifAtual.tipo === 'turma_corretora_atribuida'
+            ? 'Ver aba de correções →'
+            : 'Abrir fila de correções →';
         btnAcao.style.display = '';
     } else {
         btnAcao.style.display = 'none';

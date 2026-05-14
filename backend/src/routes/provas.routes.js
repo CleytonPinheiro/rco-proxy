@@ -1407,6 +1407,19 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             await pool.query(`UPDATE classroom_provas SET ${sets.join(', ')} WHERE id = $${i}`, vals);
             logProvas(req, 'PROVA_UPDATE', { provaId: req.params.id, campos: Object.keys(req.body) });
             res.json({ ok: true });
+
+            /* Notifica turma corretora quando professor atribui (fire-and-forget) */
+            const novoTcId = req.body.turmaCorretoraId;
+            if (novoTcId && String(novoTcId).trim()) {
+                const provaId = req.params.id;
+                setImmediate(async () => {
+                    try {
+                        await notificarAtribuicaoTurmaCorretora(pool, provaId, String(novoTcId).trim());
+                    } catch (e) {
+                        console.warn(`[NOTIF-TC-ATRIB] prova ${provaId}:`, e.message);
+                    }
+                });
+            }
         } catch (e) {
             res.status(500).json({ erro: e.message });
         }
@@ -3849,6 +3862,50 @@ export function createProvasPublicRouter() {
             );
         }
         console.log(`[NOTIF-TC] Notificou ${correctors.length} corretor(es) — prova ${prova.id}`);
+    }
+
+    /* ── Helper: notifica turma corretora no momento da ATRIBUIÇÃO pelo professor ──
+     * Dispara imediatamente quando o professor salva a turma corretora, sem depender
+     * de submissões já existentes. Deduplicado: só insere se não há notificação
+     * não-lida do mesmo tipo para a mesma prova. */
+    async function notificarAtribuicaoTurmaCorretora(pool, provaId, turmaCorretoraId) {
+        const { rows: [prova] } = await pool.query(
+            `SELECT nome FROM classroom_provas WHERE id = $1`, [provaId]
+        );
+        if (!prova) return;
+
+        /* Busca corretores pelo histórico de submissões no curso da turma corretora */
+        const { rows: correctors } = await pool.query(
+            `SELECT DISTINCT s.aluno_email
+               FROM classroom_prova_submissoes s
+               JOIN classroom_provas p ON p.id = s.prova_id
+              WHERE p.curso_id            = $1
+                AND s.eh_segundo_corretor = false
+                AND s.eh_turma_corretora  = false`,
+            [turmaCorretoraId]
+        );
+        if (correctors.length === 0) return;
+
+        const titulo   = '🏫 Você foi atribuído como corretor!';
+        const mensagem = `O professor atribuiu sua turma para corrigir a prova "${prova.nome}". Quando as folhas chegarem, acesse a aba "✏️ Correções" no Portal do Aluno para iniciar.`;
+        const dados    = JSON.stringify({ provaId: Number(provaId), provaNome: prova.nome });
+
+        for (const { aluno_email } of correctors) {
+            await pool.query(
+                `INSERT INTO notificacoes_aluno
+                       (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                 SELECT $1, 'turma_corretora_atribuida', $2, $3, $4, $5
+                  WHERE NOT EXISTS (
+                      SELECT 1 FROM notificacoes_aluno
+                       WHERE aluno_email = $1
+                         AND tipo        = 'turma_corretora_atribuida'
+                         AND referencia  = $2
+                         AND lida        = false
+                  )`,
+                [aluno_email, String(provaId), titulo, mensagem, dados]
+            );
+        }
+        console.log(`[NOTIF-TC-ATRIB] Atribuição notificada para ${correctors.length} corretor(es) — prova ${provaId}`);
     }
 
     router.get('/alunos-portal/turma-corretora/disponiveis', async (req, res) => {
