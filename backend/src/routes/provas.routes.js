@@ -149,6 +149,10 @@ async function migrarTabelas() {
                 UNIQUE(prova_id, variante_id, posicao)
             )
         `);
+        await pool.query(`
+            ALTER TABLE classroom_prova_mapa_questoes
+                ADD COLUMN IF NOT EXISTS alternativas_json JSONB DEFAULT NULL
+        `);
         console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags + notif-professor + mapa-questoes)');
     } catch (e) {
         console.warn('[PROVAS] Erro na migração:', e.message);
@@ -2264,7 +2268,8 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
             const { rows } = await pool.query(
-                `SELECT qf.questao_fisica, qf.variante_id, qf.posicao, v.codigo AS variante_codigo
+                `SELECT qf.questao_fisica, qf.variante_id, qf.posicao,
+                        qf.alternativas_json, v.codigo AS variante_codigo
                    FROM classroom_prova_mapa_questoes qf
                    JOIN classroom_prova_variantes v ON v.id = qf.variante_id
                   WHERE qf.prova_id = $1
@@ -2289,12 +2294,16 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             await client.query('BEGIN');
             await client.query('DELETE FROM classroom_prova_mapa_questoes WHERE prova_id = $1', [provaId]);
             for (const item of mapa) {
-                const { questao_fisica, variante_id, posicao } = item;
+                const { questao_fisica, variante_id, posicao, alternativas_json } = item;
                 if (!questao_fisica || !variante_id || !posicao) continue;
                 await client.query(
-                    `INSERT INTO classroom_prova_mapa_questoes (prova_id, questao_fisica, variante_id, posicao)
-                     VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-                    [provaId, questao_fisica, variante_id, posicao]
+                    `INSERT INTO classroom_prova_mapa_questoes
+                        (prova_id, questao_fisica, variante_id, posicao, alternativas_json)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (prova_id, questao_fisica, variante_id)
+                     DO UPDATE SET posicao = $4, alternativas_json = $5`,
+                    [provaId, questao_fisica, variante_id, posicao,
+                     alternativas_json ? JSON.stringify(alternativas_json) : null]
                 );
             }
             await client.query('COMMIT');
@@ -2425,24 +2434,39 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             const gabB = varB.gabarito_json || [];
             const mesmaVariante = aId === bId;
 
-            /* Carrega mapeamento de questões físicas, se existir */
+            /* Carrega mapeamento de questões físicas + alternativas, se existir */
             const { rows: mapaRows } = await pool.query(
-                `SELECT questao_fisica, variante_id, posicao
+                `SELECT questao_fisica, variante_id, posicao, alternativas_json
                    FROM classroom_prova_mapa_questoes
                   WHERE prova_id = $1 AND variante_id = ANY($2)
                   ORDER BY questao_fisica`,
                 [provaId, [aId, bId]]
             );
 
-            /* fisicaToPos[varId][questaoFisica] = posicao */
-            const fisicaToPos = {};
+            /* fisicaToPos[varId][qf] = posicao
+             * altMap[varId][qf]      = {letra_impressa: letra_canonica} | null */
+            const fisicaToPos = {}, altMap = {};
+            let altMapaDisponivel = false;
             for (const row of mapaRows) {
                 if (!fisicaToPos[row.variante_id]) fisicaToPos[row.variante_id] = {};
                 fisicaToPos[row.variante_id][row.questao_fisica] = row.posicao;
+                if (row.alternativas_json) {
+                    if (!altMap[row.variante_id]) altMap[row.variante_id] = {};
+                    altMap[row.variante_id][row.questao_fisica] = row.alternativas_json;
+                    altMapaDisponivel = true;
+                }
             }
             const mapaCobertaA = fisicaToPos[aId] && Object.keys(fisicaToPos[aId]).length > 0;
             const mapaCobertaB = fisicaToPos[bId] && Object.keys(fisicaToPos[bId]).length > 0;
             const mapaUsado    = !mesmaVariante && mapaCobertaA && mapaCobertaB;
+            const altMapaUsado = mapaUsado && altMapaDisponivel;
+
+            /* Traduz letra impressa → letra canônica usando altMap */
+            const _traduzirAlt = (letra, varId, qf) => {
+                if (!letra || mesmaVariante) return letra;
+                const trad = altMap[varId]?.[qf];
+                return (trad && trad[letra]) ? trad[letra] : letra;
+            };
 
             const gabAMap = Object.fromEntries((gabA).map(q => [q.questao, q]));
             const gabBMap = Object.fromEntries((gabB).map(q => [q.questao, q]));
@@ -2479,7 +2503,10 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                     const respA = marcacoesA[String(posA)] ?? null;
                     const respB = marcacoesB[String(posB)] ?? null;
                     const normA = _norm(respA), normB = _norm(respB);
-                    const identica = respA !== null && respB !== null && normA === normB;
+                    /* Traduz letras impressas para canônicas antes de comparar */
+                    const canonA = _traduzirAlt(normA, aId, qf);
+                    const canonB = _traduzirAlt(normB, bId, qf);
+                    const identica = respA !== null && respB !== null && canonA === canonB;
                     const erradaA = _errou(respA, qA), erradaB = _errou(respB, qB);
 
                     if (identica) identicas++;
@@ -2487,6 +2514,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                     questoes.push({
                         questaoFisica: qf, posA, posB,
                         respA: normA || null, respB: normB || null,
+                        canonA: canonA || null, canonB: canonB || null,
                         corretaA: Array.isArray(qA.correta) ? qA.correta.join(',') : (qA.correta || null),
                         corretaB: Array.isArray(qB.correta) ? qB.correta.join(',') : (qB.correta || null),
                         identica, erradaA, erradaB, erradasAmbos: !!(identica && erradaA && erradaB),
@@ -2522,7 +2550,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             res.json({
                 varianteACodigo: varA.codigo,
                 varianteBCodigo: varB.codigo,
-                mesmaVariante, mapaUsado, total, identicas, identicasErradas, similaridade, questoes,
+                mesmaVariante, mapaUsado, altMapaUsado, total, identicas, identicasErradas, similaridade, questoes,
             });
         } catch (e) {
             console.error('[PROVAS] Erro ao confrontar dois gabaritos:', e.message);

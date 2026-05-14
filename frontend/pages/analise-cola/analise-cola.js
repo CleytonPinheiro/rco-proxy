@@ -1241,7 +1241,7 @@ async function salvarRegistroManual() {
 }
 
 function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVariante, mapaUsado,
-                                       total, identicas, identicasErradas, similaridade, questoes }) {
+                                       altMapaUsado, total, identicas, identicasErradas, similaridade, questoes }) {
     const wrap = $('acRegResultados');
     if (!wrap) return;
 
@@ -1253,7 +1253,10 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
     let aviso = '';
     if (!mesmaVariante) {
         if (mapaUsado) {
-            aviso = `<div class="ac-conf-aviso ac-conf-aviso-ok">✅ Mapeamento de questões físicas aplicado — comparação por questão real, não posicional.</div>`;
+            const sufAlt = altMapaUsado
+                ? ' 🔤 Mapeamento de alternativas aplicado — letras traduzidas para o gabarito original.'
+                : ' ⚠️ Mapeamento de alternativas não disponível — reimporte o PDF para ativar a tradução de letras.';
+            aviso = `<div class="ac-conf-aviso ac-conf-aviso-ok">✅ Mapeamento de questões físicas aplicado — comparação por questão real, não posicional.${sufAlt}</div>`;
         } else {
             aviso = `<div class="ac-conf-aviso">⚠️ Variantes diferentes (${escapeHtml(varianteACodigo)} × ${escapeHtml(varianteBCodigo)}): comparação posicional — Q1 de cada variante pode não ser a mesma questão física. <a href="javascript:void(0)" onclick="fecharModalRegistro();abrirModalMapa()" style="font-weight:600;text-decoration:underline">Definir mapeamento →</a></div>`;
         }
@@ -1332,6 +1335,7 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
  * ═════════════════════════════════════════════════════════════════ */
 
 let _mapaGrid        = {};         // _mapaGrid[questao_fisica][variante_id] = posicao
+let _mapaAltMap      = {};         // _mapaAltMap[questao_fisica][variante_id] = {letra_impressa: letra_canonica}
 let _mapaVariantes   = [];         // [{id, codigo, gabarito}, ...]
 let _mapaN           = 0;          // número de questões objetivas
 let _mapaTotalQ      = 0;          // total de questões (discursivas + objetivas)
@@ -1375,11 +1379,18 @@ async function abrirModalMapa() {
         const r = await fetch(`/api/classroom/provas/${provaAtualId}/mapa-questoes`, { credentials: 'include' });
         const d = await r.json();
         if (r.ok && d.mapa && d.mapa.length > 0) {
+            let temAlt = 0;
             for (const item of d.mapa) {
                 if (!_mapaGrid[item.questao_fisica]) _mapaGrid[item.questao_fisica] = {};
                 _mapaGrid[item.questao_fisica][item.variante_id] = item.posicao;
+                if (item.alternativas_json) {
+                    if (!_mapaAltMap[item.questao_fisica]) _mapaAltMap[item.questao_fisica] = {};
+                    _mapaAltMap[item.questao_fisica][item.variante_id] = item.alternativas_json;
+                    temAlt++;
+                }
             }
-            _setMapaStatus(`Mapeamento existente carregado — ${d.mapa.length} correspondências.`, 'ok');
+            const sufAlt = temAlt > 0 ? ` (🔤 ${temAlt} com mapeamento de alternativas)` : '';
+            _setMapaStatus(`Mapeamento existente carregado — ${d.mapa.length} correspondências${sufAlt}.`, 'ok');
         }
     } catch { /* silencioso */ }
 
@@ -1542,10 +1553,13 @@ async function salvarMapeamento() {
 
     /* Monta array para envio */
     const mapa = [];
-    for (let qf = 1; qf <= _mapaN; qf++) {
+    for (let qf = 1; qf <= _mapaTotalQ; qf++) {
+        if (_mapaDiscursivas.has(qf)) continue;
         for (const v of _mapaVariantes) {
             const pos = _mapaGrid[qf]?.[v.id];
-            if (pos) mapa.push({ questao_fisica: qf, variante_id: v.id, posicao: pos });
+            if (!pos) continue;
+            const alternativas_json = _mapaAltMap[qf]?.[v.id] ?? null;
+            mapa.push({ questao_fisica: qf, variante_id: v.id, posicao: pos, alternativas_json });
         }
     }
 
@@ -1666,6 +1680,33 @@ function _stemMatch(a, b) {
     return a.slice(0, n) === b.slice(0, n);
 }
 
+/* Extrai textos de alternativas a) ( ) ... de um bloco de texto de questão */
+function _extrairAlternativas(bloco) {
+    const altRe = /\b([a-e])\s*\)\s*(?:\(\s*\)\s*)?([^\n]{5,80})/gi;
+    const alts = {};
+    let m;
+    while ((m = altRe.exec(bloco)) !== null) {
+        const letra = m[1].toLowerCase();
+        if (!alts[letra]) alts[letra] = _normalizarStem(m[2]).slice(0, 40);
+    }
+    return Object.keys(alts).length >= 2 ? alts : null;
+}
+
+/* Mapeia letras impressas de uma variante para letras canônicas (variante 0).
+ * Retorna {letra_var: letra_canon, ...} ou null se matching insuficiente. */
+function _construirMapaAlternativas(canAlts, varAlts) {
+    if (!canAlts || !varAlts) return null;
+    const mapa = {};
+    for (const [letraVar, textoVar] of Object.entries(varAlts)) {
+        const entry = Object.entries(canAlts).find(
+            ([, textoCanon]) => _stemMatch(textoCanon, textoVar)
+        );
+        if (entry) mapa[letraVar] = entry[0];
+    }
+    const n = Object.keys(mapa).length;
+    return n >= 2 && n >= Math.ceil(Object.keys(varAlts).length * 0.5) ? mapa : null;
+}
+
 function _parsearEPreencherMapa(text) {
     /* ── 1. Localiza marcadores de variante "Prova: XXXXX.Y" ── */
     const markers = [];
@@ -1680,22 +1721,36 @@ function _parsearEPreencherMapa(text) {
         return;
     }
 
-    /* ── 2. Extrai questões de cada seção de variante ── */
-    /* Regex: "Q.N (valor) - enunciado" — captura o início do enunciado */
-    const qRe = /Q\.?\s*(\d{1,2})\s*\(\s*[\d.]+\s*\)\s*[-–]?\s*([^\n]{8,})/g;
-
+    /* ── 2. Extrai questões (stem + alternativas) de cada seção de variante ── */
+    /* Usa abordagem por blocos: divide pelo marcador Q.N e extrai stem + alternativas */
     const variantData = markers.map((mk, i) => {
         const section = text.slice(mk.at, i + 1 < markers.length ? markers[i + 1].at : text.length);
+
+        /* Localiza todos os marcadores Q.N dentro desta seção */
+        const qMarkers = [];
+        const mkRe = /Q\.?\s*(\d{1,2})\s*\(\s*[\d.]+\s*\)/g;
+        let mm;
+        while ((mm = mkRe.exec(section)) !== null) {
+            qMarkers.push({ pos: parseInt(mm[1], 10), at: mm.index });
+        }
+
         const questions = [];
         const seen = new Set();
-        let qm;
-        qRe.lastIndex = 0;
-        while ((qm = qRe.exec(section)) !== null) {
-            const pos = parseInt(qm[1], 10);
-            if (pos < 3 || pos > 80) continue;  /* pula Q.1/Q.2 discursivas */
-            if (seen.has(pos)) continue;          /* deduplicação */
-            const stem = _normalizarStem(qm[2]);
-            if (stem.length >= 8) { questions.push({ posicao: pos, stem }); seen.add(pos); }
+        for (let j = 0; j < qMarkers.length; j++) {
+            const { pos, at } = qMarkers[j];
+            if (pos < 3 || pos > 80 || seen.has(pos)) continue;
+            seen.add(pos);
+
+            const blockEnd = j + 1 < qMarkers.length ? qMarkers[j + 1].at : section.length;
+            const block = section.slice(at, blockEnd);
+
+            /* Stem: primeira linha significativa após o marcador Q.N */
+            const stemMatch = /Q\.?\s*\d+\s*\(\s*[\d.]+\s*\)\s*[-–]?\s*([^\n]{8,})/.exec(block);
+            const stem = stemMatch ? _normalizarStem(stemMatch[1]) : '';
+            if (stem.length < 8) continue;
+
+            const alternativas = _extrairAlternativas(block);
+            questions.push({ posicao: pos, stem, alternativas });
         }
         return { varIndex: mk.varIndex, questions };
     });
@@ -1721,12 +1776,21 @@ function _parsearEPreencherMapa(text) {
         _mapaDiscursivas = new Set(Array.from({ length: firstObj - 1 }, (_, i) => i + 1));
     }
 
-    /* ── 3. Preenche o grid ── */
+    /* ── 3. Preenche o grid + mapa de alternativas ── */
     for (let qf = 1; qf <= _mapaTotalQ; qf++) {
         if (!_mapaDiscursivas.has(qf)) _mapaGrid[qf] = {};
     }
+    _mapaAltMap = {};
+
+    /* Alternativas canônicas por posição física (da variante 0) */
+    const canonAltsMap = {}; /* posicao → {a:'texto', b:'texto', ...} */
+    const canonDbVar   = _mapaVariantes.find(v => String(v.codigo) === String(canonical.varIndex));
+    for (const q of canonical.questions) {
+        if (q.alternativas) canonAltsMap[q.posicao] = q.alternativas;
+    }
 
     let mapeadas = 0;
+    let altsMapeadas = 0;
     const variantesAusentes = [];
 
     for (const vd of variantData) {
@@ -1734,16 +1798,19 @@ function _parsearEPreencherMapa(text) {
         if (!dbVar) { variantesAusentes.push(vd.varIndex); continue; }
 
         if (vd === canonical) {
-            /* Variante canônica: questão física = posição (identidade) */
+            /* Variante canônica: questão física = posição (identidade); alt map = null */
             for (const q of canonical.questions) {
                 if (_mapaGrid[q.posicao] !== undefined) {
                     _mapaGrid[q.posicao][dbVar.id] = q.posicao;
                     mapeadas++;
+                    /* Canônica não precisa de tradução */
+                    if (!_mapaAltMap[q.posicao]) _mapaAltMap[q.posicao] = {};
+                    _mapaAltMap[q.posicao][dbVar.id] = null;
                 }
             }
         } else {
-            /* Outras variantes: matching por enunciado */
-            const usados = new Set(); /* evita duplicar posicao canônica */
+            /* Outras variantes: matching por enunciado + matching de alternativas */
+            const usados = new Set();
             for (const q of vd.questions) {
                 const matched = canonical.questions.find(
                     cq => !usados.has(cq.posicao) && _stemMatch(cq.stem, q.stem)
@@ -1752,6 +1819,13 @@ function _parsearEPreencherMapa(text) {
                     _mapaGrid[matched.posicao][dbVar.id] = q.posicao;
                     usados.add(matched.posicao);
                     mapeadas++;
+
+                    /* Tenta construir mapeamento de alternativas */
+                    const canAlts = canonAltsMap[matched.posicao];
+                    const altMapa = _construirMapaAlternativas(canAlts, q.alternativas);
+                    if (!_mapaAltMap[matched.posicao]) _mapaAltMap[matched.posicao] = {};
+                    _mapaAltMap[matched.posicao][dbVar.id] = altMapa;
+                    if (altMapa) altsMapeadas++;
                 }
             }
         }
@@ -1769,8 +1843,12 @@ function _parsearEPreencherMapa(text) {
         ? ` Algumas questões não foram identificadas (${mapeadas}/${totalEsperado}) — ajuste manualmente as células vazias.`
         : '';
 
+    const avisoAlt = altsMapeadas > 0
+        ? ` 🔤 Alternativas mapeadas em ${altsMapeadas} questão(ões) — letras serão traduzidas no confronto.`
+        : ' ⚠️ Alternativas não identificadas — textos muito curtos ou layout não reconhecido.';
+
     _setMapaStatus(
-        `✅ PDF importado — ${variantData.length - variantesAusentes.length} variante(s), ${mapeadas} correspondências (${pct}%).${avisoAus}${avisoInc} Salve ao confirmar.`,
+        `✅ PDF importado — ${variantData.length - variantesAusentes.length} variante(s), ${mapeadas} correspondências (${pct}%).${avisoAlt}${avisoAus}${avisoInc} Salve ao confirmar.`,
         pct >= 80 ? 'ok' : ''
     );
 }
