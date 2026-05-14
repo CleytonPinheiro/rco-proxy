@@ -82,6 +82,16 @@ async function migrarTabela() {
             )
         `);
 
+        /* Cache de cursos do aluno — populado no login, usado por notificações */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS aluno_cursos_cache (
+                aluno_email   TEXT        NOT NULL,
+                curso_id      TEXT        NOT NULL,
+                atualizado_em TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (aluno_email, curso_id)
+            )
+        `);
+
         console.log('[ALUNOS-PORTAL] Tabelas OK');
     } catch (e) {
         console.warn('[ALUNOS-PORTAL] Erro na migração:', e.message);

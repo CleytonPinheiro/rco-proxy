@@ -157,6 +157,15 @@ async function migrarTabelas() {
             ALTER TABLE classroom_prova_mapa_questoes
                 ADD COLUMN IF NOT EXISTS alternativas_json JSONB DEFAULT NULL
         `);
+        /* Cache de cursos do aluno — criado aqui também para garantir disponibilidade */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS aluno_cursos_cache (
+                aluno_email   TEXT        NOT NULL,
+                curso_id      TEXT        NOT NULL,
+                atualizado_em TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (aluno_email, curso_id)
+            )
+        `);
         console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags + notif-professor + mapa-questoes)');
     } catch (e) {
         console.warn('[PROVAS] Erro na migração:', e.message);
@@ -3874,15 +3883,10 @@ export function createProvasPublicRouter() {
         );
         if (!prova) return;
 
-        /* Busca corretores pelo histórico de submissões no curso da turma corretora */
+        /* Busca corretores via cache de cursos (populado quando alunos acessam o portal) */
         const { rows: correctors } = await pool.query(
-            `SELECT DISTINCT s.aluno_email
-               FROM classroom_prova_submissoes s
-               JOIN classroom_provas p ON p.id = s.prova_id
-              WHERE p.curso_id            = $1
-                AND s.eh_segundo_corretor = false
-                AND s.eh_turma_corretora  = false`,
-            [turmaCorretoraId]
+            `SELECT DISTINCT aluno_email FROM aluno_cursos_cache WHERE curso_id = $1`,
+            [String(turmaCorretoraId)]
         );
         if (correctors.length === 0) return;
 
@@ -3930,12 +3934,73 @@ export function createProvasPublicRouter() {
     /**
      * GET /api/alunos-portal/turma-corretora/atribuicoes
      * Retorna TODAS as provas onde o aluno é corretor atribuído (inclusive sem
-     * submissões ainda). Campo `pendentes` indica quantas folhas aguardam correção.
+     * submissões ainda). Usa a Google Classroom API para detectar os cursos do
+     * aluno — funciona mesmo para alunos sem nenhuma submissão de prova anterior.
      */
     router.get('/alunos-portal/turma-corretora/atribuicoes', async (req, res) => {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
+            /* ── Detecta cursos do aluno via Classroom API (credencial de qualquer professor) ── */
+            const meusCursoIds = new Set();
+            try {
+                const { rows: tkRows } = await pool.query(
+                    `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                );
+                if (tkRows[0]) {
+                    const { google } = await import('googleapis');
+                    const auth = new google.auth.OAuth2(
+                        process.env.GOOGLE_CLIENT_ID,
+                        process.env.GOOGLE_CLIENT_SECRET,
+                        `${req.protocol}://${req.get('host')}/api/classroom/callback`
+                    );
+                    auth.setCredentials(tkRows[0].tokens);
+                    const classroom = google.classroom({ version: 'v1', auth });
+                    let pageToken;
+                    do {
+                        const r = await classroom.courses.list({
+                            studentId:    aluno.email,
+                            courseStates: ['ACTIVE'],
+                            pageSize:     100,
+                            pageToken,
+                        });
+                        (r.data.courses || []).forEach(c => meusCursoIds.add(c.id));
+                        pageToken = r.data.nextPageToken;
+                    } while (pageToken);
+
+                    /* Atualiza cache para uso das notificações (fire-and-forget) */
+                    if (meusCursoIds.size > 0) {
+                        setImmediate(async () => {
+                            try {
+                                await pool.query(
+                                    `DELETE FROM aluno_cursos_cache WHERE aluno_email = $1`,
+                                    [aluno.email]
+                                );
+                                for (const cid of meusCursoIds) {
+                                    await pool.query(
+                                        `INSERT INTO aluno_cursos_cache (aluno_email, curso_id)
+                                         VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+                                        [aluno.email, cid]
+                                    );
+                                }
+                            } catch (_) {}
+                        });
+                    }
+                }
+            } catch (_) {
+                /* API indisponível: usa cache como fallback */
+                const { rows: cached } = await pool.query(
+                    `SELECT curso_id FROM aluno_cursos_cache WHERE aluno_email = $1`,
+                    [aluno.email]
+                );
+                cached.forEach(r => meusCursoIds.add(r.curso_id));
+            }
+
+            if (meusCursoIds.size === 0) return res.json({ provas: [] });
+
+            const ids = [...meusCursoIds];
+            const ph  = ids.map((_, i) => `$${i + 2}`).join(', ');
+
             const { rows } = await pool.query(
                 `SELECT
                      p.id            AS prova_id,
@@ -3945,13 +4010,13 @@ export function createProvasPublicRouter() {
                      COALESCE((
                          SELECT COUNT(*)::int
                            FROM classroom_prova_submissoes ps
-                          WHERE ps.prova_id         = p.id
+                          WHERE ps.prova_id           = p.id
                             AND ps.eh_segundo_corretor = false
                             AND ps.eh_turma_corretora  = false
-                            AND ps.aluno_email         != $1
+                            AND ps.aluno_email          != $1
                             AND NOT EXISTS (
                                 SELECT 1 FROM classroom_prova_submissoes tc
-                                 WHERE tc.submissao_ref_id  = ps.id
+                                 WHERE tc.submissao_ref_id   = ps.id
                                    AND tc.eh_turma_corretora = true
                             )
                             AND NOT EXISTS (
@@ -3961,17 +4026,10 @@ export function createProvasPublicRouter() {
                             )
                      ), 0) AS pendentes
                    FROM classroom_provas p
-                  WHERE p.turma_corretora_id IN (
-                      SELECT DISTINCT pc.curso_id
-                        FROM classroom_prova_submissoes sc
-                        JOIN classroom_provas pc ON pc.id = sc.prova_id
-                       WHERE sc.aluno_email         = $1
-                         AND sc.eh_segundo_corretor = false
-                         AND sc.eh_turma_corretora  = false
-                  )
+                  WHERE p.turma_corretora_id IN (${ph})
                     AND p.efetivada = false
                   ORDER BY pendentes DESC, p.id`,
-                [aluno.email]
+                [aluno.email, ...ids]
             );
             res.json({ provas: rows });
         } catch (e) {
