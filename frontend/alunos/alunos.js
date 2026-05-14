@@ -111,6 +111,19 @@ function mudarAba(aba) {
 }
 window.mudarAba = mudarAba;
 
+/* ── Estado compartilhado para o badge de Correções ──── */
+const _correcoesPendentes = { turma: 0, corretor: 0 };
+function _atualizarBadgeCorrecoes() {
+    const total  = _correcoesPendentes.turma + _correcoesPendentes.corretor;
+    const badge  = $('paNavBadge');
+    const tabCor = $('paTabCorrecoes');
+    if (badge) {
+        if (total > 0) { badge.style.display = ''; badge.textContent = total; }
+        else           badge.style.display = 'none';
+    }
+    if (tabCor) tabCor.classList.toggle('pa-nav-tab--urgente', total > 0);
+}
+
 /* ── Fila da Turma Corretora ─────────────────────────── */
 async function carregarTurmaCorretora() {
     try {
@@ -120,7 +133,6 @@ async function carregarTurmaCorretora() {
         const { provas } = await r.json();
 
         const nav      = $('paNavMenu');
-        const badge    = $('paNavBadge');
         const alert    = $('paCorrecaoAlert');
         const alertTxt = $('paAlertTxt');
         const lista    = $('paTurmaCorretoraLista');
@@ -140,9 +152,9 @@ async function carregarTurmaCorretora() {
         const semSubmissoes = provas.filter(p => Number(p.pendentes) === 0);
 
         /* Badge, alerta e destaque visual quando há folhas para corrigir */
-        const tabCor = $('paTabCorrecoes');
+        _correcoesPendentes.turma = comPendentes.length;
+        _atualizarBadgeCorrecoes();
         if (comPendentes.length > 0) {
-            if (badge)    { badge.style.display = ''; badge.textContent = comPendentes.length; }
             if (alert)    alert.style.display = '';
             if (alertTxt) {
                 const n = comPendentes.length;
@@ -150,11 +162,8 @@ async function carregarTurmaCorretora() {
                     ? '1 prova com folhas aguardando sua correção — clique para abrir a fila.'
                     : `${n} provas com folhas aguardando sua correção — clique para abrir a fila.`;
             }
-            if (tabCor) tabCor.classList.add('pa-nav-tab--urgente');
         } else {
-            if (badge)  badge.style.display = 'none';
             if (alert)  alert.style.display = 'none';
-            if (tabCor) tabCor.classList.remove('pa-nav-tab--urgente');
         }
 
         /* ── Renderiza cards com select de alunos ── */
@@ -341,9 +350,18 @@ async function carregarTarefasCorretor() {
         if (!sec || !lista) return;
         if (!pendentes || pendentes.length === 0) {
             sec.style.display = 'none';
+            _correcoesPendentes.corretor = 0;
+            _atualizarBadgeCorrecoes();
             return;
         }
         sec.style.display = '';
+
+        /* Mostra o menu nav (mesmo que o aluno não seja Turma Corretora) */
+        const nav = $('paNavMenu');
+        if (nav) nav.style.display = '';
+        _correcoesPendentes.corretor = pendentes.length;
+        _atualizarBadgeCorrecoes();
+
         lista.innerHTML = pendentes.map(p => `
             <div class="pa-solicita-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
                 <div>
