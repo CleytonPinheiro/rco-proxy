@@ -1710,12 +1710,12 @@ async function verHistoricoAlunoProvas(email, nome) {
         modal.style.display = 'flex';
         modal.onclick = e => { if (e.target === modal) modal.remove(); };
         modal.innerHTML = `
-            <div class="prv-modal-card" style="max-width:560px;width:94%;max-height:80vh;overflow-y:auto">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="prv-modal-card" style="max-width:560px;width:94%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;padding:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 14px;flex-shrink:0;border-bottom:1px solid var(--border,#eee)">
                     <h3 id="prvColaHistTitulo" style="margin:0;font-size:18px">Histórico</h3>
                     <button class="prv-btn-icon" onclick="document.getElementById('prvColaHistModal').remove()">✕</button>
                 </div>
-                <div id="prvColaHistCorpo"></div>
+                <div id="prvColaHistCorpo" style="flex:1;overflow-y:auto;min-height:0;padding:16px 24px"></div>
             </div>
         `;
         document.body.appendChild(modal);

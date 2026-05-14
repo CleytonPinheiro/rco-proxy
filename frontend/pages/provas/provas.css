@@ -102,6 +102,12 @@
 .prv-modal-title {
     margin: 0 0 14px; font-size: 18px; font-weight: 700;
     color: var(--text-primary, #111);
+    position: sticky; top: 0; z-index: 2;
+    background: var(--bg-card, #fff);
+    padding-bottom: 6px;
+}
+[data-theme="dark"] .prv-modal-title {
+    background: var(--bg-card, #1a1d27);
 }
 /* Loading overlay inside modal */
 .prv-modal-loading {
@@ -130,7 +136,15 @@
 .prv-modal-card .form-select { display: block; width: 100%; margin-top: 4px; }
 .prv-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; }
 .prv-toggle input { width:auto !important; margin-top:0 !important; }
-.prv-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.prv-modal-actions {
+    display:flex; gap:8px; justify-content:flex-end; margin-top:16px;
+    position: sticky; bottom: 0; z-index: 2;
+    background: var(--bg-card, #fff);
+    padding-top: 10px;
+}
+[data-theme="dark"] .prv-modal-actions {
+    background: var(--bg-card, #1a1d27);
+}
 .prv-erro { color:#dc2626; margin-top:10px; font-size:13px; padding:8px; background:#fee2e2; border-radius:6px; }
 .prv-form-row { display:flex; gap:10px; }
 .prv-form-row > label { flex:1; min-width:0; }
@@ -647,6 +661,12 @@
     gap: 16px; margin-bottom: 20px;
     padding-bottom: 16px;
     border-bottom: 2px solid var(--border, #e5e7eb);
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg-secondary, #fff);
+    padding-top: 4px;
+}
+[data-theme="dark"] .prv-conversa-header {
+    background: var(--bg-secondary);
 }
 .prv-conversa-header-text { flex: 1; min-width: 0; }
 .prv-conversa-titulo { margin: 0 0 6px; font-size: 22px; }
@@ -722,7 +742,7 @@
         box-shadow: none !important;
     }
     .no-print { display: none !important; }
-    .prv-conversa-header { border-bottom: 1px solid #ccc; }
+    .prv-conversa-header { border-bottom: 1px solid #ccc; position: static; }
     .prv-conversa-q-erro td { background: #ffe4e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .prv-cola-badge { border: 1px solid #ccc; }
 }
