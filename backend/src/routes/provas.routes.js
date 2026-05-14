@@ -4612,7 +4612,13 @@ export function createProvasPublicRouter() {
             });
 
             const todosCorrigidos = result.length === 0 && correctedSet.size > 0;
-            res.json({ alunos: result, variantes, todos_corrigidos: todosCorrigidos });
+            res.json({
+                alunos: result,
+                variantes,
+                todos_corrigidos: todosCorrigidos,
+                total_turma:   rosterAlunos.length,
+                ja_corrigidos: correctedSet.size,
+            });
         } catch (e) {
             console.error('[LISTA-TURMA-ALVO]', e.message);
             res.status(500).json({ erro: e.message });

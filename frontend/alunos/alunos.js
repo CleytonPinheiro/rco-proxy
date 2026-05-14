@@ -186,6 +186,7 @@ async function carregarTurmaCorretora() {
                         ${badgePend}${badge2a}
                     </div>
                 </div>
+                <div id="tcorProgresso_${p.prova_id}" style="margin-bottom:6px"></div>
                 <label style="font-size:0.85em;color:var(--pa-sub);display:block;margin-bottom:6px">
                     Selecione o aluno cuja folha está em suas mãos:
                 </label>
@@ -245,6 +246,19 @@ async function tcorCarregarListaAlunos(provaId) {
         window._tcorVariantes = window._tcorVariantes || {};
         window._tcorAlunos[provaId]    = d.alunos;
         window._tcorVariantes[provaId] = d.variantes || [];
+
+        /* Progresso: mostra badge "X/Y corrigidos" quando há pelo menos 1 já corrigido */
+        const progDiv = document.getElementById(`tcorProgresso_${provaId}`);
+        if (progDiv) {
+            const jaCorr   = d.ja_corrigidos || 0;
+            const totalTur = d.total_turma   || 0;
+            if (jaCorr > 0 && totalTur > 0) {
+                progDiv.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;border:1px solid #93c5fd;border-radius:20px;padding:3px 10px;font-size:0.8em;font-weight:600;color:#1d4ed8">` +
+                    `<span style="font-size:1em">📋</span>${jaCorr}/${totalTur} corrigidos</span>`;
+            } else {
+                progDiv.innerHTML = '';
+            }
+        }
 
         if (d.alunos.length === 0) {
             sel.innerHTML = '<option value="">— Nenhum aluno disponível —</option>';
