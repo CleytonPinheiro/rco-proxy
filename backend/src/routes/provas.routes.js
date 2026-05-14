@@ -4504,7 +4504,7 @@ export function createProvasPublicRouter() {
                   AND (s.aluno_nome ILIKE $3 OR s.aluno_nome IS NULL)
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc2
-                       WHERE tc2.submissao_ref_id = s.id AND tc2.aluno_email = $2
+                       WHERE tc2.submissao_ref_id = s.id AND tc2.eh_turma_corretora = true
                   )
                 ORDER BY COALESCE(s.aluno_nome,''), v.codigo
                 LIMIT 10`,
@@ -4514,6 +4514,16 @@ export function createProvasPublicRouter() {
             const emailsBranch1 = new Set(comSubmissaoRaw.map(r => r._email_interno?.toLowerCase()).filter(Boolean));
             /* Remove campo interno antes de enviar ao cliente */
             const comSubmissao = comSubmissaoRaw.map(({ _email_interno, ...rest }) => rest);
+
+            /* Emails já corrigidos pela turma corretora (qualquer corretor) — para filtrar o roster */
+            const { rows: correctedRows } = await pool.query(
+                `SELECT DISTINCT s_orig.aluno_email
+                   FROM classroom_prova_submissoes tc
+                   JOIN classroom_prova_submissoes s_orig ON s_orig.id = tc.submissao_ref_id
+                  WHERE tc.prova_id = $1 AND tc.eh_turma_corretora = true`,
+                [pid]
+            );
+            const correctedEmails = new Set(correctedRows.map(r => r.aluno_email?.toLowerCase()).filter(Boolean));
 
             /* ── Branch 2: Google Classroom roster da turma alvo ── */
             /* Busca TODOS os alunos da turma alvo pelo nome, independente de submissão.  */
@@ -4547,6 +4557,7 @@ export function createProvasPublicRouter() {
                             if (!email) continue;
                             if (email === aluno.email.toLowerCase()) continue; /* não se auto-corrigir */
                             if (emailsBranch1.has(email)) continue;            /* já aparece no branch 1 */
+                            if (correctedEmails.has(email)) continue;          /* já foi corrigido por outro */
                             if (!nomeCls.toLowerCase().includes(filtro)) continue;
                             semSubmissao.push({
                                 submissao_ref_id:            null,
