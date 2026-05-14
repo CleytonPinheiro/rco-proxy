@@ -151,13 +151,17 @@ async function selecionarVariante(v) {
 function renderTabelaEtapa1() {
     /* Sem gabarito ainda — só a coluna "Marque" */
     const wrap = $('ppTabelaEtapa1');
+    const qt = _lerQuestoesTxt(estado.prova?.id, estado.varianteSel?.codigo);
     let html = `<table class="pp-tabela"><thead><tr>
         <th style="width:40px">#</th>
         <th>Sua resposta</th>
     </tr></thead><tbody>`;
     for (let q = 1; q <= estado.qtdQuestoes; q++) {
+        const qInfo = qt ? qt[q] : null;
+        const temE = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
+        const letras = temE ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
         html += `<tr><td class="pp-q-num">${q}</td><td>`;
-        for (const letra of LETRAS.slice(0, 5)) {
+        for (const letra of letras) {
             html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
         }
         html += `</td></tr>`;
@@ -402,10 +406,11 @@ function renderTabelaTcor() {
             html += `</details>`;
         }
         html += `<div class="pp-bolhas-row">`;
-        for (const letra of LETRAS.slice(0, 5)) {
+        const temETcor = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
+        const letrasTcor = temETcor ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
+        for (const letra of letrasTcor) {
             html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
         }
-        html += `<span class="pp-bolha" data-q="${q}" data-l="-" onclick="marcar(${q},'-')" title="Em branco">∅</span>`;
         html += `</div></td></tr>`;
     }
     html += `</tbody></table>`;
@@ -484,10 +489,11 @@ function renderTabelaSegundo() {
             html += `</details>`;
         }
         html += `<div class="pp-bolhas-row">`;
-        for (const letra of LETRAS.slice(0, 5)) {
+        const temESeg = qInfo && qInfo.alternativas && qInfo.alternativas['e'];
+        const letrasSeg = temESeg ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
+        for (const letra of letrasSeg) {
             html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
         }
-        html += `<span class="pp-bolha" data-q="${q}" data-l="-" onclick="marcar(${q},'-')" title="Em branco">∅</span>`;
         html += `</div></td></tr>`;
     }
     html += `</tbody></table>`;
