@@ -268,6 +268,7 @@ async function init() {
     prvCreateCustomSelect($('prvfFoto'));
     prvCreateCustomSelect($('prvfTipo'));
     prvCreateCustomSelect($('prvfTrimestre'));
+    prvCreateCustomSelect($('prvfTurmaCorretoraCurso'));
 
     /* Verifica status do GradePen e exibe o banner */
     gpCheckStatus();
@@ -1010,7 +1011,9 @@ function renderDetalhe(d) {
         }
         /* Render everything together so prepend never gets wiped */
         $('prvDetGabarito').innerHTML = gabCfg + gabSegundoCorretor + gabMapPaginas + gabStr;
-        if ($('prvSc2TurmaSel')) prvCreateCustomSelect($('prvSc2TurmaSel'));
+        if ($('prvSc2TurmaSel'))      prvCreateCustomSelect($('prvSc2TurmaSel'));
+        if ($('prvTcorCurso'))        prvCreateCustomSelect($('prvTcorCurso'));
+        if ($('prvTcorAtVariante'))   prvCreateCustomSelect($('prvTcorAtVariante'));
     }
 
     /* Submissões (exclui explicitamente correções da turma corretora das linhas "principais") */
