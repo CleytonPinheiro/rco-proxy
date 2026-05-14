@@ -2302,6 +2302,78 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* ── Atribuir folha para turma corretora (professor cria submissão-gatilho sem marcações) ── */
+    router.post('/classroom/provas/:provaId/turma-corretora/atribuir-folha', async (req, res) => {
+        const session = req.userSession;
+        if (!session) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { alunoNome, alunoEmail, varianteCodigo } = req.body || {};
+        if (!alunoNome || !alunoEmail || !varianteCodigo) {
+            return res.status(400).json({ erro: 'alunoNome, alunoEmail e varianteCodigo são obrigatórios.' });
+        }
+
+        try {
+            const provaId = parseInt(req.params.provaId, 10);
+            const { rows: [prova] } = await pool.query(
+                `SELECT id, criada_por_cpf, turma_corretora_id FROM classroom_provas WHERE id = $1`, [provaId]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            const cpf = session.cpf || session.rco_cpf;
+            if (session.perfil !== 'admin' && prova.criada_por_cpf !== cpf) {
+                return res.status(403).json({ erro: 'Acesso negado. Esta prova não é sua.' });
+            }
+            if (!prova.turma_corretora_id) {
+                return res.status(400).json({ erro: 'Esta prova não tem turma corretora configurada.' });
+            }
+
+            const emailNorm = String(alunoEmail).toLowerCase().trim();
+
+            const { rows: [variante] } = await pool.query(
+                `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE prova_id = $1 AND codigo = $2`,
+                [provaId, String(varianteCodigo)]
+            );
+            if (!variante) return res.status(404).json({ erro: `Variante "${varianteCodigo}" não encontrada.` });
+
+            const { rows: existente } = await pool.query(
+                `SELECT id FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND aluno_email = $2 AND eh_segundo_corretor = false AND eh_turma_corretora = false`,
+                [provaId, emailNorm]
+            );
+            if (existente.length > 0) {
+                return res.status(409).json({ erro: `${emailNorm} já possui uma submissão para esta prova.` });
+            }
+
+            /* Calcula total_max a partir do gabarito (marcações em branco → nota 0) */
+            const { total } = calcularNota(variante.gabarito_json, {});
+
+            const { rows: [sub] } = await pool.query(
+                `INSERT INTO classroom_prova_submissoes
+                   (prova_id, variante_id, variante_id_original, aluno_email, aluno_nome,
+                    marcacoes_json, nota, total_max, ip, user_agent, origem)
+                 VALUES ($1,$2,$2,$3,$4,$5,0,$6,$7,$8,'professor-tcor')
+                 RETURNING id, criada_em`,
+                [provaId, variante.id, emailNorm, String(alunoNome).trim(),
+                 JSON.stringify({}), total,
+                 'manual:' + (cpf || 'professor'), 'manual-professor']
+            );
+
+            res.json({ submissaoId: sub.id, criada_em: sub.criada_em });
+
+            /* Notifica turma corretora sobre a nova folha disponível */
+            setImmediate(async () => {
+                try {
+                    await notificarTurmaCorretora(pool, prova, emailNorm);
+                } catch (e) {
+                    console.warn(`[NOTIF-TC] Falhou ao notificar após atribuição manual (prova ${provaId}): ${e.message}`);
+                }
+            });
+        } catch (e) {
+            console.error('[PROVAS] Erro ao atribuir folha para turma corretora:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Mapeamento de questões físicas — GET ── */
     router.get('/classroom/provas/:id/mapa-questoes', async (req, res) => {
         if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });

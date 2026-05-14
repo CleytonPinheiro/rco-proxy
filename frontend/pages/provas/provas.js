@@ -889,6 +889,26 @@ function renderDetalhe(d) {
                     ${currentTcId ? `<button class="prv-btn" onclick="salvarTurmaCorretora(true)">Remover turma corretora</button>` : ''}
                 </div>
                 <small style="color:#888">Alterações são aplicadas imediatamente. Os alunos da turma corretora encontram as folhas para corrigir diretamente no <strong>Portal do Aluno → aba "✏️ Correções"</strong> — não é necessário publicar atividade no Classroom para eles.</small>
+                ${currentTcId ? `<div style="margin-top:10px;border-top:1px solid #e5e7eb;padding-top:10px">
+                    <p style="margin:0 0 6px;font-size:0.88em;color:#374151"><strong>📋 Atribuir folha manualmente</strong> — para alunos que entregaram em papel mas não submeteram pelo portal.</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+                        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:160px">
+                            <label style="font-size:0.8em;color:#6b7280">Nome do aluno</label>
+                            <input id="prvTcorAtNome" class="form-input" placeholder="Ex: João da Silva" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9em">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:200px">
+                            <label style="font-size:0.8em;color:#6b7280">E-mail do aluno</label>
+                            <input id="prvTcorAtEmail" class="form-input" type="email" placeholder="aluno@escola.pr.gov.br" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9em">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:3px;min-width:110px">
+                            <label style="font-size:0.8em;color:#6b7280">Variante</label>
+                            <select id="prvTcorAtVariante" class="form-select" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.9em">
+                                ${d.variantes.map(v => `<option value="${escapeHtml(v.codigo)}">.${escapeHtml(v.codigo)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <button class="prv-btn prv-btn-primary" onclick="atribuirFolhaTcor()" style="white-space:nowrap">➕ Atribuir folha</button>
+                    </div>
+                </div>` : ''}
             </div>
         </details>`;
 
@@ -1026,6 +1046,31 @@ async function salvarTurmaCorretora(remover = false) {
         toast(remover ? 'Turma corretora removida.' : 'Turma corretora salva!', 'ok');
         await abrirDetalhe(provaAberta.prova.id);
     } catch (e) { await notificar('Erro', e.message, {tipo: 'danger'}); }
+}
+
+async function atribuirFolhaTcor() {
+    if (!provaAberta) return;
+    const nome      = ($('prvTcorAtNome')?.value || '').trim();
+    const email     = ($('prvTcorAtEmail')?.value || '').trim();
+    const variante  = ($('prvTcorAtVariante')?.value || '').trim();
+    if (!nome || !email || !variante) {
+        toast('Preencha nome, e-mail e variante do aluno.', 'warn');
+        return;
+    }
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAberta.prova.id}/turma-corretora/atribuir-folha`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ alunoNome: nome, alunoEmail: email, varianteCodigo: variante }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao atribuir folha.');
+        toast(`Folha de ${nome} atribuída! A turma corretora já pode encontrá-la.`, 'ok');
+        if ($('prvTcorAtNome'))    $('prvTcorAtNome').value  = '';
+        if ($('prvTcorAtEmail'))   $('prvTcorAtEmail').value = '';
+        await abrirDetalhe(provaAberta.prova.id);
+    } catch (e) { await notificar('Erro ao atribuir folha', e.message, { tipo: 'danger' }); }
 }
 
 async function sortear(submissaoId) {
