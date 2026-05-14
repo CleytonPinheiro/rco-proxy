@@ -499,6 +499,16 @@ async function iniciarSegundoCorretor(subRefId) {
 
         estado.qtdQuestoes = pend.qtd_questoes || 12;
         estado.segQuestoesTxt = _lerQuestoesTxt(pend.prova_id, pend.variante_codigo);
+
+        const segVarWrap = $('ppSegVarianteWrap');
+        const segVarEl   = $('ppSegVariante');
+        if (segVarWrap && segVarEl && pend.variante_codigo != null) {
+            segVarEl.textContent = pend.variante_codigo;
+            segVarWrap.style.display = '';
+        } else if (segVarWrap) {
+            segVarWrap.style.display = 'none';
+        }
+
         renderTabelaSegundo();
         show('ppSegundo');
     } catch (e) { showErro(e.message); }

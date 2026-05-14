@@ -13,7 +13,8 @@
             0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.45); }
             50%       { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
         }
-        #ppTcorVarianteDestaque {
+        #ppTcorVarianteDestaque,
+        #ppSegVarianteDestaque {
             animation: variantePulse 2s ease-in-out 3;
         }
     </style>
@@ -118,6 +119,16 @@
                 preencha o que vê marcado em cada questão. <strong>Você não vê o nome nem a nota da correção original</strong> —
                 isso garante isenção.
             </p>
+            <div id="ppSegVarianteWrap" style="display:none;margin:12px 0">
+                <div id="ppSegVarianteDestaque" style="display:flex;align-items:center;gap:14px;padding:14px 20px;background:#fffbeb;border:2px solid #f59e0b;border-radius:12px">
+                    <span style="font-size:2rem;line-height:1">⚠️</span>
+                    <div>
+                        <div style="font-size:0.75em;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Variante da folha</div>
+                        <div style="font-size:1.6rem;font-weight:900;color:#b45309;line-height:1">VARIANTE <span id="ppSegVariante"></span></div>
+                        <div style="font-size:0.8em;color:#92400e;margin-top:4px;font-weight:600">Use o gabarito desta variante para corrigir</div>
+                    </div>
+                </div>
+            </div>
             <div id="ppSegMiniQuizAviso" style="display:none;margin:12px 0;padding:12px 16px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;color:#1e40af">
                 <strong>📝 Modo mini-quiz</strong> — A folha deste colega não tem foto. Em vez disso, marque abaixo qual você acredita ser a resposta correta para cada questão. Seu resultado será comparado com o gabarito para calcular seu XP de precisão — então responda com atenção!
             </div>
