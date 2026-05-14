@@ -3969,108 +3969,15 @@ export function createProvasPublicRouter() {
 
     /**
      * GET /api/alunos-portal/turma-corretora/atribuicoes
-     * Retorna TODAS as provas onde o aluno é corretor atribuído (inclusive sem
-     * submissões ainda). Usa a Google Classroom API para detectar os cursos do
-     * aluno — funciona mesmo para alunos sem nenhuma submissão de prova anterior.
+     * Retorna todas as provas onde o aluno foi atribuído como turma corretora.
+     * Fonte de verdade: notificacoes_aluno (tipo = 'turma_corretora_atribuida'),
+     * populada quando o professor atribui a turma corretora — sem dependência
+     * de classroom_tokens, Google API ou cache de cursos.
      */
     router.get('/alunos-portal/turma-corretora/atribuicoes', async (req, res) => {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
         try {
-            /* ── Detecta cursos do aluno via Classroom API ── */
-            const meusCursoIds = new Set();
-            let apiOk = false;
-
-            const { rows: tkRows } = await pool.query(
-                `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
-            );
-
-            if (tkRows[0]) {
-                try {
-                    const { google } = await import('googleapis');
-                    const auth = new google.auth.OAuth2(
-                        process.env.GOOGLE_CLIENT_ID,
-                        process.env.GOOGLE_CLIENT_SECRET,
-                        `${req.protocol}://${req.get('host')}/api/classroom/callback`
-                    );
-                    const token = tkRows[0].tokens;
-                    auth.setCredentials(token);
-
-                    /* Renova o token se estiver expirado */
-                    if (token.expiry_date && token.expiry_date < Date.now()) {
-                        try {
-                            const { credentials } = await auth.refreshAccessToken();
-                            auth.setCredentials(credentials);
-                            await pool.query(
-                                `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW()
-                                  WHERE ctid = (SELECT ctid FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1)`,
-                                [JSON.stringify(credentials)]
-                            );
-                        } catch (refErr) {
-                            console.warn('[ATRIB] Falha ao renovar token do professor:', refErr.message);
-                        }
-                    }
-
-                    const classroom = google.classroom({ version: 'v1', auth });
-                    let pageToken;
-                    do {
-                        const r = await classroom.courses.list({
-                            studentId:    aluno.email,
-                            courseStates: ['ACTIVE'],
-                            pageSize:     100,
-                            pageToken,
-                        });
-                        (r.data.courses || []).forEach(c => meusCursoIds.add(c.id));
-                        pageToken = r.data.nextPageToken;
-                    } while (pageToken);
-
-                    apiOk = true;
-                    console.log(`[ATRIB] ${aluno.email} — ${meusCursoIds.size} curso(s) via API`);
-
-                    /* Atualiza cache (fire-and-forget) */
-                    if (meusCursoIds.size > 0) {
-                        setImmediate(async () => {
-                            try {
-                                await pool.query(
-                                    `DELETE FROM aluno_cursos_cache WHERE aluno_email = $1`,
-                                    [aluno.email]
-                                );
-                                for (const cid of meusCursoIds) {
-                                    await pool.query(
-                                        `INSERT INTO aluno_cursos_cache (aluno_email, curso_id)
-                                         VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-                                        [aluno.email, cid]
-                                    );
-                                }
-                            } catch (_) {}
-                        });
-                    }
-                } catch (apiErr) {
-                    console.warn('[ATRIB] Classroom API falhou:', apiErr.message);
-                }
-            } else {
-                console.warn('[ATRIB] Nenhum token de professor em classroom_tokens');
-            }
-
-            /* Fallback para cache se API não funcionou */
-            if (!apiOk) {
-                const { rows: cached } = await pool.query(
-                    `SELECT curso_id FROM aluno_cursos_cache WHERE aluno_email = $1`,
-                    [aluno.email]
-                );
-                cached.forEach(r => meusCursoIds.add(r.curso_id));
-                console.log(`[ATRIB] ${aluno.email} — ${meusCursoIds.size} curso(s) via cache`);
-            }
-
-            if (meusCursoIds.size === 0) {
-                console.log(`[ATRIB] ${aluno.email} — sem cursos detectados, retornando vazio`);
-                return res.json({ provas: [] });
-            }
-
-            /* Busca provas onde turma_corretora_id pertence aos cursos do aluno */
-            const ids = [...meusCursoIds];
-            const ph  = ids.map((_, i) => `$${i + 2}`).join(', ');
-
             const { rows } = await pool.query(
                 `SELECT
                      p.id            AS prova_id,
@@ -4083,7 +3990,7 @@ export function createProvasPublicRouter() {
                           WHERE ps.prova_id           = p.id
                             AND ps.eh_segundo_corretor = false
                             AND ps.eh_turma_corretora  = false
-                            AND ps.aluno_email          != $1
+                            AND ps.aluno_email         != $1
                             AND NOT EXISTS (
                                 SELECT 1 FROM classroom_prova_submissoes tc
                                  WHERE tc.submissao_ref_id   = ps.id
@@ -4096,16 +4003,20 @@ export function createProvasPublicRouter() {
                             )
                      ), 0) AS pendentes
                    FROM classroom_provas p
-                  WHERE p.turma_corretora_id IN (${ph})
-                    AND p.efetivada = false
+                  WHERE p.efetivada = false
+                    AND EXISTS (
+                        SELECT 1 FROM notificacoes_aluno n
+                         WHERE n.aluno_email = $1
+                           AND n.tipo        = 'turma_corretora_atribuida'
+                           AND n.referencia  = p.id::text
+                    )
                   ORDER BY pendentes DESC, p.id`,
-                [aluno.email, ...ids]
+                [aluno.email]
             );
-
             console.log(`[ATRIB] ${aluno.email} — ${rows.length} prova(s) atribuída(s)`);
             res.json({ provas: rows });
         } catch (e) {
-            console.error('[ATRIB] Erro inesperado:', e.message);
+            console.error('[ATRIB] Erro:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });
