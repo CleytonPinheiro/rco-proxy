@@ -121,7 +121,19 @@ function _atualizarBadgeCorrecoes() {
         if (total > 0) { badge.style.display = ''; badge.textContent = total; }
         else           badge.style.display = 'none';
     }
-    if (tabCor) tabCor.classList.toggle('pa-nav-tab--urgente', total > 0);
+    if (tabCor) {
+        tabCor.classList.toggle('pa-nav-tab--urgente', total > 0);
+        const estaVisivel = tabCor.style.display !== 'none';
+        if (total > 0) {
+            tabCor.style.display = '';
+        } else {
+            /* Se o aluno está na aba Correções e ela vai sumir, volta para Atividades */
+            if (estaVisivel && tabCor.getAttribute('aria-selected') === 'true') {
+                mudarAba('atividades');
+            }
+            tabCor.style.display = 'none';
+        }
+    }
 }
 
 /* ── Fila da Turma Corretora ─────────────────────────── */
@@ -132,7 +144,6 @@ async function carregarTurmaCorretora() {
         if (!r.ok) return;
         const { provas } = await r.json();
 
-        const nav      = $('paNavMenu');
         const alert    = $('paCorrecaoAlert');
         const alertTxt = $('paAlertTxt');
         const lista    = $('paTurmaCorretoraLista');
@@ -158,8 +169,6 @@ async function carregarTurmaCorretora() {
             return;
         }
 
-        /* Sempre mostra o menu nav quando o aluno é corretor atribuído */
-        if (nav) nav.style.display = '';
         sec.style.display = '';
 
         const comPendentes  = provasVisiveis.filter(p => Number(p.pendentes) > 0);
@@ -533,10 +542,6 @@ async function carregarTarefasCorretor() {
             return;
         }
         sec.style.display = '';
-
-        /* Mostra o menu nav (mesmo que o aluno não seja Turma Corretora) */
-        const nav = $('paNavMenu');
-        if (nav) nav.style.display = '';
         _correcoesPendentes.corretor = pendentes.length;
         _atualizarBadgeCorrecoes();
 
@@ -716,6 +721,7 @@ async function verificarStatus() {
 function mostrarTelaLogin() {
     $('paTelalogin').style.display      = '';
     $('paTelaAtividades').style.display = 'none';
+    $('paNavMenu').style.display        = 'none';
     $('paUserArea').style.display       = 'none';
     $('paThemeBtnPre').style.display    = 'flex';
     $('paTourBtn').style.display        = 'none';
@@ -725,6 +731,7 @@ function mostrarTelaLogin() {
 function mostrarTelaLogado(aluno) {
     $('paTelalogin').style.display      = 'none';
     $('paTelaAtividades').style.display = '';
+    $('paNavMenu').style.display        = '';
     $('paUserArea').style.display       = 'flex';
     $('paThemeBtnPre').style.display    = 'none';
     $('paTourBtn').style.display         = 'flex';
