@@ -4404,6 +4404,139 @@ export function createProvasPublicRouter() {
     });
 
     /**
+     * GET /api/alunos-portal/turma-corretora/lista-turma-alvo?prova_id=X
+     * Retorna TODOS os alunos matriculados na turma alvo da prova via Google Classroom
+     * roster, com submissao_ref_id quando já submeteram digitalmente.
+     * Tenta enriquecer com numchamada do Supabase (alunos) por correspondência de nome.
+     */
+    router.get('/alunos-portal/turma-corretora/lista-turma-alvo', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { prova_id } = req.query;
+        if (!prova_id) return res.status(400).json({ erro: 'prova_id obrigatório.' });
+        try {
+            const pid = parseInt(prova_id, 10);
+
+            const [{ rows: [prova] }, { rows: variantes }] = await Promise.all([
+                pool.query(
+                    `SELECT id, nome, curso_id, turma_corretora_id, turma_corretora_2a_correcao
+                       FROM classroom_provas
+                      WHERE id = $1 AND efetivada = false AND turma_corretora_id IS NOT NULL`,
+                    [pid]
+                ),
+                pool.query(
+                    `SELECT id, codigo FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
+                    [pid]
+                ),
+            ]);
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+
+            /* Submissões existentes para esta prova → email → submissao_ref_id */
+            const { rows: subs } = await pool.query(
+                `SELECT LOWER(aluno_email) AS email, id AS submissao_ref_id
+                   FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_segundo_corretor = false AND eh_turma_corretora = false`,
+                [pid]
+            );
+            const submissaoMap = Object.fromEntries(subs.map(r => [r.email, r.submissao_ref_id]));
+
+            /* ── Busca roster via Google Classroom API ── */
+            const { rows: tkRows } = await pool.query(
+                `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+            );
+            if (!tkRows[0]?.tokens) return res.json({ alunos: [], variantes });
+
+            const { google } = await import('googleapis');
+            const auth = new google.auth.OAuth2(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
+            );
+            auth.setCredentials(tkRows[0].tokens);
+            const classroom = google.classroom({ version: 'v1', auth });
+
+            let rosterAlunos = [];
+            let pageToken;
+            do {
+                const r = await classroom.courses.students.list({
+                    courseId:  String(prova.curso_id),
+                    pageSize:  200,
+                    pageToken,
+                });
+                for (const s of (r.data.students || [])) {
+                    const email = (s.profile?.emailAddress || '').toLowerCase();
+                    const nome  = s.profile?.name?.fullName || '';
+                    if (!email || email === aluno.email.toLowerCase()) continue;
+                    rosterAlunos.push({ email, nome });
+                }
+                pageToken = r.data.nextPageToken;
+            } while (pageToken);
+
+            /* ── Enriquece com numchamada via Supabase (best-effort) ── */
+            const numChamadaMap = {};   /* nome_normalizado → numchamada */
+            try {
+                const { supabaseAdmin } = await import('../config/supabase.js');
+                const { data: alunosDB } = await supabaseAdmin
+                    .from('alunos')
+                    .select('nome, numchamada')
+                    .not('numchamada', 'is', null);
+
+                if (alunosDB?.length) {
+                    const norm = n => (n || '').toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
+
+                    alunosDB.forEach(a => {
+                        numChamadaMap[norm(a.nome)] = a.numchamada;
+                    });
+
+                    /* Tenta casar cada aluno do roster com o Supabase */
+                    rosterAlunos = rosterAlunos.map(a => {
+                        const nNorm = norm(a.nome);
+                        /* Correspondência exata */
+                        if (numChamadaMap[nNorm] != null) {
+                            return { ...a, numchamada: numChamadaMap[nNorm] };
+                        }
+                        /* Correspondência parcial: todos os tokens do nome do Classroom
+                           aparecem no nome do Supabase (ou vice-versa) */
+                        const tokens = nNorm.split(' ').filter(t => t.length > 2);
+                        const matched = Object.entries(numChamadaMap).find(([k]) =>
+                            tokens.length > 0 && tokens.every(t => k.includes(t))
+                        );
+                        return { ...a, numchamada: matched ? matched[1] : null };
+                    });
+                }
+            } catch (_) { /* Supabase indisponível — segue sem numchamada */ }
+
+            /* ── Monta resultado final ── */
+            const result = rosterAlunos.map(a => {
+                const subId = submissaoMap[a.email] ?? null;
+                return {
+                    nome:             a.nome,
+                    email_mascarado:  `${a.email.substring(0,2)}***@${a.email.split('@')[1]}`,
+                    email_real:       a.email,
+                    numchamada:       a.numchamada ?? null,
+                    submissao_ref_id: subId,
+                    sem_submissao:    subId == null,
+                };
+            });
+
+            /* Ordena: numchamada asc (nulos por último), depois nome */
+            result.sort((a, b) => {
+                if (a.numchamada != null && b.numchamada != null) return a.numchamada - b.numchamada;
+                if (a.numchamada != null) return -1;
+                if (b.numchamada != null) return  1;
+                return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+            });
+
+            res.json({ alunos: result, variantes });
+        } catch (e) {
+            console.error('[LISTA-TURMA-ALVO]', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /**
      * POST /api/alunos-portal/turma-corretora/iniciar-correcao
      * Cria submissão-gatilho em branco para aluno sem submissão digital,
      * chamado pelo próprio membro da turma corretora ao selecionar a variante.

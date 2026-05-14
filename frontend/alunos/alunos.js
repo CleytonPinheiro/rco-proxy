@@ -149,7 +149,7 @@ async function carregarTurmaCorretora() {
             if (tabCor) tabCor.classList.remove('pa-nav-tab--urgente');
         }
 
-        /* ── Renderiza cards — busca sempre visível ── */
+        /* ── Renderiza cards com select de alunos ── */
         const todosCards = provas.map(p => {
             const pend = Number(p.pendentes) || 0;
             const badgePend = pend > 0
@@ -158,9 +158,6 @@ async function carregarTurmaCorretora() {
             const badge2a = p.turma_corretora_2a_correcao
                 ? '<span style="background:#fef9c3;color:#854d0e;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">2ª conferência ativa</span>'
                 : '';
-            const dica = pend > 0
-                ? 'Digite o nome do aluno cuja folha física você tem em mãos:'
-                : 'Você pode buscar um aluno pelo nome assim que o professor liberar a folha (ou o aluno submeter pelo portal).';
             const borderColor = pend > 0 ? '#86efac' : '#d1d5db';
             return `
             <div class="pa-tcor-card" id="tcorCard_${p.prova_id}" style="border-color:${borderColor}">
@@ -171,130 +168,117 @@ async function carregarTurmaCorretora() {
                     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
                         ${badgePend}${badge2a}
                     </div>
-                    <div style="font-size:0.85em;color:var(--pa-sub)">${dica}</div>
                 </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <input type="text"
-                           id="tcorBusca_${p.prova_id}"
-                           placeholder="Nome do aluno dono da prova…"
-                           autocomplete="off"
-                           style="flex:1;border:1.5px solid ${borderColor};border-radius:8px;padding:10px 14px;font-size:14px;outline:none;background:var(--pa-card);color:var(--pa-text);font-family:inherit"
-                           oninput="tcorBuscar(${p.prova_id}, this)">
-                </div>
-                <div id="tcorResultados_${p.prova_id}"
-                     style="display:none;margin-top:6px;border:1.5px solid ${borderColor};border-radius:8px;background:var(--pa-card);overflow:hidden"></div>
-                <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:var(--pa-sub);margin-top:6px;min-height:16px"></div>
+                <label style="font-size:0.85em;color:var(--pa-sub);display:block;margin-bottom:6px">
+                    Selecione o aluno cuja folha está em suas mãos:
+                </label>
+                <select id="tcorSelect_${p.prova_id}"
+                        onchange="tcorSelecionarAluno(${p.prova_id}, this)"
+                        style="width:100%;border:1.5px solid ${borderColor};border-radius:8px;padding:10px 12px;font-size:14px;background:var(--pa-card);color:var(--pa-text);font-family:inherit;cursor:pointer;appearance:auto">
+                    <option value="">— Carregando alunos… —</option>
+                </select>
+                <div id="tcorAcao_${p.prova_id}" style="margin-top:10px"></div>
+                <div id="tcorMsg_${p.prova_id}" style="font-size:0.8em;color:var(--pa-sub);margin-top:4px;min-height:16px"></div>
             </div>`;
         }).join('');
 
         lista.innerHTML = todosCards;
+
+        /* Carrega lista de alunos para cada prova (em paralelo) */
+        provas.forEach(p => tcorCarregarListaAlunos(p.prova_id));
     } catch (_) {
         /* silencioso — módulo opcional */
     }
 }
 
-const _tcorDebounce = {};
+/* ── Carrega lista de alunos da turma alvo no select ─── */
+async function tcorCarregarListaAlunos(provaId) {
+    const sel = document.getElementById(`tcorSelect_${provaId}`);
+    const msg = document.getElementById(`tcorMsg_${provaId}`);
+    if (!sel) return;
+    try {
+        const r = await fetch(
+            `/api/alunos-portal/turma-corretora/lista-turma-alvo?prova_id=${provaId}`,
+            { credentials: 'include' }
+        );
+        const d = await r.json();
+        if (!d.alunos) throw new Error('sem dados');
 
-async function tcorBuscar(provaId, input) {
-    const nome = input.value.trim();
-    const msg  = document.getElementById(`tcorMsg_${provaId}`);
-    const res  = document.getElementById(`tcorResultados_${provaId}`);
-    if (nome.length < 2) {
-        if (res) res.style.display = 'none';
-        if (msg) msg.textContent = nome.length > 0 ? 'Digite ao menos 2 letras.' : '';
-        return;
-    }
-    clearTimeout(_tcorDebounce[provaId]);
-    _tcorDebounce[provaId] = setTimeout(async () => {
-        try {
-            if (msg) msg.textContent = 'Buscando…';
-            const r = await fetch(
-                `/api/alunos-portal/turma-corretora/buscar-aluno?prova_id=${provaId}&nome=${encodeURIComponent(nome)}`,
-                { credentials: 'include' }
-            );
-            const d = await r.json();
-            if (!res) return;
-            if (!d.alunos || d.alunos.length === 0) {
-                res.style.display = 'none';
-                if (msg) msg.textContent = 'Nenhum aluno elegível encontrado com esse nome.';
-                return;
-            }
-            if (msg) msg.textContent = '';
-            res.style.display = '';
-            const variantes = d.variantes || [];
-            const nomeCount = {};
-            d.alunos.forEach(a => {
-                const k = (a.aluno_nome || '').trim().toLowerCase();
-                nomeCount[k] = (nomeCount[k] || 0) + 1;
-            });
-            res.innerHTML = d.alunos.map((a, idx) => {
-                const nomeDisplay = a.aluno_nome && a.aluno_nome.trim()
-                    ? escapeHtmlGam(a.aluno_nome)
-                    : `<em style="color:#888">(sem nome — ${escapeHtmlGam(a.email_mascarado || 'email desconhecido')})</em>`;
-                const nomeKey = (a.aluno_nome || '').trim().toLowerCase();
-                const duplicado = nomeKey && nomeCount[nomeKey] > 1;
-                const detalhe = duplicado || a.sem_submissao
-                    ? `<span style="font-size:11px;color:#666;margin-left:6px">${a.variante_codigo ? escapeHtmlGam(a.variante_codigo) : ''}${a.email_mascarado ? ' · ' + escapeHtmlGam(a.email_mascarado) : ''}</span>`
-                    : '';
-                const tagSem = a.sem_submissao
-                    ? `<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:10px;padding:1px 7px;margin-left:6px;font-weight:600">físico</span>`
-                    : '';
+        window._tcorAlunos    = window._tcorAlunos    || {};
+        window._tcorVariantes = window._tcorVariantes || {};
+        window._tcorAlunos[provaId]    = d.alunos;
+        window._tcorVariantes[provaId] = d.variantes || [];
 
-                if (a.sem_submissao) {
-                    /* Seletor de variante inline — ao clicar cria a submissão e redireciona */
-                    const optsVar = variantes.map(v =>
-                        `<button onclick="tcorIniciarCorrecao(${provaId},'${escapeHtmlGam(a.email_real)}','${escapeHtmlGam(a.aluno_nome || '')}','${escapeHtmlGam(v.codigo)}')"
-                                 style="background:#f59e0b;color:#fff;border:none;padding:5px 11px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
-                            Var. ${escapeHtmlGam(v.codigo)} →
-                        </button>`
-                    ).join('');
-                    return `
-                    <div style="padding:9px 12px;border-bottom:1px solid #fef3c7;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fffbeb">
-                        <span style="font-size:14px;color:#1a1a1a">${nomeDisplay}${tagSem}${detalhe}</span>
-                        <div style="display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0">${optsVar}</div>
-                    </div>`;
-                }
-                return `
-                <div style="padding:9px 12px;border-bottom:1px solid #f0fdf4;display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <span style="font-size:14px;color:#1a1a1a">${nomeDisplay}${detalhe}</span>
-                    <a href="/alunos/prova/?tcor=${encodeURIComponent(a.submissao_ref_id)}"
-                       style="background:#22c55e;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">
-                        Corrigir →
-                    </a>
-                </div>`;
-            }).join('');
-        } catch (_) {
-            if (msg) msg.textContent = 'Erro ao buscar. Tente novamente.';
+        if (d.alunos.length === 0) {
+            sel.innerHTML = '<option value="">— Nenhum aluno encontrado —</option>';
+            return;
         }
-    }, 300);
+        sel.innerHTML = '<option value="">— Selecione o aluno —</option>' +
+            d.alunos.map((a, i) => {
+                const num  = a.numchamada != null ? String(a.numchamada).padStart(2, '0') + ' · ' : '';
+                const tag  = a.sem_submissao ? ' ✎' : ' ✔';
+                return `<option value="${i}">${num}${escapeHtmlGam(a.nome)}${tag}</option>`;
+            }).join('');
+    } catch (_) {
+        if (sel) sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
+        if (msg) msg.textContent = 'Não foi possível carregar a lista de alunos.';
+    }
 }
+window.tcorCarregarListaAlunos = tcorCarregarListaAlunos;
 
-window.tcorBuscar = tcorBuscar;
+/* ── Reage à seleção do aluno no select ──────────────── */
+function tcorSelecionarAluno(provaId, sel) {
+    const acao = document.getElementById(`tcorAcao_${provaId}`);
+    const msg  = document.getElementById(`tcorMsg_${provaId}`);
+    if (!acao) return;
+    const idx = sel.value;
+    if (idx === '') { acao.innerHTML = ''; return; }
+    const a         = (window._tcorAlunos?.[provaId] || [])[parseInt(idx, 10)];
+    const variantes = window._tcorVariantes?.[provaId] || [];
+    if (!a) { acao.innerHTML = ''; return; }
 
-/**
- * Cria submissão em branco para aluno sem entrega digital e redireciona para correção.
- * Chamado pelo botão "Var. X →" nos resultados sem_submissao.
- */
+    if (!a.sem_submissao) {
+        /* Aluno com submissão digital — botão direto */
+        acao.innerHTML = `
+            <a href="/alunos/prova/?tcor=${encodeURIComponent(a.submissao_ref_id)}"
+               style="display:inline-block;background:#22c55e;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700">
+                Corrigir →
+            </a>`;
+    } else {
+        /* Aluno sem submissão digital — seleciona a variante da folha física */
+        if (msg) msg.textContent = 'Escolha a variante impressa na folha do aluno:';
+        const btns = variantes.map(v =>
+            `<button onclick="tcorIniciarCorrecao(${provaId},'${escapeAttr(a.email_real)}','${escapeAttr(a.nome)}','${escapeAttr(v.codigo)}')"
+                     style="background:#f59e0b;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">
+                 Variante ${escapeHtmlGam(v.codigo)} →
+             </button>`
+        ).join('');
+        acao.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">${btns}</div>`;
+    }
+}
+window.tcorSelecionarAluno = tcorSelecionarAluno;
+
+/* ── Cria submissão em branco e redireciona para correção ── */
 async function tcorIniciarCorrecao(provaId, alunoEmail, alunoNome, varianteCodigo) {
-    const btn = event && event.currentTarget;
+    const btn = event?.target;
     try {
         if (btn) { btn.disabled = true; btn.textContent = '…'; }
         const r = await fetch('/api/alunos-portal/turma-corretora/iniciar-correcao', {
-            method: 'POST',
+            method:      'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prova_id: provaId, aluno_email: alunoEmail, aluno_nome: alunoNome, variante_codigo: varianteCodigo }),
+            headers:     { 'Content-Type': 'application/json' },
+            body:        JSON.stringify({ prova_id: provaId, aluno_email: alunoEmail, aluno_nome: alunoNome, variante_codigo: varianteCodigo }),
         });
         const d = await r.json();
         if (!r.ok) {
             alert(d.erro || 'Erro ao iniciar correção.');
-            if (btn) { btn.disabled = false; btn.textContent = `Var. ${varianteCodigo} →`; }
+            if (btn) { btn.disabled = false; btn.textContent = `Variante ${varianteCodigo} →`; }
             return;
         }
         window.location.href = `/alunos/prova/?tcor=${encodeURIComponent(d.submissao_ref_id)}`;
     } catch (_) {
         alert('Erro de rede. Tente novamente.');
-        if (btn) { btn.disabled = false; btn.textContent = `Var. ${varianteCodigo} →`; }
+        if (btn) { btn.disabled = false; btn.textContent = `Variante ${varianteCodigo} →`; }
     }
 }
 window.tcorIniciarCorrecao = tcorIniciarCorrecao;
