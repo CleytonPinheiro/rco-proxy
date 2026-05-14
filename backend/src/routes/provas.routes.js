@@ -4506,6 +4506,8 @@ export function createProvasPublicRouter() {
 
             const classroom = google.classroom({ version: 'v1', auth });
 
+            console.log(`[LISTA-TURMA-ALVO] prova=${pid} curso_id=${prova.curso_id} cpf_token=${tokenCpf || 'legado'} aluno=${aluno.email}`);
+
             let rosterAlunos = [];
             let pageToken;
             try {
@@ -4515,6 +4517,8 @@ export function createProvasPublicRouter() {
                         pageSize:  200,
                         pageToken,
                     });
+                    const total = (r.data.students || []).length;
+                    console.log(`[LISTA-TURMA-ALVO] API retornou ${total} aluno(s) para curso ${prova.curso_id}`);
                     for (const s of (r.data.students || [])) {
                         const email = (s.profile?.emailAddress || '').toLowerCase();
                         const nome  = s.profile?.name?.fullName || '';
