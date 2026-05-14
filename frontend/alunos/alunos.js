@@ -238,10 +238,27 @@ async function tcorCarregarListaAlunos(provaId) {
         window._tcorVariantes[provaId] = d.variantes || [];
 
         if (d.alunos.length === 0) {
-            sel.innerHTML = '<option value="">— Nenhum aluno encontrado —</option>';
-            if (msg) msg.textContent = 'Nenhum aluno encontrado na turma. Verifique se o professor está com o Google Classroom conectado.';
+            sel.innerHTML = '<option value="">— Nenhum aluno disponível —</option>';
+            if (d.todos_corrigidos) {
+                sel.style.display = 'none';
+                const existing = sel.parentElement && sel.parentElement.querySelector('.tcor-todos-corrigidos');
+                if (!existing) {
+                    const card = document.createElement('div');
+                    card.className = 'tcor-todos-corrigidos';
+                    card.style.cssText = 'display:flex;align-items:center;gap:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin-top:8px;';
+                    card.innerHTML = '<span style="font-size:1.5rem">✅</span><span style="color:#166534;font-weight:600;font-size:14px">Todos os alunos desta turma já foram corrigidos.</span>';
+                    sel.parentElement.appendChild(card);
+                }
+                if (msg) msg.textContent = '';
+            } else {
+                if (msg) msg.textContent = 'Nenhum aluno encontrado na turma. Verifique se o professor está com o Google Classroom conectado.';
+            }
             return;
         }
+        /* Remove card "todos corrigidos" caso apareça após recarga */
+        const oldCard = sel.parentElement && sel.parentElement.querySelector('.tcor-todos-corrigidos');
+        if (oldCard) oldCard.remove();
+        sel.style.display = '';
         sel.innerHTML = '<option value="">— Selecione o aluno —</option>' +
             d.alunos.map((a, i) => {
                 const num  = a.numchamada != null ? String(a.numchamada).padStart(2, '0') + ' · ' : '';

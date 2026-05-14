@@ -4611,7 +4611,8 @@ export function createProvasPublicRouter() {
                 return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
             });
 
-            res.json({ alunos: result, variantes });
+            const todosCorrigidos = result.length === 0 && correctedSet.size > 0;
+            res.json({ alunos: result, variantes, todos_corrigidos: todosCorrigidos });
         } catch (e) {
             console.error('[LISTA-TURMA-ALVO]', e.message);
             res.status(500).json({ erro: e.message });
