@@ -531,7 +531,12 @@ function _podeConfrontarGabarito() {
 
 function _btnRegistrarHtml() {
     if (!_podeConfrontarGabarito()) return '';
-    return `<div style="text-align:right;margin-bottom:12px">
+    const temMultiVariante = (_analise?.variantes || []).length >= 2;
+    const btnMapa = temMultiVariante
+        ? `<button class="ac-btn" onclick="abrirModalMapa()" title="Definir correspondência de questões entre variantes">🗂️ Mapeamento de questões</button>`
+        : '';
+    return `<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        ${btnMapa}
         <button class="ac-btn ac-btn-primary" onclick="abrirModalRegistro()">🔍 Confrontar gabarito</button>
     </div>`;
 }
@@ -1235,7 +1240,7 @@ async function salvarRegistroManual() {
     }
 }
 
-function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVariante,
+function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVariante, mapaUsado,
                                        total, identicas, identicasErradas, similaridade, questoes }) {
     const wrap = $('acRegResultados');
     if (!wrap) return;
@@ -1244,6 +1249,20 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
     const LIMIAR_MEDIO = 70;
     const nivelClass = similaridade >= LIMIAR_ALTO  ? 'ac-conf-critico'
                      : similaridade >= LIMIAR_MEDIO ? 'ac-conf-alerta' : 'ac-conf-ok';
+
+    let aviso = '';
+    if (!mesmaVariante) {
+        if (mapaUsado) {
+            aviso = `<div class="ac-conf-aviso ac-conf-aviso-ok">✅ Mapeamento de questões físicas aplicado — comparação por questão real, não posicional.</div>`;
+        } else {
+            aviso = `<div class="ac-conf-aviso">⚠️ Variantes diferentes (${escapeHtml(varianteACodigo)} × ${escapeHtml(varianteBCodigo)}): comparação posicional — Q1 de cada variante pode não ser a mesma questão física. <a href="javascript:void(0)" onclick="fecharModalRegistro();abrirModalMapa()" style="font-weight:600;text-decoration:underline">Definir mapeamento →</a></div>`;
+        }
+    }
+
+    /* Cabeçalho da coluna Q muda conforme mapa usado */
+    const thQ = mapaUsado
+        ? `Q física<br><small style="font-weight:400;font-size:10px">(pos A / pos B)</small>`
+        : 'Q';
 
     const linhasQ = (questoes || []).map(q => {
         const aResp = q.respA ? q.respA.toUpperCase() : '–';
@@ -1260,8 +1279,16 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
             matchCell = `<td class="ac-conf-td-match ac-conf-match-certo">✓ Igual</td>`;
         }
 
+        let qLabel;
+        if (mapaUsado && q.questaoFisica) {
+            qLabel = `Q${q.questaoFisica}<span class="ac-conf-posb">(${q.posA}/${q.posB})</span>`;
+        } else if (!mesmaVariante) {
+            qLabel = `Q${q.posA}<span class="ac-conf-posb">/Q${q.posB}</span>`;
+        } else {
+            qLabel = `Q${q.posA}`;
+        }
+
         const trClass = q.erradasAmbos ? 'ac-conf-tr-erros' : q.identica ? 'ac-conf-tr-ident' : '';
-        const qLabel = mesmaVariante ? `Q${q.posA}` : `Q${q.posA}<span class="ac-conf-posb">/Q${q.posB}</span>`;
         return `<tr class="${trClass}">
             <td class="ac-conf-td-q">${qLabel}</td>
             <td class="ac-conf-td-resp">${escapeHtml(aResp)}</td>
@@ -1271,10 +1298,6 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
             ${matchCell}
         </tr>`;
     }).join('');
-
-    const aviso = !mesmaVariante
-        ? `<div class="ac-conf-aviso">⚠️ Variantes diferentes (${escapeHtml(varianteACodigo)} × ${escapeHtml(varianteBCodigo)}): comparação posicional — Q1 de cada variante pode não ser a mesma questão física.</div>`
-        : '';
 
     wrap.innerHTML = `
         <div class="ac-conf-resumo ${nivelClass}">
@@ -1291,7 +1314,7 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
         <div class="ac-conf-table-wrap">
             <table class="ac-conf-table">
                 <thead><tr>
-                    <th>Q</th>
+                    <th>${thQ}</th>
                     <th>A (${escapeHtml(varianteACodigo)})</th>
                     <th>Gab A</th>
                     <th>B (${escapeHtml(varianteBCodigo)})</th>
@@ -1302,6 +1325,195 @@ function _renderResultadosConfronto({ varianteACodigo, varianteBCodigo, mesmaVar
             </table>
         </div>`;
     wrap.style.display = '';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ *  MODAL — MAPEAMENTO DE QUESTÕES FÍSICAS
+ * ═════════════════════════════════════════════════════════════════ */
+
+let _mapaGrid      = {};   // _mapaGrid[questao_fisica][variante_id] = posicao
+let _mapaVariantes = [];   // [{id, codigo, gabarito}, ...]
+let _mapaN         = 0;    // número de questões objetivas
+
+async function abrirModalMapa() {
+    if (!provaAtualId || !_analise) return;
+    const variantes = _analise.variantes || [];
+    if (variantes.length < 2) {
+        alert('São necessárias ao menos 2 variantes para definir o mapeamento.');
+        return;
+    }
+
+    _mapaVariantes = variantes;
+    _mapaN = Math.max(0, ...variantes.map(v =>
+        (v.gabarito || []).filter(q => q.tipo !== 'discursiva').length
+    ));
+    if (_mapaN === 0) { alert('Nenhuma questão objetiva encontrada nas variantes.'); return; }
+
+    /* Inicializa grid vazio */
+    _mapaGrid = {};
+    for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+
+    _setMapaStatus('', '');
+    $('acMapaModal').style.display = '';
+    $('acMapaSalvarBtn').disabled  = false;
+
+    /* Carrega mapeamento existente */
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAtualId}/mapa-questoes`, { credentials: 'include' });
+        const d = await r.json();
+        if (r.ok && d.mapa && d.mapa.length > 0) {
+            for (const item of d.mapa) {
+                if (!_mapaGrid[item.questao_fisica]) _mapaGrid[item.questao_fisica] = {};
+                _mapaGrid[item.questao_fisica][item.variante_id] = item.posicao;
+            }
+            _setMapaStatus(`Mapeamento existente carregado — ${d.mapa.length} correspondências.`, 'ok');
+        }
+    } catch { /* silencioso */ }
+
+    _renderMapaGrid();
+}
+
+function fecharModalMapa() {
+    $('acMapaModal').style.display = 'none';
+}
+
+function _renderMapaGrid() {
+    const head = $('acMapaHead');
+    const body = $('acMapaBody');
+    if (!head || !body) return;
+
+    /* Detecta conflitos: mesma posição repetida na mesma coluna */
+    const conflitos = {};
+    for (const v of _mapaVariantes) {
+        const seen = {}, dupes = new Set();
+        for (let qf = 1; qf <= _mapaN; qf++) {
+            const pos = _mapaGrid[qf]?.[v.id];
+            if (pos) { if (seen[pos]) dupes.add(pos); else seen[pos] = true; }
+        }
+        conflitos[v.id] = dupes;
+    }
+
+    head.innerHTML = `<tr>
+        <th class="ac-mapa-th-q">Q física</th>
+        ${_mapaVariantes.map(v => `<th class="ac-mapa-th-var">V${escapeHtml(String(v.codigo))}</th>`).join('')}
+    </tr>`;
+
+    const opts = Array.from({ length: _mapaN }, (_, i) => i + 1)
+        .map(n => `<option value="${n}">${n}</option>`).join('');
+
+    let html = '';
+    for (let qf = 1; qf <= _mapaN; qf++) {
+        html += `<tr><td class="ac-mapa-td-q"><strong>Q${qf}</strong></td>`;
+        for (const v of _mapaVariantes) {
+            const val = _mapaGrid[qf]?.[v.id] || '';
+            const conflict = val && conflitos[v.id]?.has(parseInt(val, 10));
+            html += `<td class="ac-mapa-td-cel${conflict ? ' ac-mapa-conflict' : ''}">
+                <select class="ac-mapa-sel"
+                    onchange="onMapaCelChange(${qf},${v.id},this.value)">
+                    <option value="">–</option>
+                    ${opts.replace(`value="${val}"`, `value="${val}" selected`)}
+                </select>
+            </td>`;
+        }
+        html += '</tr>';
+    }
+    body.innerHTML = html;
+}
+
+function onMapaCelChange(questaoFisica, varianteId, value) {
+    if (!_mapaGrid[questaoFisica]) _mapaGrid[questaoFisica] = {};
+    const num = parseInt(value, 10);
+    if (!value || isNaN(num)) delete _mapaGrid[questaoFisica][varianteId];
+    else _mapaGrid[questaoFisica][varianteId] = num;
+    _renderMapaGrid();
+}
+
+function limparMapeamento() {
+    for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+    _renderMapaGrid();
+    _setMapaStatus('', '');
+}
+
+async function sugerirMapeamento() {
+    const btn = $('acMapaSugerirBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Calculando…'; }
+    _setMapaStatus('', '');
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAtualId}/mapa-questoes/sugerir`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao sugerir mapeamento.');
+
+        /* Preenche grid com a sugestão */
+        for (let qf = 1; qf <= _mapaN; qf++) _mapaGrid[qf] = {};
+        for (const item of (d.mapa || [])) {
+            if (!_mapaGrid[item.questao_fisica]) _mapaGrid[item.questao_fisica] = {};
+            _mapaGrid[item.questao_fisica][item.variante_id] = item.posicao;
+        }
+        _renderMapaGrid();
+
+        const base = d.minSubs ? `baseado em ${d.minSubs}+ submissões por variante` : 'baseado em submissões';
+        const aviso = d.aviso ? ` ⚠️ ${d.aviso}` : '';
+        _setMapaStatus(`Sugestão aplicada (${base}) — confira e ajuste antes de salvar.${aviso}`, 'ok');
+    } catch (e) {
+        _setMapaStatus(e.message, 'err');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '✨ Sugerir via respostas dos alunos'; }
+    }
+}
+
+async function salvarMapeamento() {
+    /* Valida: sem duplicatas por coluna */
+    const erros = [];
+    for (const v of _mapaVariantes) {
+        const seen = new Set();
+        for (let qf = 1; qf <= _mapaN; qf++) {
+            const pos = _mapaGrid[qf]?.[v.id];
+            if (pos) {
+                if (seen.has(pos)) { erros.push(`Variante ${v.codigo}: posição ${pos} aparece mais de uma vez.`); break; }
+                seen.add(pos);
+            }
+        }
+    }
+    if (erros.length > 0) {
+        _setMapaStatus('Corrija os conflitos antes de salvar: ' + erros.join(' '), 'err');
+        return;
+    }
+
+    /* Monta array para envio */
+    const mapa = [];
+    for (let qf = 1; qf <= _mapaN; qf++) {
+        for (const v of _mapaVariantes) {
+            const pos = _mapaGrid[qf]?.[v.id];
+            if (pos) mapa.push({ questao_fisica: qf, variante_id: v.id, posicao: pos });
+        }
+    }
+
+    const btn = $('acMapaSalvarBtn');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+        const r = await fetch(`/api/classroom/provas/${provaAtualId}/mapa-questoes`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mapa }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Erro ao salvar.');
+        _setMapaStatus(`✅ Mapeamento salvo — ${d.salvo} correspondências. O "Confrontar gabarito" agora usará questões físicas para variantes diferentes.`, 'ok');
+    } catch (e) {
+        _setMapaStatus(e.message, 'err');
+    } finally {
+        btn.disabled = false; btn.textContent = '💾 Salvar mapeamento';
+    }
+}
+
+function _setMapaStatus(msg, tipo) {
+    const el = $('acMapaStatus');
+    if (!el) return;
+    if (!msg) { el.style.display = 'none'; return; }
+    el.textContent = msg;
+    el.className   = `ac-reg-status ${tipo === 'ok' ? 'ok' : tipo === 'err' ? 'err' : ''}`;
+    el.style.display = '';
 }
 
 async function excluirSubmissaoManual(provaId, subId, alunoEmail) {

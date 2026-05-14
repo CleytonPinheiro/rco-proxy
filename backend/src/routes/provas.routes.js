@@ -138,7 +138,18 @@ async function migrarTabelas() {
             CREATE INDEX IF NOT EXISTS idx_notif_prof_cpf_lida
                 ON notificacoes_professor(cpf_professor, lida, criado_em DESC)
         `);
-        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags + notif-professor)');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS classroom_prova_mapa_questoes (
+                id             SERIAL PRIMARY KEY,
+                prova_id       INTEGER NOT NULL REFERENCES classroom_provas(id) ON DELETE CASCADE,
+                questao_fisica INTEGER NOT NULL,
+                variante_id    INTEGER NOT NULL REFERENCES classroom_prova_variantes(id) ON DELETE CASCADE,
+                posicao        INTEGER NOT NULL,
+                UNIQUE(prova_id, questao_fisica, variante_id),
+                UNIQUE(prova_id, variante_id, posicao)
+            )
+        `);
+        console.log('[PROVAS] Tabelas OK (provas + variantes + submissoes + reputação + cola-flags + notif-professor + mapa-questoes)');
     } catch (e) {
         console.warn('[PROVAS] Erro na migração:', e.message);
     }
@@ -2248,6 +2259,144 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         }
     });
 
+    /* ── Mapeamento de questões físicas — GET ── */
+    router.get('/classroom/provas/:id/mapa-questoes', async (req, res) => {
+        if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const { rows } = await pool.query(
+                `SELECT qf.questao_fisica, qf.variante_id, qf.posicao, v.codigo AS variante_codigo
+                   FROM classroom_prova_mapa_questoes qf
+                   JOIN classroom_prova_variantes v ON v.id = qf.variante_id
+                  WHERE qf.prova_id = $1
+                  ORDER BY qf.questao_fisica, v.codigo`,
+                [req.params.id]
+            );
+            res.json({ mapa: rows });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── Mapeamento de questões físicas — SAVE ── */
+    router.put('/classroom/provas/:id/mapa-questoes', async (req, res) => {
+        if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { mapa } = req.body || {};
+        if (!Array.isArray(mapa)) return res.status(400).json({ erro: 'mapa deve ser um array.' });
+
+        const provaId = parseInt(req.params.id, 10);
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query('DELETE FROM classroom_prova_mapa_questoes WHERE prova_id = $1', [provaId]);
+            for (const item of mapa) {
+                const { questao_fisica, variante_id, posicao } = item;
+                if (!questao_fisica || !variante_id || !posicao) continue;
+                await client.query(
+                    `INSERT INTO classroom_prova_mapa_questoes (prova_id, questao_fisica, variante_id, posicao)
+                     VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+                    [provaId, questao_fisica, variante_id, posicao]
+                );
+            }
+            await client.query('COMMIT');
+            logProvas(req, 'MAPA_QUESTOES_SALVO', { provaId, total: mapa.length });
+            res.json({ ok: true, salvo: mapa.length });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            res.status(500).json({ erro: e.message });
+        } finally {
+            client.release();
+        }
+    });
+
+    /* ── Mapeamento de questões físicas — SUGERIR via taxa de acerto ── */
+    router.get('/classroom/provas/:id/mapa-questoes/sugerir', async (req, res) => {
+        if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
+        try {
+            const provaId = parseInt(req.params.id, 10);
+            const { rows: variantes } = await pool.query(
+                `SELECT id, codigo, gabarito_json FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
+                [provaId]
+            );
+            if (variantes.length < 2) return res.status(400).json({ erro: 'São necessárias ao menos 2 variantes.' });
+
+            const { rows: submissoes } = await pool.query(
+                `SELECT variante_id, marcacoes_json FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND eh_segundo_corretor = false`,
+                [provaId]
+            );
+            const subsByVar = {};
+            for (const s of submissoes) {
+                if (!subsByVar[s.variante_id]) subsByVar[s.variante_id] = [];
+                subsByVar[s.variante_id].push(s.marcacoes_json || {});
+            }
+
+            /* Calcula taxa de acerto por variante/posição */
+            const passRates = {};
+            let minSubs = Infinity;
+            for (const v of variantes) {
+                const subs = subsByVar[v.id] || [];
+                if (subs.length === 0) { passRates[v.id] = null; continue; }
+                minSubs = Math.min(minSubs, subs.length);
+                const gab = (v.gabarito_json || []).filter(q => q.tipo !== 'discursiva');
+                const rates = {};
+                for (const q of gab) {
+                    const qStr = String(q.questao);
+                    let acertos = 0;
+                    for (const marc of subs) {
+                        const resp = marc[qStr];
+                        let certo = false;
+                        if (q.tipo === 'multipla') certo = resp !== undefined && String(resp).toLowerCase() === String(q.correta || '').toLowerCase();
+                        else if (q.tipo === 'vf' && Array.isArray(q.correta)) certo = Array.isArray(resp) && resp.length === q.correta.length && resp.every((x, i) => String(x).toUpperCase() === String(q.correta[i]).toUpperCase());
+                        if (certo) acertos++;
+                    }
+                    rates[q.questao] = subs.length > 0 ? acertos / subs.length : 0;
+                }
+                passRates[v.id] = rates;
+            }
+
+            const variantesComSubs = variantes.filter(v => passRates[v.id] !== null).length;
+            if (variantesComSubs < 2) return res.status(400).json({ erro: 'Pelo menos 2 variantes precisam ter submissões para sugerir o mapeamento.' });
+            if (minSubs !== Infinity && minSubs < 5) return res.status(400).json({ erro: `São necessárias ao menos 5 submissões por variante. Menor quantidade atual: ${minSubs}.` });
+
+            /* Usa a primeira variante com submissões como canônica */
+            const varBase = variantes.find(v => passRates[v.id] !== null);
+            const gabBase = (varBase.gabarito_json || []).filter(q => q.tipo !== 'discursiva');
+            if (gabBase.length === 0) return res.status(400).json({ erro: 'Sem questões objetivas para mapear.' });
+
+            const mapa = [];
+            const ratesBase = passRates[varBase.id];
+
+            /* Variante canônica: questão física = posição (identidade) */
+            for (const q of gabBase) mapa.push({ questao_fisica: q.questao, variante_id: varBase.id, posicao: q.questao });
+
+            /* Outras variantes: nearest-neighbour por taxa de acerto */
+            for (const v of variantes) {
+                if (v.id === varBase.id || !passRates[v.id]) continue;
+                const gabV = (v.gabarito_json || []).filter(q => q.tipo !== 'discursiva');
+                const ratesV = passRates[v.id];
+                const used = new Set();
+                const sortedBase = [...gabBase].sort((a, b) => (ratesBase[a.questao] || 0) - (ratesBase[b.questao] || 0));
+                for (const baseQ of sortedBase) {
+                    let best = null, bestDiff = Infinity;
+                    for (const vQ of gabV) {
+                        if (!used.has(vQ.questao)) {
+                            const diff = Math.abs((ratesBase[baseQ.questao] || 0) - (ratesV[vQ.questao] || 0));
+                            if (diff < bestDiff) { bestDiff = diff; best = vQ; }
+                        }
+                    }
+                    if (best) { mapa.push({ questao_fisica: baseQ.questao, variante_id: v.id, posicao: best.questao }); used.add(best.questao); }
+                }
+            }
+
+            const aviso = variantesComSubs < variantes.length
+                ? `${variantes.length - variantesComSubs} variante(s) sem submissões não foram mapeadas.`
+                : null;
+            res.json({ mapa, aviso, minSubs: minSubs === Infinity ? 0 : minSubs });
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     /* ── Confrontar dois gabaritos em memória (sem gravação) ── */
     router.post('/classroom/provas/:provaId/confrontar-dois', async (req, res) => {
         const session = req.userSession;
@@ -2276,57 +2425,96 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             const gabB = varB.gabarito_json || [];
             const mesmaVariante = aId === bId;
 
+            /* Carrega mapeamento de questões físicas, se existir */
+            const { rows: mapaRows } = await pool.query(
+                `SELECT questao_fisica, variante_id, posicao
+                   FROM classroom_prova_mapa_questoes
+                  WHERE prova_id = $1 AND variante_id = ANY($2)
+                  ORDER BY questao_fisica`,
+                [provaId, [aId, bId]]
+            );
+
+            /* fisicaToPos[varId][questaoFisica] = posicao */
+            const fisicaToPos = {};
+            for (const row of mapaRows) {
+                if (!fisicaToPos[row.variante_id]) fisicaToPos[row.variante_id] = {};
+                fisicaToPos[row.variante_id][row.questao_fisica] = row.posicao;
+            }
+            const mapaCobertaA = fisicaToPos[aId] && Object.keys(fisicaToPos[aId]).length > 0;
+            const mapaCobertaB = fisicaToPos[bId] && Object.keys(fisicaToPos[bId]).length > 0;
+            const mapaUsado    = !mesmaVariante && mapaCobertaA && mapaCobertaB;
+
+            const gabAMap = Object.fromEntries((gabA).map(q => [q.questao, q]));
+            const gabBMap = Object.fromEntries((gabB).map(q => [q.questao, q]));
+
             const questoes = [];
             let identicas = 0, identicasErradas = 0, total = 0;
 
-            for (let i = 0; i < Math.min(gabA.length, gabB.length); i++) {
-                const qA = gabA[i], qB = gabB[i];
-                if (qA.tipo === 'discursiva' || qB.tipo === 'discursiva') continue;
-                total++;
-
-                const posA = String(qA.questao), posB = String(qB.questao);
-                const respA = marcacoesA[posA] ?? null;
-                const respB = marcacoesB[posB] ?? null;
-
-                const normA = Array.isArray(respA) ? respA.map(x => String(x).toUpperCase()).join(',')
-                            : String(respA ?? '').toLowerCase();
-                const normB = Array.isArray(respB) ? respB.map(x => String(x).toUpperCase()).join(',')
-                            : String(respB ?? '').toLowerCase();
-
-                const identica = respA !== null && respB !== null && normA === normB;
-
-                let erradaA = respA === null ? null : false;
-                let erradaB = respB === null ? null : false;
-                if (respA !== null) {
-                    if (qA.tipo === 'multipla') {
-                        erradaA = String(respA).toLowerCase() !== String(qA.correta || '').toLowerCase();
-                    } else if (qA.tipo === 'vf' && Array.isArray(qA.correta)) {
-                        const arrA = Array.isArray(respA) ? respA : normA.split(',');
-                        erradaA = arrA.length !== qA.correta.length ||
-                                  arrA.some((v, k) => String(v).toUpperCase() !== String(qA.correta[k]).toUpperCase());
-                    }
+            /* Helper: avalia uma resposta */
+            const _norm = (resp) => Array.isArray(resp)
+                ? resp.map(x => String(x).toUpperCase()).join(',')
+                : String(resp ?? '').toLowerCase();
+            const _errou = (resp, q) => {
+                if (resp === null) return null;
+                if (q.tipo === 'multipla') return String(resp).toLowerCase() !== String(q.correta || '').toLowerCase();
+                if (q.tipo === 'vf' && Array.isArray(q.correta)) {
+                    const arr = Array.isArray(resp) ? resp : String(resp).split(',');
+                    return arr.length !== q.correta.length ||
+                           arr.some((v, k) => String(v).toUpperCase() !== String(q.correta[k]).toUpperCase());
                 }
-                if (respB !== null) {
-                    if (qB.tipo === 'multipla') {
-                        erradaB = String(respB).toLowerCase() !== String(qB.correta || '').toLowerCase();
-                    } else if (qB.tipo === 'vf' && Array.isArray(qB.correta)) {
-                        const arrB = Array.isArray(respB) ? respB : normB.split(',');
-                        erradaB = arrB.length !== qB.correta.length ||
-                                  arrB.some((v, k) => String(v).toUpperCase() !== String(qB.correta[k]).toUpperCase());
-                    }
+                return false;
+            };
+
+            if (mapaUsado) {
+                /* Comparação por questão física */
+                const questoesFisicas = [...new Set(mapaRows.map(r => r.questao_fisica))].sort((a, b) => a - b);
+                for (const qf of questoesFisicas) {
+                    const posA = fisicaToPos[aId]?.[qf];
+                    const posB = fisicaToPos[bId]?.[qf];
+                    if (!posA || !posB) continue;
+                    const qA = gabAMap[posA], qB = gabBMap[posB];
+                    if (!qA || !qB || qA.tipo === 'discursiva' || qB.tipo === 'discursiva') continue;
+                    total++;
+
+                    const respA = marcacoesA[String(posA)] ?? null;
+                    const respB = marcacoesB[String(posB)] ?? null;
+                    const normA = _norm(respA), normB = _norm(respB);
+                    const identica = respA !== null && respB !== null && normA === normB;
+                    const erradaA = _errou(respA, qA), erradaB = _errou(respB, qB);
+
+                    if (identica) identicas++;
+                    if (identica && erradaA && erradaB) identicasErradas++;
+                    questoes.push({
+                        questaoFisica: qf, posA, posB,
+                        respA: normA || null, respB: normB || null,
+                        corretaA: Array.isArray(qA.correta) ? qA.correta.join(',') : (qA.correta || null),
+                        corretaB: Array.isArray(qB.correta) ? qB.correta.join(',') : (qB.correta || null),
+                        identica, erradaA, erradaB, erradasAmbos: !!(identica && erradaA && erradaB),
+                    });
                 }
+            } else {
+                /* Comparação posicional (fallback ou mesma variante) */
+                for (let i = 0; i < Math.min(gabA.length, gabB.length); i++) {
+                    const qA = gabA[i], qB = gabB[i];
+                    if (qA.tipo === 'discursiva' || qB.tipo === 'discursiva') continue;
+                    total++;
 
-                if (identica) identicas++;
-                if (identica && erradaA && erradaB) identicasErradas++;
+                    const respA = marcacoesA[String(qA.questao)] ?? null;
+                    const respB = marcacoesB[String(qB.questao)] ?? null;
+                    const normA = _norm(respA), normB = _norm(respB);
+                    const identica = respA !== null && respB !== null && normA === normB;
+                    const erradaA = _errou(respA, qA), erradaB = _errou(respB, qB);
 
-                questoes.push({
-                    posA: qA.questao, posB: qB.questao,
-                    respA: normA || null, respB: normB || null,
-                    corretaA: Array.isArray(qA.correta) ? qA.correta.join(',') : (qA.correta || null),
-                    corretaB: Array.isArray(qB.correta) ? qB.correta.join(',') : (qB.correta || null),
-                    identica, erradaA, erradaB,
-                    erradasAmbos: !!(identica && erradaA && erradaB),
-                });
+                    if (identica) identicas++;
+                    if (identica && erradaA && erradaB) identicasErradas++;
+                    questoes.push({
+                        questaoFisica: null, posA: qA.questao, posB: qB.questao,
+                        respA: normA || null, respB: normB || null,
+                        corretaA: Array.isArray(qA.correta) ? qA.correta.join(',') : (qA.correta || null),
+                        corretaB: Array.isArray(qB.correta) ? qB.correta.join(',') : (qB.correta || null),
+                        identica, erradaA, erradaB, erradasAmbos: !!(identica && erradaA && erradaB),
+                    });
+                }
             }
 
             const similaridade = total > 0 ? Math.round((identicas / total) * 100) : 0;
@@ -2334,7 +2522,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
             res.json({
                 varianteACodigo: varA.codigo,
                 varianteBCodigo: varB.codigo,
-                mesmaVariante, total, identicas, identicasErradas, similaridade, questoes,
+                mesmaVariante, mapaUsado, total, identicas, identicasErradas, similaridade, questoes,
             });
         } catch (e) {
             console.error('[PROVAS] Erro ao confrontar dois gabaritos:', e.message);

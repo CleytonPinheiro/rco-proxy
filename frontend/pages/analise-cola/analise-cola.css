@@ -858,3 +858,88 @@
 .ac-conf-match-certo  { color: #15803d; font-weight: 600; }
 [data-theme="dark"] .ac-conf-match-erros { color: #fca5a5; }
 [data-theme="dark"] .ac-conf-match-certo  { color: #86efac; }
+
+/* ══════════════════════════════════════════════════════════════════
+ *  MAPEAMENTO DE QUESTÕES FÍSICAS
+ * ═════════════════════════════════════════════════════════════════ */
+
+.ac-mapa-topo {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    margin-bottom: 10px;
+}
+.ac-mapa-table-wrap {
+    overflow: auto;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    max-height: 58vh;
+}
+.ac-mapa-table {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: 12px;
+}
+.ac-mapa-table th,
+.ac-mapa-table td {
+    padding: 5px 8px;
+    border: 1px solid var(--border, #e5e7eb);
+    vertical-align: middle;
+}
+.ac-mapa-th-q {
+    background: var(--bg-secondary, #f0f2f8);
+    font-weight: 700;
+    color: var(--text-muted, #666);
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 3;
+    min-width: 68px;
+    white-space: nowrap;
+}
+.ac-mapa-th-var {
+    background: var(--bg-secondary, #f0f2f8);
+    font-weight: 700;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    min-width: 80px;
+}
+[data-theme="dark"] .ac-mapa-th-q,
+[data-theme="dark"] .ac-mapa-th-var { background: #1a1f2e; color: var(--text-muted, #aaa); }
+.ac-mapa-td-q {
+    font-weight: 700;
+    background: var(--bg, #fff);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    white-space: nowrap;
+    color: var(--text-primary, #374151);
+}
+[data-theme="dark"] .ac-mapa-td-q { background: var(--bg, #12151e); }
+.ac-mapa-td-cel { text-align: center; padding: 3px 5px; }
+.ac-mapa-sel {
+    width: 62px;
+    font-size: 12px;
+    padding: 3px 4px;
+    border-radius: 4px;
+    border: 1px solid var(--border, #cbd5e1);
+    background: var(--bg, #fff);
+    color: var(--text-primary, #374151);
+    cursor: pointer;
+}
+[data-theme="dark"] .ac-mapa-sel { background: var(--bg, #12151e); color: var(--text-primary, #e5e7eb); }
+.ac-mapa-conflict { background: #fff1f2; }
+.ac-mapa-conflict .ac-mapa-sel { border-color: #f87171; background: #fff1f2; color: #b91c1c; }
+[data-theme="dark"] .ac-mapa-conflict { background: #2d0000; }
+[data-theme="dark"] .ac-mapa-conflict .ac-mapa-sel { background: #2d0000; color: #fca5a5; }
+
+/* Aviso de mapeamento aplicado com sucesso */
+.ac-conf-aviso-ok {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+}
+[data-theme="dark"] .ac-conf-aviso-ok { background: #0a2e1a; border-color: #14532d; color: #86efac; }
