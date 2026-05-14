@@ -5068,14 +5068,21 @@ export function createProvasPublicRouter() {
 
             await client.query('COMMIT');
 
-            /* Sorteio anônimo de 2º corretor (fire-and-forget), se a prova tiver esse recurso ativo */
+            /* Sorteio anônimo de 2º corretor (fire-and-forget) */
             setImmediate(async () => {
                 try {
-                    if (!ref.segundo_corretor_ativo) return;
-                    const pct = Number(ref.segundo_corretor_pct ?? 15);
-                    if (pct <= 0 || Math.random() * 100 >= pct) return;
-                    await sortearSegundoCorretor(pool, { submissaoId: ref.id, provaId: ref.prova_id });
-                    console.log(`[PROVAS] Turma-corretora: sorteio 2º corretor OK para sub ${ref.id}`);
+                    if (ref.turma_corretora_2a_correcao) {
+                        /* Prova configurada para sempre sortear 2º corretor via turma corretora */
+                        await sortearSegundoCorretor(pool, { submissaoId: ref.id, provaId: ref.prova_id });
+                        console.log(`[PROVAS] Turma-corretora: sorteio 2º corretor (obrigatório) OK para sub ${ref.id}`);
+                    } else {
+                        /* Fluxo probabilístico normal para provas sem turma_corretora_2a_correcao */
+                        if (!ref.segundo_corretor_ativo) return;
+                        const pct = Number(ref.segundo_corretor_pct ?? 15);
+                        if (pct <= 0 || Math.random() * 100 >= pct) return;
+                        await sortearSegundoCorretor(pool, { submissaoId: ref.id, provaId: ref.prova_id });
+                        console.log(`[PROVAS] Turma-corretora: sorteio 2º corretor OK para sub ${ref.id}`);
+                    }
                 } catch (e) {
                     console.warn(`[PROVAS] Turma-corretora: sorteio 2º corretor falhou (sub ${ref.id}): ${e.message}`);
                 }
