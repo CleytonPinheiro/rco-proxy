@@ -2322,6 +2322,9 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 });
             });
         } catch (e) {
+            if (e.code === '23505') {
+                return res.status(409).json({ erro: 'Você já enviou a correção desta prova.' });
+            }
             console.error('[PROVAS] Erro ao registrar submissão manual:', e.message);
             res.status(500).json({ erro: e.message });
         }
@@ -2394,6 +2397,9 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 }
             });
         } catch (e) {
+            if (e.code === '23505') {
+                return res.status(409).json({ erro: 'Você já enviou a correção desta prova.' });
+            }
             console.error('[PROVAS] Erro ao atribuir folha para turma corretora:', e.message);
             res.status(500).json({ erro: e.message });
         }
@@ -3563,6 +3569,9 @@ export function createProvasPublicRouter() {
                 });
             }
         } catch (e) {
+            if (e.code === '23505') {
+                return res.status(409).json({ erro: 'Você já enviou a correção desta prova.' });
+            }
             console.error('[PROVAS] Erro ao submeter:', e.message);
             res.status(500).json({ erro: e.message });
         }
@@ -3862,6 +3871,9 @@ export function createProvasPublicRouter() {
                 aviso: 'XP de precisão será creditado quando o professor efetivar a prova.',
             });
         } catch (e) {
+            if (e.code === '23505') {
+                return res.status(409).json({ erro: 'Você já enviou a correção desta prova.' });
+            }
             res.status(500).json({ erro: e.message });
         }
     });
