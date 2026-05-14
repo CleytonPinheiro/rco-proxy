@@ -4419,7 +4419,7 @@ export function createProvasPublicRouter() {
 
             const [{ rows: [prova] }, { rows: variantes }] = await Promise.all([
                 pool.query(
-                    `SELECT id, nome, curso_id, turma_corretora_id, turma_corretora_2a_correcao
+                    `SELECT id, nome, curso_id, criada_por_cpf, turma_corretora_id, turma_corretora_2a_correcao
                        FROM classroom_provas
                       WHERE id = $1 AND efetivada = false AND turma_corretora_id IS NOT NULL`,
                     [pid]
@@ -4429,7 +4429,7 @@ export function createProvasPublicRouter() {
                     [pid]
                 ),
             ]);
-            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada.' });
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada ou já efetivada.' });
 
             /* Submissões existentes para esta prova → email → submissao_ref_id */
             const { rows: subs } = await pool.query(
@@ -4441,10 +4441,22 @@ export function createProvasPublicRouter() {
             const submissaoMap = Object.fromEntries(subs.map(r => [r.email, r.submissao_ref_id]));
 
             /* ── Busca roster via Google Classroom API ── */
+            /* Prefere o token do professor que criou a prova; cai para o mais recente */
             const { rows: tkRows } = await pool.query(
-                `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                `SELECT tokens FROM classroom_tokens
+                  WHERE ($1::text IS NULL OR cpf = $1)
+                  ORDER BY atualizado DESC LIMIT 1`,
+                [prova.criada_por_cpf || null]
             );
-            if (!tkRows[0]?.tokens) return res.json({ alunos: [], variantes });
+            /* Se não achou token do criador, tenta qualquer token disponível */
+            const { rows: tkFallback } = tkRows[0]?.tokens
+                ? { rows: tkRows }
+                : await pool.query(`SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`);
+
+            if (!tkFallback[0]?.tokens) {
+                console.warn('[LISTA-TURMA-ALVO] Nenhum token de professor disponível.');
+                return res.json({ alunos: [], variantes, aviso: 'Nenhum token de professor disponível.' });
+            }
 
             const { google } = await import('googleapis');
             const auth = new google.auth.OAuth2(
@@ -4452,25 +4464,40 @@ export function createProvasPublicRouter() {
                 process.env.GOOGLE_CLIENT_SECRET,
                 process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
             );
-            auth.setCredentials(tkRows[0].tokens);
+            auth.setCredentials(tkFallback[0].tokens);
+
+            /* Força refresh do access_token se expirado */
+            try {
+                const tokenInfo = await auth.getAccessToken();
+                if (!tokenInfo?.token) throw new Error('token vazio após refresh');
+            } catch (refreshErr) {
+                console.warn('[LISTA-TURMA-ALVO] Falha no refresh do token:', refreshErr.message);
+                return res.json({ alunos: [], variantes, aviso: 'Token do professor expirado. Peça ao professor para reconectar o Google Classroom.' });
+            }
+
             const classroom = google.classroom({ version: 'v1', auth });
 
             let rosterAlunos = [];
             let pageToken;
-            do {
-                const r = await classroom.courses.students.list({
-                    courseId:  String(prova.curso_id),
-                    pageSize:  200,
-                    pageToken,
-                });
-                for (const s of (r.data.students || [])) {
-                    const email = (s.profile?.emailAddress || '').toLowerCase();
-                    const nome  = s.profile?.name?.fullName || '';
-                    if (!email || email === aluno.email.toLowerCase()) continue;
-                    rosterAlunos.push({ email, nome });
-                }
-                pageToken = r.data.nextPageToken;
-            } while (pageToken);
+            try {
+                do {
+                    const r = await classroom.courses.students.list({
+                        courseId:  String(prova.curso_id),
+                        pageSize:  200,
+                        pageToken,
+                    });
+                    for (const s of (r.data.students || [])) {
+                        const email = (s.profile?.emailAddress || '').toLowerCase();
+                        const nome  = s.profile?.name?.fullName || '';
+                        if (!email || email === aluno.email.toLowerCase()) continue;
+                        rosterAlunos.push({ email, nome });
+                    }
+                    pageToken = r.data.nextPageToken;
+                } while (pageToken);
+            } catch (apiErr) {
+                console.error('[LISTA-TURMA-ALVO] Classroom API error:', apiErr.message);
+                return res.status(502).json({ erro: `Erro ao acessar Google Classroom: ${apiErr.message}` });
+            }
 
             /* ── Enriquece com numchamada via Supabase (best-effort) ── */
             const numChamadaMap = {};   /* nome_normalizado → numchamada */

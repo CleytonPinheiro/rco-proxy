@@ -202,7 +202,27 @@ async function tcorCarregarListaAlunos(provaId) {
             { credentials: 'include' }
         );
         const d = await r.json();
-        if (!d.alunos) throw new Error('sem dados');
+
+        /* Erro explícito do servidor */
+        if (!r.ok || d.erro) {
+            const textoErro = d.erro || `HTTP ${r.status}`;
+            sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
+            if (msg) msg.textContent = textoErro;
+            return;
+        }
+
+        /* Aviso sem alunos (ex.: token expirado) */
+        if (d.aviso) {
+            sel.innerHTML = '<option value="">— Nenhum aluno disponível —</option>';
+            if (msg) msg.textContent = d.aviso;
+            return;
+        }
+
+        if (!d.alunos) {
+            sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
+            if (msg) msg.textContent = 'Resposta inesperada do servidor.';
+            return;
+        }
 
         window._tcorAlunos    = window._tcorAlunos    || {};
         window._tcorVariantes = window._tcorVariantes || {};
@@ -211,6 +231,7 @@ async function tcorCarregarListaAlunos(provaId) {
 
         if (d.alunos.length === 0) {
             sel.innerHTML = '<option value="">— Nenhum aluno encontrado —</option>';
+            if (msg) msg.textContent = 'Nenhum aluno encontrado na turma. Verifique se o professor está com o Google Classroom conectado.';
             return;
         }
         sel.innerHTML = '<option value="">— Selecione o aluno —</option>' +
@@ -219,9 +240,10 @@ async function tcorCarregarListaAlunos(provaId) {
                 const tag  = a.sem_submissao ? ' ✎' : ' ✔';
                 return `<option value="${i}">${num}${escapeHtmlGam(a.nome)}${tag}</option>`;
             }).join('');
-    } catch (_) {
+        if (msg) msg.textContent = '';
+    } catch (err) {
         if (sel) sel.innerHTML = '<option value="">— Erro ao carregar —</option>';
-        if (msg) msg.textContent = 'Não foi possível carregar a lista de alunos.';
+        if (msg) msg.textContent = `Erro de rede: ${err.message}`;
     }
 }
 window.tcorCarregarListaAlunos = tcorCarregarListaAlunos;
