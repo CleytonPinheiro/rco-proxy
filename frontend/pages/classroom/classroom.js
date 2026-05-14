@@ -2,53 +2,6 @@
 
 /* ── (Submenu Classroom agora é inline — theme.js controla visibilidade) ── */
 
-/* ══════════════════════════════════════════════════════════════════
-   Modal de confirmação — substitui confirm() nativo
-   Uso: await confirmar('Mensagem', { titulo, confirmLabel, tipo, icone })
-   Retorna: true (confirmou) | false (cancelou)
-══════════════════════════════════════════════════════════════════ */
-function confirmar(mensagem, { titulo = 'Confirmar ação', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tipo = 'info', icone, html = false } = {}) {
-    return new Promise(resolve => {
-        const overlay  = document.getElementById('clConfirmModal');
-        const elTitulo = document.getElementById('clConfirmTitulo');
-        const elMsg    = document.getElementById('clConfirmMsg');
-        const elIcone  = document.getElementById('clConfirmIcone');
-        const elOk     = document.getElementById('clConfirmOk');
-        const elCancel = document.getElementById('clConfirmCancelar');
-        const elModal  = overlay.querySelector('.cl-confirm-modal');
-
-        elTitulo.textContent = titulo;
-        if (html) { elMsg.innerHTML = mensagem; } else { elMsg.textContent = mensagem; }
-        elOk.textContent     = confirmLabel;
-        elCancel.textContent = cancelLabel;
-
-        const iconeDefault = tipo === 'danger' ? '⚠️' : '❓';
-        elIcone.textContent = icone || iconeDefault;
-
-        elModal.classList.toggle('cl-confirm--danger', tipo === 'danger');
-        overlay.classList.add('cl-modal-overlay--visivel');
-        elOk.focus();
-
-        function fechar(resultado) {
-            overlay.classList.remove('cl-modal-overlay--visivel');
-            elOk.removeEventListener('click', onOk);
-            elCancel.removeEventListener('click', onCancel);
-            overlay.removeEventListener('click', onBackdrop);
-            document.removeEventListener('keydown', onKey);
-            resolve(resultado);
-        }
-        function onOk()      { fechar(true); }
-        function onCancel()  { fechar(false); }
-        function onBackdrop(e) { if (e.target === overlay) fechar(false); }
-        function onKey(e)    { if (e.key === 'Escape') fechar(false); if (e.key === 'Enter' && document.activeElement === elOk) { e.preventDefault(); fechar(true); } }
-
-        elOk.addEventListener('click', onOk);
-        elCancel.addEventListener('click', onCancel);
-        overlay.addEventListener('click', onBackdrop);
-        document.addEventListener('keydown', onKey);
-    });
-}
-
 /* ── BroadcastChannel (sync com janela popout) ── */
 const CL_BC_NAME = 'cl-notas-sync';
 let clBc;
@@ -203,33 +156,12 @@ function isErroEscopo(e) {
 }
 
 async function mostrarAvisoEscopo() {
-    const reconectar = await confirmar(
-        'Seu token do Google Classroom não inclui a permissão de gravar notas (escopo classroom.grades). ' +
-        'Isso acontece porque o escopo foi adicionado após a sua última autorização. ' +
-        'Reconecte agora para liberar a permissão.',
-        {
-            titulo: 'Permissão insuficiente — Reconexão necessária',
-            confirmLabel: 'Reconectar Google Classroom',
-            cancelLabel: 'Agora não',
-            tipo: 'danger',
-            icone: '🔑',
-        }
-    );
-    if (reconectar) {
-        try {
-            const { url } = await api('/auth-url');
-            try { window.top.location.href = url; }
-            catch (_) { window.open(url, '_blank', 'noopener'); }
-        } catch (e) {
-            await notificar('Erro', 'Não foi possível iniciar reconexão: ' + e.message, { tipo: 'danger' });
-        }
-    } else {
-        const btnConectar = document.getElementById('clBtnConectar');
-        if (btnConectar) {
-            btnConectar.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            btnConectar.classList.add('cl-btn--pulse');
-            setTimeout(() => btnConectar.classList.remove('cl-btn--pulse'), 4000);
-        }
+    try {
+        const { url } = await api('/auth-url');
+        try { window.top.location.href = url; }
+        catch (_) { window.open(url, '_blank', 'noopener'); }
+    } catch (e) {
+        await notificar('Erro', 'Não foi possível iniciar reconexão: ' + e.message, { tipo: 'danger' });
     }
 }
 
@@ -378,7 +310,6 @@ elBtnConectar.addEventListener('click', async () => {
 
 /* ── Desconectar ── */
 document.getElementById('clBtnDesconectar').addEventListener('click', async () => {
-    if (!await confirmar('Você precisará autorizar novamente para usar o Classroom.', { titulo: 'Desconectar conta Google?', confirmLabel: 'Desconectar', tipo: 'danger', icone: '🔌' })) return;
     await api('/disconnect', { method: 'POST' });
     location.reload();
 });
@@ -1145,7 +1076,6 @@ async function devolverEntrega(btn) {
     const subId  = btn.dataset.sub;
     const userId = btn.dataset.user;
     const aluno  = alunos[userId];
-    if (!await confirmar(`Devolver a entrega de ${aluno?.nome || 'aluno'} para revisão?`, { titulo: 'Devolver entrega', confirmLabel: 'Devolver', tipo: 'danger', icone: '↩️' })) return;
     btn.disabled    = true;
     btn.textContent = '...';
     try {
@@ -1698,32 +1628,7 @@ elBtnLivro.addEventListener('click', async () => {
             });
         });
 
-        if (naoCorrigidos.length) {
-            const lista = naoCorrigidos.slice(0, 10).map(x => `• ${x.aluno} → ${x.atividade}`).join('\n');
-            const extra = naoCorrigidos.length > 10 ? `\n… e mais ${naoCorrigidos.length - 10}` : '';
-            const prosseguir = await confirmar(
-                `⚠️ ${naoCorrigidos.length} entrega${naoCorrigidos.length > 1 ? 's' : ''} ainda não corrigida${naoCorrigidos.length > 1 ? 's' : ''}:\n\n${lista}${extra}\n\nEssas notas ficarão como 0 no cálculo. Deseja prosseguir mesmo assim?`,
-                {
-                    titulo: 'Entregas sem correção',
-                    confirmLabel: 'Prosseguir mesmo assim',
-                    tipo: 'warning',
-                    icone: '⚠️',
-                }
-            );
-            if (!prosseguir) return;
-        }
     }
-
-    const msg        = novoEstado
-        ? `As notas do grupo "${grupoAtivo.nome}" foram lançadas no livro de chamada?`
-        : `Desmarcar o grupo "${grupoAtivo.nome}" como lançado no livro?`;
-    const confirmado = await confirmar(msg, {
-        titulo:       novoEstado ? 'Lançar no livro' : 'Remover marcação',
-        confirmLabel: novoEstado ? '📒 Confirmar lançamento' : 'Remover',
-        tipo:         novoEstado ? 'info' : 'danger',
-        icone:        novoEstado ? '📒' : '↩️',
-    });
-    if (!confirmado) return;
 
     elBtnLivro.disabled = true;
     try {
@@ -1872,11 +1777,7 @@ elBtnFecharNota.addEventListener('click', async () => {
                     <div class="cl-fechar-sync-desc">Reverte o prazo das atividades para o valor que tinham antes do fechamento.</div>
                 </div>
             </div>`;
-        const ok = await confirmar(reabrirHtml, {
-            titulo: 'Reabrir notas', confirmLabel: 'Sim, reabrir', tipo: 'info', icone: '🔓', html: true,
-        });
-        if (!ok) return;
-        const restaurarDueDate = document.getElementById('clAbrirRestaurarDueDate')?.checked ?? false;
+        const restaurarDueDate = false;
         try {
             elBtnFecharNota.disabled = true;
             if (restaurarDueDate) notificar('Aguarde', 'Reabrindo notas e restaurando prazos no Classroom...', { tipo: 'info' });
@@ -2091,62 +1992,7 @@ elBtnFecharNota.addEventListener('click', async () => {
             </div>`;
 
         const temPendencias = atvsSemCorrecao.length > 0 || fontesKeys.length > 0;
-        const confirmarPromise = confirmar(resumoHtml, {
-            titulo: 'Fechar notas',
-            confirmLabel: temPendencias ? 'Fechar mesmo assim' : 'Sim, fechar agora',
-            tipo: 'danger',
-            icone: '🔒',
-            html: true,
-        });
-
-        setTimeout(() => {
-            const pendToggle = document.getElementById('clFecharPendentesToggle');
-            const pendDetail = document.getElementById('clFecharPendentesDetail');
-            if (pendToggle && pendDetail) {
-                pendToggle.addEventListener('click', () => {
-                    const aberto = pendDetail.style.display !== 'none';
-                    pendDetail.style.display = aberto ? 'none' : 'block';
-                    const arrow = pendToggle.querySelector('.cl-fechar-stat-expand');
-                    if (arrow) arrow.textContent = aberto ? '▼' : '▲';
-                });
-            }
-            document.querySelectorAll('.cl-fechar-sc-toggle').forEach(tog => {
-                tog.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = tog.dataset.idx;
-                    const panel = document.getElementById(`clFecharScAlunos${idx}`);
-                    if (!panel) return;
-                    const aberto = panel.style.display !== 'none';
-                    panel.style.display = aberto ? 'none' : 'block';
-                    tog.textContent = aberto ? '▼' : '▲';
-                });
-            });
-            document.querySelectorAll('.cl-fechar-pendencias-nome').forEach(nomeEl => {
-                nomeEl.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const item = nomeEl.closest('.cl-fechar-pendencias-item');
-                    const atvId = item?.dataset?.atvId;
-                    if (!atvId) return;
-                    const ativ = atividadesCache.find(a => String(a.id) === String(atvId));
-                    if (!ativ) { notificar('Erro', 'Atividade não encontrada.', { tipo: 'danger' }); return; }
-                    document.getElementById('clConfirmCancelar').click();
-                    if (viewMode !== 'atividades') elTabAtiv.click();
-                    setTimeout(async () => {
-                        const itemEl = document.querySelector(`.cl-ativ-item[data-ativ-id="${atvId}"]`);
-                        if (itemEl) {
-                            itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                        await selecionarAtividade(ativ, itemEl || document.createElement('div'));
-                        elFiltroStatus.value = 'corrigir';
-                        renderNotas();
-                    }, 150);
-                });
-            });
-        }, 0);
-
-        const ok = await confirmarPromise;
-        if (!ok) return;
-        const syncClassroom = document.getElementById('clFecharSyncClassroom')?.checked ?? false;
+        const syncClassroom = false;
         try {
             elBtnFecharNota.disabled = true;
             if (syncClassroom) notificar('Aguarde', 'Fechando notas e sincronizando prazos com o Classroom...', { tipo: 'info' });
@@ -3510,18 +3356,6 @@ async function confirmarTodosRascunhos() {
     const drafts = _coletarRascunhosGrupo();
     if (!drafts.length) return;
 
-    const n = drafts.length;
-    const confirmado = await confirmar(
-        `Devolver ${n} nota${n !== 1 ? 's' : ''} em rascunho para os alunos no Google Classroom?\n\nAo confirmar, as notas passarão do estado de rascunho para notas oficiais e os alunos poderão visualizá-las.`,
-        {
-            titulo: 'Confirmar todos os rascunhos',
-            confirmLabel: `📝 Confirmar ${n} nota${n !== 1 ? 's' : ''}`,
-            tipo: 'info',
-            icone: '📝',
-        }
-    );
-    if (!confirmado) return;
-
     elBtnConfirmarTodosRasc.disabled = true;
     elBtnConfirmarTodosRasc.textContent = '⏳ Confirmando...';
     try {
@@ -4419,16 +4253,6 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
     });
 
     const ativsCom100 = atividades.filter(a => a.pontos_max === 100);
-    if (ativsCom100.length > 0) {
-        const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const nomes = ativsCom100.map(a => `• ${esc(a.atividade_titulo)}`).join('<br>');
-        const continuar = await confirmar(
-            `${ativsCom100.length} atividade${ativsCom100.length > 1 ? 's' : ''} com <b>10.0 pts</b> (valor padrão do Classroom):<br><br>${nomes}<br><br>Deseja continuar mesmo assim ou voltar para ajustar?`,
-            { titulo: 'Atividades com pontuação padrão', confirmLabel: 'Continuar assim', cancelLabel: 'Voltar e ajustar', tipo: 'alerta', icone: '⚠️', html: true }
-        );
-        if (!continuar) return;
-    }
-
     const btn = document.getElementById('clGrupoModalSalvar');
     btn.disabled    = true;
     btn.textContent = 'Salvando...';
@@ -4475,7 +4299,6 @@ document.getElementById('clGrupoModalSalvar').addEventListener('click', async ()
 });
 
 async function excluirGrupo(grupo) {
-    if (!await confirmar(`Excluir o grupo "${grupo.nome}"? As atividades do Classroom não serão afetadas.`, { titulo: 'Excluir grupo', confirmLabel: 'Excluir', tipo: 'danger', icone: '🗑️' })) return;
     try {
         await api(`/groups/${grupo.id}`, { method: 'DELETE' });
         if (grupoAtivo?.id === grupo.id) { grupoAtivo = null; resetColuna3(); }
@@ -4884,8 +4707,6 @@ function renderAuditRow(l, ativ) {
 }
 
 async function aplicarZeroIndividual(userId, subId, nome, ativ) {
-    if (!await confirmar(`Registrar ${nome} como ausente na atividade "${ativ.titulo}"?`, { titulo: 'Registrar ausência', confirmLabel: 'Registrar', icone: '📋' })) return;
-
     try {
         await apiRaw('/classroom/ausencias', {
             method: 'POST',
@@ -4909,7 +4730,6 @@ async function aplicarZeroIndividual(userId, subId, nome, ativ) {
 async function aplicarZerosTodos(ausentesLista, ativ) {
     const pendentes = ausentesLista.filter(l => !l.sub?.ausente);
     if (!pendentes.length) { await notificar('Pronto', 'Todos os ausentes já foram registrados.', { tipo: 'ok' }); return; }
-    if (!await confirmar(`Registrar ${pendentes.length} aluno${pendentes.length !== 1 ? 's' : ''} ausente${pendentes.length !== 1 ? 's' : ''} nesta atividade?`, { titulo: 'Registrar todos os ausentes', confirmLabel: 'Registrar todos', icone: '📋' })) return;
 
     const btn = document.getElementById('clBtnAplicarTodos');
     if (btn) { btn.disabled = true; btn.textContent = 'Registrando...'; }
@@ -5745,12 +5565,6 @@ elRcoModalConfirmar.addEventListener('click', async () => {
             ? `${mapeados} de ${total} alunos têm nota do Classroom e receberão a nota calculada. ${semMatch} aluno(s) não fazem parte do grupo de recuperação e receberão nota 0 no RCO.`
             : `${mapeados} nota${mapeados !== 1 ? 's' : ''} serão enviadas ao RCO para todos os alunos mapeados.`);
 
-    if (!await confirmar(msgRco, {
-        titulo:       isRec ? 'Salvar recuperação localmente' : 'Confirmar lançamento no RCO',
-        confirmLabel: isRec ? 'Salvar localmente' : 'Lançar notas',
-        icone:        isRec ? '💾' : '🚀',
-    })) return;
-
     elRcoModalConfirmar.disabled    = true;
     elRcoModalConfirmar.textContent = isRec ? 'Salvando…' : 'Lançando…';
 
@@ -5891,16 +5705,6 @@ elRcoModalZerar.addEventListener('click', async () => {
     const av    = rcoAvaliacaoSelecionada;
     const total = rcoAlunosMapeados.length;
     const nomeAv = av.descrAvaliacaoParcial ? String(av.descrAvaliacaoParcial).replace(/\n\s*/g,' ').trim() : `Avaliação #${av.numAvaliacaoParcial}`;
-
-    if (!await confirmar(
-        `Isso enviará nota vazia para todos os ${total} alunos da avaliação "${nomeAv}". O RCO irá limpar as notas desta avaliação. Esta ação não pode ser desfeita.`,
-        {
-            titulo:       '⚠️ Zerar avaliação no RCO',
-            confirmLabel: '🗑️ Sim, zerar notas',
-            tipo:         'danger',
-            icone:        '⚠️',
-        }
-    )) return;
 
     elRcoModalZerar.disabled    = true;
     elRcoModalZerar.textContent = 'Zerando…';
@@ -6297,7 +6101,6 @@ async function adicionarPedagogo() {
 }
 
 async function revogarPedagogo(id) {
-    if (!await confirmar('Deseja revogar o acesso desta pedagoga?', { titulo: 'Revogar acesso', confirmLabel: 'Revogar', tipo: 'danger', icone: '🔒' })) return;
     try {
         await fetch(`/api/classroom/acesso-pedagogos/${id}`, {
             method: 'DELETE',
@@ -6378,10 +6181,6 @@ async function carregarSolicitacoesAcesso() {
 
 async function responderSolicitacao(id, aceitar) {
     const acao = aceitar ? 'aprovar' : 'recusar';
-    if (!await confirmar(
-        aceitar ? 'Deseja aprovar esta solicitação e conceder acesso pedagógico?' : 'Deseja recusar esta solicitação?',
-        { titulo: aceitar ? 'Aprovar solicitação' : 'Recusar solicitação', confirmLabel: aceitar ? 'Aprovar' : 'Recusar', tipo: aceitar ? 'info' : 'danger', icone: aceitar ? '✅' : '❌' }
-    )) return;
     try {
         const resp = await fetch(`/api/classroom/solicitacoes-acesso/${id}/responder`, {
             method: 'POST', credentials: 'include',
