@@ -4440,39 +4440,68 @@ export function createProvasPublicRouter() {
             );
             const submissaoMap = Object.fromEntries(subs.map(r => [r.email, r.submissao_ref_id]));
 
-            /* ── Busca roster via Google Classroom API ── */
-            /* Prefere o token do professor que criou a prova; cai para o mais recente */
-            const { rows: tkRows } = await pool.query(
-                `SELECT tokens FROM classroom_tokens
-                  WHERE ($1::text IS NULL OR cpf = $1)
-                  ORDER BY atualizado DESC LIMIT 1`,
-                [prova.criada_por_cpf || null]
-            );
-            /* Se não achou token do criador, tenta qualquer token disponível */
-            const { rows: tkFallback } = tkRows[0]?.tokens
-                ? { rows: tkRows }
-                : await pool.query(`SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`);
+            /* ── Busca token do professor (mesma lógica do endpoint atribuicoes) ── */
+            const { google } = await import('googleapis');
+            const clientId  = process.env.GOOGLE_CLIENT_ID;
+            const clientSec = process.env.GOOGLE_CLIENT_SECRET;
 
-            if (!tkFallback[0]?.tokens) {
+            let rawToken    = null;
+            let tokenCpf    = null;
+
+            /* 1. Prefere token do criador da prova, cai para qualquer token no DB */
+            try {
+                const { rows: tk } = await pool.query(
+                    `SELECT cpf, tokens FROM classroom_tokens
+                      WHERE ($1::text IS NULL OR cpf = $1)
+                      ORDER BY atualizado DESC LIMIT 1`,
+                    [prova.criada_por_cpf || null]
+                );
+                if (tk[0]?.tokens) { rawToken = tk[0].tokens; tokenCpf = tk[0].cpf; }
+            } catch (_) {}
+
+            if (!rawToken) {
+                try {
+                    const { rows: tk } = await pool.query(
+                        `SELECT cpf, tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                    );
+                    if (tk[0]?.tokens) { rawToken = tk[0].tokens; tokenCpf = tk[0].cpf; }
+                } catch (_) {}
+            }
+
+            /* 2. Fallback: arquivo legado classroom_token.json */
+            if (!rawToken) {
+                try {
+                    const fsSync   = (await import('fs')).default;
+                    const filePath = new URL('../../data/classroom_token.json', import.meta.url).pathname;
+                    if (fsSync.existsSync(filePath))
+                        rawToken = JSON.parse(fsSync.readFileSync(filePath, 'utf8'));
+                } catch (_) {}
+            }
+
+            if (!rawToken) {
                 console.warn('[LISTA-TURMA-ALVO] Nenhum token de professor disponível.');
                 return res.json({ alunos: [], variantes, aviso: 'Nenhum token de professor disponível.' });
             }
 
-            const { google } = await import('googleapis');
-            const auth = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
-                process.env.GOOGLE_CLIENT_SECRET,
-                process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
-            );
-            auth.setCredentials(tkFallback[0].tokens);
+            const redirectUri = `${req.protocol}://${req.get('host')}/api/classroom/callback`;
+            const auth = new google.auth.OAuth2(clientId, clientSec, redirectUri);
+            auth.setCredentials(rawToken);
 
-            /* Força refresh do access_token se expirado */
-            try {
-                const tokenInfo = await auth.getAccessToken();
-                if (!tokenInfo?.token) throw new Error('token vazio após refresh');
-            } catch (refreshErr) {
-                console.warn('[LISTA-TURMA-ALVO] Falha no refresh do token:', refreshErr.message);
-                return res.json({ alunos: [], variantes, aviso: 'Token do professor expirado. Peça ao professor para reconectar o Google Classroom.' });
+            /* Renova access_token se expirado */
+            if (rawToken.expiry_date && rawToken.expiry_date < Date.now()) {
+                try {
+                    const { credentials } = await auth.refreshAccessToken();
+                    auth.setCredentials(credentials);
+                    if (tokenCpf) {
+                        await pool.query(
+                            `UPDATE classroom_tokens SET tokens = $1, atualizado = NOW() WHERE cpf = $2`,
+                            [JSON.stringify(credentials), tokenCpf]
+                        );
+                    }
+                } catch (refreshErr) {
+                    console.warn('[LISTA-TURMA-ALVO] Falha ao renovar token:', refreshErr.message);
+                    return res.json({ alunos: [], variantes, aviso: 'Token do professor expirado. Peça ao professor para reconectar o Google Classroom.' });
+                }
             }
 
             const classroom = google.classroom({ version: 'v1', auth });
