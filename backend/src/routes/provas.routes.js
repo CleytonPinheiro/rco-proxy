@@ -4285,21 +4285,32 @@ export function createProvasPublicRouter() {
         const nomeTrimmed = String(nome || '').trim();
         if (nomeTrimmed.length < 2) return res.status(400).json({ erro: 'nome mínimo 2 caracteres.' });
         try {
+            const pid = parseInt(prova_id, 10);
+
+            /* Variantes disponíveis (para seletor quando sem_submissao=true) */
+            const { rows: variantes } = await pool.query(
+                `SELECT id, codigo FROM classroom_prova_variantes WHERE prova_id = $1 ORDER BY codigo`,
+                [pid]
+            );
+
             const { rows } = await pool.query(
+                /* ── 1. Alunos COM submissão existente nesta prova ── */
                 `SELECT
                     s.id            AS submissao_ref_id,
-                    s.foto_url,
+                    s.foto_url      AS foto_url,
                     s.aluno_nome,
                     CASE
                         WHEN s.aluno_email IS NOT NULL
                         THEN CONCAT(LEFT(s.aluno_email, 2), '***@', SPLIT_PART(s.aluno_email, '@', 2))
                         ELSE NULL
                     END             AS email_mascarado,
+                    NULL::text      AS email_real,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
                     p.turma_corretora_2a_correcao,
                     v.codigo        AS variante_codigo,
-                    jsonb_array_length(v.gabarito_json) AS qtd_questoes
+                    jsonb_array_length(v.gabarito_json)::integer AS qtd_questoes,
+                    false           AS sem_submissao
                  FROM classroom_provas p
                  JOIN classroom_prova_submissoes s ON s.prova_id = p.id
                  JOIN classroom_prova_variantes  v ON v.id = s.variante_id
@@ -4309,10 +4320,7 @@ export function createProvasPublicRouter() {
                   AND s.eh_segundo_corretor = false
                   AND s.eh_turma_corretora  = false
                   AND s.aluno_email != $2
-                  AND (
-                      s.aluno_nome ILIKE $3
-                      OR s.aluno_nome IS NULL
-                  )
+                  AND (s.aluno_nome ILIKE $3 OR s.aluno_nome IS NULL)
                   AND NOT EXISTS (
                       SELECT 1 FROM classroom_prova_submissoes tc
                        WHERE tc.submissao_ref_id = s.id
@@ -4331,14 +4339,141 @@ export function createProvasPublicRouter() {
                         AND sc.eh_segundo_corretor = false
                         AND sc.eh_turma_corretora  = false
                   )
-                ORDER BY (CASE WHEN s.aluno_nome IS NULL THEN 1 ELSE 0 END),
-                         COALESCE(s.aluno_nome, ''),
-                         v.codigo
+
+                UNION
+
+                /* ── 2. Alunos SEM submissão nesta prova, descobertos via outras provas do mesmo curso ── */
+                /* UNION (não ALL) garante deduplicação por email; sem DISTINCT ON para compatibilidade */
+                SELECT
+                    NULL::integer   AS submissao_ref_id,
+                    NULL::text      AS foto_url,
+                    s.aluno_nome,
+                    CASE
+                        WHEN s.aluno_email IS NOT NULL
+                        THEN CONCAT(LEFT(s.aluno_email, 2), '***@', SPLIT_PART(s.aluno_email, '@', 2))
+                        ELSE NULL
+                    END             AS email_mascarado,
+                    s.aluno_email   AS email_real,
+                    p.id            AS prova_id,
+                    p.nome          AS prova_nome,
+                    p.turma_corretora_2a_correcao,
+                    NULL::text      AS variante_codigo,
+                    NULL::integer   AS qtd_questoes,
+                    true            AS sem_submissao
+                 FROM classroom_provas p
+                 JOIN classroom_prova_submissoes s
+                   ON s.prova_id != p.id
+                  AND s.eh_segundo_corretor = false
+                  AND s.eh_turma_corretora  = false
+                 JOIN classroom_provas p2 ON p2.id = s.prova_id AND p2.curso_id = p.curso_id
+                WHERE p.id = $1
+                  AND p.turma_corretora_id IS NOT NULL
+                  AND p.efetivada = false
+                  AND s.aluno_email != $2
+                  AND s.aluno_nome ILIKE $3
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes es
+                       WHERE es.prova_id             = $1
+                         AND es.aluno_email           = s.aluno_email
+                         AND es.eh_segundo_corretor   = false
+                         AND es.eh_turma_corretora    = false
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM classroom_prova_submissoes sc
+                       JOIN classroom_provas pc ON pc.id = sc.prova_id
+                      WHERE sc.aluno_email = $2
+                        AND pc.curso_id = p.curso_id
+                        AND sc.eh_segundo_corretor = false
+                        AND sc.eh_turma_corretora  = false
+                  )
+
+                ORDER BY sem_submissao ASC,
+                         (CASE WHEN aluno_nome IS NULL THEN 1 ELSE 0 END),
+                         COALESCE(aluno_nome, ''),
+                         variante_codigo NULLS LAST
                 LIMIT 10`,
-                [parseInt(prova_id, 10), aluno.email, `%${nomeTrimmed}%`]
+                [pid, aluno.email, `%${nomeTrimmed}%`]
             );
-            res.json({ alunos: rows });
+            res.json({ alunos: rows, variantes });
         } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /**
+     * POST /api/alunos-portal/turma-corretora/iniciar-correcao
+     * Cria submissão-gatilho em branco para aluno sem submissão digital,
+     * chamado pelo próprio membro da turma corretora ao selecionar a variante.
+     * Body: { prova_id, aluno_email, aluno_nome, variante_codigo }
+     */
+    router.post('/alunos-portal/turma-corretora/iniciar-correcao', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const { prova_id, aluno_email, aluno_nome, variante_codigo } = req.body || {};
+        if (!prova_id || !aluno_email || !aluno_nome || !variante_codigo) {
+            return res.status(400).json({ erro: 'prova_id, aluno_email, aluno_nome e variante_codigo são obrigatórios.' });
+        }
+
+        try {
+            const pid = parseInt(prova_id, 10);
+
+            /* Valida que a prova existe e tem turma corretora ativa */
+            const { rows: [prova] } = await pool.query(
+                `SELECT id, turma_corretora_id FROM classroom_provas
+                  WHERE id = $1 AND efetivada = false AND turma_corretora_id IS NOT NULL`,
+                [pid]
+            );
+            if (!prova) return res.status(404).json({ erro: 'Prova não encontrada ou já efetivada.' });
+
+            /* Valida que o corrector pertence à turma corretora desta prova */
+            const { rows: notif } = await pool.query(
+                `SELECT 1 FROM notificacoes_aluno
+                  WHERE aluno_email = $1 AND tipo = 'turma_corretora_atribuida' AND referencia = $2`,
+                [aluno.email, pid.toString()]
+            );
+            if (notif.length === 0) {
+                return res.status(403).json({ erro: 'Você não pertence à turma corretora desta prova.' });
+            }
+
+            const emailNorm = String(aluno_email).toLowerCase().trim();
+
+            /* Evita duplicata */
+            const { rows: existe } = await pool.query(
+                `SELECT id FROM classroom_prova_submissoes
+                  WHERE prova_id = $1 AND aluno_email = $2 AND eh_segundo_corretor = false AND eh_turma_corretora = false`,
+                [pid, emailNorm]
+            );
+            if (existe.length > 0) {
+                return res.json({ submissao_ref_id: existe[0].id, ja_existia: true });
+            }
+
+            const { rows: [variante] } = await pool.query(
+                `SELECT id, gabarito_json FROM classroom_prova_variantes WHERE prova_id = $1 AND codigo = $2`,
+                [pid, String(variante_codigo)]
+            );
+            if (!variante) return res.status(404).json({ erro: `Variante "${variante_codigo}" não encontrada.` });
+
+            const { total } = calcularNota(variante.gabarito_json, {});
+
+            const { rows: [sub] } = await pool.query(
+                `INSERT INTO classroom_prova_submissoes
+                   (prova_id, variante_id, variante_id_original, aluno_email, aluno_nome,
+                    marcacoes_json, nota, total_max, ip, user_agent, origem)
+                 VALUES ($1,$2,$2,$3,$4,$5,0,$6,$7,$8,'tcor-auto')
+                 RETURNING id`,
+                [pid, variante.id, emailNorm, String(aluno_nome).trim(),
+                 JSON.stringify({}), total, req.ip, req.get('user-agent') || '']
+            );
+
+            console.log(`[TCOR-AUTO] Submissão criada: prova=${pid} aluno=${emailNorm} por corretor=${aluno.email}`);
+            res.json({ submissao_ref_id: sub.id, ja_existia: false });
+
+            setImmediate(async () => {
+                try { await notificarTurmaCorretora(pool, prova, emailNorm); } catch (_) {}
+            });
+        } catch (e) {
+            console.error('[TCOR-AUTO] Erro:', e.message);
             res.status(500).json({ erro: e.message });
         }
     });

@@ -221,20 +221,39 @@ async function tcorBuscar(provaId, input) {
             }
             if (msg) msg.textContent = '';
             res.style.display = '';
+            const variantes = d.variantes || [];
             const nomeCount = {};
             d.alunos.forEach(a => {
                 const k = (a.aluno_nome || '').trim().toLowerCase();
                 nomeCount[k] = (nomeCount[k] || 0) + 1;
             });
-            res.innerHTML = d.alunos.map(a => {
+            res.innerHTML = d.alunos.map((a, idx) => {
                 const nomeDisplay = a.aluno_nome && a.aluno_nome.trim()
                     ? escapeHtmlGam(a.aluno_nome)
                     : `<em style="color:#888">(sem nome — ${escapeHtmlGam(a.email_mascarado || 'email desconhecido')})</em>`;
                 const nomeKey = (a.aluno_nome || '').trim().toLowerCase();
                 const duplicado = nomeKey && nomeCount[nomeKey] > 1;
-                const detalhe = duplicado
-                    ? `<span style="font-size:11px;color:#666;margin-left:6px">${escapeHtmlGam(a.variante_codigo || '')}${a.email_mascarado ? ' · ' + escapeHtmlGam(a.email_mascarado) : ''}</span>`
+                const detalhe = duplicado || a.sem_submissao
+                    ? `<span style="font-size:11px;color:#666;margin-left:6px">${a.variante_codigo ? escapeHtmlGam(a.variante_codigo) : ''}${a.email_mascarado ? ' · ' + escapeHtmlGam(a.email_mascarado) : ''}</span>`
                     : '';
+                const tagSem = a.sem_submissao
+                    ? `<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:10px;padding:1px 7px;margin-left:6px;font-weight:600">físico</span>`
+                    : '';
+
+                if (a.sem_submissao) {
+                    /* Seletor de variante inline — ao clicar cria a submissão e redireciona */
+                    const optsVar = variantes.map(v =>
+                        `<button onclick="tcorIniciarCorrecao(${provaId},'${escapeHtmlGam(a.email_real)}','${escapeHtmlGam(a.aluno_nome || '')}','${escapeHtmlGam(v.codigo)}')"
+                                 style="background:#f59e0b;color:#fff;border:none;padding:5px 11px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+                            Var. ${escapeHtmlGam(v.codigo)} →
+                        </button>`
+                    ).join('');
+                    return `
+                    <div style="padding:9px 12px;border-bottom:1px solid #fef3c7;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fffbeb">
+                        <span style="font-size:14px;color:#1a1a1a">${nomeDisplay}${tagSem}${detalhe}</span>
+                        <div style="display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0">${optsVar}</div>
+                    </div>`;
+                }
                 return `
                 <div style="padding:9px 12px;border-bottom:1px solid #f0fdf4;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <span style="font-size:14px;color:#1a1a1a">${nomeDisplay}${detalhe}</span>
@@ -242,8 +261,7 @@ async function tcorBuscar(provaId, input) {
                        style="background:#22c55e;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">
                         Corrigir →
                     </a>
-                </div>
-            `;
+                </div>`;
             }).join('');
         } catch (_) {
             if (msg) msg.textContent = 'Erro ao buscar. Tente novamente.';
@@ -252,6 +270,34 @@ async function tcorBuscar(provaId, input) {
 }
 
 window.tcorBuscar = tcorBuscar;
+
+/**
+ * Cria submissão em branco para aluno sem entrega digital e redireciona para correção.
+ * Chamado pelo botão "Var. X →" nos resultados sem_submissao.
+ */
+async function tcorIniciarCorrecao(provaId, alunoEmail, alunoNome, varianteCodigo) {
+    const btn = event && event.currentTarget;
+    try {
+        if (btn) { btn.disabled = true; btn.textContent = '…'; }
+        const r = await fetch('/api/alunos-portal/turma-corretora/iniciar-correcao', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prova_id: provaId, aluno_email: alunoEmail, aluno_nome: alunoNome, variante_codigo: varianteCodigo }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            alert(d.erro || 'Erro ao iniciar correção.');
+            if (btn) { btn.disabled = false; btn.textContent = `Var. ${varianteCodigo} →`; }
+            return;
+        }
+        window.location.href = `/alunos/prova/?tcor=${encodeURIComponent(d.submissao_ref_id)}`;
+    } catch (_) {
+        alert('Erro de rede. Tente novamente.');
+        if (btn) { btn.disabled = false; btn.textContent = `Var. ${varianteCodigo} →`; }
+    }
+}
+window.tcorIniciarCorrecao = tcorIniciarCorrecao;
 
 /* ── Tarefas de 2ª correção (sortição) ───────────────── */
 async function carregarTarefasCorretor() {
