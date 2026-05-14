@@ -3358,7 +3358,90 @@ async function sortearSegundoCorretor(pool, { submissaoId, provaId }) {
     let candidatos;
     if (provaCfg?.permitir_outra_turma && provaCfg?.criada_por_cpf) {
         if (provaCfg.turma_corretora_2a_id) {
-            /* Restringir pool à turma específica escolhida pelo professor */
+            const turmaCorretora2aId = String(provaCfg.turma_corretora_2a_id);
+            const turmaDaProva      = String(sub.curso_id);
+            const turmasDiferentes  = turmaCorretora2aId !== turmaDaProva;
+
+            if (turmasDiferentes) {
+                /* Turma corretora é diferente da turma da prova:
+                   buscar todos os membros via Classroom API (como sortearAlunoTurmaCorretora)
+                   pois candidatos válidos podem ainda não ter submetido nenhum gabarito. */
+                let membros = [];
+                try {
+                    const { rows: tkRows } = await pool.query(
+                        `SELECT tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                    );
+                    if (tkRows[0]) {
+                        const { google } = await import('googleapis');
+                        const auth = new google.auth.OAuth2(
+                            process.env.GOOGLE_CLIENT_ID,
+                            process.env.GOOGLE_CLIENT_SECRET,
+                            process.env.GOOGLE_REDIRECT_URI || 'https://placeholder/callback'
+                        );
+                        auth.setCredentials(tkRows[0].tokens);
+                        const classroom = google.classroom({ version: 'v1', auth });
+                        let pageToken;
+                        do {
+                            const r = await classroom.courses.students.list({
+                                courseId: turmaCorretora2aId,
+                                pageSize: 100,
+                                pageToken,
+                            });
+                            (r.data.students || []).forEach(s => {
+                                const email = s.profile?.emailAddress;
+                                const nome  = s.profile?.name?.fullName || null;
+                                if (email) membros.push({ aluno_email: email.toLowerCase(), aluno_nome: nome });
+                            });
+                            pageToken = r.data.nextPageToken;
+                        } while (pageToken);
+                    }
+                } catch (apiErr) {
+                    console.warn('[SORTEAR-2C] API indisponível, usando cache:', apiErr.message);
+                    const { rows: cached } = await pool.query(
+                        `SELECT DISTINCT aluno_email, NULL::text AS aluno_nome
+                           FROM aluno_cursos_cache WHERE curso_id = $1`,
+                        [turmaCorretora2aId]
+                    );
+                    membros = cached;
+                }
+
+                /* Emails já atribuídos como 2º corretor nesta submissão específica */
+                const { rows: jaAtribuidos } = await pool.query(
+                    `SELECT LOWER(aluno_email) AS aluno_email
+                       FROM classroom_prova_submissoes
+                      WHERE submissao_ref_id = $1 AND eh_segundo_corretor = true`,
+                    [sub.id]
+                );
+                const jaAtribuidosSet = new Set(jaAtribuidos.map(r => r.aluno_email));
+
+                const emailDono = sub.aluno_email?.toLowerCase();
+
+                /* Filtrar: excluir dono da submissão e já atribuídos.
+                   Sem restrição de variante — são alunos de outra turma/prova. */
+                candidatos = membros.filter(m => {
+                    const email = (m.aluno_email || '').toLowerCase();
+                    return email && email !== emailDono && !jaAtribuidosSet.has(email);
+                });
+
+                if (candidatos.length === 0) {
+                    throw new Error('Nenhum membro elegível na turma corretora selecionada.');
+                }
+
+                const escolhido = candidatos[Math.floor(Math.random() * candidatos.length)];
+
+                await pool.query(
+                    `INSERT INTO notificacoes_aluno (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                     VALUES ($1,'segundo_corretor',$2,$3,$4,$5)`,
+                    [escolhido.aluno_email, String(sub.id),
+                     'Você foi sorteado para uma 2ª correção',
+                     'Ajude na verificação de uma prova (anônima). Acesse "Minhas tarefas de correção" no portal.',
+                     JSON.stringify({ submissaoRefId: sub.id, provaId: sub.prova_id })]
+                );
+
+                return { sorteado: escolhido.aluno_email };
+            }
+
+            /* Mesma turma: restringir pool à turma específica via submissões existentes */
             ({ rows: candidatos } = await pool.query(
                 `SELECT DISTINCT ON (s.aluno_email) s.aluno_email, s.aluno_nome
                    FROM classroom_prova_submissoes s
