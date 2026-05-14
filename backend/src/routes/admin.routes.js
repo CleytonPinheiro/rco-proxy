@@ -712,22 +712,51 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
 
     router.get('/admin/export-config', async (req, res) => {
         try {
-            const { rows: grupos } = await pool.query(`SELECT id, curso_id, nome, pontos_meta, cor, cod_classe_rco FROM classroom_grupos ORDER BY id`);
+            const { rows: grupos } = await pool.query(
+                `SELECT id, curso_id, nome, pontos_meta, cor, cod_classe_rco,
+                        tipo, trimestre, ano, grupo_pai_id, grupo_origem_id,
+                        data_inicio, data_fechamento, lancado_livro, lancado_em
+                 FROM classroom_grupos ORDER BY (grupo_pai_id IS NOT NULL), id`
+            );
+            const { rows: grupoFontes } = await pool.query(
+                `SELECT grupo_id, fonte_grupo_id, peso FROM classroom_grupo_fontes ORDER BY id`
+            );
             const { rows: grupoAtividades } = await pool.query(`SELECT grupo_id, atividade_id, atividade_titulo, pontos_max, due_date_original FROM classroom_grupo_atividades ORDER BY id`);
             const { rows: ausencias } = await pool.query(`SELECT curso_id, atividade_id, user_id, nome_aluno, data_atividade, cod_classe FROM classroom_ausencias ORDER BY id`);
             const { rows: tardias } = await pool.query(`SELECT grupo_id, curso_id, atividade_id, atividade_titulo, user_id, nome_aluno, email_aluno, data_entrega, data_fechamento, nota, estado FROM classroom_entregas_tardias ORDER BY id`);
             const { rows: configs } = await pool.query(`SELECT chave, valor, obs FROM edusync_config ORDER BY chave`);
             const { rows: acessosPedagogo } = await pool.query(`SELECT professor_cpf, pedagogo_email FROM classroom_acesso_pedagogo ORDER BY id`);
+            const { rows: mapas } = await pool.query(
+                `SELECT codturma, turma, colunas, filas, posicoes, alunos_fora, alunos_excluidos FROM mapa_sala ORDER BY codturma`
+            );
+            const { rows: livros } = await pool.query(
+                `SELECT id, titulo, autor, editora, ano_publicacao, disciplina, serie, isbn, quantidade, ativo FROM livros_didaticos ORDER BY id`
+            );
+            const { rows: emprestimos } = await pool.query(
+                `SELECT livro_id, cod_matriz_aluno, nome_aluno, turma, num_chamada, ano_letivo, status, data_emprestimo, data_devolucao, obs FROM livros_emprestimos ORDER BY id`
+            );
+            const { rows: overrides } = await pool.query(
+                `SELECT perfil, modulos FROM edusync_perfis_overrides ORDER BY perfil`
+            );
+            const { rows: comunicados } = await pool.query(
+                `SELECT aluno_id, nome_aluno, turma, registro, responsavel, data_inicio, data_fim, motivo, gerado_por_id, gerado_por_nome, emitido_em FROM edusync_comunicados_suspensao ORDER BY id`
+            );
 
             const exportData = {
                 versao: 1,
                 exportadoEm: new Date().toISOString(),
                 classroom_grupos: grupos,
+                classroom_grupo_fontes: grupoFontes,
                 classroom_grupo_atividades: grupoAtividades,
                 classroom_ausencias: ausencias,
                 classroom_entregas_tardias: tardias,
                 edusync_config: configs,
                 classroom_acesso_pedagogo: acessosPedagogo,
+                mapa_sala: mapas,
+                livros_didaticos: livros,
+                livros_emprestimos: emprestimos,
+                edusync_perfis_overrides: overrides,
+                edusync_comunicados_suspensao: comunicados,
             };
 
             res.setHeader('Content-Disposition', `attachment; filename="edusync-config-${new Date().toISOString().slice(0, 10)}.json"`);
@@ -744,17 +773,33 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            const resultado = { grupos: 0, atividades: 0, ausencias: 0, tardias: 0, configs: 0, acessos: 0 };
+            const resultado = { grupos: 0, fontes: 0, atividades: 0, ausencias: 0, tardias: 0, configs: 0, acessos: 0, mapas: 0, livros: 0, emprestimos: 0, overrides: 0, comunicados: 0 };
 
             if (data.classroom_grupos?.length) {
                 const idMap = {};
-                for (const g of data.classroom_grupos) {
+
+                const gruposOrdenados = [...data.classroom_grupos].sort((a, b) => {
+                    const aPai = a.grupo_pai_id ? 1 : 0;
+                    const bPai = b.grupo_pai_id ? 1 : 0;
+                    return aPai - bPai;
+                });
+
+                for (const g of gruposOrdenados) {
+                    const novoPaiId = g.grupo_pai_id ? (idMap[g.grupo_pai_id] || null) : null;
                     const { rows } = await client.query(
-                        `INSERT INTO classroom_grupos (curso_id, nome, pontos_meta, cor, cod_classe_rco)
-                         VALUES ($1, $2, $3, $4, $5)
+                        `INSERT INTO classroom_grupos
+                            (curso_id, nome, pontos_meta, cor, cod_classe_rco,
+                             tipo, trimestre, ano, grupo_pai_id,
+                             data_inicio, data_fechamento, lancado_livro, lancado_em)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                          ON CONFLICT DO NOTHING
                          RETURNING id`,
-                        [g.curso_id, g.nome, g.pontos_meta || 40, g.cor || '#4285F4', g.cod_classe_rco || null]
+                        [
+                            g.curso_id, g.nome, g.pontos_meta || 40, g.cor || '#4285F4', g.cod_classe_rco || null,
+                            g.tipo || 'normal', g.trimestre || null, g.ano || null, novoPaiId,
+                            g.data_inicio || null, g.data_fechamento || null,
+                            g.lancado_livro ?? false, g.lancado_em || null,
+                        ]
                     );
                     if (rows.length) {
                         idMap[g.id] = rows[0].id;
@@ -765,6 +810,32 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                             [g.curso_id, g.nome]
                         );
                         if (existing.length) idMap[g.id] = existing[0].id;
+                    }
+                }
+
+                for (const g of gruposOrdenados) {
+                    if (!g.grupo_origem_id) continue;
+                    const newId = idMap[g.id];
+                    const newOrigemId = idMap[g.grupo_origem_id] || null;
+                    if (!newId || !newOrigemId) continue;
+                    await client.query(
+                        `UPDATE classroom_grupos SET grupo_origem_id = $1 WHERE id = $2`,
+                        [newOrigemId, newId]
+                    );
+                }
+
+                if (data.classroom_grupo_fontes?.length) {
+                    for (const f of data.classroom_grupo_fontes) {
+                        const newGrupoId = idMap[f.grupo_id];
+                        const newFonteId = idMap[f.fonte_grupo_id];
+                        if (!newGrupoId || !newFonteId) continue;
+                        await client.query(
+                            `INSERT INTO classroom_grupo_fontes (grupo_id, fonte_grupo_id, peso)
+                             VALUES ($1, $2, $3)
+                             ON CONFLICT (grupo_id, fonte_grupo_id) DO NOTHING`,
+                            [newGrupoId, newFonteId, f.peso ?? 100]
+                        );
+                        resultado.fontes++;
                     }
                 }
 
@@ -828,6 +899,101 @@ export function createAdminRouter({ supabaseAdmin } = {}) {
                         [a.professor_cpf, a.pedagogo_email]
                     );
                     resultado.acessos++;
+                }
+            }
+
+            if (data.mapa_sala?.length) {
+                for (const m of data.mapa_sala) {
+                    await client.query(
+                        `INSERT INTO mapa_sala (codturma, turma, colunas, filas, posicoes, alunos_fora, alunos_excluidos, atualizado_em)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+                         ON CONFLICT (codturma) DO UPDATE SET
+                             turma            = EXCLUDED.turma,
+                             colunas          = EXCLUDED.colunas,
+                             filas            = EXCLUDED.filas,
+                             posicoes         = EXCLUDED.posicoes,
+                             alunos_fora      = EXCLUDED.alunos_fora,
+                             alunos_excluidos = EXCLUDED.alunos_excluidos,
+                             atualizado_em    = NOW()`,
+                        [
+                            m.codturma, m.turma, m.colunas || 5, m.filas || 6,
+                            JSON.stringify(m.posicoes || []),
+                            JSON.stringify(m.alunos_fora || []),
+                            JSON.stringify(m.alunos_excluidos || []),
+                        ]
+                    );
+                    resultado.mapas++;
+                }
+            }
+
+            if (data.livros_didaticos?.length) {
+                const livroIdMap = {};
+                for (const l of data.livros_didaticos) {
+                    const { rows } = await client.query(
+                        `INSERT INTO livros_didaticos (titulo, autor, editora, ano_publicacao, disciplina, serie, isbn, quantidade, ativo)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                         ON CONFLICT DO NOTHING
+                         RETURNING id`,
+                        [l.titulo, l.autor || null, l.editora || null, l.ano_publicacao || null,
+                         l.disciplina || null, l.serie || null, l.isbn || null,
+                         l.quantidade || 1, l.ativo ?? true]
+                    );
+                    if (rows.length) {
+                        livroIdMap[l.id] = rows[0].id;
+                        resultado.livros++;
+                    }
+                }
+
+                if (data.livros_emprestimos?.length) {
+                    for (const e of data.livros_emprestimos) {
+                        const newLivroId = livroIdMap[e.livro_id];
+                        if (!newLivroId) continue;
+                        await client.query(
+                            `INSERT INTO livros_emprestimos (livro_id, cod_matriz_aluno, nome_aluno, turma, num_chamada, ano_letivo, status, data_emprestimo, data_devolucao, obs)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                             ON CONFLICT DO NOTHING`,
+                            [newLivroId, e.cod_matriz_aluno, e.nome_aluno || null, e.turma || null,
+                             e.num_chamada || null, e.ano_letivo, e.status || 'emprestado',
+                             e.data_emprestimo || null, e.data_devolucao || null, e.obs || null]
+                        );
+                        resultado.emprestimos++;
+                    }
+                }
+            }
+
+            if (data.edusync_perfis_overrides?.length) {
+                const { setOverrides: syncOverrides } = await import('../config/permissions.js');
+                const overrideMap = {};
+                for (const o of data.edusync_perfis_overrides) {
+                    await client.query(
+                        `INSERT INTO edusync_perfis_overrides (perfil, modulos)
+                         VALUES ($1, $2)
+                         ON CONFLICT (perfil) DO UPDATE SET modulos = EXCLUDED.modulos, atualizado_em = NOW()`,
+                        [o.perfil, JSON.stringify(o.modulos)]
+                    );
+                    overrideMap[o.perfil] = o.modulos;
+                    resultado.overrides++;
+                }
+                const { rows: allOverrides } = await client.query(`SELECT perfil, modulos FROM edusync_perfis_overrides`);
+                const fullMap = {};
+                for (const r of allOverrides) fullMap[r.perfil] = r.modulos;
+                syncOverrides(fullMap);
+            }
+
+            if (data.edusync_comunicados_suspensao?.length) {
+                const { rows: countRows } = await client.query(`SELECT COUNT(*) AS c FROM edusync_comunicados_suspensao`);
+                if (parseInt(countRows[0].c) === 0) {
+                    for (const c of data.edusync_comunicados_suspensao) {
+                        await client.query(
+                            `INSERT INTO edusync_comunicados_suspensao
+                                (aluno_id, nome_aluno, turma, registro, responsavel, data_inicio, data_fim, motivo, gerado_por_id, gerado_por_nome, emitido_em)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                            [c.aluno_id || null, c.nome_aluno, c.turma || null, c.registro || null,
+                             c.responsavel, c.data_inicio, c.data_fim, c.motivo || null,
+                             c.gerado_por_id || null, c.gerado_por_nome || null, c.emitido_em || null]
+                        );
+                        resultado.comunicados++;
+                    }
                 }
             }
 
