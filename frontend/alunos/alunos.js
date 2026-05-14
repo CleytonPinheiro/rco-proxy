@@ -174,7 +174,7 @@ async function carregarTurmaCorretora() {
                 </label>
                 <select id="tcorSelect_${p.prova_id}"
                         onchange="tcorSelecionarAluno(${p.prova_id}, this)"
-                        style="width:100%;border:1.5px solid ${borderColor};border-radius:8px;padding:10px 12px;font-size:14px;background:var(--pa-card);color:var(--pa-text);font-family:inherit;cursor:pointer;appearance:auto">
+                        style="width:100%;border:none;border-radius:12px;padding:10px 12px;font-size:14px;background:var(--pa-card);color:var(--pa-text);font-family:inherit;cursor:pointer;appearance:auto;box-shadow:0 0 0 1.5px ${borderColor}">
                     <option value="">— Carregando alunos… —</option>
                 </select>
                 <div id="tcorAcao_${p.prova_id}" style="margin-top:10px"></div>
