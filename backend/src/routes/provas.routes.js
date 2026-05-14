@@ -3427,6 +3427,17 @@ export function createProvasPublicRouter() {
                     console.warn(`[PROVAS] Auto-sorteio 2º corretor falhou (sub ${sub.id}): ${e.message}`);
                 }
             });
+
+            /* ── Notifica turma corretora sobre nova folha (fire-and-forget) ── */
+            if (prova.turma_corretora_id) {
+                setImmediate(async () => {
+                    try {
+                        await notificarTurmaCorretora(pool, prova, aluno.email);
+                    } catch (e) {
+                        console.warn(`[NOTIF-TC] Falhou ao notificar turma corretora (prova ${prova.id}): ${e.message}`);
+                    }
+                });
+            }
         } catch (e) {
             console.error('[PROVAS] Erro ao submeter:', e.message);
             res.status(500).json({ erro: e.message });
@@ -3800,6 +3811,46 @@ export function createProvasPublicRouter() {
      * Retorna as PROVAS (metadados) onde o aluno pode atuar como turma corretora.
      * Não expõe submissões individuais — o aluno identifica o dono pelo nome via buscar-aluno.
      */
+    /* ── Helper: notifica alunos elegíveis da turma corretora ──────────────
+     * Busca corretores via histórico de submissões no curso da turma corretora.
+     * Insere notificação somente se não houver outra não-lida para a mesma prova.
+     * ------------------------------------------------------------------- */
+    async function notificarTurmaCorretora(pool, prova, submiterEmail) {
+        const { rows: correctors } = await pool.query(
+            `SELECT DISTINCT s.aluno_email
+               FROM classroom_prova_submissoes s
+               JOIN classroom_provas p ON p.id = s.prova_id
+              WHERE p.curso_id             = $1
+                AND s.eh_segundo_corretor  = false
+                AND s.eh_turma_corretora   = false
+                AND s.aluno_email         != $2`,
+            [prova.turma_corretora_id, submiterEmail]
+        );
+        if (correctors.length === 0) return;
+
+        const titulo   = '✏️ Nova folha para corrigir!';
+        const mensagem = `Chegaram folhas de "${prova.nome}" aguardando correção. Abra a aba "✏️ Correções" no Portal do Aluno.`;
+        const dados    = JSON.stringify({ provaId: prova.id, provaNome: prova.nome });
+
+        for (const { aluno_email } of correctors) {
+            /* Só insere se não há notificação não-lida para esta prova */
+            await pool.query(
+                `INSERT INTO notificacoes_aluno
+                       (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                 SELECT $1, 'turma_corretora_disponivel', $2, $3, $4, $5
+                  WHERE NOT EXISTS (
+                      SELECT 1 FROM notificacoes_aluno
+                       WHERE aluno_email = $1
+                         AND tipo        = 'turma_corretora_disponivel'
+                         AND referencia  = $2
+                         AND lida        = false
+                  )`,
+                [aluno_email, String(prova.id), titulo, mensagem, dados]
+            );
+        }
+        console.log(`[NOTIF-TC] Notificou ${correctors.length} corretor(es) — prova ${prova.id}`);
+    }
+
     router.get('/alunos-portal/turma-corretora/disponiveis', async (req, res) => {
         const aluno = await getAlunoSession(req);
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });

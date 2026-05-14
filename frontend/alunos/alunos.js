@@ -871,18 +871,20 @@ async function enviarSolicitacao() {
 /* ══ Sistema de Notificações Bloqueantes ════════════════════════════ */
 
 const NOTIF_ICONE = {
-    reabertura_aprovada:  '✅',
-    reabertura_negada:    '❌',
-    prazo_proximo:        '⏰',
-    prazo_dias:           '📅',
-    verificacao_professor:'📋',
+    reabertura_aprovada:        '✅',
+    reabertura_negada:          '❌',
+    prazo_proximo:              '⏰',
+    prazo_dias:                 '📅',
+    verificacao_professor:      '📋',
+    turma_corretora_disponivel: '✏️',
 };
 const NOTIF_COR = {
-    reabertura_aprovada:  'verde',
-    reabertura_negada:    'vermelho',
-    prazo_proximo:        'laranja',
-    prazo_dias:           'amarelo',
-    verificacao_professor:'azul',
+    reabertura_aprovada:        'verde',
+    reabertura_negada:          'vermelho',
+    prazo_proximo:              'laranja',
+    prazo_dias:                 'amarelo',
+    verificacao_professor:      'azul',
+    turma_corretora_disponivel: 'verde',
 };
 
 function iniciarPollingNotificacoes() {
@@ -936,10 +938,27 @@ function mostrarProximaNotif() {
     titulo.textContent = _notifAtual.titulo;
     msg.textContent    = _notifAtual.mensagem;
 
-    /* Botão de ação extra (ex: abrir atividade reaberta) */
+    /* Botão de ação extra (ex: abrir atividade reaberta / ir para correções) */
     const link = _notifAtual.dados?.link;
+    btnAcao.onclick = null;
     if (link && _notifAtual.tipo === 'reabertura_aprovada') {
-        btnAcao.href         = link;
+        btnAcao.href          = link;
+        btnAcao.textContent   = 'Ver atividade →';
+        btnAcao.style.display = '';
+    } else if (_notifAtual.tipo === 'turma_corretora_disponivel') {
+        btnAcao.href    = '#';
+        btnAcao.onclick = (e) => {
+            e.preventDefault();
+            confirmarNotif();
+            setTimeout(() => {
+                const sec = document.getElementById('paTurmaCorretoraSec');
+                if (sec) {
+                    sec.style.display = '';
+                    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 150);
+        };
+        btnAcao.textContent   = 'Abrir fila de correções →';
         btnAcao.style.display = '';
     } else {
         btnAcao.style.display = 'none';
