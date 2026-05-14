@@ -78,6 +78,10 @@ let estado = {
 function show(id) {
     ['ppLoading','ppLogin','ppErro','ppJaFeita','ppVariante','ppEtapa1','ppFoto','ppEtapa2','ppSegundo','ppTurmaCorretora']
         .forEach(s => { const el = $(s); if (el) el.style.display = (s === id ? '' : 'none'); });
+    if (id !== 'ppTurmaCorretora') {
+        _tcorPausarCronometro();
+        document.body.classList.remove('pp-tcor-split-ativo');
+    }
 }
 
 function showErro(msg) {
@@ -390,6 +394,20 @@ async function verResultado() {
 }
 
 async function iniciarTurmaCorretora(subRefId) {
+    /* Reset explícito do painel PDF e cronômetro antes de carregar nova folha */
+    _tcorPausarCronometro();
+    document.body.classList.remove('pp-tcor-split-ativo');
+    const _pdfPanel = $('ppTcorPainelPdf');
+    if (_pdfPanel) _pdfPanel.style.display = 'none';
+    const _layoutEl = $('ppTcorLayout');
+    if (_layoutEl) _layoutEl.classList.remove('pp-tcor-split-ativo');
+    const _iframeEl = $('ppTcorIframePdf');
+    if (_iframeEl) { _iframeEl.removeAttribute('data-carregado'); _iframeEl.src = ''; }
+    const _badgeEl = $('ppTcorCronometro');
+    if (_badgeEl) _badgeEl.style.display = 'none';
+    const _btnEnvEl = $('ppTcorBtn');
+    if (_btnEnvEl) _btnEnvEl.disabled = false;
+
     try {
         const r = await fetch(
             `/api/alunos-portal/turma-corretora/submissao/${encodeURIComponent(subRefId)}`,
@@ -417,22 +435,23 @@ async function iniciarTurmaCorretora(subRefId) {
             varWrap.style.display = '';
         }
 
-        /* Botão de consulta ao PDF da folha de prova — sempre visível, desabilitado se sem PDF */
+        /* Botão de consulta ao PDF da folha de prova — abre painel embutido */
         const btnPdf  = $('ppTcorBtnPdf');
         const linkVar = $('ppTcorLinkVariante');
-        const dica    = $('ppTcorLinkDica');
         if (linkVar) linkVar.textContent = item.variante_codigo || '';
+        estado.tcorPdfAberto    = false;
+        estado.tcorTempoRestante = 0;
+        estado.tcorIntervalId   = null;
         if (btnPdf) {
             if (item.link_prova) {
                 estado.tcorPdfUrl = `/api/alunos-portal/turma-corretora/prova-pdf/${item.submissao_ref_id}`;
-                btnPdf.onclick = () => window.open(estado.tcorPdfUrl, '_blank');
+                btnPdf.onclick = _tcorTogglePdf;
                 btnPdf.disabled = false;
                 btnPdf.style.opacity = '';
                 btnPdf.style.cursor = 'pointer';
                 btnPdf.style.background = '#eff6ff';
                 btnPdf.style.color = '#1d4ed8';
                 btnPdf.style.borderColor = '#93c5fd';
-                if (dica) dica.textContent = 'Abra em nova aba e use a divisão de abas do navegador para corrigir ao lado da prova.';
             } else {
                 estado.tcorPdfUrl = null;
                 btnPdf.disabled = true;
@@ -442,7 +461,6 @@ async function iniciarTurmaCorretora(subRefId) {
                 btnPdf.style.color = '#9ca3af';
                 btnPdf.style.borderColor = '#d1d5db';
                 btnPdf.innerHTML = '📄 Folha não anexada pelo professor';
-                if (dica) dica.textContent = '';
             }
         }
 
@@ -471,8 +489,97 @@ async function iniciarTurmaCorretora(subRefId) {
             }
         }
 
+        /* Anti-chute: cronômetro mínimo de leitura (só se houver PDF) */
+        if (estado.tcorPdfUrl) {
+            const tempoMin = Math.min(Math.max((estado.qtdQuestoes || 12) * 5, 20), 180);
+            estado.tcorTempoRestante = tempoMin;
+            const btnEnv = $('ppTcorBtn');
+            if (btnEnv) btnEnv.disabled = true;
+            const badge = $('ppTcorCronometro');
+            if (badge) {
+                badge.textContent = `Consulte as questões da prova antes de enviar. Aguarde ${tempoMin}s`;
+                badge.style.display = '';
+            }
+        }
+
         show('ppTurmaCorretora');
     } catch (e) { showErro(e.message); }
+}
+
+/* ── Painel PDF embutido e cronômetro anti-chute ─────────── */
+
+function _tcorTogglePdf() {
+    const painel = $('ppTcorPainelPdf');
+    const iframe  = $('ppTcorIframePdf');
+    const btnPdf  = $('ppTcorBtnPdf');
+    const layout  = $('ppTcorLayout');
+    const varCod  = estado.tcor?.variante_codigo != null ? String(estado.tcor.variante_codigo) : '';
+
+    const isOpen = painel && painel.style.display !== 'none';
+
+    if (isOpen) {
+        painel.style.display = 'none';
+        if (layout) layout.classList.remove('pp-tcor-split-ativo');
+        document.body.classList.remove('pp-tcor-split-ativo');
+        if (btnPdf) {
+            btnPdf.innerHTML = `📄 Ver folha de prova — Variante <strong style="font-size:1.15em;margin-left:2px">${escHtml(varCod)}</strong>`;
+            btnPdf.style.background   = '#eff6ff';
+            btnPdf.style.color        = '#1d4ed8';
+            btnPdf.style.borderColor  = '#93c5fd';
+        }
+        _tcorPausarCronometro();
+        estado.tcorPdfAberto = false;
+    } else {
+        if (iframe && estado.tcorPdfUrl && !iframe.getAttribute('data-carregado')) {
+            iframe.src = estado.tcorPdfUrl;
+            iframe.setAttribute('data-carregado', '1');
+        }
+        painel.style.display = 'flex';
+        if (layout) layout.classList.add('pp-tcor-split-ativo');
+        document.body.classList.add('pp-tcor-split-ativo');
+        if (btnPdf) {
+            btnPdf.innerHTML         = '✕ Fechar PDF';
+            btnPdf.style.background  = '#fef2f2';
+            btnPdf.style.color       = '#dc2626';
+            btnPdf.style.borderColor = '#fca5a5';
+        }
+        _tcorIniciarCronometro();
+        estado.tcorPdfAberto = true;
+    }
+}
+
+function _tcorIniciarCronometro() {
+    if (estado.tcorTempoRestante <= 0) return;
+    if (estado.tcorIntervalId) return;
+    estado.tcorIntervalId = setInterval(() => {
+        estado.tcorTempoRestante = Math.max(0, estado.tcorTempoRestante - 1);
+        _tcorAtualizarCronometro();
+        if (estado.tcorTempoRestante <= 0) {
+            clearInterval(estado.tcorIntervalId);
+            estado.tcorIntervalId = null;
+            _tcorFinalizarCronometro();
+        }
+    }, 1000);
+}
+
+function _tcorPausarCronometro() {
+    if (estado.tcorIntervalId) {
+        clearInterval(estado.tcorIntervalId);
+        estado.tcorIntervalId = null;
+    }
+}
+
+function _tcorAtualizarCronometro() {
+    const badge = $('ppTcorCronometro');
+    if (!badge) return;
+    badge.textContent = `Consulte as questões da prova antes de enviar. Aguarde ${estado.tcorTempoRestante}s`;
+}
+
+function _tcorFinalizarCronometro() {
+    const badge = $('ppTcorCronometro');
+    if (badge) badge.style.display = 'none';
+    const btn = $('ppTcorBtn');
+    if (btn) btn.disabled = false;
 }
 
 function renderTabelaTcor() {
@@ -510,6 +617,8 @@ function renderTabelaTcor() {
 }
 
 async function enviarTurmaCorretora() {
+    _tcorPausarCronometro();
+    document.body.classList.remove('pp-tcor-split-ativo');
     const limpo = {};
     for (const [k, v] of Object.entries(estado.marcacoes)) {
         if (v && v !== '-') limpo[k] = v;

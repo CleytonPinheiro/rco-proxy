@@ -241,3 +241,125 @@ details.pp-qtxt[open] .pp-qtxt-summary::before { content: '▾ '; }
     .pp-nota-grande { font-size: 28px; }
     .pp-qtxt-summary { font-size: 11px; }
 }
+
+/* ── Split-screen Turma Corretora ─────────────────────────── */
+.pp-tcor-layout {
+    display: flex;
+    gap: 0;
+    min-height: 0;
+}
+
+.pp-tcor-painel-correcao {
+    flex: 1;
+    min-width: 0;
+}
+
+.pp-tcor-split-ativo .pp-tcor-painel-correcao {
+    overflow-y: auto;
+    max-height: calc(100vh - 90px);
+    padding-right: 12px;
+}
+
+body.pp-tcor-split-ativo .pp-main {
+    max-width: 100%;
+}
+
+.pp-tcor-painel-pdf {
+    flex-direction: column;
+    width: 50%;
+    min-width: 320px;
+    border-left: 1px solid var(--pp-border);
+    margin-left: 16px;
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 80px);
+    background: var(--pp-card);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.pp-tcor-pdf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--pp-border);
+    background: var(--pp-bg);
+    flex-shrink: 0;
+}
+
+.pp-tcor-pdf-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pp-text);
+}
+
+.pp-tcor-pdf-fechar {
+    background: none;
+    border: 1px solid var(--pp-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--pp-muted);
+}
+.pp-tcor-pdf-fechar:hover {
+    background: var(--pp-bg);
+    color: var(--pp-text);
+}
+
+.pp-tcor-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    min-height: 0;
+    display: block;
+    height: 100%;
+}
+
+/* Cronômetro anti-chute */
+.pp-tcor-cronometro {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #92400e;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .pp-tcor-cronometro {
+    background: #78350f;
+    border-color: #b45309;
+    color: #fef3c7;
+}
+
+.pp-tcor-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Mobile: PDF como drawer de tela cheia sobre o conteúdo */
+@media (max-width: 767px) {
+    .pp-tcor-split-ativo .pp-tcor-painel-correcao {
+        overflow-y: unset;
+        max-height: unset;
+        padding-right: 0;
+    }
+
+    .pp-tcor-painel-pdf {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+        top: 0;
+        margin-left: 0;
+        border-left: none;
+        border-radius: 0;
+    }
+}
