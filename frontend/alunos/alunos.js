@@ -255,6 +255,15 @@ function tcorCselSetOptions(container, provaId, alunos) {
     const valEl = container.querySelector('.tcor-csel-value');
     const panel = container.querySelector('.tcor-csel-panel');
     const trigger = container.querySelector('.tcor-csel-trigger');
+
+    /* Mostrar apenas alunos com gabarito físico ainda pendente */
+    const pendentes = alunos.filter(a => a.sem_submissao);
+
+    if (pendentes.length === 0) {
+        tcorCselSetPlaceholder(container, '— Todos os gabaritos registrados —');
+        return;
+    }
+
     if (valEl) valEl.textContent = '— Selecione o aluno —';
     container.classList.remove('tcor-csel--disabled');
     if (trigger) { trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-disabled', 'false'); }
@@ -270,15 +279,16 @@ function tcorCselSetOptions(container, provaId, alunos) {
 
     let focusedIdx = -1;
 
-    const items = alunos.map((a, i) => {
+    const items = pendentes.map((a, _localIdx) => {
+        /* Preservar o índice original no array completo para lookup via window._tcorAlunos */
+        const originalIdx = alunos.indexOf(a);
         const num  = a.numchamada != null ? String(a.numchamada).padStart(2, '0') + ' · ' : '';
-        const tag  = a.sem_submissao ? ' ✎' : ' ✔';
         const item = document.createElement('div');
         item.className = 'tcor-csel-item';
         item.setAttribute('role', 'option');
         item.setAttribute('aria-selected', 'false');
-        item.textContent = num + a.nome + tag;
-        item.dataset.value = String(i);
+        item.textContent = num + a.nome;
+        item.dataset.value = String(originalIdx);
         item.addEventListener('click', () => {
             panel.querySelectorAll('.tcor-csel-item--selected').forEach(el => {
                 el.classList.remove('tcor-csel-item--selected');
@@ -288,7 +298,7 @@ function tcorCselSetOptions(container, provaId, alunos) {
             item.setAttribute('aria-selected', 'true');
             if (valEl) valEl.textContent = item.textContent;
             tcorCselClose(container);
-            tcorSelecionarAluno(provaId, { value: String(i) });
+            tcorSelecionarAluno(provaId, { value: String(originalIdx) });
         });
         panel.appendChild(item);
         return item;
