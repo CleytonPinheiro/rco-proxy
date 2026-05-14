@@ -4616,6 +4616,86 @@ export function createProvasPublicRouter() {
 
             if (rows.length > 0) {
                 console.log(`[ATRIB] ${aluno.email} — ${rows.length} prova(s) via notificações`);
+
+                /* Bootstrap incremental: verifica em background se há provas novas
+                   atribuídas após o primeiro bootstrap (sem bloquear a resposta) */
+                setImmediate(async () => {
+                    try {
+                        /* Provas ativas sem notificação ainda para este aluno */
+                        const { rows: provasSemNotif } = await pool.query(
+                            `SELECT id, nome, turma_corretora_id
+                               FROM classroom_provas
+                              WHERE turma_corretora_id IS NOT NULL AND efetivada = false
+                                AND (turma_corretora_liberacao IS NULL OR turma_corretora_liberacao <= NOW())
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM notificacoes_aluno n
+                                     WHERE n.aluno_email = $1
+                                       AND n.tipo        = 'turma_corretora_atribuida'
+                                       AND n.referencia  = classroom_provas.id::text
+                                )`,
+                            [aluno.email]
+                        );
+                        if (provasSemNotif.length === 0) return;
+
+                        const { google: g2 } = await import('googleapis');
+                        const id2  = process.env.GOOGLE_CLIENT_ID;
+                        const sec2 = process.env.GOOGLE_CLIENT_SECRET;
+                        if (!id2 || !sec2) return;
+
+                        let tk2 = null; let cpf2 = null;
+                        try {
+                            const { rows: tkr } = await pool.query(
+                                `SELECT cpf, tokens FROM classroom_tokens ORDER BY atualizado DESC LIMIT 1`
+                            );
+                            if (tkr[0]) { tk2 = tkr[0].tokens; cpf2 = tkr[0].cpf; }
+                        } catch (_) {}
+                        if (!tk2) return;
+
+                        const uri2  = `${req.protocol}://${req.get('host')}/api/classroom/callback`;
+                        const auth2 = new g2.auth.OAuth2(id2, sec2, uri2);
+                        auth2.setCredentials(tk2);
+                        if (tk2.expiry_date && tk2.expiry_date < Date.now()) {
+                            try {
+                                const { credentials: cr2 } = await auth2.refreshAccessToken();
+                                auth2.setCredentials(cr2);
+                                if (cpf2) await pool.query(
+                                    `UPDATE classroom_tokens SET tokens=$1, atualizado=NOW() WHERE cpf=$2`,
+                                    [JSON.stringify(cr2), cpf2]
+                                );
+                            } catch (_) {}
+                        }
+                        const cl2 = g2.classroom({ version: 'v1', auth: auth2 });
+                        for (const prova of provasSemNotif) {
+                            try {
+                                await cl2.courses.students.get({
+                                    courseId: String(prova.turma_corretora_id),
+                                    userId:   aluno.email,
+                                });
+                                const titulo   = '🏫 Você foi atribuído como corretor!';
+                                const mensagem = `O professor atribuiu sua turma para corrigir a prova "${prova.nome}". Acesse a aba "✏️ Correções" no Portal do Aluno.`;
+                                await pool.query(
+                                    `INSERT INTO notificacoes_aluno
+                                           (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                                     SELECT $1,'turma_corretora_atribuida',$2,$3,$4,$5
+                                      WHERE NOT EXISTS (
+                                          SELECT 1 FROM notificacoes_aluno
+                                           WHERE aluno_email=$1 AND tipo='turma_corretora_atribuida' AND referencia=$2
+                                      )`,
+                                    [aluno.email, String(prova.id), titulo, mensagem,
+                                     JSON.stringify({ provaId: Number(prova.id), provaNome: prova.nome })]
+                                );
+                                console.log(`[ATRIB] Bootstrap incremental: ${aluno.email} → prova ${prova.id}`);
+                            } catch (e2) {
+                                const c2 = e2.code || e2.status;
+                                if (c2 !== 404 && c2 !== '404')
+                                    console.warn(`[ATRIB] Inc-bootstrap erro prova ${prova.id}:`, e2.message);
+                            }
+                        }
+                    } catch (bsErr) {
+                        console.warn('[ATRIB] Bootstrap incremental falhou:', bsErr.message);
+                    }
+                });
+
                 return res.json({ provas: rows });
             }
 

@@ -113,8 +113,12 @@ window.mudarAba = mudarAba;
 
 /* ── Estado compartilhado para o badge de Correções ──── */
 const _correcoesPendentes = { turma: 0, corretor: 0 };
+let _turmaAssignmentAtiva = false; /* true quando aluno tem ao menos 1 prova atribuída (mesmo sem papéis pendentes) */
 function _atualizarBadgeCorrecoes() {
     const total  = _correcoesPendentes.turma + _correcoesPendentes.corretor;
+    /* Aba fica visível sempre que houver atribuição de turma corretora ativa
+       OU ao menos uma tarefa de 2º corretor pendente */
+    const mostrarAba = total > 0 || _turmaAssignmentAtiva;
     const badge  = $('paNavBadge');
     const tabCor = $('paTabCorrecoes');
     if (badge) {
@@ -124,7 +128,7 @@ function _atualizarBadgeCorrecoes() {
     if (tabCor) {
         tabCor.classList.toggle('pa-nav-tab--urgente', total > 0);
         const estaVisivel = tabCor.style.display !== 'none';
-        if (total > 0) {
+        if (mostrarAba) {
             tabCor.style.display = '';
         } else {
             /* Se o aluno está na aba Correções e ela vai sumir, volta para Atividades */
@@ -154,6 +158,7 @@ async function carregarTurmaCorretora() {
             sec.style.display = 'none';
             if (alert) alert.style.display = 'none';
             _correcoesPendentes.turma = 0;
+            _turmaAssignmentAtiva = false;
             _atualizarBadgeCorrecoes();
             return;
         }
@@ -165,10 +170,13 @@ async function carregarTurmaCorretora() {
             sec.style.display = 'none';
             if (alert) alert.style.display = 'none';
             _correcoesPendentes.turma = 0;
+            _turmaAssignmentAtiva = false;
             _atualizarBadgeCorrecoes();
             return;
         }
 
+        /* Marca que há atribuição ativa — aba fica visível mesmo sem folhas pendentes */
+        _turmaAssignmentAtiva = true;
         sec.style.display = '';
 
         const comPendentes  = provasVisiveis.filter(p => Number(p.pendentes) > 0);
@@ -562,7 +570,7 @@ async function carregarTarefasCorretor() {
                 ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;border:1.5px solid #3b82f6;border-radius:6px;padding:2px 10px;font-size:0.8em;font-weight:700;color:#1e40af">🙋 Voluntário</span>`
                 : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fde68a;border:1.5px solid #d97706;border-radius:6px;padding:2px 10px;font-size:0.8em;font-weight:700;color:#92400e">🎲 Sorteado</span>`;
             return `
-            <div class="pa-solicita-card" style="padding:14px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
+            <div class="pa-card-segundo-corretor" style="padding:14px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
                     <div style="flex:1;min-width:0">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">

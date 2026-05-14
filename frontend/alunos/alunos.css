@@ -2094,6 +2094,55 @@ html, body {
 .tcor-csel--disabled .tcor-csel-trigger { cursor: default; opacity: 0.7; }
 .tcor-csel--disabled .tcor-csel-arrow  { opacity: 0.4; }
 
+/* ── Hero do 2º Corretor (sorteio) ──────────────────────────── */
+.pa-segundo-corretor-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+}
+[data-theme="dark"] .pa-segundo-corretor-hero {
+    background: linear-gradient(135deg, #1c1404 0%, #27190a 100%);
+    border-color: #d97706;
+}
+.pa-segundo-corretor-hero-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.pa-segundo-corretor-hero strong {
+    display: block;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #78350f;
+    margin-bottom: 4px;
+}
+[data-theme="dark"] .pa-segundo-corretor-hero strong { color: #fde68a; }
+.pa-segundo-corretor-hero .pa-aguardando-desc {
+    display: block;
+    font-size: 12px;
+    color: #92400e;
+    line-height: 1.5;
+}
+[data-theme="dark"] .pa-segundo-corretor-hero .pa-aguardando-desc { color: #fcd34d; }
+
+/* ── Cards do 2º Corretor (visualmente distintos dos de turma) ── */
+.pa-card-segundo-corretor {
+    border: 2px solid #f59e0b !important;
+    background: #fffbeb;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    position: relative;
+}
+[data-theme="dark"] .pa-card-segundo-corretor {
+    background: #1c1404;
+    border-color: #d97706 !important;
+}
+
 /* ── Responsivo ────────────────────────────────────────────── */
 @media (max-width: 480px) {
     .pa-cq-panel-inner { width: 100vw; border-radius: 0; }
