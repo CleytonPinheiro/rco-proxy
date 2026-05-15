@@ -12,10 +12,12 @@
 import { Router }        from 'express';
 import { google }        from 'googleapis';
 import fs                from 'fs';
+import { mkdirSync }     from 'fs';
 import path              from 'path';
 import { fileURLToPath } from 'url';
 import pkg               from 'pg';
 import crypto            from 'crypto';
+import multer            from 'multer';
 import { auditLogger }   from '../services/AuditLogger.js';
 import { UAParser }      from 'ua-parser-js';
 import { requireAuth, requireFuncionalidade } from '../middleware/auth.middleware.js';
@@ -92,11 +94,32 @@ async function migrarTabela() {
             )
         `);
 
+        /* Coluna de imagem em projetos — adicionada retroativamente */
+        await pool.query(`ALTER TABLE aluno_projeto_sugestoes ADD COLUMN IF NOT EXISTS foto_url TEXT`).catch(() => {});
+
         console.log('[ALUNOS-PORTAL] Tabelas OK');
     } catch (e) {
         console.warn('[ALUNOS-PORTAL] Erro na migração:', e.message);
     }
 }
+
+/* ── Multer: upload de imagens de projetos ─────────────────────── */
+const _projUploadDir = path.resolve(__dirname, '../../../uploads/projetos');
+mkdirSync(_projUploadDir, { recursive: true });
+
+const _projUpload = multer({
+    storage: multer.diskStorage({
+        destination: _projUploadDir,
+        filename: (req, file, cb) => {
+            const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+            cb(null, `proj_${req.params.id || 'x'}_${Date.now()}${ext}`);
+        },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: (_req, file, cb) => {
+        cb(null, /^image\/(jpeg|png|webp|gif)$/.test(file.mimetype));
+    },
+});
 
 migrarTabela();
 
@@ -1189,6 +1212,44 @@ export function createAlunosPortalRouter() {
             console.error('[ALUNOS-PORTAL] Erro ao buscar mural:', e.message);
             res.json({ grupos: [] });
         }
+    });
+
+    /* ── Projetos: upload de imagem ─────────────────────────────────────── */
+
+    /* Serve a imagem com autenticação */
+    router.get('/alunos-portal/projetos/imagem/:filename', async (req, res) => {
+        const session = await getAlunoSession(req);
+        if (!session) return res.status(401).json({ erro: 'Não autenticado' });
+        const filePath = path.join(_projUploadDir, path.basename(req.params.filename));
+        res.sendFile(filePath, err => {
+            if (err) res.status(404).json({ erro: 'Imagem não encontrada.' });
+        });
+    });
+
+    /* Recebe a imagem do aluno e vincula ao projeto */
+    router.post('/alunos-portal/projetos/:id/imagem', _projUpload.single('imagem'), async (req, res) => {
+        const session = await getAlunoSession(req);
+        if (!session) return res.status(401).json({ erro: 'Não autenticado' });
+        if (!req.file)  return res.status(400).json({ erro: 'Nenhuma imagem enviada.' });
+        const { id } = req.params;
+        try {
+            const { rows } = await pool.query(
+                `SELECT id, foto_url FROM aluno_projeto_sugestoes WHERE id = $1 AND aluno_email = $2`,
+                [id, session.email]
+            );
+            if (!rows.length) return res.status(403).json({ erro: 'Projeto não encontrado.' });
+            /* Remove imagem anterior, se houver */
+            if (rows[0].foto_url) {
+                const oldPath = path.join(_projUploadDir, path.basename(rows[0].foto_url));
+                fs.unlink(oldPath, () => {});
+            }
+            const fotoUrl = `/api/alunos-portal/projetos/imagem/${req.file.filename}`;
+            await pool.query(
+                `UPDATE aluno_projeto_sugestoes SET foto_url = $1 WHERE id = $2`,
+                [fotoUrl, id]
+            );
+            res.json({ ok: true, foto_url: fotoUrl });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
     /* ── Projetos: aluno submete link ──────────────────────────────────── */

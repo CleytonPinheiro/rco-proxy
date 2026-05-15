@@ -1875,6 +1875,16 @@ async function carregarProjetosAluno() {
         sec.style.display = '';
         const lista = $('paProjetosLista');
         if (!lista) return;
+
+        /* Atualiza o <select> da aba de anexo de imagem */
+        const sel = $('paAnexarSelect');
+        if (sel) {
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">— Selecione um projeto —</option>' +
+                sugestoes.map(s => `<option value="${escapeAttr(String(s.id))}">${escapeHtmlPA(s.nome)}</option>`).join('');
+            if (prev) sel.value = prev;
+        }
+
         if (!sugestoes.length) {
             lista.innerHTML = '<p style="font-size:13px;color:#9ca3af;font-style:italic;margin:4px 0">Você ainda não submeteu nenhum projeto.</p>';
             return;
@@ -1883,6 +1893,13 @@ async function carregarProjetosAluno() {
             const icon  = PA_TIPO_ICON[s.tipo]  || '🔗';
             const label = PA_STATUS_LABEL[s.status] || s.status;
             const color = PA_STATUS_COLOR[s.status] || '#374151';
+            const thumb = s.foto_url
+                ? `<div style="margin-top:8px">
+                       <img src="${escapeAttr(s.foto_url)}" alt="imagem do projeto"
+                            style="max-width:160px;max-height:110px;border-radius:8px;border:1px solid #e5e7eb;object-fit:cover;cursor:pointer"
+                            onclick="window.open(this.src,'_blank')">
+                   </div>`
+                : '';
             return `
                 <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
                     <div style="flex:1;min-width:180px">
@@ -1893,11 +1910,87 @@ async function carregarProjetosAluno() {
                         <div style="font-size:11px;color:#6b7280">
                             Enviado em ${new Date(s.criado_em).toLocaleDateString('pt-BR')}
                         </div>
+                        ${thumb}
                     </div>
                     <span style="font-size:12px;font-weight:700;color:${color};white-space:nowrap;padding-top:2px">${label}</span>
                 </div>`;
         }).join('');
     } catch (_) { /* silencioso */ }
+}
+
+/* ── Alternância de abas na seção de projetos ─── */
+function paProjetosAba(aba) {
+    const formLink   = $('paProjetosFormLink');
+    const formImagem = $('paProjetosFormImagem');
+    const tabLink    = $('paProjetosTabLink');
+    const tabImagem  = $('paProjetosTabImagem');
+    if (!formLink || !formImagem) return;
+    const isImagem = aba === 'imagem';
+    formLink.style.display   = isImagem ? 'none' : '';
+    formImagem.style.display = isImagem ? '' : 'none';
+    if (tabLink) {
+        tabLink.style.borderBottomColor = isImagem ? 'transparent' : '#f59e0b';
+        tabLink.style.color             = isImagem ? '#6b7280' : '#b45309';
+    }
+    if (tabImagem) {
+        tabImagem.style.borderBottomColor = isImagem ? '#0ea5e9' : 'transparent';
+        tabImagem.style.color             = isImagem ? '#0369a1' : '#6b7280';
+    }
+}
+
+/* ── Pré-visualização local antes do upload ─── */
+function paPreviewImagem(input) {
+    const prev    = $('paAnexarPreview');
+    const prevImg = $('paAnexarPreviewImg');
+    const nome    = $('paAnexarNomeArquivo');
+    if (!input.files?.length) { if (prev) prev.style.display = 'none'; return; }
+    const file = input.files[0];
+    if (nome) nome.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = e => {
+        if (prevImg) prevImg.src = e.target.result;
+        if (prev)    prev.style.display = '';
+    };
+    reader.readAsDataURL(file);
+}
+
+/* ── Upload da imagem vinculada ao projeto ─── */
+async function paUploadImagemProjeto() {
+    const sel  = $('paAnexarSelect');
+    const file = $('paAnexarFile');
+    const msg  = $('paAnexarMsg');
+    const projetoId = sel?.value;
+    if (!projetoId) {
+        if (msg) { msg.textContent = 'Selecione um projeto antes de anexar.'; msg.style.color = '#dc2626'; }
+        return;
+    }
+    if (!file?.files?.length) {
+        if (msg) { msg.textContent = 'Escolha uma imagem antes de enviar.'; msg.style.color = '#dc2626'; }
+        return;
+    }
+    if (msg) { msg.textContent = 'Enviando…'; msg.style.color = '#6b7280'; }
+    try {
+        const form = new FormData();
+        form.append('imagem', file.files[0]);
+        const r = await fetch(`/api/alunos-portal/projetos/${encodeURIComponent(projetoId)}/imagem`, {
+            method: 'POST',
+            credentials: 'include',
+            body: form,
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            if (msg) { msg.textContent = d.erro || 'Erro ao enviar.'; msg.style.color = '#dc2626'; }
+            return;
+        }
+        if (msg) { msg.textContent = '✅ Imagem anexada com sucesso!'; msg.style.color = '#065f46'; }
+        file.value = '';
+        const prev = $('paAnexarPreview');
+        if (prev) prev.style.display = 'none';
+        await carregarProjetosAluno();
+        setTimeout(() => { if (msg) msg.textContent = ''; }, 5000);
+    } catch (_) {
+        if (msg) { msg.textContent = 'Erro de rede. Tente novamente.'; msg.style.color = '#dc2626'; }
+    }
 }
 
 async function submeterProjetoAluno() {
@@ -1937,3 +2030,8 @@ function escapeHtmlPA(s) {
     if (s == null) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+window.submeterProjetoAluno   = submeterProjetoAluno;
+window.paProjetosAba          = paProjetosAba;
+window.paPreviewImagem        = paPreviewImagem;
+window.paUploadImagemProjeto  = paUploadImagemProjeto;
