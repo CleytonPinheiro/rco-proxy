@@ -282,16 +282,17 @@ body.pp-tcor-split-ativo .pp-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 4px 10px;
     border-bottom: 1px solid var(--pp-border);
     background: var(--pp-bg);
     flex-shrink: 0;
+    min-height: 32px;
 }
 
 .pp-tcor-pdf-titulo {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--pp-text);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--pp-muted);
 }
 
 .pp-tcor-pdf-fechar {

@@ -542,7 +542,7 @@ function _tcorTogglePdf() {
         estado.tcorPdfAberto = false;
     } else {
         if (iframe && estado.tcorPdfUrl && !iframe.getAttribute('data-carregado')) {
-            iframe.src = estado.tcorPdfUrl + '#navpanes=0';
+            iframe.src = estado.tcorPdfUrl + '#toolbar=0&navpanes=0';
             iframe.setAttribute('data-carregado', '1');
         }
         painel.style.display = 'flex';
@@ -820,7 +820,7 @@ function _segTogglePdf() {
         estado.segPdfAberto = false;
     } else {
         if (iframe && estado.segPdfUrl && !iframe.getAttribute('data-carregado')) {
-            iframe.src = estado.segPdfUrl + '#navpanes=0';
+            iframe.src = estado.segPdfUrl + '#toolbar=0&navpanes=0';
             iframe.setAttribute('data-carregado', '1');
         }
         painel.style.display = 'flex';
