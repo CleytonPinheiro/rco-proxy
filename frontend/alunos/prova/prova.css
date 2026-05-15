@@ -255,6 +255,8 @@ details.pp-qtxt[open] .pp-qtxt-summary::before { content: '▾ '; }
 }
 
 .pp-tcor-split-ativo .pp-tcor-painel-correcao {
+    flex: 0 0 calc(100% * 1 / 3);
+    max-width: calc(100% * 1 / 3);
     overflow-y: auto;
     max-height: calc(100vh - 90px);
     padding-right: 12px;
@@ -262,6 +264,12 @@ details.pp-qtxt[open] .pp-qtxt-summary::before { content: '▾ '; }
 
 body.pp-tcor-split-ativo .pp-main {
     max-width: 100%;
+}
+
+@media (min-width: 768px) {
+    .pp-tcor-split-ativo .pp-tcor-painel-pdf {
+        width: calc(100% * 2 / 3);
+    }
 }
 
 .pp-tcor-painel-pdf {
@@ -377,6 +385,8 @@ body.pp-tcor-split-ativo .pp-main {
 /* Mobile: PDF como drawer de tela cheia sobre o conteúdo */
 @media (max-width: 767px) {
     .pp-tcor-split-ativo .pp-tcor-painel-correcao {
+        flex: 1;
+        max-width: none;
         overflow-y: unset;
         max-height: unset;
         padding-right: 0;
