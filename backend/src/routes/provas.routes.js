@@ -4597,9 +4597,7 @@ export function createProvasPublicRouter() {
                 `SELECT p.id AS prova_id, p.nome AS prova_nome,
                         p.turma_corretora_2a_correcao, p.link_prova,
                         p.efetivada,
-                        (SELECT DISTINCT acc.curso_nome FROM aluno_cursos_cache acc
-                          WHERE acc.curso_id = p.turma_corretora_id::text LIMIT 1
-                        ) AS turma_corretora_nome,
+                        NULL::text AS turma_corretora_nome,
                         ${PENDENTES_SQ} AS pendentes,
                         (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
                    FROM classroom_provas p
@@ -4705,9 +4703,7 @@ export function createProvasPublicRouter() {
                     `SELECT p.id AS prova_id, p.nome AS prova_nome,
                             p.turma_corretora_2a_correcao, p.link_prova,
                             p.efetivada,
-                            (SELECT DISTINCT acc2.curso_nome FROM aluno_cursos_cache acc2
-                              WHERE acc2.curso_id = p.turma_corretora_id::text LIMIT 1
-                            ) AS turma_corretora_nome,
+                            NULL::text AS turma_corretora_nome,
                             ${PENDENTES_SQ} AS pendentes,
                             (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
                        FROM classroom_provas p
@@ -4864,9 +4860,7 @@ export function createProvasPublicRouter() {
             const { rows: resultado } = await pool.query(
                 `SELECT p.id AS prova_id, p.nome AS prova_nome,
                         p.turma_corretora_2a_correcao, p.link_prova,
-                        (SELECT DISTINCT acc.curso_nome FROM aluno_cursos_cache acc
-                          WHERE acc.curso_id = p.turma_corretora_id::text LIMIT 1
-                        ) AS turma_corretora_nome,
+                        NULL::text AS turma_corretora_nome,
                         ${PENDENTES_SQ} AS pendentes,
                         (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
                    FROM classroom_provas p
