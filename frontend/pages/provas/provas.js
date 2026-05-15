@@ -1260,29 +1260,29 @@ async function sortear(submissaoId) {
         modal.onclick = e => { if (e.target === modal) { modal.remove(); resolve(); } };
 
         const listaHTML = candidatos.length === 0
-            ? `<p style="color:var(--text-muted,#888);text-align:center;padding:24px 0">Nenhum candidato elegível no momento.</p>`
-            : candidatos.map(c => `
+            ? `<p style="color:var(--text-muted);text-align:center;padding:24px 0">Nenhum candidato elegível no momento.</p>`
+            : candidatos.map((c, i) => `
                 <button class="prv-sortear-candidato-item" data-email="${escapeHtml(c.aluno_email)}"
                     style="display:flex;flex-direction:column;width:100%;text-align:left;padding:10px 14px;
-                           border:1px solid var(--border,#e5e7eb);border-radius:8px;margin-bottom:8px;
-                           background:var(--card-bg,#fff);cursor:pointer;transition:background .15s">
-                    <span style="font-weight:600;font-size:14px">${escapeHtml(c.aluno_nome || c.aluno_email)}</span>
-                    <span style="font-size:12px;color:var(--text-muted,#6b7280)">${escapeHtml(c.aluno_email)}</span>
+                           border:1px solid var(--border);border-radius:8px;margin-bottom:8px;
+                           background:var(--bg-card);cursor:pointer;transition:background .15s">
+                    <span style="font-weight:600;font-size:14px;color:var(--text-primary)">${i + 1}. ${c.aluno_nome ? escapeHtml(c.aluno_nome) : escapeHtml(c.aluno_email)}</span>
+                    ${c.aluno_nome ? `<span style="font-size:12px;color:var(--text-muted)">${escapeHtml(c.aluno_email)}</span>` : ''}
                 </button>`).join('');
 
         modal.innerHTML = `
             <div class="prv-modal-card" style="max-width:480px;width:94%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;padding:0">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;flex-shrink:0;border-bottom:1px solid var(--border,#eee)">
-                    <h3 style="margin:0;font-size:17px">Escolher 2º Corretor</h3>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;flex-shrink:0;border-bottom:1px solid var(--border)">
+                    <h3 style="margin:0;font-size:17px;color:var(--text-primary)">Escolher 2º Corretor</h3>
                     <button class="prv-btn-icon" id="${MODAL_ID}Fechar">✕</button>
                 </div>
                 <div style="flex:1;overflow-y:auto;min-height:0;padding:16px 22px">
-                    <p style="margin:0 0 14px;font-size:13px;color:var(--text-muted,#555)">
+                    <p style="margin:0 0 14px;font-size:13px;color:var(--text-muted)">
                         Clique em um aluno para atribuí-lo, ou sorteie aleatoriamente entre os elegíveis.
                     </p>
                     <div id="${MODAL_ID}Lista">${listaHTML}</div>
                 </div>
-                <div style="padding:14px 22px;border-top:1px solid var(--border,#eee);flex-shrink:0;display:flex;gap:10px;justify-content:flex-end">
+                <div style="padding:14px 22px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:10px;justify-content:flex-end;background:var(--bg-card)">
                     <button class="prv-btn prv-btn-sec" id="${MODAL_ID}Cancelar">Cancelar</button>
                     <button class="prv-btn" id="${MODAL_ID}Aleatorio" ${candidatos.length === 0 ? 'disabled' : ''}>🎲 Sortear aleatoriamente</button>
                 </div>
@@ -1322,8 +1322,8 @@ async function sortear(submissaoId) {
         document.getElementById(`${MODAL_ID}Aleatorio`).onclick = () => executarSorteio(null);
 
         document.getElementById(`${MODAL_ID}Lista`).querySelectorAll('.prv-sortear-candidato-item').forEach(btn => {
-            btn.onmouseenter = () => { btn.style.background = 'var(--hover-bg,#f3f4f6)'; };
-            btn.onmouseleave = () => { btn.style.background = 'var(--card-bg,#fff)'; };
+            btn.onmouseenter = () => { btn.style.background = 'var(--hover-bg)'; };
+            btn.onmouseleave = () => { btn.style.background = 'var(--bg-card)'; };
             btn.onclick = () => executarSorteio(btn.dataset.email);
         });
     });
