@@ -1061,8 +1061,11 @@ function renderDetalhe(d) {
                 }
             }
             acoes.push(`<button class="prv-link-acao prv-link-danger prv-act-apagar" data-sub="${s.id}" data-aluno="${escapeHtml(s.aluno_nome || s.aluno_email)}" title="Apaga a submissão deste aluno para ele refazer">🗑</button>`);
+            const alunoLabel = s.aluno_nome
+                ? (s.numchamada != null ? `Nº ${s.numchamada} — ${escapeHtml(s.aluno_nome)}` : escapeHtml(s.aluno_nome))
+                : escapeHtml(s.aluno_email);
             sub += `<tr>
-                <td>${escapeHtml(s.aluno_nome || s.aluno_email)}<br><small style="color:#888">${escapeHtml(s.aluno_email)}</small></td>
+                <td>${alunoLabel}<br><small style="color:#888">${escapeHtml(s.aluno_email)}</small></td>
                 <td>${selVar}</td>
                 <td>${new Date(s.criada_em).toLocaleString('pt-BR')}</td>
                 <td>${flags.join(' ') || '—'}</td>

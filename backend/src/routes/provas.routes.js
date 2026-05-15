@@ -1289,7 +1289,7 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 [prova.id]
             );
 
-            const { rows: submissoes } = await pool.query(
+            const { rows: submissoesRaw } = await pool.query(
                 `SELECT s.*, v.codigo AS variante_codigo,
                         pend.aluno_email AS segundo_corretor_pendente_email
                    FROM classroom_prova_submissoes s
@@ -1307,6 +1307,37 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                   ORDER BY s.eh_segundo_corretor, s.criada_em DESC`,
                 [prova.id]
             );
+
+            /* ── Enriquece submissões com numchamada via Supabase (best-effort) ── */
+            let submissoes = submissoesRaw;
+            try {
+                const { supabaseAdmin } = await import('../config/supabase.js');
+                const { data: alunosDB } = await supabaseAdmin
+                    .from('alunos')
+                    .select('nome, numchamada')
+                    .not('numchamada', 'is', null);
+
+                if (alunosDB?.length) {
+                    const norm = n => (n || '').toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
+                    const numChamadaMap = {};
+                    alunosDB.forEach(a => { numChamadaMap[norm(a.nome)] = a.numchamada; });
+
+                    submissoes = submissoesRaw.map(s => {
+                        if (!s.aluno_nome) return { ...s, numchamada: null };
+                        const nNorm = norm(s.aluno_nome);
+                        if (numChamadaMap[nNorm] != null) return { ...s, numchamada: numChamadaMap[nNorm] };
+                        const tokens = nNorm.split(' ').filter(t => t.length > 2);
+                        const matched = Object.entries(numChamadaMap).find(([k]) =>
+                            tokens.length > 0 && tokens.every(t => k.includes(t))
+                        );
+                        return { ...s, numchamada: matched ? matched[1] : null };
+                    });
+                }
+            } catch (supErr) {
+                console.warn('[PROVAS-DETALHE] Supabase numchamada erro:', supErr.message);
+            }
 
             res.json({ prova, variantes, submissoes });
         } catch (e) {
