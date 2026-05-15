@@ -577,10 +577,10 @@ async function carregarTarefasCorretor() {
         lista.innerHTML = pendentes.map(p => {
             const isVoluntario = p.tipo === 'segundo_corretor_voluntario';
             const origemBadge = isVoluntario
-                ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;border:1.5px solid #3b82f6;border-radius:6px;padding:2px 10px;font-size:0.8em;font-weight:700;color:#1e40af">🙋 Voluntário</span>`
-                : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fde68a;border:1.5px solid #d97706;border-radius:6px;padding:2px 10px;font-size:0.8em;font-weight:700;color:#92400e">🎲 Sorteado</span>`;
+                ? `<span class="pa-badge-voluntario">🙋 Voluntário</span>`
+                : `<span class="pa-badge-sorteado">🎲 Sorteado</span>`;
             return `
-            <div class="pa-card-segundo-corretor" style="padding:14px;border:1px solid #f59e0b;border-radius:8px;margin-bottom:8px;background:#fffbeb">
+            <div class="pa-card-segundo-corretor" style="padding:14px">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
                     <div style="flex:1;min-width:0">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
@@ -588,22 +588,22 @@ async function carregarTarefasCorretor() {
                             ${origemBadge}
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-                            <span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:6px;padding:2px 10px;font-size:0.85em;font-weight:700;color:#92400e">⚠️ Variante ${p.variante_codigo != null ? p.variante_codigo : '—'}</span>
-                            <span style="font-size:0.82em;color:#6b7280">${p.qtd_questoes} questões · ${new Date(p.criado_em).toLocaleDateString('pt-BR')}</span>
+                            <span class="pa-badge-variante">⚠️ Variante ${p.variante_codigo != null ? p.variante_codigo : '—'}</span>
+                            <span class="pa-corretor-meta">${p.qtd_questoes} questões · ${new Date(p.criado_em).toLocaleDateString('pt-BR')}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                            <span style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #f59e0b;border-radius:20px;padding:4px 12px;font-size:0.82em;font-weight:600;color:#92400e">
-                                <span style="display:inline-flex;align-items:center;justify-content:center;background:#f59e0b;color:#fff;border-radius:50%;width:18px;height:18px;font-size:0.75em;font-weight:700;flex-shrink:0">1</span>
+                            <span class="pa-corretor-step">
+                                <span class="pa-corretor-step-num">1</span>
                                 📋 Receber gabarito às cegas
                             </span>
-                            <span style="color:#d1d5db;font-size:1em">→</span>
-                            <span style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #f59e0b;border-radius:20px;padding:4px 12px;font-size:0.82em;font-weight:600;color:#92400e">
-                                <span style="display:inline-flex;align-items:center;justify-content:center;background:#f59e0b;color:#fff;border-radius:50%;width:18px;height:18px;font-size:0.75em;font-weight:700;flex-shrink:0">2</span>
+                            <span class="pa-corretor-arrow">→</span>
+                            <span class="pa-corretor-step">
+                                <span class="pa-corretor-step-num">2</span>
                                 ✏️ Realizar correção
                             </span>
                         </div>
                     </div>
-                    <a class="pa-btn pa-btn-primary" href="/alunos/prova/?seg=${p.submissao_ref_id}" style="background:#f59e0b;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;align-self:center">Corrigir agora →</a>
+                    <a class="pa-corretor-btn" href="/alunos/prova/?seg=${p.submissao_ref_id}">Corrigir agora →</a>
                 </div>
             </div>`;
         }).join('');
