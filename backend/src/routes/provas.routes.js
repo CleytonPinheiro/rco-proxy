@@ -5626,7 +5626,37 @@ export function createProvasPublicRouter() {
             if (!itemRaw) return res.status(404).json({ erro: 'Folha não encontrada ou já foi corrigida por outro aluno.' });
             const { gabarito_json: _gabTcor, ...itemBase } = itemRaw;
             const gabTcorArr = Array.isArray(_gabTcor) ? _gabTcor : [];
-            const item = { ...itemBase, questoes_n_alts: gabTcorArr.map(q => (q && q.n_alternativas) ? Number(q.n_alternativas) : 4) };
+
+            /* Enriquece com numchamada via Supabase (best-effort) */
+            let numchamada = null;
+            try {
+                const { supabaseAdmin } = await import('../config/supabase.js');
+                const norm = n => (n || '').toLowerCase()
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
+                const { data: alunosDB } = await supabaseAdmin
+                    .from('alunos')
+                    .select('nome, numchamada')
+                    .not('numchamada', 'is', null);
+                if (alunosDB?.length) {
+                    const nNorm = norm(itemRaw.aluno_nome);
+                    const numChamadaMap = {};
+                    alunosDB.forEach(a => { numChamadaMap[norm(a.nome)] = a.numchamada; });
+                    if (numChamadaMap[nNorm] != null) {
+                        numchamada = numChamadaMap[nNorm];
+                    } else {
+                        const tokens = nNorm.split(' ').filter(t => t.length > 2);
+                        const matched = Object.entries(numChamadaMap).find(([k]) =>
+                            tokens.length > 0 && tokens.every(t => k.includes(t))
+                        );
+                        if (matched) numchamada = matched[1];
+                    }
+                }
+            } catch (supErr) {
+                console.warn('[TURMA-CORRETORA] Supabase numchamada erro:', supErr.message);
+            }
+
+            const item = { ...itemBase, numchamada, questoes_n_alts: gabTcorArr.map(q => (q && q.n_alternativas) ? Number(q.n_alternativas) : 4) };
             res.json({ item });
         } catch (e) {
             res.status(500).json({ erro: e.message });

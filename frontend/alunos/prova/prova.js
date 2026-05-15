@@ -427,9 +427,18 @@ async function iniciarTurmaCorretora(subRefId) {
         estado.marcacoes = {};
 
         /* Exibe nome + variante do aluno dono como confirmação visual */
-        const nomeWrap = $('ppTcorNomeWrap');
-        const nomeEl   = $('ppTcorNomeAluno');
+        const nomeWrap   = $('ppTcorNomeWrap');
+        const nomeEl     = $('ppTcorNomeAluno');
+        const numChamEl  = $('ppTcorNumChamada');
         if (nomeWrap && nomeEl) {
+            if (numChamEl && item.numchamada != null) {
+                numChamEl.textContent = `Nº ${item.numchamada} —`;
+                numChamEl.style.display = 'inline';
+                nomeEl.style.marginLeft = '4px';
+            } else if (numChamEl) {
+                numChamEl.style.display = 'none';
+                nomeEl.style.marginLeft = '8px';
+            }
             nomeEl.textContent = item.aluno_nome || '(sem nome)';
             nomeWrap.style.display = 'flex';
         }
