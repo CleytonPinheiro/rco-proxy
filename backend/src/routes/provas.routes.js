@@ -4699,6 +4699,53 @@ export function createProvasPublicRouter() {
                 return res.json({ provas: rows });
             }
 
+            /* ── Passo 1.5: aluno_cursos_cache — fallback local sem API ── */
+            {
+                const { rows: cacheProvas } = await pool.query(
+                    `SELECT p.id AS prova_id, p.nome AS prova_nome,
+                            p.turma_corretora_2a_correcao, p.link_prova,
+                            p.efetivada,
+                            (SELECT DISTINCT acc2.curso_nome FROM aluno_cursos_cache acc2
+                              WHERE acc2.curso_id = p.turma_corretora_id::text LIMIT 1
+                            ) AS turma_corretora_nome,
+                            ${PENDENTES_SQ} AS pendentes,
+                            (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
+                       FROM classroom_provas p
+                       JOIN aluno_cursos_cache acc
+                         ON acc.curso_id    = p.turma_corretora_id::text
+                        AND acc.aluno_email = $1
+                      WHERE p.turma_corretora_id IS NOT NULL
+                        AND (p.turma_corretora_liberacao IS NULL OR p.turma_corretora_liberacao <= NOW())
+                      ORDER BY p.efetivada ASC, pendentes DESC, p.id`,
+                    [aluno.email]
+                );
+
+                if (cacheProvas.length > 0) {
+                    console.log(`[ATRIB] ${aluno.email} — ${cacheProvas.length} prova(s) via cache local`);
+                    /* Cria notificações persistentes em background para requests futuros */
+                    setImmediate(async () => {
+                        for (const p of cacheProvas) {
+                            try {
+                                const titulo   = '🏫 Você foi atribuído como corretor!';
+                                const mensagem = `O professor atribuiu sua turma para corrigir a prova "${p.prova_nome}". Acesse a aba "✏️ Correções" no Portal do Aluno.`;
+                                await pool.query(
+                                    `INSERT INTO notificacoes_aluno
+                                           (aluno_email, tipo, referencia, titulo, mensagem, dados)
+                                     SELECT $1,'turma_corretora_atribuida',$2,$3,$4,$5
+                                      WHERE NOT EXISTS (
+                                          SELECT 1 FROM notificacoes_aluno
+                                           WHERE aluno_email=$1 AND tipo='turma_corretora_atribuida' AND referencia=$2
+                                      )`,
+                                    [aluno.email, String(p.prova_id), titulo, mensagem,
+                                     JSON.stringify({ provaId: Number(p.prova_id), provaNome: p.prova_nome })]
+                                );
+                            } catch (_) {}
+                        }
+                    });
+                    return res.json({ provas: cacheProvas });
+                }
+            }
+
             /* ── Passo 2: Classroom API — auto-bootstrap se aluno ainda não tem notif ── */
             const { rows: provasAtivas } = await pool.query(
                 `SELECT id, nome, turma_corretora_id
