@@ -5448,6 +5448,61 @@ export function createProvasPublicRouter() {
     });
 
     /**
+     * DELETE /api/alunos-portal/turma-corretora/cancelar-correcao/:subRefId
+     * Apaga uma submissão vazia criada por iniciar-correcao quando o corretor cancela.
+     * Só remove se origem = 'tcor-auto' e marcacoes_json = '{}' (nunca preenchida).
+     */
+    router.delete('/alunos-portal/turma-corretora/cancelar-correcao/:subRefId', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+
+        const subRefId = parseInt(req.params.subRefId, 10);
+        if (!Number.isFinite(subRefId)) return res.status(400).json({ erro: 'subRefId inválido.' });
+
+        try {
+            /* Busca a submissão junto com a prova para validar pertencimento */
+            const { rows: [sub] } = await pool.query(
+                `SELECT s.id, s.prova_id, s.aluno_email, s.origem, s.marcacoes_json
+                   FROM classroom_prova_submissoes s
+                  WHERE s.id = $1
+                    AND s.eh_segundo_corretor = false
+                    AND s.eh_turma_corretora  = false`,
+                [subRefId]
+            );
+
+            /* Se não existe, retorna sucesso (idempotente) */
+            if (!sub) return res.json({ cancelado: true, motivo: 'ja_inexistente' });
+
+            /* Valida que o corretor logado pertence à turma corretora desta prova */
+            const { rows: notif } = await pool.query(
+                `SELECT 1 FROM notificacoes_aluno
+                  WHERE aluno_email = $1 AND tipo = 'turma_corretora_atribuida' AND referencia = $2`,
+                [aluno.email, sub.prova_id.toString()]
+            );
+            if (notif.length === 0) {
+                return res.status(403).json({ erro: 'Você não pertence à turma corretora desta prova.' });
+            }
+
+            /* Só remove submissões que foram criadas automaticamente e nunca preenchidas */
+            const marcacoes = sub.marcacoes_json;
+            const vazia = marcacoes == null ||
+                marcacoes === '{}' ||
+                (typeof marcacoes === 'object' && Object.keys(marcacoes).length === 0);
+
+            if (sub.origem !== 'tcor-auto' || !vazia) {
+                return res.status(409).json({ erro: 'Submissão já preenchida; não pode ser cancelada por este endpoint.' });
+            }
+
+            await pool.query('DELETE FROM classroom_prova_submissoes WHERE id = $1', [subRefId]);
+            console.log(`[TCOR-CANCEL] Submissão ${subRefId} removida (prova=${sub.prova_id} aluno=${sub.aluno_email} corretor=${aluno.email})`);
+            res.json({ cancelado: true });
+        } catch (e) {
+            console.error('[TCOR-CANCEL] Erro:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /**
      * GET /api/alunos-portal/turma-corretora/prova-pdf/:subRefId
      * Serve o PDF da prova filtrando apenas as páginas da variante do aluno alvo.
      * Prioridade: mapeamento manual → auto-detecção por texto → PDF completo.

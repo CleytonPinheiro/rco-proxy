@@ -994,6 +994,43 @@ async function enviarSegundo() {
     }
 }
 
+async function _tcorCancelar() {
+    const subRefId = estado.tcor && estado.tcor.submissao_ref_id;
+    if (subRefId) {
+        try { localStorage.removeItem(`edusync_rascunho_tcor_${subRefId}`); } catch (_) {}
+        try {
+            const r = await fetch(
+                `/api/alunos-portal/turma-corretora/cancelar-correcao/${encodeURIComponent(subRefId)}`,
+                { method: 'DELETE', credentials: 'include' }
+            );
+            if (!r.ok && r.status !== 404) {
+                const continuar = confirm(
+                    'Não foi possível liberar a correção no servidor. ' +
+                    'O aluno pode ficar fora da fila até que o problema seja resolvido.\n\n' +
+                    'Deseja voltar assim mesmo?'
+                );
+                if (!continuar) return;
+            }
+        } catch (_) {
+            const continuar = confirm(
+                'Erro de conexão ao cancelar a correção. ' +
+                'O aluno pode ficar fora da fila até que o problema seja resolvido.\n\n' +
+                'Deseja voltar assim mesmo?'
+            );
+            if (!continuar) return;
+        }
+    }
+    location.href = '/alunos/';
+}
+
+function _segCancelar() {
+    const subRefId = estado.segundo && estado.segundo.submissao_ref_id;
+    if (subRefId) {
+        try { localStorage.removeItem(`edusync_rascunho_tcor_${subRefId}`); } catch (_) {}
+    }
+    location.href = '/alunos/';
+}
+
 window.enviarTurmaCorretora   = enviarTurmaCorretora;
 window.enviarSegundo          = enviarSegundo;
 window.toggleTema             = toggleTema;
@@ -1007,5 +1044,7 @@ window.enviarFotoOuSubmissao  = enviarFotoOuSubmissao;
 window.verResultado           = verResultado;
 window._tcorTogglePdf         = _tcorTogglePdf;
 window._segTogglePdf          = _segTogglePdf;
+window._tcorCancelar          = _tcorCancelar;
+window._segCancelar           = _segCancelar;
 
 init();
