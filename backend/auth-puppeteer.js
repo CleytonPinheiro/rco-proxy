@@ -327,18 +327,21 @@ export async function loginWithPuppeteer(cpf, senha) {
 
         console.log("Navegando para página de login...");
         // Usar domcontentloaded (não networkidle2) para não aguardar recursos externos que podem travar
+        // O RCO gov pode ser muito lento — 90 s de timeout, 3 tentativas, último recurso: 'commit'
+        const MAX_TENTATIVAS = 3;
         let gotoOk = false;
-        for (let tentativa = 1; tentativa <= 2; tentativa++) {
+        for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
             try {
-                await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+                const waitUntil = tentativa < MAX_TENTATIVAS ? "domcontentloaded" : "commit";
+                await page.goto(loginUrl, { waitUntil, timeout: 90000 });
                 gotoOk = true;
                 break;
             } catch (e) {
-                console.warn(`[Puppeteer] Tentativa ${tentativa}/2 de navegação falhou: ${e.message}`);
-                if (tentativa < 2) await new Promise(r => setTimeout(r, 3000));
+                console.warn(`[Puppeteer] Tentativa ${tentativa}/${MAX_TENTATIVAS} de navegação falhou: ${e.message}`);
+                if (tentativa < MAX_TENTATIVAS) await new Promise(r => setTimeout(r, 5000));
             }
         }
-        if (!gotoOk) throw new Error("Não foi possível carregar a página de login após 2 tentativas");
+        if (!gotoOk) throw new Error(`Não foi possível carregar a página de login após ${MAX_TENTATIVAS} tentativas`);
 
         console.log("Aguardando formulário de login...");
 
