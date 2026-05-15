@@ -75,7 +75,16 @@ paginasRedirect.forEach(p => {
 app.get('/app', (_req, res) => res.redirect('/login/'));
 
 // Arquivos estáticos servidos ANTES do listen para evitar "Cannot GET" durante inicialização
-app.use(express.static(path.join(__dirname, '../frontend')));
+// HTML sempre revalidado; assets (CSS/JS/SVG/imagens/fontes) cacheados por 1 hora no browser
+app.use(express.static(path.join(__dirname, '../frontend'), {
+    setHeaders(res, filePath) {
+        if (/\.html?$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'no-cache');
+        } else if (/\.(css|js|svg|ico|png|jpe?g|webp|gif|woff2?|ttf|eot|otf|map)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+    },
+}));
 // Nota: /uploads NÃO é exposto publicamente — comprovantes requerem autenticação via /api/passeios/comprovante/:filename
 
 // API router placeholder — preenchido após inicialização assíncrona
