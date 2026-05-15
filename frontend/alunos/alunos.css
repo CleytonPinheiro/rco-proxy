@@ -2013,6 +2013,50 @@ html, body {
     border-color: #16a34a;
 }
 
+/* ── Cards de provas concluídas ──────────────────────────────── */
+#paTurmaCorretoraLista .pa-tcor-card--concluida {
+    background: #f8fafc;
+    border-color: #cbd5e1 !important;
+    opacity: 0.85;
+}
+[data-theme="dark"] #paTurmaCorretoraLista .pa-tcor-card--concluida {
+    background: #0f172a;
+    border-color: #334155 !important;
+}
+
+.pa-tcor-concluida-msg {
+    font-size: 0.85em;
+    color: #166534;
+    background: #dcfce7;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: 500;
+}
+[data-theme="dark"] .pa-tcor-concluida-msg {
+    color: #86efac;
+    background: #052e16;
+}
+
+/* ── Separador "Provas já concluídas" ────────────────────────── */
+.pa-tcor-separador {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.78em;
+    font-weight: 600;
+    color: var(--pa-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 18px 0 12px;
+}
+.pa-tcor-separador::before,
+.pa-tcor-separador::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--pa-border);
+}
+
 /* ── Custom student-select inside correction card ───────────── */
 .tcor-csel {
     position: relative;

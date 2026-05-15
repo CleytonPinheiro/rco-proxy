@@ -4596,21 +4596,21 @@ export function createProvasPublicRouter() {
             const { rows } = await pool.query(
                 `SELECT p.id AS prova_id, p.nome AS prova_nome,
                         p.turma_corretora_2a_correcao, p.link_prova,
+                        p.efetivada,
                         (SELECT DISTINCT acc.curso_nome FROM aluno_cursos_cache acc
                           WHERE acc.curso_id = p.turma_corretora_id::text LIMIT 1
                         ) AS turma_corretora_nome,
                         ${PENDENTES_SQ} AS pendentes,
                         (${TODOS_CORRIGIDOS_SQ}) AS todos_corrigidos
                    FROM classroom_provas p
-                  WHERE p.efetivada = false
-                    AND (p.turma_corretora_liberacao IS NULL OR p.turma_corretora_liberacao <= NOW())
+                  WHERE (p.turma_corretora_liberacao IS NULL OR p.turma_corretora_liberacao <= NOW())
                     AND EXISTS (
                         SELECT 1 FROM notificacoes_aluno n
                          WHERE n.aluno_email = $1
                            AND n.tipo        = 'turma_corretora_atribuida'
                            AND n.referencia  = p.id::text
                     )
-                  ORDER BY pendentes DESC, p.id`,
+                  ORDER BY p.efetivada ASC, pendentes DESC, p.id`,
                 [aluno.email]
             );
 

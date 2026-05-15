@@ -163,24 +163,15 @@ async function carregarTurmaCorretora() {
             return;
         }
 
-        /* Oculta cards onde todos os alunos-alvo já foram corrigidos */
-        const provasVisiveis = provas.filter(p => !p.todos_corrigidos);
+        /* Separa provas ativas das concluídas (todos corrigidos ou prova efetivada) */
+        const provasAtivas     = provas.filter(p => !p.todos_corrigidos && !p.efetivada);
+        const provasConcluidas = provas.filter(p => p.todos_corrigidos || p.efetivada);
 
-        if (provasVisiveis.length === 0) {
-            sec.style.display = 'none';
-            if (alert) alert.style.display = 'none';
-            _correcoesPendentes.turma = 0;
-            _turmaAssignmentAtiva = false;
-            _atualizarBadgeCorrecoes();
-            return;
-        }
-
-        /* Marca que há atribuição ativa — aba fica visível mesmo sem folhas pendentes */
+        /* Aba permanece visível enquanto houver ao menos uma prova (ativa ou concluída) */
         _turmaAssignmentAtiva = true;
         sec.style.display = '';
 
-        const comPendentes  = provasVisiveis.filter(p => Number(p.pendentes) > 0);
-        const semSubmissoes = provasVisiveis.filter(p => Number(p.pendentes) === 0);
+        const comPendentes = provasAtivas.filter(p => Number(p.pendentes) > 0);
 
         /* Badge, alerta e destaque visual quando há folhas para corrigir */
         _correcoesPendentes.turma = comPendentes.length;
@@ -197,8 +188,8 @@ async function carregarTurmaCorretora() {
             if (alert)  alert.style.display = 'none';
         }
 
-        /* ── Renderiza cards com select de alunos ── */
-        const todosCards = provasVisiveis.map(p => {
+        /* ── Renderiza cards ativos com select de alunos ── */
+        const cardsAtivos = provasAtivas.map(p => {
             const pend = Number(p.pendentes) || 0;
             const badgePend = pend > 0
                 ? `<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:700">✅ ${pend} folha${pend !== 1 ? 's' : ''} para corrigir</span>`
@@ -240,10 +231,29 @@ async function carregarTurmaCorretora() {
             </div>`;
         }).join('');
 
-        lista.innerHTML = todosCards;
+        /* ── Renderiza cards de provas já concluídas ── */
+        const cardsConcluidos = provasConcluidas.map(p => `
+            <div class="pa-tcor-card pa-tcor-card--concluida">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                    <span style="font-size:1.4rem;line-height:1">✅</span>
+                    <div style="font-size:1rem;font-weight:700;color:var(--pa-text)">
+                        ${escapeHtmlGam(p.prova_nome || 'Prova')}
+                    </div>
+                </div>
+                ${p.turma_corretora_nome ? `<div style="font-size:0.78em;color:var(--pa-sub);margin-bottom:8px">Turma corretora: <strong>${escapeHtmlGam(p.turma_corretora_nome)}</strong></div>` : ''}
+                <div class="pa-tcor-concluida-msg">
+                    ✅ Todas as folhas desta prova já foram corrigidas — bom trabalho!
+                </div>
+            </div>`).join('');
 
-        /* Carrega lista de alunos para cada prova visível (em paralelo) */
-        provasVisiveis.forEach(p => tcorCarregarListaAlunos(p.prova_id));
+        const separador = provasAtivas.length > 0 && provasConcluidas.length > 0
+            ? '<div class="pa-tcor-separador">Provas já concluídas</div>'
+            : '';
+
+        lista.innerHTML = cardsAtivos + separador + cardsConcluidos;
+
+        /* Carrega lista de alunos para cada prova ativa (em paralelo) */
+        provasAtivas.forEach(p => tcorCarregarListaAlunos(p.prova_id));
     } catch (_) {
         /* silencioso — módulo opcional */
     }
