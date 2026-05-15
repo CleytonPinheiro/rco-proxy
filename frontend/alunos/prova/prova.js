@@ -526,6 +526,7 @@ function _tcorTogglePdf() {
         painel.classList.remove('pp-tcor-pdf-fullscreen');
         const fsBtn = $('ppTcorBtnFullscreen');
         if (fsBtn) fsBtn.textContent = '⛶ Tela cheia';
+        if (iframe) iframe.removeEventListener('focus', _devolveFocoAoDoc, true);
         painel.style.display = 'none';
         if (layout) layout.classList.remove('pp-tcor-split-ativo');
         document.body.classList.remove('pp-tcor-split-ativo');
@@ -559,9 +560,17 @@ function _tcorTogglePdf() {
 function _tcorToggleFullscreen() {
     const painel = $('ppTcorPainelPdf');
     const btn    = $('ppTcorBtnFullscreen');
+    const iframe = $('ppTcorIframePdf');
     if (!painel) return;
     const isFs = painel.classList.toggle('pp-tcor-pdf-fullscreen');
-    if (btn) btn.textContent = isFs ? '⛶ Sair' : '⛶ Tela cheia';
+    if (btn) btn.textContent = isFs ? '⛶ Sair (Esc)' : '⛶ Tela cheia';
+    /* Devolve foco ao documento quando o iframe captura o teclado,
+       garantindo que Escape sempre funcione mesmo com o PDF focado */
+    if (isFs && iframe) {
+        iframe.addEventListener('focus', _devolveFocoAoDoc, true);
+    } else if (iframe) {
+        iframe.removeEventListener('focus', _devolveFocoAoDoc, true);
+    }
 }
 
 function _tcorIniciarCronometro() {
@@ -791,6 +800,7 @@ function _segTogglePdf() {
         painel.classList.remove('pp-tcor-pdf-fullscreen');
         const fsBtn = $('ppSegBtnFullscreen');
         if (fsBtn) fsBtn.textContent = '⛶ Tela cheia';
+        if (iframe) iframe.removeEventListener('focus', _devolveFocoAoDoc, true);
         painel.style.display = 'none';
         if (layout) layout.classList.remove('pp-tcor-split-ativo');
         document.body.classList.remove('pp-tcor-split-ativo');
@@ -822,20 +832,39 @@ function _segTogglePdf() {
 function _segToggleFullscreen() {
     const painel = $('ppSegPainelPdf');
     const btn    = $('ppSegBtnFullscreen');
+    const iframe = $('ppSegIframePdf');
     if (!painel) return;
     const isFs = painel.classList.toggle('pp-tcor-pdf-fullscreen');
-    if (btn) btn.textContent = isFs ? '⛶ Sair' : '⛶ Tela cheia';
+    if (btn) btn.textContent = isFs ? '⛶ Sair (Esc)' : '⛶ Tela cheia';
+    if (isFs && iframe) {
+        iframe.addEventListener('focus', _devolveFocoAoDoc, true);
+    } else if (iframe) {
+        iframe.removeEventListener('focus', _devolveFocoAoDoc, true);
+    }
+}
+
+/* Mantém foco no documento pai para que Escape sempre funcione,
+   mesmo quando o usuário clica dentro do iframe do PDF */
+function _devolveFocoAoDoc() {
+    /* Cede o event loop para o iframe processar o clique, depois
+       devolve o foco para o body sem mover a rolagem da página */
+    setTimeout(() => { if (document.activeElement !== document.body) document.body.focus({ preventScroll: true }); }, 0);
 }
 
 /* Escape sai do fullscreen em qualquer painel PDF */
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    [['ppTcorPainelPdf', 'ppTcorBtnFullscreen'], ['ppSegPainelPdf', 'ppSegBtnFullscreen']].forEach(([pId, bId]) => {
+    [
+        ['ppTcorPainelPdf', 'ppTcorBtnFullscreen', 'ppTcorIframePdf'],
+        ['ppSegPainelPdf',  'ppSegBtnFullscreen',  'ppSegIframePdf'],
+    ].forEach(([pId, bId, iId]) => {
         const painel = $(pId);
         if (painel && painel.classList.contains('pp-tcor-pdf-fullscreen')) {
             painel.classList.remove('pp-tcor-pdf-fullscreen');
             const btn = $(bId);
             if (btn) btn.textContent = '⛶ Tela cheia';
+            const iframe = $(iId);
+            if (iframe) iframe.removeEventListener('focus', _devolveFocoAoDoc, true);
         }
     });
 });
