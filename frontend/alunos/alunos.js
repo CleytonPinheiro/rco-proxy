@@ -83,6 +83,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         history.replaceState({}, '', '/alunos/');
     }
 
+    if (params.get('tcor_ok') === '1') {
+        const tcorMsg = params.get('tcor_msg') || '✅ Correção enviada! Obrigado pela ajuda.';
+        setTimeout(() => notificar(tcorMsg), 300);
+        history.replaceState({}, '', '/alunos/');
+    }
+
     await verificarStatus();
 });
 
@@ -163,9 +169,9 @@ async function carregarTurmaCorretora() {
             return;
         }
 
-        /* Separa provas ativas das concluídas (todos corrigidos ou prova efetivada) */
-        const provasAtivas     = provas.filter(p => !p.todos_corrigidos && !p.efetivada);
-        const provasConcluidas = provas.filter(p => p.todos_corrigidos || p.efetivada);
+        /* Separa provas ativas das concluídas (apenas prova efetivada pelo professor) */
+        const provasAtivas     = provas.filter(p => !p.efetivada);
+        const provasConcluidas = provas.filter(p => p.efetivada);
 
         /* Aba permanece visível enquanto houver ao menos uma prova (ativa ou concluída) */
         _turmaAssignmentAtiva = true;
@@ -193,7 +199,7 @@ async function carregarTurmaCorretora() {
             const pend = Number(p.pendentes) || 0;
             const badgePend = pend > 0
                 ? `<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:700">✅ ${pend} folha${pend !== 1 ? 's' : ''} para corrigir</span>`
-                : `<span style="background:#f1f5f9;color:#475569;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">Sua turma foi atribuída como corretora</span>`;
+                : `<span style="background:#f1f5f9;color:#475569;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">Nenhuma folha pendente no momento</span>`;
             const badge2a = p.turma_corretora_2a_correcao
                 ? '<span style="background:#fef9c3;color:#854d0e;border-radius:20px;padding:2px 10px;font-size:0.78em;font-weight:600">2ª conferência ativa</span>'
                 : '';

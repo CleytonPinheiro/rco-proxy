@@ -662,8 +662,7 @@ async function enviarTurmaCorretora() {
         if (r.status === 409 && (d.erro || '').includes('já corrigiu')) {
             const chaveTcor = _chaveRascunhoTcor();
             if (chaveTcor) _apagarRascunho(chaveTcor);
-            notificar('✅ Correção já registrada!');
-            setTimeout(() => { location.href = '/alunos/'; }, 2000);
+            location.href = '/alunos/?tcor_ok=1&tcor_msg=' + encodeURIComponent('✅ Correção já registrada!');
             return;
         }
         if (!r.ok) throw new Error(d.erro || 'Erro ao enviar.');
@@ -671,8 +670,8 @@ async function enviarTurmaCorretora() {
         if (chaveTcor) _apagarRascunho(chaveTcor);
         let msg = '✅ Correção enviada! Obrigado pela ajuda.';
         if (d.xpGanho) msg += ` | +${d.xpGanho} XP ganho`;
-        notificar(msg);
-        setTimeout(() => { location.href = '/alunos/'; }, 2000);
+        const destUrl = '/alunos/?tcor_ok=1&tcor_msg=' + encodeURIComponent(msg) + (d.xpGanho ? '&xp=' + encodeURIComponent(d.xpGanho) : '');
+        location.href = destUrl;
     } catch (e) {
         notificar('Erro: ' + e.message, 'erro');
         $('ppTcorBtn').disabled = false;
