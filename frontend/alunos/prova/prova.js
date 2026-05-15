@@ -708,9 +708,101 @@ async function iniciarSegundoCorretor(subRefId) {
             segVarWrap.style.display = 'none';
         }
 
+        /* Botão PDF — aparece apenas no modo mini-quiz (sem foto) */
+        const btnPdfWrap = $('ppSegLinkWrap');
+        const btnPdf     = $('ppSegBtnPdf');
+        const linkVar    = $('ppSegLinkVariante');
+        if (linkVar) linkVar.textContent = pend.variante_codigo || '';
+        estado.segPdfAberto = false;
+
+        if (estado.segMiniQuiz && btnPdfWrap && btnPdf) {
+            /* Verifica se há PDF cadastrado antes de habilitar o botão */
+            try {
+                const checkR = await fetch(
+                    `/api/alunos-portal/segundo-corretor/${encodeURIComponent(subRefId)}/prova-pdf`,
+                    { method: 'HEAD', credentials: 'include' }
+                );
+                if (checkR.ok) {
+                    estado.segPdfUrl = `/api/alunos-portal/segundo-corretor/${encodeURIComponent(subRefId)}/prova-pdf`;
+                    btnPdf.onclick   = _segTogglePdf;
+                    btnPdf.disabled  = false;
+                    btnPdf.title     = '';
+                    btnPdf.style.opacity    = '';
+                    btnPdf.style.cursor     = 'pointer';
+                    btnPdf.style.background = '#eff6ff';
+                    btnPdf.style.color      = '#1d4ed8';
+                    btnPdf.style.borderColor = '#93c5fd';
+                } else {
+                    estado.segPdfUrl = null;
+                    btnPdf.disabled  = true;
+                    btnPdf.title     = 'Nenhuma folha de prova anexada pelo professor';
+                    btnPdf.style.opacity    = '0.55';
+                    btnPdf.style.cursor     = 'not-allowed';
+                    btnPdf.style.background = '#f3f4f6';
+                    btnPdf.style.color      = '#9ca3af';
+                    btnPdf.style.borderColor = '#d1d5db';
+                    btnPdf.innerHTML = '📄 Folha não anexada pelo professor';
+                }
+            } catch (_) {
+                estado.segPdfUrl = null;
+                btnPdf.disabled  = true;
+                btnPdf.style.opacity = '0.55';
+                btnPdf.style.cursor  = 'not-allowed';
+            }
+            btnPdfWrap.style.display = '';
+        } else if (btnPdfWrap) {
+            btnPdfWrap.style.display = 'none';
+        }
+
+        /* Reseta painel PDF */
+        const _segPainel = $('ppSegPainelPdf');
+        if (_segPainel) _segPainel.style.display = 'none';
+        const _segLayout = $('ppSegLayout');
+        if (_segLayout) _segLayout.classList.remove('pp-tcor-split-ativo');
+        const _segIframe = $('ppSegIframePdf');
+        if (_segIframe) { _segIframe.removeAttribute('data-carregado'); _segIframe.src = ''; }
+
         renderTabelaSegundo();
         show('ppSegundo');
     } catch (e) { showErro(e.message); }
+}
+
+function _segTogglePdf() {
+    const painel  = $('ppSegPainelPdf');
+    const iframe  = $('ppSegIframePdf');
+    const btnPdf  = $('ppSegBtnPdf');
+    const layout  = $('ppSegLayout');
+    const varCod  = estado.segundo?.variante_codigo != null ? String(estado.segundo.variante_codigo) : '';
+
+    const isOpen = painel && painel.style.display !== 'none';
+
+    if (isOpen) {
+        painel.style.display = 'none';
+        if (layout) layout.classList.remove('pp-tcor-split-ativo');
+        document.body.classList.remove('pp-tcor-split-ativo');
+        if (btnPdf) {
+            btnPdf.innerHTML = `📄 Ver folha de prova — Variante <strong style="font-size:1.15em;margin-left:2px">${escHtml(varCod)}</strong>`;
+            btnPdf.style.background  = '#eff6ff';
+            btnPdf.style.color       = '#1d4ed8';
+            btnPdf.style.borderColor = '#93c5fd';
+        }
+        estado.segPdfAberto = false;
+    } else {
+        if (iframe && estado.segPdfUrl && !iframe.getAttribute('data-carregado')) {
+            iframe.src = estado.segPdfUrl;
+            iframe.setAttribute('data-carregado', '1');
+        }
+        painel.style.display = 'flex';
+        if (layout) layout.classList.add('pp-tcor-split-ativo');
+        document.body.classList.add('pp-tcor-split-ativo');
+        if (btnPdf) {
+            btnPdf.innerHTML         = '✕ Fechar PDF';
+            btnPdf.style.background  = '#fef2f2';
+            btnPdf.style.color       = '#dc2626';
+            btnPdf.style.borderColor = '#fca5a5';
+        }
+        estado.segPdfAberto = true;
+    }
 }
 
 function renderTabelaSegundo() {
@@ -842,5 +934,7 @@ window.previewFoto            = previewFoto;
 window.enviarSubmissao        = enviarSubmissao;
 window.enviarFotoOuSubmissao  = enviarFotoOuSubmissao;
 window.verResultado           = verResultado;
+window._tcorTogglePdf         = _tcorTogglePdf;
+window._segTogglePdf          = _segTogglePdf;
 
 init();

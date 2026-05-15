@@ -4097,6 +4097,54 @@ export function createProvasPublicRouter() {
         }
     });
 
+    /* PDF da prova para o segundo corretor (modo mini-quiz sem foto) */
+    router.get('/alunos-portal/segundo-corretor/:subRefId/prova-pdf', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).send('Não autenticado.');
+        try {
+            const subRefId = parseInt(req.params.subRefId, 10);
+
+            const { rows: notif } = await pool.query(
+                `SELECT id FROM notificacoes_aluno
+                  WHERE aluno_email = $1
+                    AND tipo IN ('segundo_corretor','segundo_corretor_voluntario')
+                    AND (dados->>'submissaoRefId')::int = $2 LIMIT 1`,
+                [aluno.email, subRefId]
+            );
+            if (notif.length === 0) return res.status(403).send('Você não foi sorteado para esta correção.');
+
+            const { rows: [item] } = await pool.query(
+                `SELECT p.link_prova,
+                        p.link_prova_paginas,
+                        p.id       AS prova_id,
+                        v.codigo   AS variante_codigo
+                   FROM classroom_provas p
+                   JOIN classroom_prova_submissoes s ON s.prova_id = p.id
+                   JOIN classroom_prova_variantes  v ON v.id       = s.variante_id
+                  WHERE s.id = $1
+                    AND p.link_prova IS NOT NULL`,
+                [subRefId]
+            );
+            if (!item) return res.status(404).send('Submissão não encontrada ou PDF não configurado.');
+
+            const { getPdfForVariante } = await import('../services/pdfVariante.service.js');
+            const pdfBuf = await getPdfForVariante(
+                item.link_prova,
+                item.variante_codigo,
+                item.prova_id,
+                item.link_prova_paginas
+            );
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition',
+                `inline; filename="prova-variante-${item.variante_codigo}.pdf"`);
+            res.send(pdfBuf);
+        } catch (e) {
+            console.error('[PDF-VARIANTE]', e.message);
+            res.status(500).send('Erro ao processar PDF: ' + e.message);
+        }
+    });
+
     /* Submete a 2ª correção (cega — sem ver nome nem nota da original) */
     router.post('/alunos-portal/segundo-corretor/:subRefId/submeter', async (req, res) => {
         const aluno = await getAlunoSession(req);
