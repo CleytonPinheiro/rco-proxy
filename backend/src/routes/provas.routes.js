@@ -5574,8 +5574,7 @@ export function createProvasPublicRouter() {
                 `SELECT
                     s.id            AS submissao_ref_id,
                     s.foto_url,
-                    -- Anonimiza o aluno: exibe "Aluno #NNN" determinístico pelo ID da submissão
-                    ('Aluno #' || LPAD(((s.id % 999) + 1)::text, 3, '0')) AS aluno_nome,
+                    s.aluno_nome,
                     p.id            AS prova_id,
                     p.nome          AS prova_nome,
                     p.link_prova,
