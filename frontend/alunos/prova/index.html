@@ -115,7 +115,10 @@
                 <div id="ppTcorPainelPdf" class="pp-tcor-painel-pdf" style="display:none">
                     <div class="pp-tcor-pdf-header">
                         <span class="pp-tcor-pdf-titulo">📄 Folha de prova</span>
-                        <button class="pp-tcor-pdf-fechar" onclick="_tcorTogglePdf()" type="button">✕ Fechar</button>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <button class="pp-tcor-pdf-fullscreen-btn" id="ppTcorBtnFullscreen" onclick="_tcorToggleFullscreen()" type="button" title="Tela cheia">⛶ Tela cheia</button>
+                            <button class="pp-tcor-pdf-fechar" onclick="_tcorTogglePdf()" type="button">✕ Fechar</button>
+                        </div>
                     </div>
                     <iframe id="ppTcorIframePdf" class="pp-tcor-iframe" src="" title="Folha de prova PDF"></iframe>
                 </div>
@@ -163,7 +166,10 @@
                 <div id="ppSegPainelPdf" class="pp-tcor-painel-pdf" style="display:none">
                     <div class="pp-tcor-pdf-header">
                         <span class="pp-tcor-pdf-titulo">📄 Folha de prova</span>
-                        <button class="pp-tcor-pdf-fechar" onclick="_segTogglePdf()" type="button">✕ Fechar</button>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <button class="pp-tcor-pdf-fullscreen-btn" id="ppSegBtnFullscreen" onclick="_segToggleFullscreen()" type="button" title="Tela cheia">⛶ Tela cheia</button>
+                            <button class="pp-tcor-pdf-fechar" onclick="_segTogglePdf()" type="button">✕ Fechar</button>
+                        </div>
                     </div>
                     <iframe id="ppSegIframePdf" class="pp-tcor-iframe" src="" title="Folha de prova PDF"></iframe>
                 </div>

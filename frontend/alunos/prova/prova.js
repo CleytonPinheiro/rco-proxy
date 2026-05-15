@@ -523,6 +523,9 @@ function _tcorTogglePdf() {
     const isOpen = painel && painel.style.display !== 'none';
 
     if (isOpen) {
+        painel.classList.remove('pp-tcor-pdf-fullscreen');
+        const fsBtn = $('ppTcorBtnFullscreen');
+        if (fsBtn) fsBtn.textContent = '⛶ Tela cheia';
         painel.style.display = 'none';
         if (layout) layout.classList.remove('pp-tcor-split-ativo');
         document.body.classList.remove('pp-tcor-split-ativo');
@@ -551,6 +554,14 @@ function _tcorTogglePdf() {
         _tcorIniciarCronometro();
         estado.tcorPdfAberto = true;
     }
+}
+
+function _tcorToggleFullscreen() {
+    const painel = $('ppTcorPainelPdf');
+    const btn    = $('ppTcorBtnFullscreen');
+    if (!painel) return;
+    const isFs = painel.classList.toggle('pp-tcor-pdf-fullscreen');
+    if (btn) btn.textContent = isFs ? '⛶ Sair' : '⛶ Tela cheia';
 }
 
 function _tcorIniciarCronometro() {
@@ -777,6 +788,9 @@ function _segTogglePdf() {
     const isOpen = painel && painel.style.display !== 'none';
 
     if (isOpen) {
+        painel.classList.remove('pp-tcor-pdf-fullscreen');
+        const fsBtn = $('ppSegBtnFullscreen');
+        if (fsBtn) fsBtn.textContent = '⛶ Tela cheia';
         painel.style.display = 'none';
         if (layout) layout.classList.remove('pp-tcor-split-ativo');
         document.body.classList.remove('pp-tcor-split-ativo');
@@ -804,6 +818,27 @@ function _segTogglePdf() {
         estado.segPdfAberto = true;
     }
 }
+
+function _segToggleFullscreen() {
+    const painel = $('ppSegPainelPdf');
+    const btn    = $('ppSegBtnFullscreen');
+    if (!painel) return;
+    const isFs = painel.classList.toggle('pp-tcor-pdf-fullscreen');
+    if (btn) btn.textContent = isFs ? '⛶ Sair' : '⛶ Tela cheia';
+}
+
+/* Escape sai do fullscreen em qualquer painel PDF */
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    [['ppTcorPainelPdf', 'ppTcorBtnFullscreen'], ['ppSegPainelPdf', 'ppSegBtnFullscreen']].forEach(([pId, bId]) => {
+        const painel = $(pId);
+        if (painel && painel.classList.contains('pp-tcor-pdf-fullscreen')) {
+            painel.classList.remove('pp-tcor-pdf-fullscreen');
+            const btn = $(bId);
+            if (btn) btn.textContent = '⛶ Tela cheia';
+        }
+    });
+});
 
 function renderTabelaSegundo() {
     const wrap = $('ppSegTabela');

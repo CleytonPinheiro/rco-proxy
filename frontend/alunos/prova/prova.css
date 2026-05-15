@@ -342,6 +342,37 @@ body.pp-tcor-split-ativo .pp-main {
     gap: 8px;
 }
 
+/* Botão tela cheia no header do PDF */
+.pp-tcor-pdf-fullscreen-btn {
+    background: none;
+    border: 1px solid var(--pp-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--pp-muted);
+}
+.pp-tcor-pdf-fullscreen-btn:hover {
+    background: var(--pp-bg);
+    color: var(--pp-text);
+}
+
+/* Modo tela cheia do painel PDF */
+.pp-tcor-painel-pdf.pp-tcor-pdf-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    width: 100% !important;
+    min-width: 0;
+    height: 100% !important;
+    top: 0;
+    margin-left: 0;
+    border-left: none;
+    border-radius: 0;
+    border: none;
+}
+
 /* Mobile: PDF como drawer de tela cheia sobre o conteúdo */
 @media (max-width: 767px) {
     .pp-tcor-split-ativo .pp-tcor-painel-correcao {
