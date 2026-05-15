@@ -505,6 +505,8 @@ async function iniciarTurmaCorretora(subRefId) {
                 badge.textContent = `Consulte as questões da prova antes de enviar. Aguarde ${tempoMin}s`;
                 badge.style.display = '';
             }
+            /* Abre o painel PDF automaticamente no primeiro acesso */
+            _tcorTogglePdf();
         }
 
         show('ppTurmaCorretora');
@@ -728,12 +730,21 @@ async function iniciarSegundoCorretor(subRefId) {
             segVarWrap.style.display = 'none';
         }
 
+        /* Reseta painel PDF antes de configurar o botão */
+        const _segPainel = $('ppSegPainelPdf');
+        if (_segPainel) _segPainel.style.display = 'none';
+        const _segLayout = $('ppSegLayout');
+        if (_segLayout) _segLayout.classList.remove('pp-tcor-split-ativo');
+        const _segIframe = $('ppSegIframePdf');
+        if (_segIframe) { _segIframe.removeAttribute('data-carregado'); _segIframe.src = ''; }
+
         /* Botão PDF — aparece apenas no modo mini-quiz (sem foto) */
         const btnPdfWrap = $('ppSegLinkWrap');
         const btnPdf     = $('ppSegBtnPdf');
         const linkVar    = $('ppSegLinkVariante');
         if (linkVar) linkVar.textContent = pend.variante_codigo || '';
         estado.segPdfAberto = false;
+        let _autoAbrirSegPdf = false;
 
         if (estado.segMiniQuiz && btnPdfWrap && btnPdf) {
             /* Verifica se há PDF cadastrado antes de habilitar o botão */
@@ -752,6 +763,7 @@ async function iniciarSegundoCorretor(subRefId) {
                     btnPdf.style.background = '#eff6ff';
                     btnPdf.style.color      = '#1d4ed8';
                     btnPdf.style.borderColor = '#93c5fd';
+                    _autoAbrirSegPdf = true;
                 } else {
                     estado.segPdfUrl = null;
                     btnPdf.disabled  = true;
@@ -774,16 +786,11 @@ async function iniciarSegundoCorretor(subRefId) {
             btnPdfWrap.style.display = 'none';
         }
 
-        /* Reseta painel PDF */
-        const _segPainel = $('ppSegPainelPdf');
-        if (_segPainel) _segPainel.style.display = 'none';
-        const _segLayout = $('ppSegLayout');
-        if (_segLayout) _segLayout.classList.remove('pp-tcor-split-ativo');
-        const _segIframe = $('ppSegIframePdf');
-        if (_segIframe) { _segIframe.removeAttribute('data-carregado'); _segIframe.src = ''; }
-
         renderTabelaSegundo();
         show('ppSegundo');
+        /* Abre o painel PDF automaticamente no primeiro acesso (após show para
+           preservar o body.pp-tcor-split-ativo adicionado pelo toggle) */
+        if (_autoAbrirSegPdf) _segTogglePdf();
     } catch (e) { showErro(e.message); }
 }
 
