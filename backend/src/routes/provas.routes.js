@@ -4584,9 +4584,9 @@ export function createProvasPublicRouter() {
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
 
         /* Sub-query de pendentes reutilizada.
-         * Conta todas as submissões da turma que ainda não foram corrigidas
-         * pela turma corretora (nota IS NULL no tc row), independentemente de
-         * qual aluno foi sorteado pelo auto-assignment.
+         * Conta submissões da turma que não têm NENHUMA linha de turma corretora
+         * (nem em rascunho). Isso espelha exatamente o filtro do dropdown no
+         * lista-turma-alvo: badge e select sempre mostram o mesmo número.
          */
         const PENDENTES_SQ = `
             COALESCE((
@@ -4600,7 +4600,6 @@ export function createProvasPublicRouter() {
                        SELECT 1 FROM classroom_prova_submissoes tc
                         WHERE tc.submissao_ref_id   = ps.id
                           AND tc.eh_turma_corretora = true
-                          AND tc.nota               IS NOT NULL
                    )
             ), 0)`;
 
