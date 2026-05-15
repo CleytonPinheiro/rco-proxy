@@ -4584,20 +4584,11 @@ export function createProvasPublicRouter() {
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
 
         /* Sub-query de pendentes reutilizada.
-         * Conta:
-         *   a) Pré-atribuições deste corrector ainda não concluídas (nota IS NULL)
-         *   b) Submissões sem qualquer atribuição de tc (fallback genérico)
+         * Conta todas as submissões da turma que ainda não foram corrigidas
+         * pela turma corretora (nota IS NULL no tc row), independentemente de
+         * qual aluno foi sorteado pelo auto-assignment.
          */
         const PENDENTES_SQ = `
-            COALESCE((
-                SELECT COUNT(*)::int
-                  FROM classroom_prova_submissoes tc
-                 WHERE tc.prova_id = p.id
-                   AND tc.eh_turma_corretora = true
-                   AND tc.aluno_email = $1
-                   AND tc.nota IS NULL
-            ), 0)
-            +
             COALESCE((
                 SELECT COUNT(*)::int
                   FROM classroom_prova_submissoes ps
@@ -4609,12 +4600,7 @@ export function createProvasPublicRouter() {
                        SELECT 1 FROM classroom_prova_submissoes tc
                         WHERE tc.submissao_ref_id   = ps.id
                           AND tc.eh_turma_corretora = true
-                   )
-                   AND NOT EXISTS (
-                       SELECT 1 FROM classroom_prova_submissoes tc2
-                        WHERE tc2.submissao_ref_id = ps.id
-                          AND tc2.aluno_email      = $1
-                          AND tc2.nota             IS NOT NULL
+                          AND tc.nota               IS NOT NULL
                    )
             ), 0)`;
 

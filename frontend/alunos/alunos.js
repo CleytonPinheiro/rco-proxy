@@ -173,8 +173,8 @@ async function carregarTurmaCorretora() {
 
         const comPendentes = provasAtivas.filter(p => Number(p.pendentes) > 0);
 
-        /* Badge, alerta e destaque visual quando há folhas para corrigir */
-        _correcoesPendentes.turma = comPendentes.length;
+        /* Badge mostra total de folhas pendentes (soma) e não nº de provas */
+        _correcoesPendentes.turma = comPendentes.reduce((acc, p) => acc + Number(p.pendentes), 0);
         _atualizarBadgeCorrecoes();
         if (comPendentes.length > 0) {
             if (alert)    alert.style.display = '';
