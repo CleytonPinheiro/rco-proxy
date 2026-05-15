@@ -264,6 +264,32 @@ details.pp-qtxt[open] .pp-qtxt-summary::before { content: '▾ '; }
 
 body.pp-tcor-split-ativo .pp-main {
     max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+body.pp-tcor-split-ativo .pp-header-inner {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+body.pp-tcor-split-ativo #ppTurmaCorretora.pp-card,
+body.pp-tcor-split-ativo #ppSegundo.pp-card {
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-bottom: 0;
+}
+
+body.pp-tcor-split-ativo .pp-tcor-layout {
+    width: 100%;
+}
+
+body.pp-tcor-split-ativo .pp-tcor-painel-pdf {
+    margin-left: 0;
 }
 
 @media (min-width: 768px) {
