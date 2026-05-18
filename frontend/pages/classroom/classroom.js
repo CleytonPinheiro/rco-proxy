@@ -123,11 +123,13 @@ const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
 
 /* ── API helper (prefixo /api/classroom) ── */
 async function api(path, opts = {}) {
+    /* suppressScopeRedirect: true → chamadas em background não forçam re-auth */
+    const { suppressScopeRedirect = false, ...fetchOpts } = opts;
     const r = await fetch('/api/classroom' + path, {
-        ...opts,
+        ...fetchOpts,
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        headers: { 'Content-Type': 'application/json', ...(fetchOpts.headers || {}) },
+        body: fetchOpts.body ? JSON.stringify(fetchOpts.body) : undefined,
     });
     if (r.status === 401) {
         notificar('Sessão expirada', 'Redirecionando para login...', { tipo: 'danger' });
@@ -142,7 +144,7 @@ async function api(path, opts = {}) {
         err.status = r.status;
         err.codigo = data.codigo || null;
         err.body   = data;
-        if (err.status === 403 && err.codigo === 'ESCOPO_INSUFICIENTE' && !_escopoAvisoAtivo) {
+        if (err.status === 403 && err.codigo === 'ESCOPO_INSUFICIENTE' && !_escopoAvisoAtivo && !suppressScopeRedirect) {
             _escopoAvisoAtivo = true;
             mostrarAvisoEscopo().finally(() => { _escopoAvisoAtivo = false; });
         }
@@ -1758,6 +1760,7 @@ function detectarTardiasBackground(grupo) {
     api(`/groups/${grupo.id}/detectar-tardias`, {
         method: 'POST',
         body: { courseId: cursoAtivo.id },
+        suppressScopeRedirect: true,
     }).then(() => verificarTardiasExistentes(grupo.id)).catch(() => {});
 }
 
@@ -2394,6 +2397,7 @@ async function syncQuizizzBackground(grupo, atividades = []) {
         const r = await api(`/groups/${grupo.id}/sync-quizizz`, {
             method: 'POST',
             body: { courseId: cursoAtivo.id },
+            suppressScopeRedirect: true,
         });
         if (r.sincronizados > 0) {
             await notificar('Quizizz', `${r.sincronizados} nota(s) auto-corrigida(s) publicada(s).`, { tipo: 'ok' });

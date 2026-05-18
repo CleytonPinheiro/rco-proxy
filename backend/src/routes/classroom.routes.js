@@ -188,7 +188,6 @@ function isInsufficientScope(e) {
     if (
         msg.includes('insufficient_scope') ||
         msg.includes('insufficient authentication scopes') ||
-        msg.includes('projectpermissiondenied') ||
         msg.includes('access_token_scope_insufficient')
     ) return true;
 
@@ -2045,8 +2044,11 @@ export function createClassroomRouter(deps = {}) {
                         });
                         sincronizados++;
                     } catch (e) {
-                        console.error(`[AUTO-GRADE] Erro ao publicar nota ${s.id}:`, e.message);
-                        if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
+                        if (isInvalidGrant(e)) throw e;
+                        if (isInsufficientScope(e)) throw e;
+                        /* ProjectPermissionDenied: restrição do projeto Google Cloud,
+                           não é problema de token — logar e continuar sem revogar */
+                        console.warn(`[AUTO-GRADE] Não foi possível publicar nota ${s.id} (permissão do projeto Google Cloud): ${e.message}`);
                     }
                 }
             }
