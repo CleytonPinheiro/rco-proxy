@@ -4633,6 +4633,7 @@ export function createProvasPublicRouter() {
                        SELECT 1 FROM classroom_prova_submissoes tc
                         WHERE tc.submissao_ref_id   = ps.id
                           AND tc.eh_turma_corretora = true
+                          AND tc.nota IS NOT NULL
                    )
                    AND NOT EXISTS (
                        SELECT 1 FROM notificacoes_aluno na

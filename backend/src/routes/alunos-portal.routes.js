@@ -1361,6 +1361,10 @@ export function createAlunosPortalRouter() {
             const classroom = google.classroom({ version: 'v1', auth });
             const r = await classroom.courses.students.list({ courseId, pageSize: 200 });
             const studentsRaw = r.data.students || [];
+            const isEnrolled = studentsRaw.some(
+                s => (s.profile?.emailAddress || '').toLowerCase() === aluno.email.toLowerCase()
+            );
+            if (!isEnrolled) return res.status(403).json({ erro: 'Acesso negado.' });
             const { rows: membros } = await pool.query(`
                 SELECT m.aluno_email, m.aluno_nome, gp.nome AS grupo_nome, gp.id AS grupo_id, gp.bloqueado
                 FROM grupos_portal_membros m
