@@ -2355,3 +2355,373 @@ html, body {
     .pa-tcor-hero-icon { font-size: 2rem; }
     .pa-correcao-alert { flex-direction: column; align-items: flex-start; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MEU GRUPO — Portal do Aluno
+   ════════════════════════════════════════════════════════════ */
+
+/* Topo: título + seletor de disciplina */
+.mg-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.mg-titulo { font-size: 1.15rem; font-weight: 700; color: var(--pa-text); margin-bottom: 2px; }
+.mg-subtitulo { font-size: 0.82rem; color: var(--pa-sub); }
+.mg-curso-select {
+    padding: 8px 14px;
+    border: 1.5px solid var(--pa-border);
+    border-radius: 8px;
+    background: var(--pa-card);
+    color: var(--pa-text);
+    font-size: 0.88rem;
+    cursor: pointer;
+    min-width: 220px;
+    max-width: 100%;
+}
+.mg-curso-select:focus { outline: none; border-color: var(--pa-primary); }
+
+/* Placeholder de estado vazio */
+.mg-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: var(--pa-sub);
+    text-align: center;
+    font-size: 0.92rem;
+}
+.mg-placeholder-icon { font-size: 2.4rem; }
+
+/* Loading */
+.mg-loading {
+    text-align: center;
+    padding: 32px;
+    color: var(--pa-sub);
+    font-size: 0.9rem;
+}
+
+/* Mensagem de erro/info */
+.mg-msg {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+.mg-msg--erro  { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.mg-msg--info  { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.mg-msg--ok    { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+/* ── CARD: grupo atual ──────────────────────────────────── */
+.mg-grupo-card {
+    background: var(--pa-card);
+    border: 1.5px solid var(--pa-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px var(--pa-shadow);
+}
+.mg-grupo-card--locked { border-color: #f59e0b; }
+.mg-grupo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.mg-grupo-nome { font-size: 1.05rem; font-weight: 700; color: var(--pa-text); }
+.mg-badge-lock {
+    font-size: 0.75rem;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-weight: 600;
+    border: 1px solid #fde68a;
+}
+.mg-grupo-meta { font-size: 0.78rem; color: var(--pa-sub); margin-bottom: 14px; }
+
+/* Membros */
+.mg-membros-titulo { font-size: 0.82rem; font-weight: 600; color: var(--pa-sub); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.mg-membros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.mg-membro {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--pa-card2);
+    border: 1px solid var(--pa-border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.83rem;
+    color: var(--pa-text);
+}
+.mg-membro--eu { border-color: var(--pa-primary); background: var(--pa-badge-bg); color: var(--pa-badge-color); font-weight: 600; }
+.mg-membro-avatar { font-size: 1rem; }
+
+/* Botão sair */
+.mg-btn-sair {
+    padding: 7px 16px;
+    border: 1.5px solid var(--pa-danger);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--pa-danger);
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.mg-btn-sair:hover { background: var(--pa-danger); color: #fff; }
+
+/* ── Formulário de links ─────────────────────────────── */
+.mg-links-section {
+    background: var(--pa-card);
+    border: 1.5px solid var(--pa-border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px var(--pa-shadow);
+}
+.mg-links-titulo {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--pa-text);
+    margin-bottom: 4px;
+}
+.mg-links-desc { font-size: 0.8rem; color: var(--pa-sub); margin-bottom: 14px; }
+.mg-link-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.mg-link-icon { font-size: 1.1rem; flex-shrink: 0; width: 24px; text-align: center; }
+.mg-link-label { font-size: 0.82rem; color: var(--pa-sub); width: 90px; flex-shrink: 0; }
+.mg-link-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid var(--pa-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    background: var(--pa-card2);
+    color: var(--pa-text);
+}
+.mg-link-input:focus { outline: none; border-color: var(--pa-primary); background: var(--pa-card); }
+.mg-link-remove {
+    background: none;
+    border: none;
+    color: var(--pa-danger);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.mg-extras-titulo { font-size: 0.82rem; font-weight: 600; color: var(--pa-sub); margin: 12px 0 8px; }
+.mg-btn-add-link {
+    padding: 6px 14px;
+    border: 1.5px dashed var(--pa-border);
+    border-radius: 8px;
+    background: none;
+    color: var(--pa-sub);
+    font-size: 0.82rem;
+    cursor: pointer;
+    margin-bottom: 14px;
+}
+.mg-btn-add-link:hover { border-color: var(--pa-primary); color: var(--pa-primary); }
+.mg-btn-salvar {
+    padding: 9px 22px;
+    background: var(--pa-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.mg-btn-salvar:hover { background: var(--pa-primary-dark); }
+.mg-btn-salvar:disabled { opacity: .55; cursor: default; }
+
+/* ── Links de todos os membros ───────────────────────── */
+.mg-todos-links {
+    background: var(--pa-card);
+    border: 1.5px solid var(--pa-border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px var(--pa-shadow);
+}
+.mg-todos-titulo { font-size: 0.95rem; font-weight: 700; color: var(--pa-text); margin-bottom: 14px; }
+.mg-membro-links {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--pa-border);
+}
+.mg-membro-links:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.mg-membro-links-nome { font-size: 0.87rem; font-weight: 600; color: var(--pa-text); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.mg-link-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.83rem; }
+.mg-link-item-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    min-width: 56px;
+    text-align: center;
+}
+.mg-link-item-tag--backend  { background: #dbeafe; color: #1e40af; }
+.mg-link-item-tag--banco    { background: #d1fae5; color: #065f46; }
+.mg-link-item-tag--frontend { background: #fce7f3; color: #9d174d; }
+.mg-link-item-tag--extra    { background: #f3f4f6; color: #374151; }
+.mg-link-item a { color: var(--pa-primary); text-decoration: none; word-break: break-all; }
+.mg-link-item a:hover { text-decoration: underline; }
+.mg-sem-links { font-size: 0.8rem; color: var(--pa-muted); font-style: italic; }
+
+/* ── Lista de grupos para entrar ──────────────────────── */
+.mg-grupos-disponiveis {
+    background: var(--pa-card);
+    border: 1.5px solid var(--pa-border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px var(--pa-shadow);
+}
+.mg-grupos-titulo { font-size: 0.95rem; font-weight: 700; color: var(--pa-text); margin-bottom: 12px; }
+.mg-grupo-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--pa-border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--pa-card2);
+    flex-wrap: wrap;
+}
+.mg-grupo-item-info { flex: 1; min-width: 0; }
+.mg-grupo-item-nome { font-size: 0.9rem; font-weight: 600; color: var(--pa-text); }
+.mg-grupo-item-meta { font-size: 0.77rem; color: var(--pa-sub); margin-top: 2px; }
+.mg-btn-entrar {
+    padding: 7px 16px;
+    background: var(--pa-accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    flex-shrink: 0;
+}
+.mg-btn-entrar:hover { background: #2d9348; }
+.mg-btn-entrar:disabled { opacity: .55; cursor: default; }
+
+/* ── Criar grupo ──────────────────────────────────────── */
+.mg-criar-section {
+    background: var(--pa-card);
+    border: 1.5px solid var(--pa-border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px var(--pa-shadow);
+}
+.mg-criar-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+.mg-criar-titulo { font-size: 0.95rem; font-weight: 700; color: var(--pa-text); }
+.mg-btn-criar {
+    padding: 8px 18px;
+    background: var(--pa-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.mg-btn-criar:hover { background: var(--pa-primary-dark); }
+.mg-criar-form { margin-top: 16px; display: none; }
+.mg-form-label { font-size: 0.82rem; font-weight: 600; color: var(--pa-sub); margin-bottom: 5px; display: block; }
+.mg-form-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--pa-border);
+    border-radius: 8px;
+    font-size: 0.88rem;
+    background: var(--pa-card2);
+    color: var(--pa-text);
+    margin-bottom: 14px;
+}
+.mg-form-input:focus { outline: none; border-color: var(--pa-primary); background: var(--pa-card); }
+
+/* Seleção de colegas */
+.mg-colegas-loading { font-size: 0.83rem; color: var(--pa-sub); padding: 8px 0; }
+.mg-colegas-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.mg-colega-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border: 1.5px solid var(--pa-border);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--pa-text);
+    background: var(--pa-card2);
+    user-select: none;
+    transition: border-color .12s, background .12s;
+}
+.mg-colega-item:hover:not(.mg-colega-item--ocupado) { border-color: var(--pa-primary); background: var(--pa-badge-bg); }
+.mg-colega-item--selecionado { border-color: var(--pa-primary); background: var(--pa-badge-bg); color: var(--pa-badge-color); font-weight: 600; }
+.mg-colega-item--ocupado { opacity: .5; cursor: not-allowed; }
+.mg-colega-check { width: 15px; height: 15px; accent-color: var(--pa-primary); cursor: pointer; }
+.mg-colega-grupo { font-size: 0.7rem; color: var(--pa-sub); }
+
+/* Aviso sem colegas */
+.mg-colegas-vazio { font-size: 0.82rem; color: var(--pa-sub); padding: 8px 0; font-style: italic; }
+
+.mg-form-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.mg-btn-cancelar {
+    padding: 8px 16px;
+    background: none;
+    border: 1.5px solid var(--pa-border);
+    border-radius: 8px;
+    color: var(--pa-sub);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.mg-btn-cancelar:hover { border-color: var(--pa-text); color: var(--pa-text); }
+.mg-msg-criar { font-size: 0.82rem; color: var(--pa-sub); }
+
+/* Dark mode adjustments */
+[data-theme="dark"] .mg-link-item-tag--backend  { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .mg-link-item-tag--banco    { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .mg-link-item-tag--frontend { background: #500724; color: #f9a8d4; }
+[data-theme="dark"] .mg-link-item-tag--extra    { background: #1f2937; color: #d1d5db; }
+[data-theme="dark"] .mg-badge-lock { background: #451a03; color: #fde68a; border-color: #78350f; }
+
+@media (max-width: 480px) {
+    .mg-topo { flex-direction: column; }
+    .mg-curso-select { width: 100%; }
+    .mg-link-row { flex-wrap: wrap; }
+    .mg-link-label { width: auto; }
+}

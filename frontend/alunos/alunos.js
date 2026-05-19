@@ -11,6 +11,13 @@ let _solicitadasMap  = {};   /* courseworkId → { status, criado_em } */
 let _solicitaModal   = null; /* dados da atividade no modal atual */
 let _cursoAtualReq   = null; /* { cursoId, cursoNome } da atividade no modal */
 
+/* ── Meu Grupo ──────────────────────────────────────── */
+let _mgCursos    = [];    /* [{ id, nome }] cursos disponíveis */
+let _mgCursoId   = '';    /* courseId selecionado */
+let _mgCursoNome = '';    /* nome da disciplina selecionada */
+let _mgGrupo     = null;  /* dados do grupo atual (ou null) */
+let _mgLinksExtras = [];  /* links extras dinâmicos no formulário */
+
 /* ── Estado global de notificações bloqueantes ───────────────────── */
 let _notifQueue   = [];   /* notificações não lidas aguardando exibição */
 let _notifAtual   = null; /* notificação sendo exibida agora */
@@ -100,20 +107,28 @@ window.addEventListener('pageshow', (e) => {
     carregarTurmaCorretora();
 });
 
-/* ── Troca de aba (atividades / correções) ───────────────────── */
+/* ── Troca de aba (atividades / correções / grupo) ───────────── */
 function mudarAba(aba) {
     const tabAtiv  = $('paTabAtividades');
     const tabCor   = $('paTabCorrecoes');
+    const tabGrupo = $('paTabGrupo');
     const secAtiv  = $('paSecAtividades');
     const secCor   = $('paSecCorrecoes');
+    const secGrupo = $('paSecGrupo');
     if (!tabAtiv || !secAtiv) return;
-    const eAtiv = aba === 'atividades';
-    tabAtiv.classList.toggle('pa-nav-tab--active',  eAtiv);
-    tabCor .classList.toggle('pa-nav-tab--active', !eAtiv);
+    const eAtiv  = aba === 'atividades';
+    const eCor   = aba === 'correcoes';
+    const eGrupo = aba === 'grupo';
+    tabAtiv.classList.toggle('pa-nav-tab--active', eAtiv);
+    tabCor .classList.toggle('pa-nav-tab--active', eCor);
+    if (tabGrupo) tabGrupo.classList.toggle('pa-nav-tab--active', eGrupo);
     tabAtiv.setAttribute('aria-selected', eAtiv);
-    tabCor .setAttribute('aria-selected', !eAtiv);
-    secAtiv.style.display = eAtiv  ? '' : 'none';
-    secCor .style.display = !eAtiv ? '' : 'none';
+    tabCor .setAttribute('aria-selected', eCor);
+    if (tabGrupo) tabGrupo.setAttribute('aria-selected', eGrupo);
+    secAtiv.style.display  = eAtiv  ? '' : 'none';
+    secCor .style.display  = eCor   ? '' : 'none';
+    if (secGrupo) secGrupo.style.display = eGrupo ? '' : 'none';
+    if (eGrupo && _mgCursoId) _mgCarregarDados();
 }
 window.mudarAba = mudarAba;
 
@@ -760,6 +775,8 @@ function mostrarTelaLogado(aluno) {
     $('paThemeBtnPre').style.display    = 'none';
     $('paTourBtn').style.display         = 'flex';
     $('paConquistasBtn').style.display   = 'flex';
+    const tabGrupoEl = $('paTabGrupo');
+    if (tabGrupoEl) tabGrupoEl.style.display = '';
 
     const inicial = (aluno.nome || aluno.email || '?')[0].toUpperCase();
 
@@ -860,6 +877,9 @@ async function carregarAtividades() {
         }
 
         renderAtividades(data);
+        /* Popula o seletor de cursos do Meu Grupo */
+        _mgCursos = (data.cursos || []).map(c => ({ id: c.cursoId, nome: c.nome }));
+        mgPopularCursoSelect();
     } catch (_) {
         $('paSemConexao').style.display  = '';
         $('paSemConexaoMsg').textContent = 'Erro de conexão ao carregar atividades.';
@@ -2070,3 +2090,385 @@ window.submeterProjetoAluno   = submeterProjetoAluno;
 window.paProjetosAba          = paProjetosAba;
 window.paPreviewImagem        = paPreviewImagem;
 window.paUploadImagemProjeto  = paUploadImagemProjeto;
+
+/* ════════════════════════════════════════════════════════════
+   MEU GRUPO — Portal do Aluno
+   ════════════════════════════════════════════════════════════ */
+
+const _mgEsc = s => escapeHtmlPA(s);
+
+/* Popula o select de disciplinas com os cursos carregados */
+function mgPopularCursoSelect() {
+    const sel = $('mgCursoSelect');
+    if (!sel) return;
+    const valorAtual = sel.value;
+    sel.innerHTML = '<option value="">— Selecione a disciplina —</option>' +
+        _mgCursos.map(c => `<option value="${_mgEsc(c.id)}"${c.id === valorAtual ? ' selected' : ''}>${_mgEsc(c.nome)}</option>`).join('');
+    if (!valorAtual && _mgCursos.length === 1) {
+        sel.value = _mgCursos[0].id;
+        _mgCursoId   = _mgCursos[0].id;
+        _mgCursoNome = _mgCursos[0].nome;
+    }
+}
+window.mgPopularCursoSelect = mgPopularCursoSelect;
+
+/* Chamado quando o aluno muda a disciplina no select */
+function mgSelecionarCurso() {
+    const sel = $('mgCursoSelect');
+    if (!sel) return;
+    _mgCursoId   = sel.value;
+    _mgCursoNome = sel.options[sel.selectedIndex]?.text || '';
+    _mgGrupo     = null;
+    if (!_mgCursoId) {
+        $('mgConteudo').innerHTML = `<div class="mg-placeholder"><span class="mg-placeholder-icon">🎓</span><p>Selecione uma disciplina acima para ver ou criar seu grupo.</p></div>`;
+        return;
+    }
+    _mgCarregarDados();
+}
+window.mgSelecionarCurso = mgSelecionarCurso;
+
+/* Carrega o grupo atual (ou estado sem grupo) para o courseId selecionado */
+async function _mgCarregarDados() {
+    const div = $('mgConteudo');
+    if (!div || !_mgCursoId) return;
+    div.innerHTML = '<div class="mg-loading">⏳ Carregando...</div>';
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/meu?courseId=${encodeURIComponent(_mgCursoId)}`, { credentials: 'include' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || `HTTP ${r.status}`);
+        _mgGrupo = d.grupo || null;
+        _mgRenderConteudo();
+    } catch (e) {
+        div.innerHTML = `<div class="mg-msg mg-msg--erro">Erro ao carregar grupo: ${_mgEsc(e.message)}</div>`;
+    }
+}
+
+/* Renderiza o conteúdo da aba com base no estado atual */
+function _mgRenderConteudo() {
+    const div = $('mgConteudo');
+    if (!div) return;
+    if (_mgGrupo) {
+        div.innerHTML = _mgHtmlGrupoAtual(_mgGrupo);
+    } else {
+        _mgCarregarSemGrupo(div);
+    }
+}
+
+/* HTML do grupo atual (o aluno já está em um grupo) */
+function _mgHtmlGrupoAtual(g) {
+    const lock = g.bloqueado
+        ? `<span class="mg-badge-lock">🔒 Bloqueado pelo professor</span>`
+        : '';
+    const membrosHtml = (g.membros || []).map(m => {
+        const euBadge = (m.email === _mgSessaoEmail()) ? ' mg-membro--eu' : '';
+        const label   = (m.email === _mgSessaoEmail()) ? ' (você)' : '';
+        return `<div class="mg-membro${euBadge}"><span class="mg-membro-avatar">👤</span>${_mgEsc(m.nome || m.email)}${label}</div>`;
+    }).join('');
+
+    const btnSair = !g.bloqueado
+        ? `<button class="mg-btn-sair" onclick="mgSair()">Sair do Grupo</button>`
+        : `<span style="font-size:0.8rem;color:var(--pa-sub)">Grupo bloqueado — peça ao professor para sair.</span>`;
+
+    /* Links de todos os membros */
+    const todosLinksHtml = _mgHtmlTodosLinks(g.links || [], g.membros || []);
+
+    /* Meus links atuais */
+    const meu = g.meuLink || {};
+    const extras = Array.isArray(meu.links_extras) ? meu.links_extras : [];
+
+    return `
+    <div class="mg-grupo-card${g.bloqueado ? ' mg-grupo-card--locked' : ''}">
+        <div class="mg-grupo-header">
+            <div>
+                <div class="mg-grupo-nome">👥 ${_mgEsc(g.nome)}</div>
+                <div class="mg-grupo-meta">${_mgEsc(_mgCursoNome)} · ${(g.membros || []).length} integrante(s)</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${lock}${btnSair}</div>
+        </div>
+        <div class="mg-membros-titulo">Integrantes</div>
+        <div class="mg-membros">${membrosHtml || '<span class="mg-sem-links">Nenhum integrante ainda.</span>'}</div>
+    </div>
+
+    <div class="mg-links-section">
+        <div class="mg-links-titulo">🔗 Meus Links de Projeto</div>
+        <div class="mg-links-desc">Submeta os links individuais do seu projeto. Cada integrante envia os próprios links.</div>
+        <div id="mgLinksMsg"></div>
+
+        <div class="mg-link-row">
+            <span class="mg-link-icon">⚙️</span>
+            <span class="mg-link-label">Back-end</span>
+            <input id="mgLinkBackend" class="mg-link-input" type="url" placeholder="https://github.com/..." value="${_mgEsc(meu.link_backend || '')}">
+        </div>
+        <div class="mg-link-row">
+            <span class="mg-link-icon">🗄️</span>
+            <span class="mg-link-label">Banco de dados</span>
+            <input id="mgLinkBanco" class="mg-link-input" type="url" placeholder="https://supabase.io/..." value="${_mgEsc(meu.link_banco || '')}">
+        </div>
+        <div class="mg-link-row">
+            <span class="mg-link-icon">🖥️</span>
+            <span class="mg-link-label">Front-end</span>
+            <input id="mgLinkFrontend" class="mg-link-input" type="url" placeholder="https://vercel.app/..." value="${_mgEsc(meu.link_frontend || '')}">
+        </div>
+
+        <div class="mg-extras-titulo">Links adicionais (opcional)</div>
+        <div id="mgLinksExtrasDiv">
+            ${extras.map((ex, i) => _mgHtmlExtraRow(ex.nome || '', ex.url || '', i)).join('')}
+        </div>
+        <button class="mg-btn-add-link" onclick="mgAdicionarLinkExtra()">＋ Adicionar outro link</button>
+        <br>
+        <button class="mg-btn-salvar" onclick="mgSalvarLinks(${g.id})">💾 Salvar meus links</button>
+    </div>
+
+    ${todosLinksHtml}`;
+}
+
+/* Linha de link extra dinâmico */
+function _mgHtmlExtraRow(nome, url, idx) {
+    return `<div class="mg-link-row" id="mgExtraRow_${idx}">
+        <span class="mg-link-icon">🔗</span>
+        <input class="mg-link-input" type="text" placeholder="Nome (ex: Deploy)" style="max-width:130px"
+               id="mgExtraNome_${idx}" value="${_mgEsc(nome)}">
+        <input class="mg-link-input" type="url" placeholder="URL" id="mgExtraUrl_${idx}" value="${_mgEsc(url)}">
+        <button class="mg-link-remove" onclick="mgRemoverLinkExtra(${idx})" title="Remover">✕</button>
+    </div>`;
+}
+
+/* HTML de todos os links enviados pelos membros */
+function _mgHtmlTodosLinks(links, membros) {
+    if (!membros.length) return '';
+    const linksMap = Object.fromEntries((links || []).map(l => [l.aluno_email, l]));
+    const rows = membros.map(m => {
+        const l = linksMap[m.email];
+        const extras = Array.isArray(l?.links_extras) ? l.links_extras : [];
+        const linkItems = [
+            l?.link_backend  ? `<div class="mg-link-item"><span class="mg-link-item-tag mg-link-item-tag--backend">Back-end</span><a href="${_mgEsc(l.link_backend)}" target="_blank" rel="noopener">${_mgEsc(l.link_backend)}</a></div>` : '',
+            l?.link_banco    ? `<div class="mg-link-item"><span class="mg-link-item-tag mg-link-item-tag--banco">Banco</span><a href="${_mgEsc(l.link_banco)}" target="_blank" rel="noopener">${_mgEsc(l.link_banco)}</a></div>` : '',
+            l?.link_frontend ? `<div class="mg-link-item"><span class="mg-link-item-tag mg-link-item-tag--frontend">Front-end</span><a href="${_mgEsc(l.link_frontend)}" target="_blank" rel="noopener">${_mgEsc(l.link_frontend)}</a></div>` : '',
+            ...extras.filter(e => e.url).map(e => `<div class="mg-link-item"><span class="mg-link-item-tag mg-link-item-tag--extra">${_mgEsc(e.nome || 'Extra')}</span><a href="${_mgEsc(e.url)}" target="_blank" rel="noopener">${_mgEsc(e.url)}</a></div>`),
+        ].filter(Boolean);
+        const euLabel = (m.email === _mgSessaoEmail()) ? ' <span style="font-size:.72rem;background:var(--pa-badge-bg);color:var(--pa-badge-color);padding:1px 6px;border-radius:10px;font-weight:600">você</span>' : '';
+        return `<div class="mg-membro-links">
+            <div class="mg-membro-links-nome">👤 ${_mgEsc(m.nome || m.email)}${euLabel}</div>
+            ${linkItems.length ? linkItems.join('') : '<div class="mg-sem-links">Nenhum link enviado ainda.</div>'}
+        </div>`;
+    }).join('');
+    return `<div class="mg-todos-links"><div class="mg-todos-titulo">📋 Links de todos os integrantes</div>${rows}</div>`;
+}
+
+/* Estado sem grupo: mostra lista de grupos + opção de criar */
+async function _mgCarregarSemGrupo(div) {
+    div.innerHTML = '<div class="mg-loading">⏳ Buscando grupos da disciplina...</div>';
+    let grupos = [];
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal?courseId=${encodeURIComponent(_mgCursoId)}`, { credentials: 'include' });
+        grupos = r.ok ? await r.json() : [];
+    } catch (_) { /* sem grupo disponível */ }
+
+    let gruposHtml = '';
+    if (grupos.length) {
+        gruposHtml = `<div class="mg-grupos-disponiveis">
+            <div class="mg-grupos-titulo">Grupos existentes nesta disciplina</div>
+            ${grupos.map(g => {
+                const locked = g.bloqueado ? `<span class="mg-badge-lock">🔒</span>` : '';
+                const btnEntrar = g.bloqueado
+                    ? `<button class="mg-btn-entrar" disabled title="Grupo bloqueado">🔒 Bloqueado</button>`
+                    : `<button class="mg-btn-entrar" onclick="mgEntrar(${g.id})">Entrar</button>`;
+                return `<div class="mg-grupo-item">
+                    <div class="mg-grupo-item-info">
+                        <div class="mg-grupo-item-nome">${locked} ${_mgEsc(g.nome)}</div>
+                        <div class="mg-grupo-item-meta">${(g.membros || []).length} integrante(s): ${(g.membros || []).map(m => _mgEsc(m.nome || m.email)).join(', ') || '—'}</div>
+                    </div>
+                    ${btnEntrar}
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    div.innerHTML = `
+        ${gruposHtml}
+        <div class="mg-criar-section">
+            <div class="mg-criar-topo">
+                <div>
+                    <div class="mg-criar-titulo">➕ Criar novo grupo</div>
+                    ${!grupos.length ? '<div style="font-size:0.8rem;color:var(--pa-sub);margin-top:3px">Seja o primeiro a criar um grupo nesta disciplina.</div>' : ''}
+                </div>
+                <button class="mg-btn-criar" onclick="mgToggleCriarForm()">Criar Grupo</button>
+            </div>
+            <div id="mgCriarForm" class="mg-criar-form">
+                <div id="mgCriarMsg"></div>
+                <label class="mg-form-label">Nome do grupo *</label>
+                <input id="mgNomeGrupo" class="mg-form-input" type="text" placeholder="Ex: Grupo Alpha" maxlength="80">
+                <label class="mg-form-label">Escolher integrantes da turma</label>
+                <div id="mgColegasArea" class="mg-colegas-loading">Carregando colegas…</div>
+                <div class="mg-form-actions">
+                    <button class="mg-btn-criar" onclick="mgCriar()">✓ Criar e entrar</button>
+                    <button class="mg-btn-cancelar" onclick="mgToggleCriarForm()">Cancelar</button>
+                    <span id="mgCriarStatus" class="mg-msg-criar"></span>
+                </div>
+            </div>
+        </div>`;
+
+    /* Não carrega colegas até o form ser aberto */
+}
+
+/* Toggle do formulário de criação + carrega colegas na abertura */
+async function mgToggleCriarForm() {
+    const form = $('mgCriarForm');
+    if (!form) return;
+    const abrir = form.style.display !== 'block';
+    form.style.display = abrir ? 'block' : 'none';
+    if (!abrir) return;
+    /* Carrega colegas */
+    const area = $('mgColegasArea');
+    if (!area) return;
+    area.innerHTML = '<div class="mg-colegas-loading">Carregando colegas…</div>';
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/colegas?courseId=${encodeURIComponent(_mgCursoId)}`, { credentials: 'include' });
+        const colegas = r.ok ? await r.json() : [];
+        if (!colegas.length) {
+            area.innerHTML = '<div class="mg-colegas-vazio">Nenhum colega encontrado na turma. O professor precisa estar conectado ao Classroom.</div>';
+            return;
+        }
+        area.innerHTML = `<div class="mg-colegas-grid">
+            ${colegas.map((c, i) => {
+                const ocupado = !!c.membro;
+                const grupoInfo = c.membro ? ` — ${_mgEsc(c.membro.grupo_nome)}` : '';
+                return `<label class="mg-colega-item${ocupado ? ' mg-colega-item--ocupado' : ''}" title="${_mgEsc(c.email)}">
+                    <input type="checkbox" class="mg-colega-check" value="${_mgEsc(c.email)}"
+                           data-nome="${_mgEsc(c.nome)}" ${ocupado ? 'disabled' : ''}>
+                    ${_mgEsc(c.nome || c.email)}
+                    ${ocupado ? `<span class="mg-colega-grupo">${grupoInfo}</span>` : ''}
+                </label>`;
+            }).join('')}
+        </div>`;
+    } catch (_) {
+        area.innerHTML = '<div class="mg-colegas-vazio">Erro ao carregar colegas. Tente novamente.</div>';
+    }
+}
+window.mgToggleCriarForm = mgToggleCriarForm;
+
+/* Cria um novo grupo com os integrantes selecionados */
+async function mgCriar() {
+    const nomeEl  = $('mgNomeGrupo');
+    const status  = $('mgCriarStatus');
+    const nome    = nomeEl?.value?.trim();
+    if (!nome) { if (status) { status.textContent = 'Informe o nome do grupo.'; status.style.color = 'var(--pa-danger)'; } return; }
+    const checks = document.querySelectorAll('.mg-colega-check:checked');
+    const membroEmails = Array.from(checks).map(c => c.value);
+    if (status) { status.textContent = 'Criando…'; status.style.color = 'var(--pa-sub)'; }
+    try {
+        const r = await fetch('/api/alunos-portal/grupos-portal', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ courseId: _mgCursoId, courseName: _mgCursoNome, nomeGrupo: nome, membroEmails }),
+        });
+        const d = await r.json();
+        if (!r.ok) { if (status) { status.textContent = d.erro || 'Erro ao criar.'; status.style.color = 'var(--pa-danger)'; } return; }
+        await _mgCarregarDados();
+    } catch (_) {
+        if (status) { status.textContent = 'Erro de rede. Tente novamente.'; status.style.color = 'var(--pa-danger)'; }
+    }
+}
+window.mgCriar = mgCriar;
+
+/* Entra em um grupo existente */
+async function mgEntrar(grupoId) {
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/${grupoId}/entrar`, {
+            method: 'POST', credentials: 'include',
+        });
+        const d = await r.json();
+        if (!r.ok) { alert(d.erro || 'Erro ao entrar no grupo.'); if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; } return; }
+        await _mgCarregarDados();
+    } catch (_) { alert('Erro de rede. Tente novamente.'); if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; } }
+}
+window.mgEntrar = mgEntrar;
+
+/* Sai do grupo atual */
+async function mgSair() {
+    if (!_mgGrupo) return;
+    if (!confirm(`Sair do grupo "${_mgGrupo.nome}"?\nIsso não pode ser desfeito se o grupo for excluído.`)) return;
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/${_mgGrupo.id}/sair`, {
+            method: 'DELETE', credentials: 'include',
+        });
+        const d = await r.json();
+        if (!r.ok) { alert(d.erro || 'Erro ao sair do grupo.'); return; }
+        _mgGrupo = null;
+        await _mgCarregarDados();
+    } catch (_) { alert('Erro de rede. Tente novamente.'); }
+}
+window.mgSair = mgSair;
+
+/* Salva os links do aluno para o grupo */
+async function mgSalvarLinks(grupoId) {
+    const msg  = $('mgLinksMsg');
+    const extras = _mgColetarExtras();
+    const body = {
+        linkBackend:  $('mgLinkBackend')?.value?.trim() || null,
+        linkBanco:    $('mgLinkBanco')?.value?.trim()   || null,
+        linkFrontend: $('mgLinkFrontend')?.value?.trim() || null,
+        linksExtras:  extras,
+    };
+    if (msg) { msg.innerHTML = '<div class="mg-msg mg-msg--info">Salvando…</div>'; }
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/${grupoId}/links`, {
+            method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const d = await r.json();
+        if (!r.ok) { if (msg) msg.innerHTML = `<div class="mg-msg mg-msg--erro">${_mgEsc(d.erro || 'Erro ao salvar.')}</div>`; return; }
+        if (msg) { msg.innerHTML = '<div class="mg-msg mg-msg--ok">✅ Links salvos com sucesso!</div>'; }
+        setTimeout(() => { if (msg) msg.innerHTML = ''; }, 4000);
+        /* Recarrega para atualizar os links de todos */
+        await _mgCarregarDados();
+    } catch (_) {
+        if (msg) msg.innerHTML = '<div class="mg-msg mg-msg--erro">Erro de rede. Tente novamente.</div>';
+    }
+}
+window.mgSalvarLinks = mgSalvarLinks;
+
+/* Adiciona uma linha de link extra no formulário */
+let _mgNextExtraIdx = 100;
+function mgAdicionarLinkExtra() {
+    const div = $('mgLinksExtrasDiv');
+    if (!div) return;
+    const idx = _mgNextExtraIdx++;
+    const row = document.createElement('div');
+    row.innerHTML = _mgHtmlExtraRow('', '', idx);
+    div.appendChild(row.firstElementChild);
+}
+window.mgAdicionarLinkExtra = mgAdicionarLinkExtra;
+
+/* Remove uma linha de link extra */
+function mgRemoverLinkExtra(idx) {
+    const row = $(`mgExtraRow_${idx}`);
+    if (row) row.remove();
+}
+window.mgRemoverLinkExtra = mgRemoverLinkExtra;
+
+/* Coleta todos os links extras do formulário */
+function _mgColetarExtras() {
+    const rows = document.querySelectorAll('[id^="mgExtraRow_"]');
+    const extras = [];
+    rows.forEach(row => {
+        const id  = row.id.replace('mgExtraRow_', '');
+        const nomeEl = $(`mgExtraNome_${id}`);
+        const urlEl  = $(`mgExtraUrl_${id}`);
+        const url = urlEl?.value?.trim();
+        if (url) extras.push({ nome: nomeEl?.value?.trim() || 'Extra', url });
+    });
+    return extras;
+}
+
+/* Retorna o email da sessão atual (cacheado no DOM) */
+function _mgSessaoEmail() {
+    return $('paDropEmail')?.textContent?.trim() || '';
+}
+
+window.mgPopularCursoSelect = mgPopularCursoSelect;
+window.mgSelecionarCurso    = mgSelecionarCurso;

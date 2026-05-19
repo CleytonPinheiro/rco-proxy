@@ -442,6 +442,53 @@ export async function initializeDatabase() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_aluno_proj_sugest_email ON aluno_projeto_sugestoes(aluno_email)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_aluno_proj_sugest_status ON aluno_projeto_sugestoes(status)`);
 
+        /* ── Grupos de Trabalho — Portal do Aluno ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS grupos_portal (
+                id          SERIAL       PRIMARY KEY,
+                course_id   TEXT         NOT NULL,
+                course_nome TEXT,
+                nome        TEXT         NOT NULL,
+                bloqueado   BOOLEAN      NOT NULL DEFAULT false,
+                criado_por  TEXT         NOT NULL,
+                criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupos_portal_course ON grupos_portal(course_id)`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS grupos_portal_membros (
+                id          SERIAL       PRIMARY KEY,
+                grupo_id    INT          NOT NULL REFERENCES grupos_portal(id) ON DELETE CASCADE,
+                aluno_email TEXT         NOT NULL,
+                aluno_nome  TEXT,
+                entrou_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                UNIQUE(aluno_email, grupo_id)
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupos_portal_membros_grupo  ON grupos_portal_membros(grupo_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupos_portal_membros_email  ON grupos_portal_membros(aluno_email)`);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS grupos_portal_links (
+                id            SERIAL       PRIMARY KEY,
+                grupo_id      INT          NOT NULL REFERENCES grupos_portal(id) ON DELETE CASCADE,
+                aluno_email   TEXT         NOT NULL,
+                aluno_nome    TEXT,
+                link_backend  TEXT,
+                link_banco    TEXT,
+                link_frontend TEXT,
+                links_extras  JSONB        NOT NULL DEFAULT '[]',
+                atualizado_em TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                UNIQUE(aluno_email, grupo_id)
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupos_portal_links_grupo ON grupos_portal_links(grupo_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupos_portal_links_email ON grupos_portal_links(aluno_email)`);
+
+        /* bloqueado pode ser alterado pelo professor via API */
+        await client.query(`ALTER TABLE grupos_portal ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN NOT NULL DEFAULT false`);
+
         /* ── Passeios e Eventos Externos ── */
         await client.query(`
             CREATE TABLE IF NOT EXISTS eventos (

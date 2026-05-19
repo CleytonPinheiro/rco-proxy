@@ -741,12 +741,119 @@ function renderMonitorHtml(projetos) {
     }).join('');
 }
 
-// ── Sugestões de Links dos Alunos ─────────────────────────────────────────────
+// ── Links dos Alunos (tabs: Sugestões + Links do Portal) ──────────────────────
+
+let _sugestoesTabAtiva = 'portal'; // 'sugestoes' | 'portal'
 
 async function abrirSugestoes() {
     document.getElementById('modalSugestoes').style.display = 'flex';
-    document.getElementById('modalSugestoesBody').innerHTML = '<div class="proj-loading">Carregando sugestões...</div>';
-    await carregarSugestoes();
+    document.getElementById('modalSugestoesBody').innerHTML = '<div class="proj-loading">Carregando...</div>';
+    await _sugestoesRenderTab(_sugestoesTabAtiva);
+}
+
+function _sugestoesAbrirTab(tab) {
+    _sugestoesTabAtiva = tab;
+    const body = document.getElementById('modalSugestoesBody');
+    if (body) body.innerHTML = '<div class="proj-loading">Carregando...</div>';
+    _sugestoesRenderTab(tab);
+}
+
+async function _sugestoesRenderTab(tab) {
+    const body = document.getElementById('modalSugestoesBody');
+    if (!body) return;
+    const tabNav = `
+        <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px">
+            <button onclick="_sugestoesAbrirTab('portal')"
+                style="padding:8px 18px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;margin-bottom:-2px;
+                       border-bottom:3px solid ${tab==='portal'?'#1a73e8':'transparent'};
+                       color:${tab==='portal'?'#1a73e8':'#6b7280'}">
+                📋 Links do Portal
+            </button>
+            <button onclick="_sugestoesAbrirTab('sugestoes')"
+                style="padding:8px 18px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;margin-bottom:-2px;
+                       border-bottom:3px solid ${tab==='sugestoes'?'#1a73e8':'transparent'};
+                       color:${tab==='sugestoes'?'#1a73e8':'#6b7280'}">
+                📬 Sugestões livres
+            </button>
+        </div>`;
+    if (tab === 'portal') {
+        const inner = await _carregarPortalLinks();
+        body.innerHTML = tabNav + inner;
+    } else {
+        const r = await fetch(`${API}/api/grupos/projetos-sugestoes`);
+        const sugestoes = r.ok ? await r.json() : [];
+        body.innerHTML = tabNav + renderSugestoesHtml(sugestoes);
+    }
+}
+
+async function _carregarPortalLinks() {
+    try {
+        const r = await fetch(`${API}/api/grupos/portal-links`);
+        if (!r.ok) return '<p style="color:red">Erro ao carregar links do portal.</p>';
+        const grupos = await r.json();
+        return renderPortalLinksHtml(grupos);
+    } catch (e) {
+        return `<p style="color:red">Erro: ${escHtml(e.message)}</p>`;
+    }
+}
+
+function renderPortalLinksHtml(grupos) {
+    if (!grupos.length) {
+        return '<p class="proj-vazio">Nenhum grupo criado pelos alunos ainda.</p>' +
+               '<p style="font-size:12px;color:#6b7280;margin-top:8px">Alunos podem criar e gerenciar grupos no Portal do Aluno → aba "Meu Grupo".</p>';
+    }
+    const LINK_TIPO = { link_backend: { label: 'Back-end', color: '#dbeafe', text: '#1e40af' }, link_banco: { label: 'Banco', color: '#d1fae5', text: '#065f46' }, link_frontend: { label: 'Front-end', color: '#fce7f3', text: '#9d174d' } };
+
+    return grupos.map(g => {
+        const lockBadge = g.bloqueado ? `<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;border:1px solid #fde68a;font-weight:600">🔒 Bloqueado</span>` : '';
+        const btnLock = g.bloqueado
+            ? `<button onclick="mgPortalDesbloquear(${g.id})" style="padding:4px 10px;font-size:11px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer">🔓 Desbloquear</button>`
+            : `<button onclick="mgPortalBloquear(${g.id})"   style="padding:4px 10px;font-size:11px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer">🔒 Bloquear</button>`;
+
+        const membrosHtml = (g.membros || []).map(m => {
+            const extras = Array.isArray(m.links_extras) ? m.links_extras : [];
+            const linkRows = [
+                ...['link_backend', 'link_banco', 'link_frontend'].filter(k => m[k]).map(k => {
+                    const t = LINK_TIPO[k];
+                    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+                        <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${t.color};color:${t.text};min-width:52px;text-align:center">${t.label}</span>
+                        <a href="${escHtml(m[k])}" target="_blank" rel="noopener" style="color:#1a73e8;font-size:12px;word-break:break-all">${escHtml(m[k])}</a>
+                    </div>`;
+                }),
+                ...extras.filter(e => e.url).map(e =>
+                    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+                        <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#f3f4f6;color:#374151;min-width:52px;text-align:center">${escHtml(e.nome||'Extra')}</span>
+                        <a href="${escHtml(e.url)}" target="_blank" rel="noopener" style="color:#1a73e8;font-size:12px;word-break:break-all">${escHtml(e.url)}</a>
+                    </div>`
+                ),
+            ];
+            return `<div style="padding:10px 0;border-bottom:1px solid #f3f4f6">
+                <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">👤 ${escHtml(m.nome || m.email)}</div>
+                ${linkRows.length ? linkRows.join('') : '<div style="font-size:12px;color:#9ca3af;font-style:italic">Nenhum link enviado.</div>'}
+                ${m.atualizado_em ? `<div style="font-size:10px;color:#9ca3af;margin-top:4px">Atualizado: ${new Date(m.atualizado_em).toLocaleString('pt-BR')}</div>` : ''}
+            </div>`;
+        }).join('');
+
+        return `<div class="sugestao-card" style="margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <div>
+                    <div style="font-weight:700;font-size:14px">${escHtml(g.nome)}</div>
+                    <div style="font-size:11px;color:#6b7280">${escHtml(g.course_nome || '')} · ${(g.membros||[]).length} integrante(s)</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center">${lockBadge}${btnLock}</div>
+            </div>
+            ${membrosHtml || '<div style="font-size:12px;color:#9ca3af">Sem integrantes.</div>'}
+        </div>`;
+    }).join('');
+}
+
+async function mgPortalBloquear(id) {
+    await fetch(`${API}/api/grupos/portal/${id}/bloqueado`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bloqueado: true }) });
+    _sugestoesAbrirTab('portal');
+}
+async function mgPortalDesbloquear(id) {
+    await fetch(`${API}/api/grupos/portal/${id}/bloqueado`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bloqueado: false }) });
+    _sugestoesAbrirTab('portal');
 }
 
 function fecharModalSugestoes(e) {
@@ -813,7 +920,7 @@ async function aprovarSugestao(id) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'aprovado', grupoId, codTurma: turmaAtual?.codTurma }),
     });
-    await carregarSugestoes();
+    await _sugestoesAbrirTab('sugestoes');
     mostrarAvisoPool('Projeto aprovado e adicionado ao grupo', 'ok');
 }
 
@@ -824,7 +931,7 @@ async function rejeitarSugestao(id) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'rejeitado' }),
     });
-    await carregarSugestoes();
+    await _sugestoesAbrirTab('sugestoes');
 }
 
 // ── Utilitário de data/hora ───────────────────────────────────────────────────

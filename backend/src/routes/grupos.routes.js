@@ -300,5 +300,48 @@ export function createGruposRouter({ supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
+    /* GET /grupos/portal-links — todos os grupos do portal com links por aluno
+       Usado na visão do professor em "Links dos Alunos" */
+    router.get('/grupos/portal-links', async (req, res) => {
+        try {
+            const { rows } = await pool.query(`
+                SELECT
+                    gp.id, gp.nome, gp.course_id, gp.course_nome, gp.bloqueado, gp.criado_em,
+                    COALESCE(
+                        json_agg(
+                            json_build_object(
+                                'email',        m.aluno_email,
+                                'nome',         m.aluno_nome,
+                                'link_backend',  l.link_backend,
+                                'link_banco',    l.link_banco,
+                                'link_frontend', l.link_frontend,
+                                'links_extras',  COALESCE(l.links_extras, '[]'::jsonb),
+                                'atualizado_em', l.atualizado_em
+                            ) ORDER BY m.entrou_em
+                        ) FILTER (WHERE m.id IS NOT NULL), '[]'
+                    ) AS membros
+                FROM grupos_portal gp
+                LEFT JOIN grupos_portal_membros m ON m.grupo_id = gp.id
+                LEFT JOIN grupos_portal_links   l ON l.grupo_id = gp.id AND l.aluno_email = m.aluno_email
+                GROUP BY gp.id
+                ORDER BY gp.course_nome, gp.criado_em
+            `);
+            res.json(rows);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* PATCH /grupos/portal/:id/bloqueado — professor bloqueia/desbloqueia grupo do portal */
+    router.patch('/grupos/portal/:id/bloqueado', async (req, res) => {
+        const { bloqueado } = req.body;
+        if (typeof bloqueado !== 'boolean') return res.status(400).json({ erro: 'bloqueado deve ser boolean.' });
+        try {
+            await pool.query(
+                `UPDATE grupos_portal SET bloqueado = $1 WHERE id = $2`,
+                [bloqueado, parseInt(req.params.id)]
+            );
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
     return router;
 }

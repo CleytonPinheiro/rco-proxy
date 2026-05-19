@@ -1283,5 +1283,231 @@ export function createAlunosPortalRouter() {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
+    /* ══════════════════════════════════════════════════════════════════
+       MEU GRUPO — auto-organização de grupos pelo Portal do Aluno
+       Grupos são identificados por course_id (Classroom courseId).
+    ══════════════════════════════════════════════════════════════════ */
+
+    /* GET /api/alunos-portal/grupos-portal?courseId=X
+       Lista todos os grupos de uma disciplina + membros */
+    router.get('/alunos-portal/grupos-portal', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { courseId } = req.query;
+        if (!courseId) return res.status(400).json({ erro: 'courseId é obrigatório.' });
+        try {
+            const { rows } = await pool.query(`
+                SELECT gp.id, gp.nome, gp.bloqueado, gp.criado_por, gp.criado_em,
+                       COALESCE(
+                           json_agg(json_build_object('email', m.aluno_email, 'nome', m.aluno_nome)
+                                    ORDER BY m.entrou_em)
+                           FILTER (WHERE m.id IS NOT NULL), '[]'
+                       ) AS membros
+                FROM grupos_portal gp
+                LEFT JOIN grupos_portal_membros m ON m.grupo_id = gp.id
+                WHERE gp.course_id = $1
+                GROUP BY gp.id
+                ORDER BY gp.criado_em
+            `, [courseId]);
+            res.json(rows);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/alunos-portal/grupos-portal/meu?courseId=X
+       Grupo atual do aluno + membros + links de todos os membros */
+    router.get('/alunos-portal/grupos-portal/meu', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { courseId } = req.query;
+        if (!courseId) return res.status(400).json({ erro: 'courseId é obrigatório.' });
+        try {
+            const { rows } = await pool.query(`
+                SELECT gp.id, gp.nome, gp.bloqueado, gp.criado_por, gp.criado_em,
+                       COALESCE(
+                           json_agg(json_build_object('email', m.aluno_email, 'nome', m.aluno_nome)
+                                    ORDER BY m.entrou_em)
+                           FILTER (WHERE m.id IS NOT NULL), '[]'
+                       ) AS membros
+                FROM grupos_portal gp
+                JOIN grupos_portal_membros m2 ON m2.grupo_id = gp.id AND m2.aluno_email = $2
+                LEFT JOIN grupos_portal_membros m  ON m.grupo_id  = gp.id
+                WHERE gp.course_id = $1
+                GROUP BY gp.id
+            `, [courseId, aluno.email]);
+            if (!rows.length) return res.json({ grupo: null });
+            const g = rows[0];
+            const { rows: links } = await pool.query(
+                `SELECT * FROM grupos_portal_links WHERE grupo_id = $1 ORDER BY atualizado_em DESC`,
+                [g.id]
+            );
+            const { rows: meuLink } = await pool.query(
+                `SELECT * FROM grupos_portal_links WHERE grupo_id = $1 AND aluno_email = $2`,
+                [g.id, aluno.email]
+            );
+            res.json({ grupo: { ...g, links, meuLink: meuLink[0] || null } });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/alunos-portal/grupos-portal/colegas?courseId=X
+       Lista todos os alunos da disciplina (via token do professor) + status de grupo */
+    router.get('/alunos-portal/grupos-portal/colegas', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { courseId } = req.query;
+        if (!courseId) return res.status(400).json({ erro: 'courseId é obrigatório.' });
+        try {
+            const auth = await getTeacherAuth(req);
+            if (!auth) return res.json([]);
+            const classroom = google.classroom({ version: 'v1', auth });
+            const r = await classroom.courses.students.list({ courseId, pageSize: 200 });
+            const studentsRaw = r.data.students || [];
+            const { rows: membros } = await pool.query(`
+                SELECT m.aluno_email, m.aluno_nome, gp.nome AS grupo_nome, gp.id AS grupo_id, gp.bloqueado
+                FROM grupos_portal_membros m
+                JOIN grupos_portal gp ON gp.id = m.grupo_id
+                WHERE gp.course_id = $1
+            `, [courseId]);
+            const membroMap = Object.fromEntries(membros.map(m => [m.aluno_email, m]));
+            const colegas = studentsRaw
+                .map(s => ({
+                    email: s.profile?.emailAddress || '',
+                    nome:  s.profile?.name?.fullName || '',
+                    membro: membroMap[s.profile?.emailAddress || ''] || null,
+                }))
+                .filter(c => c.email && c.email !== aluno.email);
+            res.json(colegas);
+        } catch (e) {
+            console.error('[ALUNOS-PORTAL] Erro ao buscar colegas:', e.message);
+            res.json([]);
+        }
+    });
+
+    /* POST /api/alunos-portal/grupos-portal
+       Cria um novo grupo e adiciona o criador + membros escolhidos */
+    router.post('/alunos-portal/grupos-portal', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const { courseId, courseName, nomeGrupo, membroEmails = [] } = req.body;
+        if (!courseId || !nomeGrupo?.trim()) return res.status(400).json({ erro: 'courseId e nomeGrupo são obrigatórios.' });
+        try {
+            const { rows: existe } = await pool.query(`
+                SELECT gp.id FROM grupos_portal gp
+                JOIN grupos_portal_membros m ON m.grupo_id = gp.id
+                WHERE gp.course_id = $1 AND m.aluno_email = $2
+            `, [courseId, aluno.email]);
+            if (existe.length) return res.status(409).json({ erro: 'Você já está em um grupo nesta disciplina.' });
+
+            const { rows: [g] } = await pool.query(`
+                INSERT INTO grupos_portal (course_id, course_nome, nome, criado_por)
+                VALUES ($1, $2, $3, $4) RETURNING *
+            `, [courseId, courseName || '', nomeGrupo.trim().slice(0, 80), aluno.email]);
+
+            await pool.query(
+                `INSERT INTO grupos_portal_membros (grupo_id, aluno_email, aluno_nome) VALUES ($1, $2, $3)`,
+                [g.id, aluno.email, aluno.nome || '']
+            );
+
+            if (membroEmails.length) {
+                const { rows: jaEmGrupo } = await pool.query(`
+                    SELECT m.aluno_email FROM grupos_portal_membros m
+                    JOIN grupos_portal gp ON gp.id = m.grupo_id
+                    WHERE gp.course_id = $1 AND m.aluno_email = ANY($2::text[])
+                `, [courseId, membroEmails]);
+                const jaSet = new Set(jaEmGrupo.map(r => r.aluno_email));
+                for (const email of membroEmails.slice(0, 15)) {
+                    if (jaSet.has(email) || email === aluno.email) continue;
+                    await pool.query(
+                        `INSERT INTO grupos_portal_membros (grupo_id, aluno_email, aluno_nome) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+                        [g.id, email, '']
+                    );
+                }
+            }
+            logAluno(req, aluno.email, aluno.nome, 'CRIAR_GRUPO_PORTAL', { grupoId: g.id, nomeGrupo: g.nome });
+            res.json({ ok: true, grupoId: g.id });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/alunos-portal/grupos-portal/:id/entrar
+       Entra em um grupo existente (se não bloqueado e aluno sem grupo) */
+    router.post('/alunos-portal/grupos-portal/:id/entrar', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const grupoId = parseInt(req.params.id);
+        if (isNaN(grupoId)) return res.status(400).json({ erro: 'ID inválido.' });
+        try {
+            const { rows: [g] } = await pool.query(`SELECT * FROM grupos_portal WHERE id = $1`, [grupoId]);
+            if (!g) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+            if (g.bloqueado) return res.status(403).json({ erro: 'Este grupo está bloqueado pelo professor.' });
+
+            const { rows: existe } = await pool.query(`
+                SELECT gp.id FROM grupos_portal gp
+                JOIN grupos_portal_membros m ON m.grupo_id = gp.id
+                WHERE gp.course_id = $1 AND m.aluno_email = $2
+            `, [g.course_id, aluno.email]);
+            if (existe.length) return res.status(409).json({ erro: 'Você já está em um grupo nesta disciplina.' });
+
+            await pool.query(
+                `INSERT INTO grupos_portal_membros (grupo_id, aluno_email, aluno_nome) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+                [grupoId, aluno.email, aluno.nome || '']
+            );
+            logAluno(req, aluno.email, aluno.nome, 'ENTRAR_GRUPO_PORTAL', { grupoId });
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* DELETE /api/alunos-portal/grupos-portal/:id/sair
+       Sai do grupo (se não bloqueado) */
+    router.delete('/alunos-portal/grupos-portal/:id/sair', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const grupoId = parseInt(req.params.id);
+        if (isNaN(grupoId)) return res.status(400).json({ erro: 'ID inválido.' });
+        try {
+            const { rows: [g] } = await pool.query(`SELECT * FROM grupos_portal WHERE id = $1`, [grupoId]);
+            if (!g) return res.status(404).json({ erro: 'Grupo não encontrado.' });
+            if (g.bloqueado) return res.status(403).json({ erro: 'Grupo bloqueado. Peça ao professor para removê-lo.' });
+
+            await pool.query(
+                `DELETE FROM grupos_portal_membros WHERE grupo_id = $1 AND aluno_email = $2`,
+                [grupoId, aluno.email]
+            );
+            const { rows: [{ cnt }] } = await pool.query(
+                `SELECT COUNT(*)::int AS cnt FROM grupos_portal_membros WHERE grupo_id = $1`, [grupoId]
+            );
+            if (cnt === 0) await pool.query(`DELETE FROM grupos_portal WHERE id = $1`, [grupoId]);
+            logAluno(req, aluno.email, aluno.nome, 'SAIR_GRUPO_PORTAL', { grupoId });
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* PUT /api/alunos-portal/grupos-portal/:id/links
+       Salva / atualiza os links individuais de projeto do aluno */
+    router.put('/alunos-portal/grupos-portal/:id/links', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const grupoId = parseInt(req.params.id);
+        if (isNaN(grupoId)) return res.status(400).json({ erro: 'ID inválido.' });
+        const { linkBackend, linkBanco, linkFrontend, linksExtras = [] } = req.body;
+        try {
+            const { rows } = await pool.query(
+                `SELECT 1 FROM grupos_portal_membros WHERE grupo_id = $1 AND aluno_email = $2`,
+                [grupoId, aluno.email]
+            );
+            if (!rows.length) return res.status(403).json({ erro: 'Você não é membro deste grupo.' });
+
+            await pool.query(`
+                INSERT INTO grupos_portal_links
+                    (grupo_id, aluno_email, aluno_nome, link_backend, link_banco, link_frontend, links_extras)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (aluno_email, grupo_id) DO UPDATE SET
+                    aluno_nome = $3, link_backend = $4, link_banco = $5,
+                    link_frontend = $6, links_extras = $7, atualizado_em = NOW()
+            `, [grupoId, aluno.email, aluno.nome || '',
+                linkBackend?.trim() || null, linkBanco?.trim() || null,
+                linkFrontend?.trim() || null, JSON.stringify(linksExtras)]);
+            res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
     return router;
 }
