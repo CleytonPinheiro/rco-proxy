@@ -626,6 +626,7 @@ function _renderListaFiltrada() {
             <td class="prv-lista-td prv-lista-td-nome">
                 <span class="prv-lista-nome">${escapeHtml(p.nome)}</span>
                 <div class="prv-lista-badges">${renderBadgesProva(p)}</div>
+                <div class="prv-lista-ansid">GradePen #${escapeHtml(p.gradepen_id)}</div>
             </td>
             <td class="prv-lista-td prv-lista-td-curso">${escapeHtml(p.curso_nome || p.curso_id)}</td>
             <td class="prv-lista-td prv-lista-td-data">${escapeHtml(data)}</td>

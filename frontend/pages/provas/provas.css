@@ -1027,6 +1027,7 @@
 .prv-lista-td-curso { color: var(--text-muted, #888); font-size: 13px; max-width: 220px; }
 .prv-lista-nome { font-weight: 600; }
 .prv-lista-badges { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; }
+.prv-lista-ansid  { margin-top: 4px; font-size: 11px; color: var(--text-muted, #888); font-family: monospace; letter-spacing: .02em; }
 @media (max-width: 700px) {
     .prv-lista-td-curso,
     .prv-lista-td-data { display: none; }
