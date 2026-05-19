@@ -982,6 +982,38 @@ function renderAtivItem(ativ, { zerada = false, aguardando = false, cursoId = ''
     return li;
 }
 
+/* ── Faixa de status proporcional (sugestão C) ───────── */
+function renderStatusBar(curso) {
+    const vencidas  = (curso.atividades || []).filter(a =>  a.vencida).length;
+    const noPrazo   = (curso.atividades || []).filter(a => !a.vencida).length;
+    const aguardando = (curso.aguardando || []).length;
+    const zeradas   = (curso.zeradas    || []).length;
+    const total     = vencidas + noPrazo + aguardando + zeradas;
+    if (!total) return null;
+
+    const pct = n => `${((n / total) * 100).toFixed(2)}%`;
+    const segs = [
+        { count: vencidas,   cls: 'pa-sb-vencida',   label: `${vencidas} vencida${vencidas !== 1 ? 's' : ''}` },
+        { count: noPrazo,    cls: 'pa-sb-noprazo',   label: `${noPrazo} no prazo` },
+        { count: aguardando, cls: 'pa-sb-aguardando', label: `${aguardando} aguardando correção` },
+        { count: zeradas,    cls: 'pa-sb-zerada',     label: `${zeradas} zerada${zeradas !== 1 ? 's' : ''}` },
+    ].filter(s => s.count > 0);
+
+    const bar = document.createElement('div');
+    bar.className = 'pa-status-bar';
+    bar.setAttribute('aria-label', segs.map(s => s.label).join(' · '));
+
+    segs.forEach(({ count, cls, label }) => {
+        const seg = document.createElement('div');
+        seg.className = `pa-sb-seg ${cls}`;
+        seg.style.width = pct(count);
+        seg.title = label;
+        bar.appendChild(seg);
+    });
+
+    return bar;
+}
+
 /* ── Render de um card de curso ─────────────────────── */
 function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
     const card = document.createElement('div');
@@ -1007,6 +1039,9 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
         <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}${aguardando ? ' pa-curso-badge--aguardando' : ''}">${badgeLabel}</span>
     `;
     card.appendChild(header);
+
+    const statusBar = renderStatusBar(curso);
+    if (statusBar) card.appendChild(statusBar);
 
     if (zerada) {
         const lista = document.createElement('ul');

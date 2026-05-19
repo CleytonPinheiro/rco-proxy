@@ -377,6 +377,28 @@ html, body {
     flex-shrink: 0;
 }
 
+/* ── Faixa de status proporcional (sugestão C) ── */
+.pa-status-bar {
+    display: flex;
+    height: 6px;
+    width: 100%;
+    overflow: hidden;
+    gap: 2px;
+    background: transparent;
+}
+.pa-sb-seg {
+    height: 100%;
+    min-width: 4px;
+    border-radius: 3px;
+    transition: width .3s ease, opacity .15s;
+    cursor: default;
+}
+.pa-sb-seg:hover { opacity: .8; }
+.pa-sb-vencida   { background: #f97316; }
+.pa-sb-noprazo   { background: #eab308; }
+.pa-sb-aguardando { background: #818cf8; }
+.pa-sb-zerada    { background: #ef4444; }
+
 .pa-atividade-lista { list-style: none; padding: 0; }
 .pa-atividade-item {
     padding: 14px 20px;
