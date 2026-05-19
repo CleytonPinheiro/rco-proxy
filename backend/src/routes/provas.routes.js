@@ -4615,9 +4615,11 @@ export function createProvasPublicRouter() {
         if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
 
         /* Sub-query de pendentes reutilizada.
-         * Conta submissões da turma que não têm NENHUMA linha de turma corretora
-         * (nem em rascunho). Isso espelha exatamente o filtro do dropdown no
-         * lista-turma-alvo: badge e select sempre mostram o mesmo número.
+         * Conta submissões da turma que:
+         *   1. Não têm NENHUMA linha de turma corretora (nem rascunho), E
+         *   2. Não estão na fila de 2º corretor cego (notificacoes_aluno).
+         * Isso espelha exatamente o filtro do dropdown no lista-turma-alvo:
+         * badge e select sempre mostram o mesmo número.
          */
         const PENDENTES_SQ = `
             COALESCE((
@@ -4631,6 +4633,12 @@ export function createProvasPublicRouter() {
                        SELECT 1 FROM classroom_prova_submissoes tc
                         WHERE tc.submissao_ref_id   = ps.id
                           AND tc.eh_turma_corretora = true
+                   )
+                   AND NOT EXISTS (
+                       SELECT 1 FROM notificacoes_aluno na
+                        WHERE na.tipo IN ('segundo_corretor', 'segundo_corretor_voluntario')
+                          AND (na.dados->>'provaId')::integer     = p.id
+                          AND (na.dados->>'submissaoRefId')::integer = ps.id
                    )
             ), 0)`;
 
