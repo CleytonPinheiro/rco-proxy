@@ -27,7 +27,8 @@ import { createQRCodeRouter }            from './qrcode.routes.js';
 import { createSuporteRouter }          from './suporte.routes.js';
 import { createProvasRouter, createProvasPublicRouter } from './provas.routes.js';
 import { createPasseiosRouter } from './passeios.routes.js';
-import { createBoletimRouter }  from './boletim.routes.js';
+import { createBoletimRouter }        from './boletim.routes.js';
+import { createAlertasFaltasRouter }  from './alertas-faltas.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -86,6 +87,7 @@ export function createApiRouter(deps) {
     router.use('/', createAdminRouter(deps));
     router.use('/', createRcoLancamentoRouter(deps));
     router.use('/', createBoletimRouter(deps));
+    router.use('/', createAlertasFaltasRouter(deps));
     router.use('/', createSuporteRouter());
     /* Provas: rotas do professor — requer módulo 'provas'.
        Endpoints exclusivos de análise de cola também aceitam módulo 'analise-cola';

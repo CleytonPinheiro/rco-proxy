@@ -19,7 +19,7 @@ export const PERFIS = {
     },
     pedagogo: {
         nome: 'Pedagogo',
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'boletim', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'boletim', 'alertas-faltas', 'qrcode', 'suporte', 'passeios'],
     },
     secretaria: {
         nome: 'Secretaria',
@@ -63,6 +63,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'portal-log',         nome: 'Log Portal Aluno' },
     { id: 'planos',             nome: 'Planos' },
     { id: 'boletim',            nome: 'Boletim de Notas RCO' },
+    { id: 'alertas-faltas',     nome: 'Alertas de Faltas (Pedagogo)' },
     { id: 'passeios',           nome: 'Passeios e Eventos' },
 ];
 

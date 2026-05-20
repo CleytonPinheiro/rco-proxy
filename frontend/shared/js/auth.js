@@ -65,7 +65,7 @@
     const PERFIL_MODULOS_DEFAULT = {
         admin:      ['*'],
         professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','analise-cola','confrontar-gabarito','boletim','qrcode','suporte','passeios'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','boletim','qrcode','suporte','passeios'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','boletim','alertas-faltas','qrcode','suporte','passeios'],
         secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte','passeios'],
         aux_turno:  ['circulacao','presenca','qrcode','suporte'],
         cozinha:    ['cozinha','qrcode','suporte'],
@@ -362,6 +362,7 @@
         configurarLogout();
         injetarLinkRetorno(user);
         injetarLinkBoletim(user);
+        injetarLinkAlertasFaltas(user);
         injetarLinkAdmin(user);
         injetarLinkPlanos(user);
         if (user.impersonando) {
@@ -667,7 +668,32 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════════
-       4c. Link Admin no nav
+       4c. Link Alertas de Faltas no nav (pedagogo / admin)
+    ══════════════════════════════════════════════════════════════════════ */
+    function injetarLinkAlertasFaltas(user) {
+        const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+        if (!podeAcessar(perfilEfetivo, 'alertas-faltas')) return;
+        const nav = document.querySelector('.nav-menu');
+        if (!nav || nav.querySelector('a[href="/pages/alertas-faltas/"]')) return;
+
+        const link = document.createElement('a');
+        link.href        = '/pages/alertas-faltas/';
+        link.textContent = 'Alertas de Faltas';
+        if (location.pathname.startsWith('/pages/alertas-faltas/')) link.classList.add('active');
+        /* Insere após Boletim, ou Retorno Pedagógico, ou Pedagógico, senão appenda */
+        const bolLink = nav.querySelector('a[href="/pages/boletim/"]');
+        const retLink = nav.querySelector('a[href="/pages/retorno-pedagogico/"]');
+        const pedLink = nav.querySelector('a[href="/pages/pedagogico/"]');
+        const anchor  = bolLink ?? retLink ?? pedLink;
+        if (anchor && anchor.nextSibling) {
+            nav.insertBefore(link, anchor.nextSibling);
+        } else {
+            nav.appendChild(link);
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       4d. Link Admin no nav
     ══════════════════════════════════════════════════════════════════════ */
     function injetarLinkAdmin(user) {
         if (user.perfilReal !== 'admin' && user.perfil !== 'admin') return;

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EduSync — Alertas de faltas por aluno para o pedagogo.">
+    <title>EduSync — Alertas de Faltas</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="./alertas-faltas.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+                <a href="/pages/frequencias/">Frequências</a>
+                <a href="/pages/alertas-faltas/" class="active">Alertas de Faltas</a>
+            </nav>
+            <div class="header-actions">
+                <div id="userBadge" class="user-badge"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-container">
+        <div class="af-page-header">
+            <div class="af-page-header-left">
+                <h1 class="af-title">🔔 Alertas de Faltas</h1>
+                <p class="af-subtitle">Alunos com <strong id="txtConsec">3</strong> faltas consecutivas ou <strong id="txtTotal">5</strong> faltas totais em qualquer disciplina.</p>
+            </div>
+            <button id="btnAtualizar" class="btn-primary af-btn-atualizar">
+                🔍 Analisar Turmas
+            </button>
+        </div>
+
+        <!-- Filtros -->
+        <section class="af-filtros card">
+            <div class="af-filtros-grid">
+                <div class="af-campo">
+                    <label for="selTurma">Filtrar por Turma</label>
+                    <select id="selTurma">
+                        <option value="">— todas as turmas —</option>
+                    </select>
+                </div>
+                <div class="af-campo">
+                    <label for="inpConsec">Faltas seguidas (mín.)</label>
+                    <input type="number" id="inpConsec" value="3" min="1" max="30">
+                </div>
+                <div class="af-campo">
+                    <label for="inpTotal">Faltas totais (mín.)</label>
+                    <input type="number" id="inpTotal" value="5" min="1" max="200">
+                </div>
+                <div class="af-campo af-campo-busca">
+                    <label for="inpBusca">Buscar aluno</label>
+                    <input type="search" id="inpBusca" placeholder="Nome do aluno…">
+                </div>
+            </div>
+        </section>
+
+        <!-- Estados -->
+        <div id="secInicial" class="af-estado">
+            <span class="af-estado-icone">🔔</span>
+            <p>Clique em <strong>Analisar Turmas</strong> para verificar alertas de faltas no RCO Digital.</p>
+            <p class="af-estado-hint">O processo analisa todas as disciplinas e pode levar alguns segundos.</p>
+        </div>
+        <div id="secLoading" class="af-estado" style="display:none">
+            <span class="af-estado-icone af-spin">⏳</span>
+            <p id="msgLoading">Buscando frequências no RCO Digital…</p>
+            <p class="af-estado-hint">Aguarde enquanto analisamos as turmas.</p>
+        </div>
+        <div id="secVazio" class="af-estado af-estado-ok" style="display:none">
+            <span class="af-estado-icone">✅</span>
+            <p>Nenhum aluno em alerta! Todos dentro dos limites configurados.</p>
+        </div>
+        <div id="secErro" class="af-estado af-estado-erro" style="display:none">
+            <span class="af-estado-icone">⚠️</span>
+            <p id="msgErro">Erro ao carregar alertas.</p>
+        </div>
+
+        <!-- Resultado -->
+        <section id="secResultado" style="display:none">
+            <div class="af-resultado-header">
+                <span id="lblTotal" class="af-badge-total"></span>
+                <span id="lblProcessado" class="af-badge-processado"></span>
+                <button id="btnExportar" class="btn-secondary af-btn-exportar" title="Exportar CSV">⬇️ CSV</button>
+            </div>
+            <div id="listaAlertas"></div>
+        </section>
+    </main>
+
+    <script src="../../shared/js/auth.js"></script>
+    <script src="./alertas-faltas.js"></script>
+</body>
+</html>
