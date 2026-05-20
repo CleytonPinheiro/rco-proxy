@@ -2462,6 +2462,8 @@ html, body {
 }
 .mg-membro--eu { border-color: var(--pa-primary); background: var(--pa-badge-bg); color: var(--pa-badge-color); font-weight: 600; }
 .mg-membro-avatar { font-size: 1rem; }
+.mg-membro--pendente { opacity: .7; border-style: dashed; }
+.mg-membro-pend-tag { font-size: .65rem; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 8px; margin-left: 4px; font-weight: 600; }
 
 /* Botão sair */
 .mg-btn-sair {
@@ -2719,9 +2721,29 @@ html, body {
 [data-theme="dark"] .mg-link-item-tag--extra    { background: #1f2937; color: #d1d5db; }
 [data-theme="dark"] .mg-badge-lock { background: #451a03; color: #fde68a; border-color: #78350f; }
 
+/* ── Botões de convite de grupo na notificação ───────────────────── */
+.pa-notif-convite-btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+}
+.pa-notif-convite-btn:active { transform: scale(.97); }
+.pa-notif-convite-btn:disabled { opacity: .5; cursor: default; }
+.pa-notif-convite-aceitar { background: #16a34a; color: #fff; }
+.pa-notif-convite-aceitar:hover:not(:disabled) { background: #15803d; }
+.pa-notif-convite-recusar { background: #dc2626; color: #fff; }
+.pa-notif-convite-recusar:hover:not(:disabled) { background: #b91c1c; }
+.pa-notif-convite-ignorar { background: #e5e7eb; color: #374151; }
+.pa-notif-convite-ignorar:hover:not(:disabled) { background: #d1d5db; }
+
 @media (max-width: 480px) {
     .mg-topo { flex-direction: column; }
     .mg-curso-select { width: 100%; }
     .mg-link-row { flex-wrap: wrap; }
     .mg-link-label { width: auto; }
+    .pa-notif-convite-btn { width: 100%; }
 }

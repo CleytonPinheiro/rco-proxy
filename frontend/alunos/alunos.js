@@ -1301,6 +1301,7 @@ const NOTIF_ICONE = {
     verificacao_professor:      '📋',
     turma_corretora_disponivel: '✏️',
     turma_corretora_atribuida:  '🏫',
+    convite_grupo:              '👥',
 };
 const NOTIF_COR = {
     reabertura_aprovada:        'verde',
@@ -1310,6 +1311,7 @@ const NOTIF_COR = {
     verificacao_professor:      'azul',
     turma_corretora_disponivel: 'verde',
     turma_corretora_atribuida:  'azul',
+    convite_grupo:              'azul',
 };
 
 function iniciarPollingNotificacoes() {
@@ -1363,10 +1365,19 @@ function mostrarProximaNotif() {
     titulo.textContent = _notifAtual.titulo;
     msg.textContent    = _notifAtual.mensagem;
 
+    /* Botões de convite de grupo (visíveis somente para convite_grupo) */
+    const isConvite = _notifAtual.tipo === 'convite_grupo';
+    const conviteBtns = $('paNotifConviteBtns');
+    const btnOk = $('paNotifBtnOk');
+    if (conviteBtns) conviteBtns.style.display = isConvite ? 'flex' : 'none';
+    if (btnOk) btnOk.style.display = isConvite ? 'none' : '';
+
     /* Botão de ação extra (ex: abrir atividade reaberta / ir para correções) */
     const link = _notifAtual.dados?.link;
     btnAcao.onclick = null;
-    if (link && _notifAtual.tipo === 'reabertura_aprovada') {
+    if (isConvite) {
+        btnAcao.style.display = 'none';
+    } else if (link && _notifAtual.tipo === 'reabertura_aprovada') {
         btnAcao.href          = link;
         btnAcao.textContent   = 'Ver atividade →';
         btnAcao.style.display = '';
@@ -1391,7 +1402,7 @@ function mostrarProximaNotif() {
         };
         btnAcao.textContent   = 'Abrir fila de correções →';
         btnAcao.style.display = '';
-    } else {
+    } else if (!isConvite) {
         btnAcao.style.display = 'none';
     }
 
@@ -1420,6 +1431,53 @@ function mostrarProximaNotif() {
     /* Bloqueia página */
     modal.style.display = 'flex';
 }
+
+/* Responde a um convite de grupo diretamente da notificação */
+async function responderConviteGrupo(acao) {
+    const notif = _notifAtual;
+    if (!notif) return;
+    const grupoId = notif.dados?.grupoId;
+    if (!grupoId) { confirmarNotif(); return; }
+
+    /* Desabilita os botões durante a requisição */
+    const btns = document.querySelectorAll('.pa-notif-convite-btn');
+    btns.forEach(b => { b.disabled = true; });
+
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/${grupoId}/responder-convite`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao, notifId: notif.id }),
+        });
+        const d = await r.json();
+        if (!r.ok) {
+            btns.forEach(b => { b.disabled = false; });
+            alert(d.erro || 'Erro ao responder convite.');
+            return;
+        }
+        /* Fecha o modal e avança a fila */
+        _notifAtual = null;
+        if (_notifQueue.length > 0) mostrarProximaNotif();
+        else $('paNotifModal').style.display = 'none';
+
+        /* Se o aluno aceitou e a aba Meu Grupo está aberta, recarrega */
+        if (acao === 'aceitar') {
+            const courseId = notif.dados?.courseId;
+            if (courseId && !_mgCursoId) {
+                /* Pré-seleciona o curso se nenhum estiver selecionado */
+                _mgCursoId   = courseId;
+                _mgCursoNome = notif.dados?.courseNome || courseId;
+                const sel = $('mgCursoSelect');
+                if (sel) sel.value = courseId;
+            }
+            if (_mgCursoId === courseId || !courseId) _mgCarregarDados();
+        }
+    } catch (_) {
+        btns.forEach(b => { b.disabled = false; });
+    }
+}
+window.responderConviteGrupo = responderConviteGrupo;
 
 async function confirmarNotif() {
     if (!_notifAtual) return;
@@ -2160,9 +2218,12 @@ function _mgHtmlGrupoAtual(g) {
         ? `<span class="mg-badge-lock">🔒 Bloqueado pelo professor</span>`
         : '';
     const membrosHtml = (g.membros || []).map(m => {
+        const isPendente = m.status === 'pendente';
         const euBadge = (m.email === _mgSessaoEmail()) ? ' mg-membro--eu' : '';
+        const pendBadge = isPendente ? ' mg-membro--pendente' : '';
         const label   = (m.email === _mgSessaoEmail()) ? ' (você)' : '';
-        return `<div class="mg-membro${euBadge}"><span class="mg-membro-avatar">👤</span>${_mgEsc(m.nome || m.email)}${label}</div>`;
+        const pendTag = isPendente ? ' <span class="mg-membro-pend-tag">⏳ pendente</span>' : '';
+        return `<div class="mg-membro${euBadge}${pendBadge}"><span class="mg-membro-avatar">${isPendente ? '⏳' : '👤'}</span>${_mgEsc(m.nome || m.email)}${label}${pendTag}</div>`;
     }).join('');
 
     const btnSair = !g.bloqueado

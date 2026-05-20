@@ -488,6 +488,8 @@ export async function initializeDatabase() {
 
         /* bloqueado pode ser alterado pelo professor via API */
         await client.query(`ALTER TABLE grupos_portal ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN NOT NULL DEFAULT false`);
+        /* status do convite: 'aceito' (padrão legado) | 'pendente' | 'recusado' */
+        await client.query(`ALTER TABLE grupos_portal_membros ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aceito'`);
 
         /* ── Passeios e Eventos Externos ── */
         await client.query(`

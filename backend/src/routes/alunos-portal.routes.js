@@ -1324,13 +1324,15 @@ export function createAlunosPortalRouter() {
             const { rows } = await pool.query(`
                 SELECT gp.id, gp.nome, gp.bloqueado, gp.criado_por, gp.criado_em,
                        COALESCE(
-                           json_agg(json_build_object('email', m.aluno_email, 'nome', m.aluno_nome)
-                                    ORDER BY m.entrou_em)
+                           json_agg(json_build_object(
+                               'email', m.aluno_email, 'nome', m.aluno_nome, 'status', m.status
+                           ) ORDER BY m.entrou_em)
                            FILTER (WHERE m.id IS NOT NULL), '[]'
                        ) AS membros
                 FROM grupos_portal gp
-                JOIN grupos_portal_membros m2 ON m2.grupo_id = gp.id AND m2.aluno_email = $2
-                LEFT JOIN grupos_portal_membros m  ON m.grupo_id  = gp.id
+                JOIN grupos_portal_membros m2 ON m2.grupo_id = gp.id
+                    AND m2.aluno_email = $2 AND m2.status = 'aceito'
+                LEFT JOIN grupos_portal_membros m ON m.grupo_id = gp.id
                 WHERE gp.course_id = $1
                 GROUP BY gp.id
             `, [courseId, aluno.email]);
@@ -1366,10 +1368,10 @@ export function createAlunosPortalRouter() {
             );
             if (!isEnrolled) return res.status(403).json({ erro: 'Acesso negado.' });
             const { rows: membros } = await pool.query(`
-                SELECT m.aluno_email, m.aluno_nome, gp.nome AS grupo_nome, gp.id AS grupo_id, gp.bloqueado
+                SELECT m.aluno_email, m.aluno_nome, m.status, gp.nome AS grupo_nome, gp.id AS grupo_id, gp.bloqueado
                 FROM grupos_portal_membros m
                 JOIN grupos_portal gp ON gp.id = m.grupo_id
-                WHERE gp.course_id = $1
+                WHERE gp.course_id = $1 AND m.status IN ('aceito', 'pendente')
             `, [courseId]);
             const membroMap = Object.fromEntries(membros.map(m => [m.aluno_email, m]));
             const colegas = studentsRaw
@@ -1416,18 +1418,81 @@ export function createAlunosPortalRouter() {
                     SELECT m.aluno_email FROM grupos_portal_membros m
                     JOIN grupos_portal gp ON gp.id = m.grupo_id
                     WHERE gp.course_id = $1 AND m.aluno_email = ANY($2::text[])
+                      AND m.status IN ('aceito', 'pendente')
                 `, [courseId, membroEmails]);
                 const jaSet = new Set(jaEmGrupo.map(r => r.aluno_email));
                 for (const email of membroEmails.slice(0, 15)) {
                     if (jaSet.has(email) || email === aluno.email) continue;
                     await pool.query(
-                        `INSERT INTO grupos_portal_membros (grupo_id, aluno_email, aluno_nome) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+                        `INSERT INTO grupos_portal_membros (grupo_id, aluno_email, aluno_nome, status)
+                         VALUES ($1, $2, $3, 'pendente') ON CONFLICT DO NOTHING`,
                         [g.id, email, '']
+                    );
+                    await criarNotif(
+                        email,
+                        'convite_grupo',
+                        `convite_grupo_${g.id}`,
+                        '👥 Convite para grupo',
+                        `${aluno.nome || aluno.email} convidou você para o grupo "${g.nome}" em ${courseName || g.course_nome || 'sua disciplina'}.`,
+                        { grupoId: g.id, grupoNome: g.nome, courseId, courseNome: courseName || '' }
                     );
                 }
             }
             logAluno(req, aluno.email, aluno.nome, 'CRIAR_GRUPO_PORTAL', { grupoId: g.id, nomeGrupo: g.nome });
             res.json({ ok: true, grupoId: g.id });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* POST /api/alunos-portal/grupos-portal/:grupoId/responder-convite
+       Responde a um convite de grupo: aceitar | recusar | ignorar */
+    router.post('/alunos-portal/grupos-portal/:grupoId/responder-convite', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const grupoId = parseInt(req.params.grupoId);
+        if (isNaN(grupoId)) return res.status(400).json({ erro: 'ID inválido.' });
+        const { acao, notifId } = req.body;
+        if (!['aceitar', 'recusar', 'ignorar'].includes(acao)) return res.status(400).json({ erro: 'Ação inválida.' });
+        try {
+            /* Verifica que o convite (pendente) existe */
+            const { rows: [convite] } = await pool.query(
+                `SELECT m.*, gp.course_id FROM grupos_portal_membros m
+                 JOIN grupos_portal gp ON gp.id = m.grupo_id
+                 WHERE m.grupo_id = $1 AND m.aluno_email = $2 AND m.status = 'pendente'`,
+                [grupoId, aluno.email]
+            );
+            if (!convite) return res.status(404).json({ erro: 'Convite não encontrado ou já respondido.' });
+
+            if (acao === 'aceitar') {
+                const { rows: [g] } = await pool.query(`SELECT * FROM grupos_portal WHERE id = $1`, [grupoId]);
+                if (g?.bloqueado) return res.status(403).json({ erro: 'Este grupo está bloqueado.' });
+                /* Garante que não está em outro grupo aceito na mesma disciplina */
+                const { rows: outro } = await pool.query(`
+                    SELECT gp.id FROM grupos_portal gp
+                    JOIN grupos_portal_membros m ON m.grupo_id = gp.id
+                    WHERE gp.course_id = $1 AND m.aluno_email = $2 AND m.status = 'aceito' AND gp.id != $3
+                `, [convite.course_id, aluno.email, grupoId]);
+                if (outro.length) return res.status(409).json({ erro: 'Você já está em outro grupo nesta disciplina.' });
+                await pool.query(
+                    `UPDATE grupos_portal_membros SET status = 'aceito', aluno_nome = $1
+                     WHERE grupo_id = $2 AND aluno_email = $3`,
+                    [aluno.nome || '', grupoId, aluno.email]
+                );
+            } else {
+                /* recusar ou ignorar: remove o convite */
+                await pool.query(
+                    `DELETE FROM grupos_portal_membros WHERE grupo_id = $1 AND aluno_email = $2`,
+                    [grupoId, aluno.email]
+                );
+            }
+            /* Marca a notificação como lida */
+            if (notifId) {
+                await pool.query(
+                    `UPDATE notificacoes_aluno SET lida = true WHERE id = $1 AND aluno_email = $2`,
+                    [notifId, aluno.email]
+                );
+            }
+            logAluno(req, aluno.email, aluno.nome, `${acao.toUpperCase()}_CONVITE_GRUPO`, { grupoId, acao });
+            res.json({ ok: true, acao });
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 

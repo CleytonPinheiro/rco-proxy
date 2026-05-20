@@ -468,7 +468,16 @@
                    target="_blank" rel="noopener" style="display:none">
                     Abrir atividade ↗
                 </a>
-                <button class="pa-notif-btn-ok" onclick="confirmarNotif()">
+                <!-- Botões exclusivos para convites de grupo -->
+                <div id="paNotifConviteBtns" style="display:none;gap:8px;justify-content:center;flex-wrap:wrap;width:100%">
+                    <button class="pa-notif-convite-btn pa-notif-convite-aceitar"
+                            onclick="responderConviteGrupo('aceitar')">✅ Aceitar</button>
+                    <button class="pa-notif-convite-btn pa-notif-convite-recusar"
+                            onclick="responderConviteGrupo('recusar')">❌ Recusar</button>
+                    <button class="pa-notif-convite-btn pa-notif-convite-ignorar"
+                            onclick="responderConviteGrupo('ignorar')">🙈 Ignorar por ora</button>
+                </div>
+                <button id="paNotifBtnOk" class="pa-notif-btn-ok" onclick="confirmarNotif()">
                     ✔ Entendido
                 </button>
             </div>
