@@ -1469,6 +1469,16 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
         if (sets.length === 0) return res.json({ ok: true });
         vals.push(req.params.id);
         try {
+            /* Captura estado anterior de segundo_corretor_ativo antes de sobrescrever */
+            let anteriorSegundoCorretor = null;
+            if (req.body.segundoCorretorAtivo !== undefined) {
+                const { rows: [ant] } = await pool.query(
+                    `SELECT segundo_corretor_ativo, segundo_corretor_pct FROM classroom_provas WHERE id = $1`,
+                    [req.params.id]
+                );
+                anteriorSegundoCorretor = ant || null;
+            }
+
             await pool.query(`UPDATE classroom_provas SET ${sets.join(', ')} WHERE id = $${i}`, vals);
             logProvas(req, 'PROVA_UPDATE', { provaId: req.params.id, campos: Object.keys(req.body) });
             res.json({ ok: true });
@@ -1495,6 +1505,49 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                         await notificarAtribuicaoTurmaCorretora(pool, provaId, String(novoTcId).trim());
                     } catch (e) {
                         console.warn(`[NOTIF-TC-ATRIB] prova ${provaId}:`, e.message);
+                    }
+                });
+            }
+
+            /* Sorteio retroativo: se segundo_corretor_ativo foi ativado agora (false → true),
+             * aplica auto-sorteio às submissões existentes que ainda não têm 2º corretor. */
+            const ativandoAgora = anteriorSegundoCorretor
+                && anteriorSegundoCorretor.segundo_corretor_ativo === false
+                && req.body.segundoCorretorAtivo === true;
+
+            if (ativandoAgora) {
+                setImmediate(async () => {
+                    try {
+                        const pct = Number(req.body.segundoCorretorPct ?? anteriorSegundoCorretor.segundo_corretor_pct ?? 15);
+
+                        /* Submissões principais sem 2º corretor pendente ou concluído */
+                        const { rows: subs } = await pool.query(
+                            `SELECT s.id FROM classroom_prova_submissoes s
+                              WHERE s.prova_id = $1
+                                AND s.eh_segundo_corretor = false
+                                AND s.eh_turma_corretora  = false
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM classroom_prova_submissoes sc
+                                     WHERE sc.submissao_ref_id = s.id
+                                       AND sc.eh_segundo_corretor = true
+                                )`,
+                            [provaId]
+                        );
+
+                        let sorteados = 0, pulados = 0, erros = 0;
+                        for (const sub of subs) {
+                            if (pct < 100 && Math.random() * 100 >= pct) { pulados++; continue; }
+                            try {
+                                await sortearSegundoCorretor(pool, { submissaoId: sub.id, provaId });
+                                sorteados++;
+                            } catch (e) {
+                                erros++;
+                                console.warn(`[2COR-RETRO] sub ${sub.id}: ${e.message}`);
+                            }
+                        }
+                        console.log(`[2COR-RETRO] prova ${provaId}: ${subs.length} submissões avaliadas — ${sorteados} sorteado(s), ${pulados} pulado(s) por probabilidade, ${erros} erro(s).`);
+                    } catch (e) {
+                        console.warn(`[2COR-RETRO] prova ${provaId}: erro geral —`, e.message);
                     }
                 });
             }
