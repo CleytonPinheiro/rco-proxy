@@ -44,6 +44,17 @@ function _chaveRascunhoTcor() {
     return `edusync_rascunho_tcor_${estado.tcor.submissao_ref_id}`;
 }
 
+function _questoesEmBranco() {
+    const brancos = [];
+    for (let q = 1; q <= estado.qtdQuestoes; q++) {
+        const v = estado.marcacoes[String(q)];
+        const emBranco = v == null || v === '-' || v === '' ||
+            (Array.isArray(v) && v.every(x => x == null));
+        if (emBranco) brancos.push(q);
+    }
+    return brancos;
+}
+
 function _mostrarAvisoRascunho(containerEl) {
     if (!containerEl) return;
     if (containerEl.querySelector('.pp-rascunho-restaurado')) return;
@@ -653,6 +664,12 @@ function renderTabelaTcor() {
 }
 
 async function enviarTurmaCorretora() {
+    const brancos = _questoesEmBranco();
+    if (brancos.length > 0) {
+        const lista = brancos.map(q => `Q${q}`).join(', ');
+        const msg = `${brancos.length} ${brancos.length === 1 ? 'questão sem marcação' : 'questões sem marcação'}: ${lista}. Deseja enviar assim mesmo?`;
+        if (!await confirmar('Questões em branco', msg, { confirmLabel: 'Enviar assim', tipo: 'danger' })) return;
+    }
     _tcorPausarCronometro();
     document.body.classList.remove('pp-tcor-split-ativo');
     const limpo = {};
@@ -976,6 +993,12 @@ function renderTabelaSegundo() {
 }
 
 async function enviarSegundo() {
+    const brancos = _questoesEmBranco();
+    if (brancos.length > 0) {
+        const lista = brancos.map(q => `Q${q}`).join(', ');
+        const msg = `${brancos.length} ${brancos.length === 1 ? 'questão sem marcação' : 'questões sem marcação'}: ${lista}. Deseja enviar assim mesmo?`;
+        if (!await confirmar('Questões em branco', msg, { confirmLabel: 'Enviar assim', tipo: 'danger' })) return;
+    }
     /* Remove marcações '-' (em branco) */
     const limpo = {};
     for (const [k, v] of Object.entries(estado.marcacoes)) {
