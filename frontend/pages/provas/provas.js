@@ -1018,7 +1018,9 @@ function renderDetalhe(d) {
     }
 
     /* Submissões (exclui explicitamente correções da turma corretora das linhas "principais") */
-    const principais = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora);
+    const principais = d.submissoes
+        .filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora)
+        .sort((a, b) => (a.aluno_nome || a.aluno_email || '').localeCompare(b.aluno_nome || b.aluno_email || '', 'pt-BR', { sensitivity: 'base' }));
     const segundas   = d.submissoes.filter(s =>  s.eh_segundo_corretor && !s.eh_turma_corretora);
     let sub = `<h3>Submissões dos alunos</h3>`;
     if (!p.efetivada) {
