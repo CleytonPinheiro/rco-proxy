@@ -361,6 +361,7 @@
         atualizarBotaoLogout();
         configurarLogout();
         injetarLinkRetorno(user);
+        injetarLinkBoletim(user);
         injetarLinkAdmin(user);
         injetarLinkPlanos(user);
         if (user.impersonando) {
@@ -642,7 +643,31 @@
     }
 
     /* ══════════════════════════════════════════════════════════════════════
-       4b. Link Admin no nav
+       4b. Link Boletim de Notas no nav (professor e pedagogo)
+    ══════════════════════════════════════════════════════════════════════ */
+    function injetarLinkBoletim(user) {
+        const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+        if (!podeAcessar(perfilEfetivo, 'boletim')) return;
+        const nav = document.querySelector('.nav-menu');
+        if (!nav || nav.querySelector('a[href="/pages/boletim/"]')) return;
+
+        const link = document.createElement('a');
+        link.href        = '/pages/boletim/';
+        link.textContent = 'Boletim';
+        if (location.pathname.startsWith('/pages/boletim/')) link.classList.add('active');
+        /* Insere após o link Retorno Pedagógico se existir, senão após Pedagógico, senão appenda */
+        const retLink = nav.querySelector('a[href="/pages/retorno-pedagogico/"]');
+        const pedLink = nav.querySelector('a[href="/pages/pedagogico/"]');
+        const anchor  = retLink ?? pedLink;
+        if (anchor && anchor.nextSibling) {
+            nav.insertBefore(link, anchor.nextSibling);
+        } else {
+            nav.appendChild(link);
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       4c. Link Admin no nav
     ══════════════════════════════════════════════════════════════════════ */
     function injetarLinkAdmin(user) {
         if (user.perfilReal !== 'admin' && user.perfil !== 'admin') return;

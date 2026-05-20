@@ -15,11 +15,11 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'confrontar-gabarito', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'confrontar-gabarito', 'boletim', 'qrcode', 'suporte', 'passeios'],
     },
     pedagogo: {
         nome: 'Pedagogo',
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'boletim', 'qrcode', 'suporte', 'passeios'],
     },
     secretaria: {
         nome: 'Secretaria',
@@ -62,6 +62,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'solicitacoes',       nome: 'Solicitações (Classroom)' },
     { id: 'portal-log',         nome: 'Log Portal Aluno' },
     { id: 'planos',             nome: 'Planos' },
+    { id: 'boletim',            nome: 'Boletim de Notas RCO' },
     { id: 'passeios',           nome: 'Passeios e Eventos' },
 ];
 

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <script src="../../shared/js/theme.js"></script>
+    <link rel="icon" type="image/svg+xml" href="../../shared/assets/favicon.svg">
+    <link rel="stylesheet" href="../../shared/css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EduSync — Boletim de Notas RCO por aluno e disciplina.">
+    <title>EduSync — Boletim de Notas</title>
+    <link rel="stylesheet" href="../../shared/css/layout.css">
+    <link rel="stylesheet" href="../../shared/css/custom-select.css">
+    <link rel="stylesheet" href="./boletim.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="btn-side-menu" onclick="abrirSidePanel()" title="Ferramentas">☰</button>
+                <a href="/pages/dashboard/" class="logo-link" title="Início">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-edu">Edu</span><span class="logo-sync">Sync</span>
+                </a>
+            </div>
+            <div class="header-divider"></div>
+            <nav class="nav-menu">
+                <a href="/pages/dashboard/">Turmas</a>
+                <a href="/pages/frequencias/">Frequências</a>
+                <a href="/pages/boletim/" class="active">Boletim</a>
+            </nav>
+            <div class="header-actions">
+                <div id="userBadge" class="user-badge"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-container">
+        <div class="page-header">
+            <h1 class="page-title">📊 Boletim de Notas RCO</h1>
+            <p class="page-subtitle">Consulte as notas parciais dos alunos por disciplina diretamente do RCO Digital.</p>
+        </div>
+
+        <!-- Filtros -->
+        <section class="bol-filtros card">
+            <div class="bol-filtros-grid">
+                <div class="bol-campo">
+                    <label for="selTurma">Turma</label>
+                    <select id="selTurma">
+                        <option value="">— selecione a turma —</option>
+                    </select>
+                </div>
+                <div class="bol-campo">
+                    <label for="selDisciplina">Disciplina</label>
+                    <select id="selDisciplina" disabled>
+                        <option value="">— selecione a disciplina —</option>
+                    </select>
+                </div>
+                <div class="bol-campo bol-campo-btn">
+                    <button id="btnBuscar" class="btn-primary" disabled>
+                        <span id="btnBuscarIcon">🔍</span> Buscar Notas
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Área de resultado -->
+        <section id="secResultado" class="bol-resultado" style="display:none">
+            <div class="bol-resultado-header">
+                <div>
+                    <h2 id="tituloResultado" class="bol-turma-titulo"></h2>
+                    <p id="subtituloResultado" class="bol-turma-subtitulo"></p>
+                </div>
+                <button id="btnExportar" class="btn-secondary" title="Exportar CSV">
+                    ⬇️ Exportar CSV
+                </button>
+            </div>
+            <div class="bol-tabela-wrap">
+                <table id="tabelaBoletim" class="bol-tabela">
+                    <thead id="theadBoletim"></thead>
+                    <tbody id="tbodyBoletim"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Estados -->
+        <div id="secVazio" class="bol-estado">
+            <span class="bol-estado-icone">📋</span>
+            <p>Selecione uma turma e disciplina para visualizar o boletim.</p>
+        </div>
+        <div id="secLoading" class="bol-estado" style="display:none">
+            <span class="bol-estado-icone bol-spin">⏳</span>
+            <p>Buscando notas no RCO Digital…</p>
+        </div>
+        <div id="secErro" class="bol-estado bol-estado-erro" style="display:none">
+            <span class="bol-estado-icone">⚠️</span>
+            <p id="msgErro">Erro ao carregar.</p>
+        </div>
+    </main>
+
+    <script src="../../shared/js/auth.js"></script>
+    <script src="./boletim.js"></script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+/* ── Boletim de Notas RCO ───────────────────────────────────────── */
+
+.page-header {
+    margin-bottom: 1.5rem;
+}
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 .25rem;
+}
+.page-subtitle {
+    color: var(--text-secondary);
+    margin: 0;
+    font-size: .9rem;
+}
+
+/* ── Filtros ─────────────────────────────────────────────────────── */
+.bol-filtros {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem 1.5rem;
+}
+.bol-filtros-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+.bol-campo {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    min-width: 180px;
+    flex: 1;
+}
+.bol-campo label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.bol-campo select {
+    padding: .5rem .75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input, var(--bg-card));
+    color: var(--text-primary);
+    font-size: .92rem;
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.bol-campo select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+.bol-campo select:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+.bol-campo-btn {
+    flex: 0 0 auto;
+    min-width: unset;
+}
+
+/* ── Resultado ───────────────────────────────────────────────────── */
+.bol-resultado {
+    animation: fadeIn .25s ease;
+}
+.bol-resultado-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.bol-turma-titulo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 .2rem;
+}
+.bol-turma-subtitulo {
+    font-size: .85rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Tabela ──────────────────────────────────────────────────────── */
+.bol-tabela-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+.bol-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+}
+.bol-tabela thead {
+    background: var(--bg-subtle, var(--bg-hover));
+}
+.bol-tabela th {
+    padding: .6rem .9rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border-color);
+}
+.bol-tabela th.bol-nota-th {
+    text-align: center;
+    min-width: 70px;
+}
+.bol-tabela td {
+    padding: .55rem .9rem;
+    border-bottom: 1px solid var(--border-subtle, var(--border-color));
+    vertical-align: middle;
+    color: var(--text-primary);
+}
+.bol-tabela tbody tr:last-child td {
+    border-bottom: none;
+}
+.bol-tabela tbody tr:hover {
+    background: var(--bg-hover);
+}
+.bol-td-chamada {
+    width: 52px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: .82rem;
+}
+.bol-td-nome {
+    font-weight: 500;
+}
+.bol-td-nota {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.bol-nota-val {
+    display: inline-block;
+    min-width: 36px;
+    padding: .15rem .4rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: .85rem;
+    text-align: center;
+}
+.bol-nota-ok   { background: #dcfce7; color: #166534; }
+.bol-nota-med  { background: #fef9c3; color: #854d0e; }
+.bol-nota-bad  { background: #fee2e2; color: #991b1b; }
+.bol-nota-none { background: var(--bg-subtle, #f3f4f6); color: var(--text-secondary); }
+
+[data-theme="dark"] .bol-nota-ok  { background: #14532d; color: #86efac; }
+[data-theme="dark"] .bol-nota-med { background: #422006; color: #fde047; }
+[data-theme="dark"] .bol-nota-bad { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .bol-nota-none{ background: var(--bg-hover); color: var(--text-secondary); }
+
+.bol-td-media {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.bol-media-val {
+    display: inline-block;
+    min-width: 40px;
+    padding: .2rem .5rem;
+    border-radius: 5px;
+    font-weight: 700;
+    font-size: .9rem;
+    text-align: center;
+    border: 1px solid transparent;
+}
+.bol-media-ok  { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.bol-media-med { background: #fef9c3; color: #ca8a04; border-color: #fde047; }
+.bol-media-bad { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.bol-media-none{ color: var(--text-secondary); }
+
+[data-theme="dark"] .bol-media-ok  { background: #14532d; color: #4ade80; border-color: #166534; }
+[data-theme="dark"] .bol-media-med { background: #422006; color: #facc15; border-color: #854d0e; }
+[data-theme="dark"] .bol-media-bad { background: #450a0a; color: #f87171; border-color: #991b1b; }
+
+/* ── Estados (vazio, loading, erro) ─────────────────────────────── */
+.bol-estado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    padding: 3.5rem 1rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.bol-estado-icone {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+.bol-estado p {
+    margin: 0;
+    font-size: .95rem;
+}
+.bol-estado-erro {
+    color: var(--danger, #dc2626);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.bol-spin { display: inline-block; animation: spin 1s linear infinite; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsivo ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .bol-filtros-grid { flex-direction: column; }
+    .bol-campo-btn    { align-items: stretch; }
+    .bol-campo-btn .btn-primary { width: 100%; justify-content: center; }
+    .bol-resultado-header { flex-direction: column; }
+    .bol-resultado-header .btn-secondary { align-self: flex-start; }
+}
