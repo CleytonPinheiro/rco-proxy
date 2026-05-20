@@ -351,6 +351,34 @@ html, body {
     justify-content: space-between;
     gap: 12px;
 }
+.pa-curso-header--toggle {
+    cursor: pointer;
+    user-select: none;
+}
+.pa-curso-header--toggle:hover { filter: brightness(1.08); }
+
+/* Chevron */
+.pa-curso-chevron {
+    font-size: .85rem;
+    color: rgba(255,255,255,.85);
+    transition: transform .22s ease;
+    display: inline-block;
+    line-height: 1;
+}
+.pa-curso-card--collapsed .pa-curso-chevron { transform: rotate(-90deg); }
+
+/* Corpo colapsável */
+.pa-curso-body {
+    overflow: hidden;
+    transition: max-height .28s ease, opacity .22s ease;
+    max-height: 4000px;
+    opacity: 1;
+}
+.pa-curso-card--collapsed .pa-curso-body {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
 .pa-curso-info  { flex: 1; min-width: 0; }
 .pa-curso-nome  {
     font-size: 1rem;

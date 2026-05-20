@@ -1050,24 +1050,33 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
                                   : `${qtd} pendente${qtd !== 1 ? 's' : ''}`;
 
     const header = document.createElement('div');
-    header.className = 'pa-curso-header';
+    header.className = 'pa-curso-header pa-curso-header--toggle';
     header.innerHTML = `
         <div class="pa-curso-info">
             <div class="pa-curso-nome" title="${esc(curso.nome)}">${esc(curso.nome)}</div>
             ${curso.secao ? `<div class="pa-curso-secao">${esc(curso.secao)}</div>` : ''}
         </div>
-        <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}${aguardando ? ' pa-curso-badge--aguardando' : ''}">${badgeLabel}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="pa-curso-badge${zerada ? ' pa-curso-badge--zerada' : ''}${aguardando ? ' pa-curso-badge--aguardando' : ''}">${badgeLabel}</span>
+            <span class="pa-curso-chevron">▾</span>
+        </div>
     `;
+    header.addEventListener('click', () => card.classList.toggle('pa-curso-card--collapsed'));
     card.appendChild(header);
 
+    /* ── Corpo colapsável ──────────────────────────────── */
+    const body = document.createElement('div');
+    body.className = 'pa-curso-body';
+
     const statusBar = renderStatusBar(curso);
-    if (statusBar) card.appendChild(statusBar);
+    if (statusBar) body.appendChild(statusBar);
 
     if (zerada) {
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
         items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { zerada: true, cursoId: curso.cursoId, cursoNome: curso.nome })));
-        card.appendChild(lista);
+        body.appendChild(lista);
+        card.appendChild(body);
         return card;
     }
 
@@ -1075,7 +1084,8 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
         const lista = document.createElement('ul');
         lista.className = 'pa-atividade-lista';
         items.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { aguardando: true })));
-        card.appendChild(lista);
+        body.appendChild(lista);
+        card.appendChild(body);
         return card;
     }
 
@@ -1122,7 +1132,7 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
         gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
         secao.appendChild(lista);
 
-        card.appendChild(secao);
+        body.appendChild(secao);
     });
 
     /* Atividades sem grupo — só mostra se o curso NÃO tem grupos definidos */
@@ -1142,9 +1152,10 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
         semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
         secao.appendChild(lista);
 
-        card.appendChild(secao);
+        body.appendChild(secao);
     }
 
+    card.appendChild(body);
     return card;
 }
 
