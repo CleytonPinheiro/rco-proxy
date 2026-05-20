@@ -43,6 +43,7 @@
         '/pages/solicitacoes/':           'solicitacoes',
         '/pages/portal-log/':             'portal-log',
         '/pages/passeios/':               'passeios',
+        '/pages/ficha-aluno/':            'ficha-aluno',
     };
 
     /* ── Dependência pai → filho. Espelha backend/src/config/permissions.js
@@ -64,9 +65,9 @@
          `permissoesPerfis`) — usamos cache em localStorage para flash-free.   ── */
     const PERFIL_MODULOS_DEFAULT = {
         admin:      ['*'],
-        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','analise-cola','confrontar-gabarito','boletim','qrcode','suporte','passeios'],
-        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','boletim','alertas-faltas','qrcode','suporte','passeios'],
-        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte','passeios'],
+        professor:  ['dashboard','frequencias','atividades','classroom','comportamento','grupos','mapa-sala','pedagogico','retorno-pedagogico','provas','analise-cola','confrontar-gabarito','boletim','qrcode','suporte','passeios','ficha-aluno'],
+        pedagogo:   ['dashboard','comportamento','pedagogico','retorno-pedagogico','frequencias','comunicados','mapa-sala','boletim','alertas-faltas','qrcode','suporte','passeios','ficha-aluno'],
+        secretaria: ['dashboard','crachas','emprestimos','materiais','comunicados','circulacao','qrcode','suporte','passeios','ficha-aluno'],
         aux_turno:  ['circulacao','presenca','qrcode','suporte'],
         cozinha:    ['cozinha','qrcode','suporte'],
     };

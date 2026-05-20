@@ -73,6 +73,14 @@ paginasRedirect.forEach(p => {
     app.get(`/${p}.html`, (req, res) => res.redirect(301, `/pages/${p}/`));
 });
 app.get('/app', (_req, res) => res.redirect('/login/'));
+app.get('/ficha-aluno', (req, res) => {
+    const qs = new URLSearchParams(req.query).toString();
+    res.redirect(302, '/pages/ficha-aluno/' + (qs ? '?' + qs : ''));
+});
+app.get('/ficha-aluno/', (req, res) => {
+    const qs = new URLSearchParams(req.query).toString();
+    res.redirect(302, '/pages/ficha-aluno/' + (qs ? '?' + qs : ''));
+});
 
 // Arquivos estáticos servidos ANTES do listen para evitar "Cannot GET" durante inicialização
 // HTML sempre revalidado; assets (CSS/JS/SVG/imagens/fontes) cacheados por 1 hora no browser

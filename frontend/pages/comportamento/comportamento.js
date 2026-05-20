@@ -439,6 +439,11 @@ function registrarParaAluno() {
     abrirModalOcorrencia(alunoFoco.codMatrizAluno);
 }
 
+function abrirFichaCompleta() {
+    if (!alunoFoco) return;
+    window.open(`/pages/ficha-aluno/?codMatrizAluno=${alunoFoco.codMatrizAluno}`, '_blank');
+}
+
 async function excluirOcorrencia(id, codMatrizAluno) {
     if (!await confirmar('Excluir registro?', 'Excluir este registro de comportamento?', { confirmLabel: 'Excluir', tipo: 'danger' })) return;
     await fetch(`${API}/api/comportamento/${id}`, { method: 'DELETE' });

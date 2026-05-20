@@ -15,15 +15,15 @@ export const PERFIS = {
     },
     professor: {
         nome: 'Professor',
-        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'confrontar-gabarito', 'boletim', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'frequencias', 'atividades', 'classroom', 'comportamento', 'grupos', 'mapa-sala', 'pedagogico', 'retorno-pedagogico', 'provas', 'analise-cola', 'confrontar-gabarito', 'boletim', 'qrcode', 'suporte', 'passeios', 'ficha-aluno'],
     },
     pedagogo: {
         nome: 'Pedagogo',
-        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'boletim', 'alertas-faltas', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'comportamento', 'pedagogico', 'retorno-pedagogico', 'frequencias', 'comunicados', 'mapa-sala', 'boletim', 'alertas-faltas', 'qrcode', 'suporte', 'passeios', 'ficha-aluno'],
     },
     secretaria: {
         nome: 'Secretaria',
-        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'qrcode', 'suporte', 'passeios'],
+        modulos: ['dashboard', 'crachas', 'emprestimos', 'materiais', 'comunicados', 'circulacao', 'qrcode', 'suporte', 'passeios', 'ficha-aluno'],
     },
     aux_turno: {
         nome: 'Aux. de Turno',
@@ -65,6 +65,7 @@ export const MODULOS_DISPONIVEIS = [
     { id: 'boletim',            nome: 'Boletim de Notas RCO' },
     { id: 'alertas-faltas',     nome: 'Alertas de Faltas (Pedagogo)' },
     { id: 'passeios',           nome: 'Passeios e Eventos' },
+    { id: 'ficha-aluno',        nome: 'Ficha Completa do Aluno' },
 ];
 
 /**
