@@ -397,10 +397,12 @@
         injetar();
 
         const {
-            confirmLabel = 'Confirmar',
-            cancelLabel  = 'Cancelar',
-            tipo         = 'info',
+            confirmLabel  = 'Confirmar',
+            cancelLabel   = 'Cancelar',
+            tipo          = 'info',
             icone,
+            focusCancel   = false,
+            backdropClose = true,
         } = opcoes || {};
 
         const overlay  = document.getElementById(MODAL_ID);
@@ -421,7 +423,11 @@
         caixa.classList.toggle('mc-ok', tipo === 'ok');
 
         overlay.classList.add('mc-visivel');
-        btnOk.focus();
+        if (focusCancel && cancelLabel) {
+            btnCan.focus();
+        } else {
+            btnOk.focus();
+        }
 
         return new Promise(resolve => {
             function fechar(resultado) {
@@ -434,9 +440,9 @@
             }
             function onOk()      { fechar(true); }
             function onCancel()  { fechar(false); }
-            function onBackdrop(e) { if (e.target === overlay) fechar(false); }
+            function onBackdrop(e) { if (backdropClose && e.target === overlay) fechar(false); }
             function onKey(e) {
-                if (e.key === 'Escape') { fechar(false); }
+                if (backdropClose && e.key === 'Escape') { fechar(false); }
                 if (e.key === 'Enter' && document.activeElement === btnOk) { e.preventDefault(); fechar(true); }
             }
 

@@ -272,8 +272,18 @@ function voltarVariante() {
 
 async function confirmarMarcacoes() {
     const marcadas = Object.keys(estado.marcacoes).length;
-    if (marcadas < estado.qtdQuestoes) {
-        if (!await confirmar('Enviar incompleto?', `Você marcou ${marcadas} de ${estado.qtdQuestoes}. Enviar mesmo assim?`, { confirmLabel: 'Enviar assim', tipo: 'danger' })) return;
+    if (marcadas === 0) {
+        if (!await confirmar(
+            'Nenhuma questão marcada',
+            `Você não marcou nenhuma das ${estado.qtdQuestoes} questões. Tem certeza que quer enviar em branco?`,
+            { confirmLabel: 'Enviar em branco', tipo: 'danger', focusCancel: true, backdropClose: false }
+        )) return;
+    } else if (marcadas < estado.qtdQuestoes) {
+        if (!await confirmar(
+            'Enviar incompleto?',
+            `Você marcou ${marcadas} de ${estado.qtdQuestoes}. Enviar mesmo assim?`,
+            { confirmLabel: 'Enviar assim', tipo: 'danger', focusCancel: true, backdropClose: false }
+        )) return;
     }
     /* Tentamos enviar SEM foto primeiro. Se backend disser que foto é obrigatória, redirecionamos pra etapa de foto. */
     if (estado.prova.foto_modo === 'sempre') {
@@ -668,7 +678,7 @@ async function enviarTurmaCorretora() {
     if (brancos.length > 0) {
         const lista = brancos.map(q => `Q${q}`).join(', ');
         const msg = `${brancos.length} ${brancos.length === 1 ? 'questão sem marcação' : 'questões sem marcação'}: ${lista}. Deseja enviar assim mesmo?`;
-        if (!await confirmar('Questões em branco', msg, { confirmLabel: 'Enviar assim', tipo: 'danger' })) return;
+        if (!await confirmar('Questões em branco', msg, { confirmLabel: 'Enviar assim', tipo: 'danger', focusCancel: true, backdropClose: false })) return;
     }
     _tcorPausarCronometro();
     document.body.classList.remove('pp-tcor-split-ativo');
@@ -997,7 +1007,7 @@ async function enviarSegundo() {
     if (brancos.length > 0) {
         const lista = brancos.map(q => `Q${q}`).join(', ');
         const msg = `${brancos.length} ${brancos.length === 1 ? 'questão sem marcação' : 'questões sem marcação'}: ${lista}. Deseja enviar assim mesmo?`;
-        if (!await confirmar('Questões em branco', msg, { confirmLabel: 'Enviar assim', tipo: 'danger' })) return;
+        if (!await confirmar('Questões em branco', msg, { confirmLabel: 'Enviar assim', tipo: 'danger', focusCancel: true, backdropClose: false })) return;
     }
     /* Remove marcações '-' (em branco) */
     const limpo = {};
