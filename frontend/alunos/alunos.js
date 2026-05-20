@@ -2257,40 +2257,12 @@ function _mgHtmlTodosLinks(links, membros) {
 
 /* Estado sem grupo: mostra lista de grupos + opção de criar */
 async function _mgCarregarSemGrupo(div) {
-    div.innerHTML = '<div class="mg-loading">⏳ Buscando grupos da disciplina...</div>';
-    let grupos = [];
-    try {
-        const r = await fetch(`/api/alunos-portal/grupos-portal?courseId=${encodeURIComponent(_mgCursoId)}`, { credentials: 'include' });
-        grupos = r.ok ? await r.json() : [];
-    } catch (_) { /* sem grupo disponível */ }
-
-    let gruposHtml = '';
-    if (grupos.length) {
-        gruposHtml = `<div class="mg-grupos-disponiveis">
-            <div class="mg-grupos-titulo">Grupos existentes nesta disciplina</div>
-            ${grupos.map(g => {
-                const locked = g.bloqueado ? `<span class="mg-badge-lock">🔒</span>` : '';
-                const btnEntrar = g.bloqueado
-                    ? `<button class="mg-btn-entrar" disabled title="Grupo bloqueado">🔒 Bloqueado</button>`
-                    : `<button class="mg-btn-entrar" onclick="mgEntrar(${g.id})">Entrar</button>`;
-                return `<div class="mg-grupo-item">
-                    <div class="mg-grupo-item-info">
-                        <div class="mg-grupo-item-nome">${locked} ${_mgEsc(g.nome)}</div>
-                        <div class="mg-grupo-item-meta">${(g.membros || []).length} integrante(s): ${(g.membros || []).map(m => _mgEsc(m.nome || m.email)).join(', ') || '—'}</div>
-                    </div>
-                    ${btnEntrar}
-                </div>`;
-            }).join('')}
-        </div>`;
-    }
-
     div.innerHTML = `
-        ${gruposHtml}
         <div class="mg-criar-section">
             <div class="mg-criar-topo">
                 <div>
                     <div class="mg-criar-titulo">➕ Criar novo grupo</div>
-                    ${!grupos.length ? '<div style="font-size:0.8rem;color:var(--pa-sub);margin-top:3px">Seja o primeiro a criar um grupo nesta disciplina.</div>' : ''}
+                    <div style="font-size:0.8rem;color:var(--pa-sub);margin-top:3px">Você ainda não faz parte de nenhum grupo nesta disciplina.</div>
                 </div>
                 <button class="mg-btn-criar" onclick="mgToggleCriarForm()">Criar Grupo</button>
             </div>
@@ -2307,8 +2279,6 @@ async function _mgCarregarSemGrupo(div) {
                 </div>
             </div>
         </div>`;
-
-    /* Não carrega colegas até o form ser aberto */
 }
 
 /* Toggle do formulário de criação + carrega colegas na abertura */
@@ -2329,17 +2299,18 @@ async function mgToggleCriarForm() {
             area.innerHTML = '<div class="mg-colegas-vazio">Nenhum colega encontrado na turma. O professor precisa estar conectado ao Classroom.</div>';
             return;
         }
+        /* Exibe apenas quem ainda não está em nenhum grupo */
+        const disponiveis = colegas.filter(c => !c.membro);
+        if (!disponiveis.length) {
+            area.innerHTML = '<div class="mg-colegas-vazio">Todos os colegas desta turma já estão em grupos.</div>';
+            return;
+        }
         area.innerHTML = `<div class="mg-colegas-grid">
-            ${colegas.map((c, i) => {
-                const ocupado = !!c.membro;
-                const grupoInfo = c.membro ? ` — ${_mgEsc(c.membro.grupo_nome)}` : '';
-                return `<label class="mg-colega-item${ocupado ? ' mg-colega-item--ocupado' : ''}" title="${_mgEsc(c.email)}">
+            ${disponiveis.map(c => `<label class="mg-colega-item" title="${_mgEsc(c.email)}">
                     <input type="checkbox" class="mg-colega-check" value="${_mgEsc(c.email)}"
-                           data-nome="${_mgEsc(c.nome)}" ${ocupado ? 'disabled' : ''}>
+                           data-nome="${_mgEsc(c.nome)}">
                     ${_mgEsc(c.nome || c.email)}
-                    ${ocupado ? `<span class="mg-colega-grupo">${grupoInfo}</span>` : ''}
-                </label>`;
-            }).join('')}
+                </label>`).join('')}
         </div>`;
     } catch (_) {
         area.innerHTML = '<div class="mg-colegas-vazio">Erro ao carregar colegas. Tente novamente.</div>';
