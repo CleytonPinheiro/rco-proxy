@@ -1328,7 +1328,11 @@ const NOTIF_COR = {
 function iniciarPollingNotificacoes() {
     if (_notifTimerId) return; /* já rodando */
     verificarNotificacoes();   /* imediato na primeira vez */
-    _notifTimerId = setInterval(verificarNotificacoes, 60_000); /* a cada 60 s */
+    _notifTimerId = setInterval(() => {
+        verificarNotificacoes();
+        carregarTurmaCorretora();   /* atualiza badge de folhas pendentes */
+        carregarTarefasCorretor();  /* atualiza badge de 2ª correção */
+    }, 60_000); /* a cada 60 s */
 }
 
 function pararPollingNotificacoes() {
