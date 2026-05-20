@@ -1795,22 +1795,35 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
                 return Math.round((acertos / total) * 100);
             }
 
+            function contarBranco(gabarito, marcacoes) {
+                if (!Array.isArray(gabarito) || !marcacoes) return 0;
+                let count = 0;
+                for (const q of gabarito) {
+                    const marc = marcacoes[String(q.questao)];
+                    if (marc == null || marc === '' ||
+                        (Array.isArray(marc) && marc.every(v => v == null || v === ''))) count++;
+                }
+                return count;
+            }
+
             const divergencias = rows.map(r => {
                 const nota1 = Number(r.nota_1 || 0);
                 const nota2 = Number(r.nota_2 || 0);
                 const div   = Math.abs(nota1 - nota2);
                 const flagInfo = flagsMap[r.aluno_email] || null;
                 const corretorAcertoPct = computeCorretorAcerto(r.gabarito, r.corretor_marcacoes);
+                const questoesEmBranco  = contarBranco(r.gabarito, r.corretor_marcacoes);
                 return {
-                    submissao_id:       r.submissao_id,
-                    aluno_email:        maskEmail(r.aluno_email),
-                    nota_1:             nota1,
-                    nota_2:             nota2,
-                    divergencia:        Math.round(div * 100) / 100,
-                    nivel:              nivelDiv(div),
-                    suspeito:           flagInfo?.suspeito || false,
-                    risco_cola_nivel:   flagInfo?.risco_cola_nivel || null,
+                    submissao_id:        r.submissao_id,
+                    aluno_email:         maskEmail(r.aluno_email),
+                    nota_1:              nota1,
+                    nota_2:              nota2,
+                    divergencia:         Math.round(div * 100) / 100,
+                    nivel:               nivelDiv(div),
+                    suspeito:            flagInfo?.suspeito || false,
+                    risco_cola_nivel:    flagInfo?.risco_cola_nivel || null,
                     corretor_acerto_pct: corretorAcertoPct,
+                    questoes_em_branco:  questoesEmBranco,
                 };
             });
 

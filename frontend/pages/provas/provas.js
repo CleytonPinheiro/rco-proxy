@@ -1047,6 +1047,12 @@ function renderDetalhe(d) {
             } else if (s.segundo_corretor_pendente_email) {
                 flags.push(`<span class="prv-flag prv-flag-2cor-pend" title="Corretor designado: ${escapeHtml(s.segundo_corretor_pendente_email)}">⏳ 2º aguardando</span>`);
             }
+            const varianteS = d.variantes.find(v => v.id === s.variante_id);
+            const emBranco = contarQuestoesEmBranco(varianteS?.gabarito_json, s.marcacoes_json);
+            if (emBranco > 0) {
+                const label = emBranco === 1 ? '1 questão em branco' : `${emBranco} questões em branco`;
+                flags.push(`<span class="prv-flag prv-flag-branco" title="${label} nesta correção">✏️ ${label}</span>`);
+            }
             const selVar = `<select id="prvVar_${s.id}" class="prv-sel-variante" title="Trocar variante recalcula a nota">
                 ${d.variantes.map(v => `<option value="${v.id}" ${v.id===s.variante_id?'selected':''}>.${escapeHtml(v.codigo)}</option>`).join('')}
             </select>
@@ -1090,6 +1096,24 @@ function renderDetalhe(d) {
         b.addEventListener('click', () => conferirFoto(parseInt(b.dataset.sub, 10))));
 
     $('prvBtnEfetivar').textContent = p.efetivada ? 'Reabrir como rascunho' : 'Efetivar notas';
+}
+
+/* Conta questões sem marcação em uma submissão */
+function contarQuestoesEmBranco(gabaritoJson, marcoesJson) {
+    if (!gabaritoJson) return 0;
+    try {
+        const gabarito = typeof gabaritoJson === 'string' ? JSON.parse(gabaritoJson) : gabaritoJson;
+        const marcacoes = marcoesJson || {};
+        let brancas = 0;
+        for (const q of gabarito) {
+            const marc = marcacoes[String(q.questao)];
+            if (marc == null || marc === '' ||
+                (Array.isArray(marc) && marc.every(v => v == null || v === ''))) {
+                brancas++;
+            }
+        }
+        return brancas;
+    } catch { return 0; }
 }
 
 /* Converte o JSON de mapeamento (armazenado no banco) para texto legível pelo professor */
@@ -1485,8 +1509,12 @@ function renderDivergencias(divergencias) {
         const autoridadeBadge = (d.corretor_acerto_pct != null && d.corretor_acerto_pct > 50)
             ? `<span class="prv-flag" style="background:#eff6ff;color:#1d4ed8" title="Corretor acertou ${d.corretor_acerto_pct}% das questões no gabarito — divergência confirmada com autoridade">🎓 Confirmado com autoridade (${d.corretor_acerto_pct}%)</span>`
             : '';
+        const emBranco2 = d.questoes_em_branco || 0;
+        const brancoBadge = emBranco2 > 0
+            ? `<span class="prv-flag prv-flag-branco" title="${emBranco2 === 1 ? '1 questão sem marcação' : emBranco2 + ' questões sem marcação'} na 2ª correção">✏️ ${emBranco2 === 1 ? '1 em branco' : emBranco2 + ' em branco'}</span>`
+            : '';
         return `<tr>
-            <td>${escapeHtml(d.aluno_email)}${suspeitoBadge ? '<br>' + suspeitoBadge : ''}</td>
+            <td>${escapeHtml(d.aluno_email)}${suspeitoBadge ? '<br>' + suspeitoBadge : ''}${brancoBadge ? '<br>' + brancoBadge : ''}</td>
             <td style="text-align:center">${d.nota_1}</td>
             <td style="text-align:center">${d.nota_2}</td>
             <td style="text-align:center">${d.divergencia}</td>
