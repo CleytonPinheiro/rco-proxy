@@ -252,6 +252,17 @@ async function criarNotif(email, tipo, referencia, titulo, mensagem, dados = {})
     } catch (_) { /* silencia erros de notificação */ }
 }
 
+/* ── Histórico de grupo ───────────────────────────────────────────── */
+async function logGrupo(grupoId, email, nome, acao, detalhes = {}) {
+    try {
+        await pool.query(
+            `INSERT INTO grupos_portal_historico (grupo_id, aluno_email, aluno_nome, acao, detalhes)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [grupoId, email, nome || '', acao, JSON.stringify(detalhes)]
+        );
+    } catch (_) { /* silencia erros de log */ }
+}
+
 /* ── Audit helper ─────────────────────────────────────────────────── */
 function parseUA(uaString) {
     if (!uaString) return {};
@@ -1436,8 +1447,10 @@ export function createAlunosPortalRouter() {
                         `${aluno.nome || aluno.email} convidou você para o grupo "${g.nome}" em ${courseName || g.course_nome || 'sua disciplina'}.`,
                         { grupoId: g.id, grupoNome: g.nome, courseId, courseNome: courseName || '' }
                     );
+                    await logGrupo(g.id, email, '', 'convite_enviado', { convidadoPor: aluno.nome || aluno.email });
                 }
             }
+            await logGrupo(g.id, aluno.email, aluno.nome, 'grupo_criado', { nomeGrupo: g.nome });
             logAluno(req, aluno.email, aluno.nome, 'CRIAR_GRUPO_PORTAL', { grupoId: g.id, nomeGrupo: g.nome });
             res.json({ ok: true, grupoId: g.id });
         } catch (e) { res.status(500).json({ erro: e.message }); }
@@ -1491,6 +1504,10 @@ export function createAlunosPortalRouter() {
                     [notifId, aluno.email]
                 );
             }
+            const acaoHist = acao === 'aceitar' ? 'convite_aceito'
+                           : acao === 'recusar' ? 'convite_recusado'
+                           : 'convite_ignorado';
+            await logGrupo(grupoId, aluno.email, aluno.nome, acaoHist, {});
             logAluno(req, aluno.email, aluno.nome, `${acao.toUpperCase()}_CONVITE_GRUPO`, { grupoId, acao });
             res.json({ ok: true, acao });
         } catch (e) { res.status(500).json({ erro: e.message }); }
@@ -1519,6 +1536,7 @@ export function createAlunosPortalRouter() {
                 `INSERT INTO grupos_portal_membros (grupo_id, aluno_email, aluno_nome) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
                 [grupoId, aluno.email, aluno.nome || '']
             );
+            await logGrupo(grupoId, aluno.email, aluno.nome, 'entrou', {});
             logAluno(req, aluno.email, aluno.nome, 'ENTRAR_GRUPO_PORTAL', { grupoId });
             res.json({ ok: true });
         } catch (e) { res.status(500).json({ erro: e.message }); }
@@ -1543,6 +1561,8 @@ export function createAlunosPortalRouter() {
             const { rows: [{ cnt }] } = await pool.query(
                 `SELECT COUNT(*)::int AS cnt FROM grupos_portal_membros WHERE grupo_id = $1`, [grupoId]
             );
+            /* Registra histórico antes de apagar o grupo (se ficar vazio, o CASCADE apaga) */
+            if (cnt > 0) await logGrupo(grupoId, aluno.email, aluno.nome, 'saiu', {});
             if (cnt === 0) await pool.query(`DELETE FROM grupos_portal WHERE id = $1`, [grupoId]);
             logAluno(req, aluno.email, aluno.nome, 'SAIR_GRUPO_PORTAL', { grupoId });
             res.json({ ok: true });
@@ -1574,7 +1594,40 @@ export function createAlunosPortalRouter() {
             `, [grupoId, aluno.email, aluno.nome || '',
                 linkBackend?.trim() || null, linkBanco?.trim() || null,
                 linkFrontend?.trim() || null, JSON.stringify(linksExtras)]);
+            const linksCount = [linkBackend, linkBanco, linkFrontend].filter(Boolean).length + linksExtras.length;
+            await logGrupo(grupoId, aluno.email, aluno.nome, 'link_salvo', {
+                backend:  !!linkBackend?.trim(),
+                banco:    !!linkBanco?.trim(),
+                frontend: !!linkFrontend?.trim(),
+                extras:   linksExtras.length,
+                total:    linksCount,
+            });
             res.json({ ok: true });
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
+    /* GET /api/alunos-portal/grupos-portal/:id/historico
+       Histórico de ações do grupo (apenas membros podem ver) */
+    router.get('/alunos-portal/grupos-portal/:id/historico', async (req, res) => {
+        const aluno = await getAlunoSession(req);
+        if (!aluno) return res.status(401).json({ erro: 'Não autenticado.' });
+        const grupoId = parseInt(req.params.id);
+        if (isNaN(grupoId)) return res.status(400).json({ erro: 'ID inválido.' });
+        try {
+            /* Apenas membros aceitos podem ver o histórico */
+            const { rows: mem } = await pool.query(
+                `SELECT 1 FROM grupos_portal_membros WHERE grupo_id = $1 AND aluno_email = $2 AND status = 'aceito'`,
+                [grupoId, aluno.email]
+            );
+            if (!mem.length) return res.status(403).json({ erro: 'Acesso negado.' });
+            const { rows } = await pool.query(`
+                SELECT id, aluno_email, aluno_nome, acao, detalhes, criado_em
+                FROM grupos_portal_historico
+                WHERE grupo_id = $1
+                ORDER BY criado_em DESC
+                LIMIT 100
+            `, [grupoId]);
+            res.json(rows);
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 

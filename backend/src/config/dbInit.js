@@ -491,6 +491,20 @@ export async function initializeDatabase() {
         /* status do convite: 'aceito' (padrão legado) | 'pendente' | 'recusado' */
         await client.query(`ALTER TABLE grupos_portal_membros ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aceito'`);
 
+        /* ── Histórico de ações do grupo portal ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS grupos_portal_historico (
+                id          SERIAL       PRIMARY KEY,
+                grupo_id    INT          NOT NULL REFERENCES grupos_portal(id) ON DELETE CASCADE,
+                aluno_email TEXT         NOT NULL,
+                aluno_nome  TEXT         NOT NULL DEFAULT '',
+                acao        TEXT         NOT NULL,
+                detalhes    JSONB        NOT NULL DEFAULT '{}',
+                criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_grupos_portal_hist_grupo ON grupos_portal_historico(grupo_id, criado_em DESC)`);
+
         /* ── Passeios e Eventos Externos ── */
         await client.query(`
             CREATE TABLE IF NOT EXISTS eventos (

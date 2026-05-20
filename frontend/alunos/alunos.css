@@ -2550,6 +2550,130 @@ html, body {
 .mg-btn-salvar:disabled { opacity: .55; cursor: default; }
 
 /* ── Links de todos os membros ───────────────────────── */
+/* ── Histórico do grupo ────────────────────────────────────────── */
+.mg-historico-section {
+    background: var(--pa-card);
+    border: 1.5px solid var(--pa-border);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px var(--pa-shadow);
+    overflow: hidden;
+}
+.mg-historico-details { }
+.mg-historico-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--pa-text);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    transition: background .15s;
+}
+.mg-historico-summary::-webkit-details-marker { display: none; }
+.mg-historico-summary::after {
+    content: '▾';
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--pa-sub);
+    transition: transform .2s;
+}
+.mg-historico-details[open] .mg-historico-summary::after { transform: rotate(180deg); }
+.mg-historico-summary:hover { background: var(--pa-hover, rgba(255,255,255,.04)); }
+.mg-hist-count {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--pa-sub);
+}
+.mg-historico-body {
+    padding: 4px 20px 16px 20px;
+    border-top: 1px solid var(--pa-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+.mg-historico-body::-webkit-scrollbar       { width: 5px; }
+.mg-historico-body::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+.mg-historico-body::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+/* Timeline entries */
+.mg-hist-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    position: relative;
+}
+.mg-hist-entry + .mg-hist-entry::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--pa-border);
+    opacity: .5;
+}
+.mg-hist-icone {
+    font-size: 1.1rem;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 1px;
+    background: rgba(255,255,255,.05);
+}
+/* Colored left accent per action type */
+.mg-hist-entry--verde .mg-hist-icone { background: rgba(52,211,153,.12); }
+.mg-hist-entry--azul  .mg-hist-icone { background: rgba(96,165,250,.12); }
+.mg-hist-entry--verm  .mg-hist-icone { background: rgba(248,113,113,.12); }
+.mg-hist-entry--laran .mg-hist-icone { background: rgba(251,146,60,.12); }
+.mg-hist-entry--roxo  .mg-hist-icone { background: rgba(167,139,250,.12); }
+.mg-hist-entry--cinza .mg-hist-icone { background: rgba(148,163,184,.08); }
+
+.mg-hist-corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.mg-hist-texto { font-size: 0.85rem; color: var(--pa-text); line-height: 1.4; }
+.mg-hist-detalhe {
+    font-size: 0.76rem;
+    color: var(--pa-sub);
+    font-style: italic;
+}
+.mg-hist-tempo {
+    font-size: 0.74rem;
+    color: var(--pa-sub);
+    margin-top: 1px;
+}
+.mg-hist-eu {
+    font-size: 0.7rem;
+    background: var(--pa-badge-bg);
+    color: var(--pa-badge-color);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+.mg-hist-loading, .mg-hist-vazio {
+    font-size: 0.82rem;
+    color: var(--pa-sub);
+    padding: 14px 0 4px;
+    text-align: center;
+}
+
 .mg-todos-links {
     background: var(--pa-card);
     border: 1.5px solid var(--pa-border);

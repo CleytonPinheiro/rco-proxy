@@ -2207,6 +2207,7 @@ function _mgRenderConteudo() {
     if (!div) return;
     if (_mgGrupo) {
         div.innerHTML = _mgHtmlGrupoAtual(_mgGrupo);
+        _mgCarregarHistorico(_mgGrupo.id);
     } else {
         _mgCarregarSemGrupo(div);
     }
@@ -2280,7 +2281,19 @@ function _mgHtmlGrupoAtual(g) {
         <button class="mg-btn-salvar" onclick="mgSalvarLinks(${g.id})">💾 Salvar meus links</button>
     </div>
 
-    ${todosLinksHtml}`;
+    ${todosLinksHtml}
+
+    <div class="mg-historico-section">
+        <details class="mg-historico-details" id="mgHistDetails_${g.id}">
+            <summary class="mg-historico-summary">
+                <span>📜 Histórico do Grupo</span>
+                <span id="mgHistCount_${g.id}" class="mg-hist-count"></span>
+            </summary>
+            <div id="mgHistBody_${g.id}" class="mg-historico-body">
+                <div class="mg-hist-loading">⏳ Carregando histórico…</div>
+            </div>
+        </details>
+    </div>`;
 }
 
 /* Linha de link extra dinâmico */
@@ -2314,6 +2327,79 @@ function _mgHtmlTodosLinks(links, membros) {
         </div>`;
     }).join('');
     return `<div class="mg-todos-links"><div class="mg-todos-titulo">📋 Links de todos os integrantes</div>${rows}</div>`;
+}
+
+/* ── Histórico do grupo ───────────────────────────────────────────── */
+async function _mgCarregarHistorico(grupoId) {
+    const body  = document.getElementById(`mgHistBody_${grupoId}`);
+    const count = document.getElementById(`mgHistCount_${grupoId}`);
+    if (!body) return;
+    try {
+        const r = await fetch(`/api/alunos-portal/grupos-portal/${grupoId}/historico`);
+        if (!r.ok) throw new Error('Erro ao carregar histórico.');
+        const hist = await r.json();
+        if (count) count.textContent = hist.length ? `(${hist.length})` : '';
+        body.innerHTML = hist.length
+            ? hist.map(_mgHtmlHistEntrada).join('')
+            : '<div class="mg-hist-vazio">Nenhuma ação registrada ainda.</div>';
+    } catch (e) {
+        if (body) body.innerHTML = `<div class="mg-hist-vazio">⚠ ${e.message}</div>`;
+    }
+}
+
+function _mgHtmlHistEntrada(h) {
+    const ACOES = {
+        grupo_criado:     { icone: '🎉', cls: 'verde', txt: n => `${n} criou o grupo` },
+        convite_enviado:  { icone: '📨', cls: 'azul',  txt: n => `${n} recebeu um convite` },
+        convite_aceito:   { icone: '✅', cls: 'verde', txt: n => `${n} aceitou o convite` },
+        convite_recusado: { icone: '❌', cls: 'verm',  txt: n => `${n} recusou o convite` },
+        convite_ignorado: { icone: '🙈', cls: 'cinza', txt: n => `${n} ignorou o convite` },
+        entrou:           { icone: '➕', cls: 'verde', txt: n => `${n} entrou no grupo` },
+        saiu:             { icone: '➖', cls: 'laran',  txt: n => `${n} saiu do grupo` },
+        link_salvo:       { icone: '🔗', cls: 'roxo',  txt: n => `${n} atualizou os links` },
+    };
+    const a    = ACOES[h.acao] || { icone: '•', cls: 'cinza', txt: n => `${n} realizou uma ação` };
+    const nome = _mgEsc(h.aluno_nome || h.aluno_email.split('@')[0]);
+    const euLabel = h.aluno_email === _mgSessaoEmail()
+        ? ' <span class="mg-hist-eu">você</span>' : '';
+
+    let detalhe = '';
+    if (h.acao === 'link_salvo' && h.detalhes) {
+        const d = h.detalhes, parts = [];
+        if (d.backend)    parts.push('Back-end');
+        if (d.banco)      parts.push('Banco');
+        if (d.frontend)   parts.push('Front-end');
+        if (d.extras > 0) parts.push(`${d.extras} extra${d.extras > 1 ? 's' : ''}`);
+        if (parts.length) detalhe = `<span class="mg-hist-detalhe">${parts.join(' · ')}</span>`;
+    } else if (h.acao === 'convite_enviado' && h.detalhes?.convidadoPor) {
+        detalhe = `<span class="mg-hist-detalhe">por ${_mgEsc(h.detalhes.convidadoPor)}</span>`;
+    } else if (h.acao === 'grupo_criado' && h.detalhes?.nomeGrupo) {
+        detalhe = `<span class="mg-hist-detalhe">"${_mgEsc(h.detalhes.nomeGrupo)}"</span>`;
+    }
+
+    const dt  = new Date(h.criado_em);
+    const rel = _mgRelTime(dt);
+    const tip = dt.toLocaleString('pt-BR');
+
+    return `<div class="mg-hist-entry mg-hist-entry--${a.cls}">
+        <div class="mg-hist-icone">${a.icone}</div>
+        <div class="mg-hist-corpo">
+            <span class="mg-hist-texto"><b>${nome}</b>${euLabel} ${a.txt('')}</span>${detalhe}
+            <span class="mg-hist-tempo" title="${tip}">${rel}</span>
+        </div>
+    </div>`;
+}
+
+function _mgRelTime(dt) {
+    const s = Math.floor((Date.now() - dt.getTime()) / 1000);
+    if (s < 60)  return 'agora mesmo';
+    const m = Math.floor(s / 60);
+    if (m < 60)  return `há ${m} min`;
+    const hh = Math.floor(m / 60);
+    if (hh < 24) return `há ${hh}h`;
+    const d = Math.floor(hh / 24);
+    if (d < 30)  return `há ${d} dia${d > 1 ? 's' : ''}`;
+    return dt.toLocaleDateString('pt-BR');
 }
 
 /* Estado sem grupo: mostra lista de grupos + opção de criar */
