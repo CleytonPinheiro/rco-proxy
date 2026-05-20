@@ -3665,6 +3665,25 @@ async function sortearAlunoTurmaCorretora(pool, { submissaoId, prova }) {
                 });
                 pageToken = r.data.nextPageToken;
             } while (pageToken);
+
+            /* Popula o cache local com os membros obtidos via API (fire-and-forget) */
+            if (membros.length > 0) {
+                const cursoId = String(prova.turma_corretora_id);
+                setImmediate(async () => {
+                    try {
+                        const emails = membros.map(m => m.email);
+                        await pool.query(
+                            `INSERT INTO aluno_cursos_cache (aluno_email, curso_id, atualizado_em)
+                             SELECT UNNEST($1::text[]), $2, NOW()
+                             ON CONFLICT (aluno_email, curso_id) DO UPDATE SET atualizado_em = NOW()`,
+                            [emails, cursoId]
+                        );
+                        console.log(`[SORTEAR-TC] Cache populado: ${emails.length} membros da turma ${cursoId}`);
+                    } catch (cacheErr) {
+                        console.warn('[SORTEAR-TC] Erro ao popular cache:', cacheErr.message);
+                    }
+                });
+            }
         }
     } catch (apiErr) {
         /* Fallback: alunos que já visitaram o portal (cache local) */
@@ -5762,7 +5781,15 @@ export function createProvasPublicRouter() {
                 console.warn('[TURMA-CORRETORA] Supabase numchamada erro:', supErr.message);
             }
 
-            const item = { ...itemBase, numchamada, questoes_n_alts: gabTcorArr.map(q => (q && q.n_alternativas) ? Number(q.n_alternativas) : 4) };
+            const item = {
+                ...itemBase,
+                numchamada,
+                questoes_n_alts: gabTcorArr.map(q =>
+                    q?.tipo === 'discursiva' ? 0
+                    : ((q && q.n_alternativas) ? Number(q.n_alternativas) : 4)
+                ),
+                questoes_tipos: gabTcorArr.map(q => q?.tipo || 'multipla'),
+            };
             res.json({ item });
         } catch (e) {
             res.status(500).json({ erro: e.message });

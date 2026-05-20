@@ -641,16 +641,18 @@ function _tcorFinalizarCronometro() {
 
 function renderTabelaTcor() {
     const wrap = $('ppTcorTabela');
-    const qt = estado.tcorQuestoesTxt || null;
+    const qt    = estado.tcorQuestoesTxt || null;
+    const tipos = estado.tcor?.questoes_tipos || [];
     let html = `<table class="pp-tabela pp-tabela-cor"><thead><tr>
         <th style="width:40px">#</th>
         <th>O que está marcado na folha</th>
     </tr></thead><tbody>`;
     for (let q = 1; q <= estado.qtdQuestoes; q++) {
         const qInfo = qt ? qt[q] : null;
+        const tipo  = tipos[q - 1] || 'multipla';
         html += `<tr><td class="pp-q-num">${q}</td><td class="pp-td-cor">`;
         if (qInfo && qInfo.enunciado) {
-            const resumo = escHtml(qInfo.enunciado.slice(0, 80));
+            const resumo    = escHtml(qInfo.enunciado.slice(0, 80));
             const enuncFull = escHtml(qInfo.enunciado);
             html += `<details class="pp-qtxt"><summary class="pp-qtxt-summary">${resumo}…</summary><div class="pp-qtxt-body">${enuncFull}</div>`;
             for (const letra of ['a', 'b', 'c', 'd', 'e']) {
@@ -661,11 +663,15 @@ function renderTabelaTcor() {
             html += `</details>`;
         }
         html += `<div class="pp-bolhas-row">`;
-        const nAltsTcor = estado.tcor?.questoes_n_alts?.[q - 1];
-        const temETcor = nAltsTcor === 5 || (qInfo && qInfo.alternativas && qInfo.alternativas['e']);
-        const letrasTcor = temETcor ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
-        for (const letra of letrasTcor) {
-            html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+        if (tipo === 'discursiva') {
+            html += `<span style="font-size:12px;color:var(--pp-muted);font-style:italic">Questão discursiva — não marcável</span>`;
+        } else {
+            const nAltsTcor = estado.tcor?.questoes_n_alts?.[q - 1];
+            const temETcor  = nAltsTcor === 5 || (qInfo && qInfo.alternativas && qInfo.alternativas['e']);
+            const letrasTcor = temETcor ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
+            for (const letra of letrasTcor) {
+                html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+            }
         }
         html += `</div></td></tr>`;
     }
