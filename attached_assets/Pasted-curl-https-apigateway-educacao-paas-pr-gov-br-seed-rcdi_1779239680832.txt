@@ -1,0 +1,15 @@
+curl 'https://apigateway-educacao.paas.pr.gov.br/seed/rcdig/estadual/v1/classe/v1/relatorios/avaliacaoParcialAlunos?codClasse=8682303&codPeriodoAvaliacao=9' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' \
+  -H 'Authorization: Bearer eyJraWQiOiIvcHJpdmF0ZUtleS5wZW0iLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGgtY3MuaWRlbnRpZGFkZWRpZ2l0YWwucHIuZ292LmJyIiwianRpIjoiOGI0NDdlZjYwZWUzZWZmMjA2ZTM2YzU3ZTI5ZDI5ZDQiLCJzdWIiOiJjcy10b2tlbi11c2luZy1qd3QtcmJhYyIsImlhdCI6MTc3OTIyNzk3MCwiYXVkIjoiZjM0MGYxYjFmNjViNmRmNWI1ZTNmOTRkOTViMTFkYWYiLCJncmFudF90eXBlIjoidG9rZW4iLCJzZXNzaW9uIjoiM2I2YzkzNWMzMDE3ZjhmMTQzMGViOTU2NDZiZTE4N2IxNzc5MjI3OTYyMTU0IiwiYWNyIjoiMSIsImFtciI6InVzZXJwYXNzIiwicmVzb3VjZW93bmVyX2lkIjoiMTA1MDY2OCIsInVwbiI6IjA2MzU3OTE0OTgzIiwibmFtZSI6IkNMRVlUT04gUElOSEVJUk8gRE9TIFNBTlRPUyIsImxvZ2luIjoiMDYzNTc5MTQ5ODMiLCJuaXZlbENvbmZpYWJpbGlkYWRlQ2FkYXN0cm8iOjQsImVtYWlsIjoiY2xleXRvbl9waW5AaG90bWFpbC5jb20iLCJyZyI6IjEwMzE4MDU0NiIsInVmUmciOiJQUiIsImR0TmFzY2ltZW50byI6IjE5ODktMDYtMTQgMDA6MDA6MDAiLCJkYXRhQ2FkYXN0cm9Vc3VhcmlvIjoiMjAyMC0wMy0xMSAxMTozMDo0NyIsImdyb3VwcyI6WyJSQ08gRG9jZW50ZSIsImVtZ3ByLm1vYmlsZSIsImVtZ3ByLnYxLm9jb3JyZW5jaWEucG9zdCJdLCJleHAiOjE3NzkyNzExNzB9.F4WADIQOAG_AsKhZTu66IM9hEKxm5JsZ1Ftx9LvTz04WNtoCoyx_6VvoxCzGIOinPx2ZFXyGjhT2eIN-Z0bd52-GVmElSKynF4gnxs7NlYljVQwbNhyfWoEzqFAaU5HvIvatIeTsqH-X1wXAn0M7iptNEnTDR3ccroHvcjeupb5wbNrym-NLHnCxkuYdxZIpI5omcdrgRqAdAhNH6SXZs79nE8swS0FvKPWKKHnDx6dE7-9nQS6SkuAPrtxJW6CHwhCPYkwJyjX04MhEGqt_bag3zJeGboX_fvG3NJjuZuh5GMCI68q3e5qITZzGFWVhTD5WptnQrl2zB8cQE8aq-Q' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: https://rco.paas.pr.gov.br' \
+  -H 'Referer: https://rco.paas.pr.gov.br/' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-site' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36' \
+  -H 'consumerId: RCDIGWEB' \
+  -H 'sec-ch-ua: "Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"'
