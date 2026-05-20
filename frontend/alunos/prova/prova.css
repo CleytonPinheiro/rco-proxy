@@ -242,6 +242,175 @@ details.pp-qtxt[open] .pp-qtxt-summary::before { content: '▾ '; }
     .pp-qtxt-summary { font-size: 11px; }
 }
 
+/* ── Modo foco (Etapa 1 — questão única) ───────────────────── */
+.pp-prog-strip {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 6px 0 10px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.pp-prog-strip::-webkit-scrollbar { display: none; }
+
+.pp-prog-dot {
+    flex-shrink: 0;
+    min-width: 28px; height: 28px; padding: 0 5px;
+    border: 2px solid var(--pp-border);
+    border-radius: 6px;
+    background: var(--pp-card); color: var(--pp-muted);
+    font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: .12s;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.pp-prog-dot:hover { border-color: var(--pp-primary); color: var(--pp-text); }
+.pp-prog-dot.pp-prog-resp {
+    background: var(--pp-primary);
+    border-color: var(--pp-primary);
+    color: #fff;
+}
+.pp-prog-dot.pp-prog-atual {
+    border-color: var(--pp-primary);
+    box-shadow: 0 0 0 3px rgba(66,133,244,.25);
+    color: var(--pp-primary);
+    font-weight: 700;
+}
+.pp-prog-dot.pp-prog-resp.pp-prog-atual {
+    background: var(--pp-primary-h);
+    border-color: var(--pp-primary-h);
+    box-shadow: 0 0 0 3px rgba(66,133,244,.3);
+    color: #fff;
+}
+
+.pp-focus-layout {
+    display: flex;
+    gap: 16px;
+    margin-top: 4px;
+    align-items: flex-start;
+}
+
+.pp-focus-questao {
+    flex: 1;
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-border);
+    border-radius: 10px;
+    padding: 16px;
+    min-width: 0;
+    overflow-y: auto;
+    max-height: 440px;
+    min-height: 180px;
+}
+
+.pp-focus-panel {
+    flex: 0 0 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.pp-focus-qnum {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pp-muted);
+    text-align: center;
+    letter-spacing: .02em;
+}
+
+.pp-focus-bolhas-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 16px 12px;
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-border);
+    border-radius: 10px;
+    width: 100%;
+    min-height: 80px;
+    align-items: center;
+}
+
+.pp-bolha-focus {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 46px; height: 46px;
+    border: 2px solid var(--pp-border); border-radius: 50%;
+    cursor: pointer; font-size: 15px; font-weight: 700;
+    background: var(--pp-card); color: var(--pp-muted);
+    user-select: none; transition: .12s;
+    -webkit-tap-highlight-color: transparent;
+}
+.pp-bolha-focus:hover { border-color: var(--pp-primary); color: var(--pp-primary); }
+.pp-bolha-focus.pp-marcada {
+    background: var(--pp-primary); color: #fff; border-color: var(--pp-primary);
+    transform: scale(1.1);
+}
+
+.pp-focus-nav {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+.pp-focus-nav .pp-btn {
+    flex: 1;
+    text-align: center;
+    padding: 9px 4px;
+    font-size: 13px;
+}
+
+.pp-focus-enunciado {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--pp-text);
+    margin-bottom: 10px;
+    white-space: pre-line;
+}
+
+.pp-focus-alt {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 6px 4px;
+    border-top: 1px solid var(--pp-border);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.pp-focus-alt-letra {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border: 1.5px solid var(--pp-primary);
+    border-radius: 50%;
+    font-size: 11px; font-weight: 700;
+    color: var(--pp-primary);
+    margin-top: 2px;
+}
+
+.pp-focus-sem-texto {
+    color: var(--pp-muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 32px 12px;
+    line-height: 1.6;
+}
+
+.pp-focus-discursiva {
+    font-size: 12px;
+    color: var(--pp-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 8px 0;
+}
+
+@media (max-width: 620px) {
+    .pp-focus-layout { flex-direction: column-reverse; gap: 12px; }
+    .pp-focus-panel  { flex: none; width: 100%; }
+    .pp-focus-questao { max-height: 260px; min-height: 120px; }
+    .pp-bolha-focus  { width: 50px; height: 50px; font-size: 16px; }
+    .pp-focus-bolhas-wrap { padding: 14px 8px; gap: 10px; }
+}
+
 /* ── Split-screen Turma Corretora ─────────────────────────── */
 .pp-tcor-layout {
     display: flex;

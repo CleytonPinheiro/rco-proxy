@@ -73,17 +73,19 @@ const $ = id => document.getElementById(id);
 const LETRAS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 
 let estado = {
-    aluno:        null,
-    ansid:        null,
-    jobId:        null,
-    varSugerida:  null,
-    prova:        null,
-    variantes:    [],
-    varianteSel:  null,            // {id, codigo, qtd_questoes}
-    qtdQuestoes:  0,
-    marcacoes:    {},              // { "1": "a", "2": "c", ... }
-    fotoBase64:   null,
-    submissao:    null,            // resposta do POST
+    aluno:            null,
+    ansid:            null,
+    jobId:            null,
+    varSugerida:      null,
+    prova:            null,
+    variantes:        [],
+    varianteSel:      null,            // {id, codigo, qtd_questoes}
+    qtdQuestoes:      0,
+    marcacoes:        {},              // { "1": "a", "2": "c", ... }
+    fotoBase64:       null,
+    submissao:        null,            // resposta do POST
+    questaoAtual:     1,               // modo foco etapa 1
+    _focusKeyHandler: null,            // referência para remover listener
 };
 
 function show(id) {
@@ -183,7 +185,8 @@ function renderVariantes() {
 async function selecionarVariante(v) {
     estado.varianteSel = v;
     estado.qtdQuestoes = v.qtd_questoes;
-    estado.marcacoes = {};
+    estado.marcacoes   = {};
+    estado.questaoAtual = 1;
     $('ppVarCod1').textContent = v.codigo;
     const linkProva = estado.prova.link_prova;
     const etapa1LinkWrap = $('ppLinkProvaEtapa1Wrap');
@@ -194,7 +197,6 @@ async function selecionarVariante(v) {
     } else {
         etapa1LinkWrap.style.display = 'none';
     }
-    renderTabelaEtapa1();
 
     /* Restaura rascunho se existir */
     const chave = _chaveRascunhoProva();
@@ -202,39 +204,130 @@ async function selecionarVariante(v) {
         const rascunho = _lerRascunho(chave);
         if (rascunho && Object.keys(rascunho).length > 0) {
             estado.marcacoes = rascunho;
-            for (const [q, letra] of Object.entries(rascunho)) {
-                document.querySelectorAll(`.pp-bolha[data-q="${q}"]`).forEach(el => {
-                    el.classList.toggle('pp-marcada', el.dataset.l === letra);
-                });
-            }
             _mostrarAvisoRascunho($('ppEtapa1'));
+            /* Começa na primeira questão ainda sem resposta */
+            for (let q = 1; q <= estado.qtdQuestoes; q++) {
+                if (!rascunho[String(q)]) { estado.questaoAtual = q; break; }
+            }
         }
     }
 
     show('ppEtapa1');
+    iniciarFocusModeEtapa1();
 }
 
-function renderTabelaEtapa1() {
-    /* Sem gabarito ainda — só a coluna "Marque" */
-    const wrap = $('ppTabelaEtapa1');
-    const qt = _lerQuestoesTxt(estado.prova?.id, estado.varianteSel?.codigo);
-    let html = `<table class="pp-tabela"><thead><tr>
-        <th style="width:40px">#</th>
-        <th>Sua resposta</th>
-    </tr></thead><tbody>`;
-    for (let q = 1; q <= estado.qtdQuestoes; q++) {
-        const qInfo = qt ? qt[q] : null;
-        const nAlts = estado.varianteSel?.questoes_n_alts?.[q - 1];
-        const temE = nAlts === 5 || (qInfo && qInfo.alternativas && qInfo.alternativas['e']);
-        const letras = temE ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
-        html += `<tr><td class="pp-q-num">${q}</td><td>`;
-        for (const letra of letras) {
-            html += `<span class="pp-bolha" data-q="${q}" data-l="${letra}" onclick="marcar(${q},'${letra}')">${letra.toUpperCase()}</span>`;
+function renderTabelaEtapa1() { /* legado — substituído por iniciarFocusModeEtapa1 */ }
+
+/* ── Modo foco (Etapa 1) ────────────────────────────────────── */
+
+function iniciarFocusModeEtapa1() {
+    /* Registra navegação por teclado (setas ← → / ↑ ↓) */
+    if (estado._focusKeyHandler) document.removeEventListener('keydown', estado._focusKeyHandler);
+    estado._focusKeyHandler = (e) => {
+        const sec = $('ppEtapa1');
+        if (!sec || sec.style.display === 'none') return;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (estado.questaoAtual < estado.qtdQuestoes) navegarQuestao(estado.questaoAtual + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (estado.questaoAtual > 1) navegarQuestao(estado.questaoAtual - 1);
         }
-        html += `</td></tr>`;
+    };
+    document.addEventListener('keydown', estado._focusKeyHandler);
+    navegarQuestao(estado.questaoAtual);
+}
+
+function _renderProgressStrip() {
+    const wrap = $('ppProgStrip');
+    if (!wrap) return;
+    const cur = estado.questaoAtual;
+    let html = '';
+    for (let i = 1; i <= estado.qtdQuestoes; i++) {
+        const resp  = estado.marcacoes[String(i)] != null && estado.marcacoes[String(i)] !== '';
+        const atual = i === cur;
+        html += `<button class="pp-prog-dot${resp ? ' pp-prog-resp' : ''}${atual ? ' pp-prog-atual' : ''}"
+                    onclick="navegarQuestao(${i})" title="Questão ${i}">${i}</button>`;
     }
-    html += `</tbody></table>`;
     wrap.innerHTML = html;
+    /* Rola o ponto atual para o centro */
+    const dot = wrap.querySelector('.pp-prog-atual');
+    if (dot) dot.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+function _renderQuestaoAtual() {
+    const q     = estado.questaoAtual;
+    const qt    = _lerQuestoesTxt(estado.prova?.id, estado.varianteSel?.codigo);
+    const qInfo = qt ? qt[q] : null;
+    const tipos = estado.varianteSel?.questoes_tipos || [];
+    const tipo  = tipos[q - 1] || 'multipla';
+    const nAlts = estado.varianteSel?.questoes_n_alts?.[q - 1];
+    const temE  = nAlts === 5 || (qInfo && qInfo.alternativas && qInfo.alternativas['e']);
+    const letras = temE ? LETRAS.slice(0, 5) : LETRAS.slice(0, 4);
+    const marcacaoAtual = estado.marcacoes[String(q)];
+
+    /* Número da questão */
+    const numEl = $('ppFocusQNum');
+    if (numEl) numEl.textContent = `Questão ${q} de ${estado.qtdQuestoes}`;
+
+    /* Painel esquerdo — texto da questão */
+    const textoEl = $('ppFocusQTexto');
+    if (textoEl) {
+        if (qInfo && qInfo.enunciado) {
+            let html = `<div class="pp-focus-enunciado">${escHtml(qInfo.enunciado)}</div>`;
+            for (const letra of ['a', 'b', 'c', 'd', 'e']) {
+                if (qInfo.alternativas && qInfo.alternativas[letra]) {
+                    html += `<div class="pp-focus-alt">
+                        <span class="pp-focus-alt-letra">${letra.toUpperCase()}</span>
+                        <span>${escHtml(qInfo.alternativas[letra])}</span>
+                    </div>`;
+                }
+            }
+            textoEl.innerHTML = html;
+        } else {
+            textoEl.innerHTML = `<div class="pp-focus-sem-texto">📄 Consulte a <strong>questão ${q}</strong> no caderno de prova.</div>`;
+        }
+    }
+
+    /* Painel direito — bolhas */
+    const bolhasEl = $('ppFocusBolhas');
+    if (bolhasEl) {
+        if (tipo === 'discursiva') {
+            bolhasEl.innerHTML = `<span class="pp-focus-discursiva">Questão discursiva — não marcável</span>`;
+        } else {
+            let html = '';
+            for (const letra of letras) {
+                const marcada = marcacaoAtual === letra;
+                html += `<button class="pp-bolha pp-bolha-focus${marcada ? ' pp-marcada' : ''}"
+                    data-q="${q}" data-l="${letra}"
+                    onclick="marcarFocus(${q},'${letra}')">${letra.toUpperCase()}</button>`;
+            }
+            bolhasEl.innerHTML = html;
+        }
+    }
+
+    /* Botões de navegação */
+    const btnAnt  = $('ppFocusAnt');
+    const btnProx = $('ppFocusProx');
+    if (btnAnt)  btnAnt.disabled  = q <= 1;
+    if (btnProx) btnProx.disabled = q >= estado.qtdQuestoes;
+}
+
+function navegarQuestao(alvo) {
+    const q = Number(alvo);
+    if (!Number.isFinite(q) || q < 1 || q > estado.qtdQuestoes) return;
+    estado.questaoAtual = q;
+    _renderProgressStrip();
+    _renderQuestaoAtual();
+}
+
+function marcarFocus(q, letra) {
+    marcar(q, letra);           /* atualiza estado.marcacoes + DOM .pp-bolha */
+    _renderProgressStrip();     /* atualiza pontos de progresso */
+    /* Auto-avança para a próxima questão após breve pausa */
+    if (estado.questaoAtual < estado.qtdQuestoes) {
+        setTimeout(() => navegarQuestao(estado.questaoAtual + 1), 330);
+    }
 }
 
 function marcar(q, letra) {
@@ -264,6 +357,10 @@ function marcarVF(q, subIdx, letra, vfCount) {
 }
 
 function voltarVariante() {
+    if (estado._focusKeyHandler) {
+        document.removeEventListener('keydown', estado._focusKeyHandler);
+        estado._focusKeyHandler = null;
+    }
     const chave = _chaveRascunhoProva();
     if (chave) _apagarRascunho(chave);
     estado.marcacoes = {};

@@ -190,17 +190,36 @@
             </div>
         </section>
 
-        <!-- Estado: marcar respostas (etapa 1 — gabarito escondido) -->
+        <!-- Estado: marcar respostas (etapa 1 — modo foco por questão) -->
         <section id="ppEtapa1" class="pp-card" style="display:none">
             <div class="pp-step-header">
                 <h2>Etapa 1: Marque o que você respondeu</h2>
                 <span class="pp-pill">Variante <span id="ppVarCod1"></span></span>
             </div>
             <p class="pp-muted">Marque exatamente o que você assinalou na folha de papel. O gabarito será revelado depois.</p>
-            <div id="ppLinkProvaEtapa1Wrap" style="display:none;margin-bottom:16px">
+            <div id="ppLinkProvaEtapa1Wrap" style="display:none;margin-bottom:8px">
                 <a id="ppLinkProvaEtapa1" href="#" target="_blank" rel="noopener noreferrer" class="pp-btn">📄 Ver questões</a>
             </div>
-            <div id="ppTabelaEtapa1" class="pp-tabela-wrap"></div>
+
+            <!-- Faixa de progresso (todas as questões) -->
+            <div id="ppProgStrip" class="pp-prog-strip"></div>
+
+            <!-- Layout foco: esquerda = texto da questão · direita = bolha + nav -->
+            <div class="pp-focus-layout">
+                <div id="ppFocusQTexto" class="pp-focus-questao"></div>
+                <div class="pp-focus-panel">
+                    <div class="pp-focus-qnum" id="ppFocusQNum"></div>
+                    <div class="pp-focus-bolhas-wrap" id="ppFocusBolhas"></div>
+                    <div class="pp-focus-nav">
+                        <button class="pp-btn" id="ppFocusAnt" onclick="navegarQuestao(estado.questaoAtual - 1)">← Ant</button>
+                        <button class="pp-btn pp-btn-primary" id="ppFocusProx" onclick="navegarQuestao(estado.questaoAtual + 1)">Próx →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- tabela legada oculta (compatibilidade) -->
+            <div id="ppTabelaEtapa1" style="display:none"></div>
+
             <div class="pp-actions">
                 <button class="pp-btn" onclick="voltarVariante()">Voltar</button>
                 <button class="pp-btn pp-btn-primary" id="ppBtnConfirmar" onclick="confirmarMarcacoes()">Confirmar e ver gabarito →</button>
