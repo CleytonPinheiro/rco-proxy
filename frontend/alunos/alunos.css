@@ -2677,7 +2677,12 @@ html, body {
     margin-bottom: 14px;
     max-height: 240px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
+.mg-colegas-grid::-webkit-scrollbar       { width: 6px; }
+.mg-colegas-grid::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
+.mg-colegas-grid::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 .mg-colega-item {
     display: flex;
     align-items: center;
