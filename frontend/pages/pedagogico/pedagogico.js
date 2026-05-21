@@ -1,5 +1,66 @@
 'use strict';
 
+/* ── Busca de aluno (entry point → ficha-aluno) ─────────────────── */
+(function initBuscaAluno() {
+    const input     = document.getElementById('pedBuscaInput');
+    const resultados = document.getElementById('pedBuscaResultados');
+    if (!input || !resultados) return;
+
+    function escHtml(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function fecharResultados() {
+        resultados.hidden = true;
+        resultados.innerHTML = '';
+    }
+
+    let debounceTimer = null;
+    async function buscar(termo) {
+        termo = termo.trim();
+        if (termo.length < 2) { fecharResultados(); return; }
+
+        resultados.hidden = false;
+        resultados.innerHTML = '<div class="ped-busca-status">Buscando…</div>';
+
+        try {
+            const r = await fetch(`/api/alunos?search=${encodeURIComponent(termo)}`);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const alunos = await r.json();
+
+            if (!alunos || alunos.length === 0) {
+                resultados.innerHTML = `<div class="ped-busca-status">Nenhum aluno encontrado para "<strong>${escHtml(termo)}</strong>".</div>`;
+                return;
+            }
+
+            resultados.innerHTML = alunos.slice(0, 20).map(a => `
+                <a class="ped-busca-item"
+                   href="/pages/ficha-aluno/?codMatrizAluno=${encodeURIComponent(a.codmatrizaluno || '')}"
+                   data-nome="${escHtml(a.nome)}">
+                    <span class="ped-busca-item-nome">${escHtml(a.nome)}</span>
+                    <span class="ped-busca-item-turma">${escHtml(a.turma || '—')}</span>
+                </a>
+            `).join('');
+        } catch (e) {
+            resultados.innerHTML = `<div class="ped-busca-status">Erro ao buscar: ${escHtml(e.message)}</div>`;
+        }
+    }
+
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => buscar(input.value), 280);
+    });
+
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { fecharResultados(); input.blur(); }
+        if (e.key === 'Enter') { clearTimeout(debounceTimer); buscar(input.value); }
+    });
+
+    document.addEventListener('click', e => {
+        if (!document.getElementById('pedBuscaAluno').contains(e.target)) fecharResultados();
+    });
+})();
+
 /* ── Configurações ──────────────────────────────────────────────── */
 const ENCAMINHAMENTOS = [
     { value: '',           label: '— sem encaminhamento —' },

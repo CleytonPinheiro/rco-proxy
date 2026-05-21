@@ -748,6 +748,100 @@ body.drawer-aberto .aluno-drawer {
 }
 .ped-aluno-nome-btn:hover { color: #0ea5e9; text-decoration: underline; }
 
+/* ── Busca de aluno ─────────────────────────────────────────────────────── */
+.ped-page-title-row {
+    justify-content: space-between;
+}
+.ped-busca-aluno {
+    position: relative;
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 220px;
+    max-width: 300px;
+}
+.ped-busca-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    transition: border-color .15s, box-shadow .15s;
+}
+.ped-busca-input-wrap:focus-within {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px color-mix(in srgb, #0ea5e9 15%, transparent);
+}
+.ped-busca-icon {
+    font-size: .95rem;
+    line-height: 1;
+    flex-shrink: 0;
+    opacity: .6;
+}
+.ped-busca-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: .9rem;
+    color: var(--text-primary);
+    outline: none;
+    min-width: 0;
+}
+.ped-busca-input::placeholder { color: var(--text-muted); }
+.ped-busca-input::-webkit-search-cancel-button { cursor: pointer; }
+.ped-busca-resultados {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    z-index: 200;
+    overflow: hidden;
+    max-height: 320px;
+    overflow-y: auto;
+}
+.ped-busca-status {
+    padding: 12px 14px;
+    font-size: .85rem;
+    color: var(--text-muted);
+}
+.ped-busca-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 14px;
+    text-decoration: none;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+    cursor: pointer;
+}
+.ped-busca-item:last-child { border-bottom: none; }
+.ped-busca-item:hover { background: color-mix(in srgb, #0ea5e9 8%, var(--bg-card)); }
+.ped-busca-item-nome {
+    font-size: .88rem;
+    font-weight: 600;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ped-busca-item-turma {
+    font-size: .78rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+    .ped-page-title-row { flex-wrap: wrap; }
+    .ped-busca-aluno { margin-left: 0; min-width: 100%; max-width: 100%; }
+}
+
 /* ── Tema Escuro (texto secundário) ─────────────────────────────────────── */
 [data-theme="dark"] .ped-page-sub              { color: var(--text-secondary); }
 [data-theme="dark"] .ped-stat-label            { color: var(--text-secondary); }
