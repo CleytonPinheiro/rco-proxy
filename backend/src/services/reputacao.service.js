@@ -10,18 +10,18 @@
 
 export const RANKS = {
     aluno: [
-        { min: 0,   nome: 'Aprendiz',         emoji: '🌱' },
-        { min: 15,  nome: 'Estudioso',        emoji: '📖' },
-        { min: 50,  nome: 'Disciplinado',     emoji: '🎯' },
-        { min: 120, nome: 'Honrado',          emoji: '🏅' },
-        { min: 250, nome: 'Aluno Exemplar',   emoji: '🌟' },
+        { min: 0,   nome: 'Novato sem Auréola',    emoji: '🌱' },
+        { min: 15,  nome: 'Farmando XP',            emoji: '📖' },
+        { min: 50,  nome: 'Auréola em Construção',  emoji: '🎯' },
+        { min: 120, nome: 'Aura Ativada',           emoji: '🏅' },
+        { min: 250, nome: 'Lenda das Provas',       emoji: '🌟' },
     ],
     corretor: [
-        { min: 0,   nome: 'Aprendiz Corretor', emoji: '🥉' },
-        { min: 20,  nome: 'Corretor Atento',   emoji: '🥈' },
-        { min: 60,  nome: 'Corretor Veterano', emoji: '🥇' },
-        { min: 150, nome: 'Mestre da Régua',   emoji: '💎' },
-        { min: 300, nome: 'Lenda da Correção', emoji: '👑' },
+        { min: 0,   nome: 'Corretor Iniciante',     emoji: '🥉' },
+        { min: 20,  nome: 'Olho Treinado',          emoji: '🥈' },
+        { min: 60,  nome: 'Veterano da Régua',      emoji: '🥇' },
+        { min: 150, nome: 'Mestre da Auréola',      emoji: '💎' },
+        { min: 300, nome: 'Lenda da Correção 🔱',   emoji: '👑' },
     ],
 };
 
@@ -41,44 +41,44 @@ export function getRank(trilho, xp) {
 /* Catálogo de eventos → XP base + se é "ação válida" (entra no streak) */
 export const EVENTOS = {
     /* aluno (1º corretor) */
-    SUBMISSAO_RAPIDA:    { trilho: 'aluno',    xp: +5,  streak: true,  rotulo: '⏱ Submeteu em até 24h' },
-    SUBMISSAO_NO_PRAZO:  { trilho: 'aluno',    xp: +2,  streak: true,  rotulo: '✅ Submeteu antes do prazo' },
-    VARIANTE_CORRETA:    { trilho: 'aluno',    xp: +3,  streak: false, rotulo: '🎯 Marcou a variante certa' },
-    FOTO_OK:             { trilho: 'aluno',    xp: +8,  streak: true,  rotulo: '🛡️ Foto confere com marcações' },
-    FOTO_DIVERGENTE:     { trilho: 'aluno',    xp: -10, streak: false, rotulo: '⚠️ Foto não confere' },
+    SUBMISSAO_RAPIDA:    { trilho: 'aluno',    xp: +5,  streak: true,  rotulo: '⚡ Speedrunner — enviou em menos de 24h' },
+    SUBMISSAO_NO_PRAZO:  { trilho: 'aluno',    xp: +2,  streak: true,  rotulo: '✅ Entregou antes do prazo' },
+    VARIANTE_CORRETA:    { trilho: 'aluno',    xp: +3,  streak: false, rotulo: '🎯 Variante certinha — farmou auréola' },
+    FOTO_OK:             { trilho: 'aluno',    xp: +8,  streak: true,  rotulo: '🛡️ Foto aprovada — integridade total' },
+    FOTO_DIVERGENTE:     { trilho: 'aluno',    xp: -10, streak: false, rotulo: '📸 Foto suspeita — aura drenada' },
 
     /* corretor (2º corretor) */
-    CORRECAO_ENVIADA:    { trilho: 'corretor', xp: +1,  streak: false, rotulo: '🚀 Correção enviada' },
-    CORRECAO_PERFEITA:   { trilho: 'corretor', xp: +10, streak: true,  rotulo: '⭐ Correção perfeita (≤0.3)', perfeita: true },
-    CORRECAO_PRECISA:    { trilho: 'corretor', xp: +6,  streak: true,  rotulo: '🎯 Correção precisa (≤0.7)' },
-    CORRECAO_OK:         { trilho: 'corretor', xp: +3,  streak: true,  rotulo: '👍 Correção ok (≤1.5)' },
-    CORRECAO_LONGE:      { trilho: 'corretor', xp: +1,  streak: false, rotulo: '🤔 Correção distante (≤3.0)' },
-    CORRECAO_DESVIANTE:  { trilho: 'corretor', xp: 0,   streak: false, rotulo: '❌ Divergência grande (>3.0)' },
-    CORRECAO_VOLUNTARIA: { trilho: 'corretor', xp: +2,  streak: false, rotulo: '🤝 Bônus voluntário' },
+    CORRECAO_ENVIADA:    { trilho: 'corretor', xp: +1,  streak: false, rotulo: '🚀 Correção lançada — auréola farmada' },
+    CORRECAO_PERFEITA:   { trilho: 'corretor', xp: +10, streak: true,  rotulo: '🦅 Olho de Águia — diferença de 0 a 0.3', perfeita: true },
+    CORRECAO_PRECISA:    { trilho: 'corretor', xp: +6,  streak: true,  rotulo: '🎯 Olho afiado — diferença ≤0.7' },
+    CORRECAO_OK:         { trilho: 'corretor', xp: +3,  streak: true,  rotulo: '👍 Correção sólida — diferença ≤1.5' },
+    CORRECAO_LONGE:      { trilho: 'corretor', xp: +1,  streak: false, rotulo: '🤔 Um pouco distante — diferença ≤3.0' },
+    CORRECAO_DESVIANTE:  { trilho: 'corretor', xp: 0,   streak: false, rotulo: '💀 Chutou no escuro — aura drenada' },
+    CORRECAO_VOLUNTARIA: { trilho: 'corretor', xp: +2,  streak: false, rotulo: '🤝 Bônus voluntário — espírito de equipe' },
 };
 
 /* Badges: id → { nome, emoji, descricao, trilho, condicao(rep) → bool } */
 export const BADGES = [
     { id: 'PRIMEIRA_CORRECAO', emoji: '🚀', nome: 'Primeira Correção', trilho: 'corretor',
-      descricao: 'Concluiu sua primeira 2ª correção.',
+      descricao: 'A lenda começa agora. Primeira correção feita!',
       condicao: r => r.acoes_total >= 1 },
     { id: 'OLHO_DE_AGUIA',     emoji: '🦅', nome: 'Olho de Águia', trilho: 'corretor',
-      descricao: '3 correções perfeitas seguidas.',
+      descricao: '3 correções perfeitas seguidas. Você não chuta — você sabe.',
       condicao: r => (r.streak_perfeitas || 0) >= 3 },
     { id: 'STREAK_7',          emoji: '🔥', nome: 'Streak 7', trilho: 'corretor',
-      descricao: '7 correções válidas seguidas.',
+      descricao: '7 correções válidas seguidas. A auréola está em chamas.',
       condicao: r => r.melhor_streak >= 7 },
     { id: 'DEZ_CORRECOES',     emoji: '📚', nome: 'Estudioso Disfarçado', trilho: 'corretor',
-      descricao: '10 correções no total.',
+      descricao: '10 correções no total. Tá farmando auréola com estilo.',
       condicao: r => r.acoes_total >= 10 },
     { id: 'PRIMEIRA_PROVA',    emoji: '🌱', nome: 'Primeira Prova', trilho: 'aluno',
-      descricao: 'Submeteu sua primeira correção.',
+      descricao: 'A jornada começa. Primeira prova submetida!',
       condicao: r => r.acoes_total >= 1 },
-    { id: 'PONTUAL',           emoji: '⏰', nome: 'Pontual', trilho: 'aluno',
-      descricao: '3 submissões em ≤24h seguidas.',
+    { id: 'PONTUAL',           emoji: '⏰', nome: 'Velocista de Provas', trilho: 'aluno',
+      descricao: '3x entregou antes das 24h. Speedrunner confirmado.',
       condicao: r => (r.streak_rapido || 0) >= 3 },
     { id: 'HONRA_AO_MERITO',   emoji: '🛡️', nome: 'Honra ao Mérito', trilho: 'aluno',
-      descricao: '5 fotos consecutivas conferidas pelo professor.',
+      descricao: '5 fotos aprovadas seguidas. Integridade máxima. Auréola full.',
       condicao: r => (r.streak_foto_ok || 0) >= 5 },
 ];
 

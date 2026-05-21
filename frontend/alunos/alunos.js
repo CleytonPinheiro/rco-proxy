@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (params.get('tcor_ok') === '1') {
-        const tcorMsg = params.get('tcor_msg') || '✅ Correção enviada! Obrigado pela ajuda.';
+        const tcorMsg = params.get('tcor_msg') || '✅ Correção enviada! A auréola agradece.';
         setTimeout(() => notificar(tcorMsg), 300);
         history.replaceState({}, '', '/alunos/');
     }
@@ -654,11 +654,11 @@ async function carregarReputacao() {
                         <span style="font-size:0.8em;color:#999">${rep.acoes_total} ${rep.acoes_total === 1 ? 'ação' : 'ações'}</span>
                     </div>
                     <div style="font-size:1.2em;font-weight:600;margin-bottom:4px">${ra.emoji} ${ra.nome}</div>
-                    <div style="font-size:0.9em;color:#444;margin-bottom:8px">${rep.xp_total} XP ${streakLine ? '· ' + streakLine : ''}</div>
+                    <div style="font-size:0.9em;color:#444;margin-bottom:8px">${rep.xp_total} XP farmados ${streakLine ? '· ' + streakLine : ''}</div>
                     <div style="background:#eee;border-radius:6px;overflow:hidden;height:6px;margin-bottom:6px">
                         <div style="background:#4285f4;height:100%;width:${prog}%"></div>
                     </div>
-                    <div style="font-size:0.75em;color:#888">${px ? `${rep.faltaProximo} XP para ${px.emoji} ${px.nome}` : '🏆 Rank máximo atingido'}</div>
+                    <div style="font-size:0.75em;color:#888">${px ? `Faltam ${rep.faltaProximo} XP para ${px.emoji} ${px.nome} — vai lá!` : '🏆 Auréola máxima. Lenda confirmada.'}</div>
                     ${badges ? `<div style="margin-top:8px;border-top:1px solid #eee;padding-top:6px">${badges}</div>` : ''}
                 </div>`;
         };

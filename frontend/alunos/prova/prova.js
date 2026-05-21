@@ -466,7 +466,8 @@ function renderResultado(d) {
     if (d.xpGanho > 0 || (d.badgesGanhas && d.badgesGanhas.length > 0)) {
         const det = (d.xpDetalhes || []).map(x => `${x.rotulo}: +${x.xp} XP`).join(' · ');
         const bd = (d.badgesGanhas || []).map(b => `${b.emoji} ${b.nome}`).join(', ');
-        const linha = `🎮 Você ganhou +${d.xpGanho} XP! ${det ? '(' + det + ')' : ''}${bd ? ' · 🏆 Nova badge: ' + bd : ''}`;
+        const bdDesc = (d.badgesGanhas || []).map(b => b.descricao || b.nome).join(' · ');
+        const linha = `✨ +${d.xpGanho} XP farmados! ${det ? det : ''}${bd ? ` · 🏆 Badge desbloqueada: ${bd}${bdDesc ? ` — ${bdDesc}` : ''}` : ''}`;
         let xpDiv = $('ppXpInfo');
         if (!xpDiv) {
             xpDiv = document.createElement('div');
@@ -807,8 +808,9 @@ async function enviarTurmaCorretora() {
         if (!r.ok) throw new Error(d.erro || 'Erro ao enviar.');
         const chaveTcor = _chaveRascunhoTcor();
         if (chaveTcor) _apagarRascunho(chaveTcor);
-        let msg = '✅ Correção enviada! Obrigado pela ajuda.';
-        if (d.xpGanho) msg += ` | +${d.xpGanho} XP ganho`;
+        let msg = '✅ Correção enviada! A auréola agradece.';
+        if (d.xpGanho) msg += ` +${d.xpGanho} XP farmados 🔥`;
+        if (d.badgesGanhas && d.badgesGanhas.length) msg += ` · 🏆 ${d.badgesGanhas.map(b => b.emoji + ' ' + b.nome).join(', ')}`;
         const destUrl = '/alunos/?tcor_ok=1&tcor_msg=' + encodeURIComponent(msg) + (d.xpGanho ? '&xp=' + encodeURIComponent(d.xpGanho) : '');
         location.href = destUrl;
     } catch (e) {
@@ -1127,9 +1129,9 @@ async function enviarSegundo() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.erro || 'Erro');
-        let msg = '✅ Correção enviada. Obrigado pela ajuda!';
-        if (d.xpGanho) msg += ` | +${d.xpGanho} XP ganho`;
-        if (d.badgesGanhas && d.badgesGanhas.length) msg += ` | Badge: ${d.badgesGanhas.map(b => b.emoji + ' ' + b.nome).join(', ')}`;
+        let msg = '✅ 2ª correção enviada! Auréola farmada com sucesso.';
+        if (d.xpGanho) msg += ` +${d.xpGanho} XP 🔥`;
+        if (d.badgesGanhas && d.badgesGanhas.length) msg += ` · 🏆 ${d.badgesGanhas.map(b => b.emoji + ' ' + b.nome).join(', ')}`;
         notificar(msg);
         setTimeout(() => { location.href = '/alunos/'; }, 2000);
     } catch (e) {
