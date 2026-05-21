@@ -828,6 +828,7 @@ async function abrirDetalhe(id) {
 function renderDetalhe(d) {
     const p = d.prova;
     $('prvDetNome').textContent = p.nome;
+    $('prvDetNome').title = p.nome;
     $('prvDetMeta').innerHTML = `
         <span>📋 GradePen #${escapeHtml(p.gradepen_id)}</span>
         <span>📅 ${p.data_aplicacao ? new Date(p.data_aplicacao).toLocaleDateString('pt-BR') : 'Sem data'}</span>
@@ -1094,9 +1095,9 @@ function renderDetalhe(d) {
                 ? (s.numchamada != null ? `Nº ${s.numchamada} — ${escapeHtml(s.aluno_nome)}` : escapeHtml(s.aluno_nome))
                 : escapeHtml(s.aluno_email);
             sub += `<tr>
-                <td>${alunoLabel}<br><small style="color:#888">${escapeHtml(s.aluno_email)}</small></td>
+                <td>${alunoLabel}<br><small style="color:#888;font-size:10px;line-height:1.2">${escapeHtml(s.aluno_email)}</small></td>
                 <td>${selVar}</td>
-                <td>${new Date(s.criada_em).toLocaleString('pt-BR')}</td>
+                <td style="white-space:nowrap;font-size:11px">${new Date(s.criada_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
                 <td>${flags.join(' ') || '—'}</td>
                 <td class="prv-nota">${s.nota} / ${s.total_max}</td>
                 <td>${acoes.join(' ')}</td>

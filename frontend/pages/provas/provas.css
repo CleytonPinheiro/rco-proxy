@@ -90,6 +90,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding: 16px;
 }
 .prv-modal-large .prv-det-header {
     flex-shrink: 0;
@@ -137,10 +138,10 @@
 .prv-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; }
 .prv-toggle input { width:auto !important; margin-top:0 !important; }
 .prv-modal-actions {
-    display:flex; gap:8px; justify-content:flex-end; margin-top:16px;
+    display:flex; gap:8px; justify-content:flex-end; margin-top:8px;
     position: sticky; bottom: 0; z-index: 2;
     background: var(--bg-card, #fff);
-    padding-top: 10px;
+    padding-top: 6px;
 }
 [data-theme="dark"] .prv-modal-actions {
     background: var(--bg-card, #1a1d27);
@@ -160,22 +161,27 @@
 [data-theme="dark"] .prv-btn-danger:hover { background: #450a0a; }
 
 /* Detalhe */
-.prv-det-header { display:flex; justify-content:space-between; align-items:center; }
-.prv-det-meta {
-    display:flex; gap:16px; flex-wrap:wrap;
-    color: var(--text-muted, #555); font-size: 13px;
-    margin: 8px 0 16px;
-    padding-bottom: 12px; border-bottom: 1px solid var(--border, #eee);
+.prv-det-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.prv-det-header h2 {
+    font-size: 14px; font-weight: 700; margin: 0; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0;
 }
-.prv-det-section { margin-bottom: 20px; }
-.prv-det-section h3 { font-size:14px; margin: 0 0 8px; text-transform: uppercase; color: var(--text-muted, #888); }
+.prv-det-meta {
+    display:flex; gap:12px; flex-wrap:wrap;
+    color: var(--text-muted, #555); font-size: 12px;
+    margin: 4px 0 8px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border, #eee);
+}
+.prv-det-section { margin-bottom: 10px; }
+.prv-det-section h3 { font-size:13px; margin: 0 0 6px; text-transform: uppercase; color: var(--text-muted, #888); }
 
-.prv-tabela { width:100%; border-collapse: collapse; font-size: 13px; }
+.prv-tabela { width:100%; border-collapse: collapse; font-size: 12px; }
 .prv-tabela th, .prv-tabela td {
-    padding: 6px 8px; text-align: left;
+    padding: 4px 6px; text-align: left;
     border-bottom: 1px solid var(--border, #eee);
 }
-.prv-tabela th { background: var(--bg, #fafafa); font-weight: 600; }
+.prv-tabela th { background: var(--bg, #fafafa); font-weight: 600; font-size: 11px; }
 .prv-tabela .prv-nota { font-weight: 600; color: #4285F4; text-align: right; }
 .prv-flag {
     display:inline-block; padding:1px 6px; border-radius:4px;
@@ -404,13 +410,13 @@
 
 /* Tabs */
 .prv-tabs {
-    display: flex; gap: 4px; margin-bottom: 16px;
+    display: flex; gap: 4px; margin-bottom: 10px;
     border-bottom: 2px solid var(--border, #e5e7eb);
     padding-bottom: 0;
 }
 .prv-tab-btn {
-    padding: 7px 16px; border: none; background: none;
-    cursor: pointer; font-size: 13px; font-weight: 500;
+    padding: 5px 12px; border: none; background: none;
+    cursor: pointer; font-size: 12px; font-weight: 500;
     color: var(--text-muted, #666); border-radius: 6px 6px 0 0;
     border-bottom: 2px solid transparent; margin-bottom: -2px;
     transition: .15s;
