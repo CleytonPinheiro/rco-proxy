@@ -502,6 +502,31 @@ html, body {
 }
 .pa-link-ativ:hover { background: var(--pa-primary-dark); }
 
+/* ── Cabeçalho de trimestre ─────────────────────────── */
+.pa-trimestre-header {
+    padding: 8px 20px 7px;
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #fff;
+    background: var(--pa-primary, #1a73e8);
+    border-top: 2px solid var(--pa-border);
+}
+.pa-trimestre-header:first-of-type { border-top: none; }
+.pa-trimestre-header--outras {
+    color: var(--pa-sub);
+    background: rgba(95,99,104,.08);
+}
+[data-theme="dark"] .pa-trimestre-header {
+    background: rgba(123,170,247,.18);
+    color: #a8c7fa;
+}
+[data-theme="dark"] .pa-trimestre-header--outras {
+    background: rgba(154,160,166,.1);
+    color: var(--pa-sub);
+}
+
 /* ── Grupos de atividades dentro do card ────────────── */
 .pa-grupo-secao {
     border-top: 2px solid var(--pa-border);

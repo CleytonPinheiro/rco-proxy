@@ -573,7 +573,7 @@ export function createAlunosPortalRouter() {
                             let grupoMap = {};
                             if (todosIds.length > 0) {
                                 const { rows: grupoRows } = await pool.query(
-                                    `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome, g.data_fechamento
+                                    `SELECT ga.atividade_id::text, g.id as grupo_id, g.nome as grupo_nome, g.data_fechamento, g.trimestre, g.ano
                                      FROM classroom_grupo_atividades ga
                                      JOIN classroom_grupos g ON g.id = ga.grupo_id
                                      WHERE ga.atividade_id = ANY($1::text[])
@@ -587,6 +587,8 @@ export function createAlunosPortalRouter() {
                                         nome: r.grupo_nome,
                                         fechado: !!r.data_fechamento,
                                         dataFechamento: r.data_fechamento ? r.data_fechamento.toISOString() : null,
+                                        trimestre: r.trimestre ?? null,
+                                        ano: r.ano ?? null,
                                     };
                                 });
                             }
@@ -598,6 +600,8 @@ export function createAlunosPortalRouter() {
                                     a.grupoNome = g.nome;
                                     a.grupoFechado = g.fechado;
                                     a.grupoDataFechamento = g.dataFechamento;
+                                    a.grupoTrimestre = g.trimestre;
+                                    a.grupoAno = g.ano;
                                 }
                             };
 

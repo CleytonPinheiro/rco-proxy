@@ -1089,71 +1089,111 @@ function renderCursoCard(curso, { zerada = false, aguardando = false } = {}) {
         return card;
     }
 
-    /* ── Agrupa atividades pendentes por grupo ───────── */
-    const gruposMap = new Map();   /* grupoId → { nome, atividades[] } */
-    const semGrupo  = [];
+    /* ── Agrupa atividades pendentes por trimestre → grupo ── */
+
+    /* Função auxiliar: renderiza as seções de grupo dentro de um container */
+    function renderGruposDentroDeContainer(container, gruposMapLocal, semGrupoLocal) {
+        gruposMapLocal.forEach(({ nome, atividades: gAtivs }) => {
+            const secao = document.createElement('div');
+            secao.className = 'pa-grupo-secao';
+
+            const primeiraAtiv = gAtivs[0];
+            const grupoFechado = primeiraAtiv?.grupoFechado;
+            const grupoDataFech = primeiraAtiv?.grupoDataFechamento;
+
+            const label = document.createElement('div');
+            label.className = 'pa-grupo-label';
+            label.innerHTML = `<span class="pa-grupo-icon">📋</span><span class="pa-grupo-nome">${esc(nome)}</span>`;
+            secao.appendChild(label);
+
+            if (grupoFechado) {
+                secao.classList.add('pa-grupo-secao--fechado');
+                const aviso = document.createElement('div');
+                aviso.className = 'pa-grupo-fechado-aviso';
+                const dtFech = grupoDataFech ? new Date(grupoDataFech).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                aviso.innerHTML = `<span class="pa-fechado-icon">🔒</span> <strong>Notas fechadas${dtFech ? ` em ${dtFech}` : ''}</strong> — Entregas após o fechamento não serão contabilizadas na nota.`;
+                secao.appendChild(aviso);
+            }
+
+            const lista = document.createElement('ul');
+            lista.className = 'pa-atividade-lista';
+            gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
+            secao.appendChild(lista);
+
+            container.appendChild(secao);
+        });
+
+        if (semGrupoLocal.length > 0 && !curso.temGrupos) {
+            const secao = document.createElement('div');
+            secao.className = 'pa-grupo-secao pa-grupo-secao--outras';
+
+            if (gruposMapLocal.size > 0) {
+                const label = document.createElement('div');
+                label.className = 'pa-grupo-label pa-grupo-label--outras';
+                label.innerHTML = `<span class="pa-grupo-icon">📌</span><span class="pa-grupo-nome">Outras atividades</span>`;
+                secao.appendChild(label);
+            }
+
+            const lista = document.createElement('ul');
+            lista.className = 'pa-atividade-lista';
+            semGrupoLocal.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
+            secao.appendChild(lista);
+
+            container.appendChild(secao);
+        }
+    }
+
+    /* Agrupa por trimestre: chave = "T-ANO" ou "__sem__" para grupos sem trimestre */
+    const trimestreMap = new Map(); /* chave → { trimestre, ano, gruposMap, semGrupo } */
 
     items.forEach(ativ => {
+        const t = ativ.grupoTrimestre ?? null;
+        const a = ativ.grupoAno ?? null;
+        const chave = (t !== null && a !== null) ? `${t}-${a}` : '__sem__';
+
+        if (!trimestreMap.has(chave)) {
+            trimestreMap.set(chave, { trimestre: t, ano: a, gruposMap: new Map(), semGrupo: [] });
+        }
+        const bucket = trimestreMap.get(chave);
+
         if (ativ.grupoId) {
-            if (!gruposMap.has(ativ.grupoId)) {
-                gruposMap.set(ativ.grupoId, { nome: ativ.grupoNome, atividades: [] });
+            if (!bucket.gruposMap.has(ativ.grupoId)) {
+                bucket.gruposMap.set(ativ.grupoId, { nome: ativ.grupoNome, atividades: [] });
             }
-            gruposMap.get(ativ.grupoId).atividades.push(ativ);
+            bucket.gruposMap.get(ativ.grupoId).atividades.push(ativ);
         } else {
-            semGrupo.push(ativ);
+            bucket.semGrupo.push(ativ);
         }
     });
 
-    /* Renderiza cada grupo */
-    gruposMap.forEach(({ nome, atividades: gAtivs }, grupoId) => {
-        const secao = document.createElement('div');
-        secao.className = 'pa-grupo-secao';
-
-        const primeiraAtiv = gAtivs[0];
-        const grupoFechado = primeiraAtiv?.grupoFechado;
-        const grupoDataFech = primeiraAtiv?.grupoDataFechamento;
-
-        const label = document.createElement('div');
-        label.className = 'pa-grupo-label';
-        label.innerHTML = `<span class="pa-grupo-icon">📋</span><span class="pa-grupo-nome">${esc(nome)}</span>`;
-        secao.appendChild(label);
-
-        if (grupoFechado) {
-            secao.classList.add('pa-grupo-secao--fechado');
-            const aviso = document.createElement('div');
-            aviso.className = 'pa-grupo-fechado-aviso';
-            const dtFech = grupoDataFech ? new Date(grupoDataFech).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-            aviso.innerHTML = `<span class="pa-fechado-icon">🔒</span> <strong>Notas fechadas${dtFech ? ` em ${dtFech}` : ''}</strong> — Entregas após o fechamento não serão contabilizadas na nota.`;
-            secao.appendChild(aviso);
-        }
-
-        const lista = document.createElement('ul');
-        lista.className = 'pa-atividade-lista';
-        gAtivs.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
-        secao.appendChild(lista);
-
-        body.appendChild(secao);
+    /* Ordena: trimestres numericamente, "sem trimestre" por último */
+    const trimestreOrdenado = [...trimestreMap.entries()].sort(([chA, dA], [chB, dB]) => {
+        if (chA === '__sem__') return 1;
+        if (chB === '__sem__') return -1;
+        if (dA.ano !== dB.ano) return (dA.ano ?? 0) - (dB.ano ?? 0);
+        return (dA.trimestre ?? 0) - (dB.trimestre ?? 0);
     });
 
-    /* Atividades sem grupo — só mostra se o curso NÃO tem grupos definidos */
-    if (semGrupo.length > 0 && !curso.temGrupos) {
-        const secao = document.createElement('div');
-        secao.className = 'pa-grupo-secao pa-grupo-secao--outras';
+    const temVariosTrims = trimestreOrdenado.filter(([k]) => k !== '__sem__').length > 0;
 
-        if (gruposMap.size > 0) {
-            const label = document.createElement('div');
-            label.className = 'pa-grupo-label pa-grupo-label--outras';
-            label.innerHTML = `<span class="pa-grupo-icon">📌</span><span class="pa-grupo-nome">Outras atividades</span>`;
-            secao.appendChild(label);
+    trimestreOrdenado.forEach(([chave, { trimestre, ano, gruposMap: gMap, semGrupo: sSemGrupo }]) => {
+        let container = body;
+
+        if (chave !== '__sem__' && temVariosTrims) {
+            const ordinal = trimestre === 1 ? '1º' : trimestre === 2 ? '2º' : trimestre === 3 ? '3º' : `${trimestre}º`;
+            const titulo = document.createElement('div');
+            titulo.className = 'pa-trimestre-header';
+            titulo.textContent = `${ordinal} Trimestre — ${ano}`;
+            body.appendChild(titulo);
+        } else if (chave === '__sem__' && temVariosTrims) {
+            const titulo = document.createElement('div');
+            titulo.className = 'pa-trimestre-header pa-trimestre-header--outras';
+            titulo.textContent = 'Outras atividades';
+            body.appendChild(titulo);
         }
 
-        const lista = document.createElement('ul');
-        lista.className = 'pa-atividade-lista';
-        semGrupo.forEach(ativ => lista.appendChild(renderAtivItem(ativ, { cursoId: curso.cursoId, cursoNome: curso.nome })));
-        secao.appendChild(lista);
-
-        body.appendChild(secao);
-    }
+        renderGruposDentroDeContainer(container, gMap, sSemGrupo);
+    });
 
     card.appendChild(body);
     return card;
