@@ -1043,6 +1043,19 @@ function renderDetalhe(d) {
         .filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora)
         .sort((a, b) => (a.aluno_nome || a.aluno_email || '').localeCompare(b.aluno_nome || b.aluno_email || '', 'pt-BR', { sensitivity: 'base' }));
     const segundas   = d.submissoes.filter(s =>  s.eh_segundo_corretor && !s.eh_turma_corretora);
+    /* Índice: submissao_ref_id → linha da turma corretora (com marcações reais) */
+    const tcorMap = {};
+    d.submissoes.filter(s => s.eh_turma_corretora).forEach(s => { tcorMap[s.submissao_ref_id] = s; });
+
+    /* Detecta submissões-gatilho: criadas pelo professor com marcacoes vazias aguardando tcor */
+    const _ehGatilho = s => {
+        if (s.origem !== 'professor-tcor') return false;
+        const marc = s.marcacoes_json;
+        if (!marc) return true;
+        if (typeof marc === 'string') { try { return Object.keys(JSON.parse(marc)).length === 0; } catch { return true; } }
+        return Object.keys(marc).length === 0;
+    };
+
     let sub = `<h3>Submissões dos alunos</h3>`;
     if (!p.efetivada) {
         sub += `<div class="prv-info-box">⚠️ <strong>As notas estão como rascunho.</strong> Quando estiver pronto, clique em <strong>"Efetivar notas"</strong> abaixo. Depois lance as notas no Classroom (ou use o botão <strong>📢 Publicar no Classroom</strong> que cria a atividade no grupo dedicado da avaliação).</div>`;
@@ -1055,33 +1068,48 @@ function renderDetalhe(d) {
             <th>Aluno</th><th>Variante</th><th>Quando</th><th>Flags</th><th class="prv-nota">Nota</th><th>Ações</th>
         </tr></thead><tbody>`;
         for (const s of principais) {
+            const gatilho  = _ehGatilho(s);
+            const tcorSub  = tcorMap[s.id]; /* linha da turma corretora para esta folha */
+            /* Se a turma corretora já corrigiu, usa os dados dela; senão usa o stub */
+            const exibir   = (gatilho && tcorSub) ? tcorSub : s;
+
             const seg = segundas.find(x => x.submissao_ref_id === s.id);
             const flags = [];
-            if (s.foto_obrigatoria && !s.foto_url) flags.push('<span class="prv-flag prv-flag-foto">SEM FOTO</span>');
-            if (s.foto_url) {
-                if (s.foto_conferida === 'ok') flags.push('<span class="prv-flag prv-flag-foto" style="background:#dcfce7;color:#166534">📷 ✅ confere</span>');
-                else if (s.foto_conferida === 'divergente') flags.push('<span class="prv-flag prv-flag-foto" style="background:#fee2e2;color:#991b1b">📷 ⚠️ não confere</span>');
-                else flags.push(`<button class="prv-link-acao prv-act-foto" data-sub="${s.id}" title="Conferir se a foto bate com as marcações enviadas">📷 conferir</button>`);
+
+            if (gatilho && !tcorSub) {
+                /* Aguardando correção da turma corretora — não mostra marcações em branco */
+                flags.push('<span class="prv-flag prv-flag-2cor-pend" title="Folha registrada — aguardando a turma corretora marcar as respostas">⏳ aguardando turma corretora</span>');
+            } else {
+                if (exibir.foto_obrigatoria && !exibir.foto_url) flags.push('<span class="prv-flag prv-flag-foto">SEM FOTO</span>');
+                if (exibir.foto_url) {
+                    if (exibir.foto_conferida === 'ok') flags.push('<span class="prv-flag prv-flag-foto" style="background:#dcfce7;color:#166534">📷 ✅ confere</span>');
+                    else if (exibir.foto_conferida === 'divergente') flags.push('<span class="prv-flag prv-flag-foto" style="background:#fee2e2;color:#991b1b">📷 ⚠️ não confere</span>');
+                    else flags.push(`<button class="prv-link-acao prv-act-foto" data-sub="${s.id}" title="Conferir se a foto bate com as marcações enviadas">📷 conferir</button>`);
+                }
+                if (seg) {
+                    const div = Math.abs((seg.nota || 0) - (exibir.nota || 0));
+                    if (div > 0.01) flags.push(`<span class="prv-flag prv-flag-2cor">DIVERG ${div.toFixed(1)}</span>`);
+                    else flags.push('<span class="prv-flag prv-flag-2cor">2º ✓</span>');
+                } else if (s.segundo_corretor_pendente_email) {
+                    flags.push(`<span class="prv-flag prv-flag-2cor-pend" title="Corretor designado: ${escapeHtml(s.segundo_corretor_pendente_email)}">⏳ 2º aguardando</span>`);
+                }
+                const varianteExib = d.variantes.find(v => v.id === exibir.variante_id);
+                const emBranco = contarQuestoesEmBranco(varianteExib?.gabarito_json, exibir.marcacoes_json);
+                if (emBranco > 0) {
+                    const label = emBranco === 1 ? '1 questão em branco' : `${emBranco} questões em branco`;
+                    flags.push(`<span class="prv-flag prv-flag-branco" title="${label} nesta correção">✏️ ${label}</span>`);
+                }
+                if (gatilho && tcorSub) {
+                    flags.push('<span class="prv-flag" style="background:#dbeafe;color:#1e40af" title="Nota calculada pela turma corretora">🏫 tcor</span>');
+                }
             }
-            if (seg) {
-                const div = Math.abs((seg.nota || 0) - (s.nota || 0));
-                if (div > 0.01) flags.push(`<span class="prv-flag prv-flag-2cor">DIVERG ${div.toFixed(1)}</span>`);
-                else flags.push('<span class="prv-flag prv-flag-2cor">2º ✓</span>');
-            } else if (s.segundo_corretor_pendente_email) {
-                flags.push(`<span class="prv-flag prv-flag-2cor-pend" title="Corretor designado: ${escapeHtml(s.segundo_corretor_pendente_email)}">⏳ 2º aguardando</span>`);
-            }
-            const varianteS = d.variantes.find(v => v.id === s.variante_id);
-            const emBranco = contarQuestoesEmBranco(varianteS?.gabarito_json, s.marcacoes_json);
-            if (emBranco > 0) {
-                const label = emBranco === 1 ? '1 questão em branco' : `${emBranco} questões em branco`;
-                flags.push(`<span class="prv-flag prv-flag-branco" title="${label} nesta correção">✏️ ${label}</span>`);
-            }
+
             const selVar = `<select id="prvVar_${s.id}" class="prv-sel-variante" title="Trocar variante recalcula a nota">
                 ${d.variantes.map(v => `<option value="${v.id}" ${v.id===s.variante_id?'selected':''}>.${escapeHtml(v.codigo)}</option>`).join('')}
             </select>
             <button class="prv-link-acao prv-act-trocar" data-sub="${s.id}" title="Recalcula a nota com o gabarito da variante escolhida">↻</button>`;
             const acoes = [];
-            if (p.segundo_corretor_ativo) {
+            if (p.segundo_corretor_ativo && !gatilho) {
                 if (seg) {
                     acoes.push('<small>2ª ok</small>');
                 } else if (s.segundo_corretor_pendente_email) {
@@ -1094,12 +1122,13 @@ function renderDetalhe(d) {
             const alunoLabel = s.aluno_nome
                 ? (s.numchamada != null ? `Nº ${s.numchamada} — ${escapeHtml(s.aluno_nome)}` : escapeHtml(s.aluno_nome))
                 : escapeHtml(s.aluno_email);
+            const notaExib = gatilho ? (tcorSub ? `${exibir.nota} / ${exibir.total_max}` : `— / ${s.total_max}`) : `${s.nota} / ${s.total_max}`;
             sub += `<tr>
                 <td>${alunoLabel}<br><small style="color:#888;font-size:10px;line-height:1.2">${escapeHtml(s.aluno_email)}</small></td>
                 <td>${selVar}</td>
                 <td style="white-space:nowrap;font-size:11px">${new Date(s.criada_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
                 <td>${flags.join(' ') || '—'}</td>
-                <td class="prv-nota">${s.nota} / ${s.total_max}</td>
+                <td class="prv-nota">${notaExib}</td>
                 <td>${acoes.join(' ')}</td>
             </tr>`;
         }
