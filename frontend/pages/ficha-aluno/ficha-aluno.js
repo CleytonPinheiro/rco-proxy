@@ -6,6 +6,16 @@ function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function highlightMatch(text, query) {
+    if (!query) return escHtml(text);
+    const escaped = escHtml(text);
+    const words = query.trim().split(/\s+/).filter(Boolean)
+        .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!words.length) return escaped;
+    const pattern = new RegExp(`(${words.join('|')})`, 'gi');
+    return escaped.replace(pattern, '<mark class="busca-hl">$1</mark>');
+}
+
 function formatarData(iso) {
     if (!iso) return '—';
     const [y, m, d] = (iso || '').split('T')[0].split('-');
@@ -185,7 +195,7 @@ async function buscarAlunos(termo) {
 
         resultadosEl.innerHTML = alunos.map(a => `
             <button class="ficha-busca-item" data-cod="${escHtml(String(a.codmatrizaluno || ''))}" type="button">
-                <span class="ficha-busca-item-nome">${escHtml(a.nome)}</span>
+                <span class="ficha-busca-item-nome">${highlightMatch(a.nome, termo)}</span>
                 <span class="ficha-busca-item-turma">${escHtml(a.turma || '—')}</span>
             </button>
         `).join('');

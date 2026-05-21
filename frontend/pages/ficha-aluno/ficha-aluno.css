@@ -667,6 +667,19 @@
     color: var(--text-secondary);
 }
 
+.busca-hl {
+    background: #fef08a;
+    color: #1f2937;
+    border-radius: 2px;
+    padding: 0 1px;
+    font-style: normal;
+}
+
+[data-theme="dark"] .busca-hl {
+    background: #854d0e;
+    color: #fef9c3;
+}
+
 /* ── Tema escuro ─────────────────────────────────────────────────── */
 [data-theme="dark"] .ficha-secao {
     background: var(--bg-card);
