@@ -309,13 +309,11 @@ function prvToggleTurmaCorretora(ativo) {
         $('prvfTurmaCorretoraCurso').value = '';
         $('prvfTurmaCorretora2a').checked = false;
     } else {
-        /* Popula o select com todos os cursos disponíveis, exceto o atual */
+        /* Popula o select com todos os cursos agrupados por turma (própria turma inclusa, destacada) */
         const sel = $('prvfTurmaCorretoraCurso');
         const valorAtual = sel.value;
         sel.innerHTML = '<option value="">Selecione a turma que irá corrigir…</option>' +
-            cursos.filter(c => c.id !== cursoAtual)
-                  .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.nome)}</option>`)
-                  .join('');
+            _buildTcorOpts(cursos, valorAtual, cursoAtual);
         if (valorAtual) sel.value = valorAtual;
     }
 }
@@ -356,6 +354,31 @@ function _nomeTurma(nomeCompleto) {
 function _nomeDisciplina(nomeCompleto) {
     const sep = nomeCompleto.indexOf(' - ');
     return sep >= 0 ? nomeCompleto.slice(0, sep) : nomeCompleto;
+}
+
+/* Constrói opções agrupadas por turma para o select de turma corretora.
+   selfCursoId: curso da prova — aparece destacado mas NÃO é excluído. */
+function _buildTcorOpts(allCursos, currentTcId, selfCursoId) {
+    const groups = {};
+    const order  = [];
+    for (const c of allCursos) {
+        const parts    = c.nome.split(' - ');
+        const turmaKey = parts.length >= 2 ? parts[1] : '(Sem turma)';
+        if (!groups[turmaKey]) { groups[turmaKey] = []; order.push(turmaKey); }
+        groups[turmaKey].push(c);
+    }
+    return order
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+        .map(turma => {
+            const opts = groups[turma].map(c => {
+                const isSelf = c.id === selfCursoId;
+                const label  = isSelf
+                    ? `★ ${_nomeDisciplina(c.nome)} (esta turma)`
+                    : _nomeDisciplina(c.nome);
+                return `<option value="${escapeHtml(c.id)}"${c.id === currentTcId ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+            }).join('');
+            return `<optgroup label="${escapeHtml(turma)}">${opts}</optgroup>`;
+        }).join('');
 }
 
 async function carregarCursos() {
@@ -863,10 +886,7 @@ function renderDetalhe(d) {
     {
         const currentTcId  = p.turma_corretora_id || '';
         const current2a    = !!p.turma_corretora_2a_correcao;
-        const outrosCursos = cursos.filter(c => c.id !== p.curso_id);
-        const optsTC = outrosCursos
-            .map(c => `<option value="${escapeHtml(c.id)}" ${c.id === currentTcId ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`)
-            .join('');
+        const optsTC = _buildTcorOpts(cursos, currentTcId, p.curso_id);
         const tcNome  = currentTcId ? ((cursos.find(c => c.id === currentTcId) || {}).nome || currentTcId) : 'nenhuma';
         const tcSubs  = d.submissoes.filter(s => s.eh_turma_corretora).length;
         const tcTotal = d.submissoes.filter(s => !s.eh_segundo_corretor && !s.eh_turma_corretora).length;
