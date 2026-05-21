@@ -44,9 +44,23 @@
         <span class="footer-version">EduSync 2026</span>
     </footer>
 
-    <main class="container">
-        <div class="ficha-wrap">
-            <!-- Cabeçalho dinâmico -->
+    <main class="container ficha-main" id="fichaMain">
+
+        <!-- ── Painel esquerdo: lista de alunos (modo seletor) ─────── -->
+        <aside class="ficha-lista-panel" id="fichaListaPanel">
+            <div class="ficha-lista-topo">
+                <div class="ficha-lista-titulo">📋 Selecionar aluno</div>
+                <select id="fichaTurmaSelect" class="ficha-turma-sel">
+                    <option value="">Carregando turmas…</option>
+                </select>
+            </div>
+            <div id="fichaListaAlunos" class="ficha-lista-alunos">
+                <div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>
+            </div>
+        </aside>
+
+        <!-- ── Painel direito: ficha do aluno ──────────────────────── -->
+        <section class="ficha-detalhe-panel">
             <div id="fichaHeader" class="ficha-header">
                 <div class="ficha-header-info">
                     <div class="ficha-loading">
@@ -55,10 +69,9 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Conteúdo dinâmico -->
             <div id="fichaConteudo"></div>
-        </div>
+        </section>
+
     </main>
 
     <script src="../../shared/js/auth.js"></script>

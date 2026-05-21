@@ -21,22 +21,126 @@ function formatarDataHora(iso) {
     return `${dd}/${mm}/${yyyy}`;
 }
 
+/* ── Inicialização ─────────────────────────────────────────────────────────── */
+
 async function init() {
     const params = new URLSearchParams(location.search);
     const codMatrizAluno = params.get('codMatrizAluno');
 
     if (!codMatrizAluno) {
-        document.getElementById('fichaConteudo').innerHTML = `
-            <div class="ficha-secao">
-                <div class="ficha-secao-corpo">
-                    <div class="ficha-aviso">⚠️ Nenhum aluno selecionado. Acesse esta página a partir do histórico de comportamento.</div>
-                </div>
+        /* Modo seletor: painel lateral com lista de alunos */
+        document.getElementById('fichaMain').classList.add('ficha-modo-seletor');
+        document.getElementById('fichaHeader').innerHTML = `
+            <div class="ficha-header-info">
+                <h2 class="ficha-aluno-nome" style="font-size:18px;opacity:.7">Selecione um aluno</h2>
+                <p style="margin:4px 0 0;opacity:.55;font-size:13px">Escolha a turma no painel à esquerda e clique em um aluno.</p>
             </div>`;
+        await carregarTurmas();
         return;
     }
 
+    /* Modo direto: esconde painel lateral e carrega ficha imediatamente */
+    document.getElementById('fichaMain').classList.add('ficha-modo-direto');
+    await carregarFicha(codMatrizAluno);
+}
+
+/* ── Modo seletor ──────────────────────────────────────────────────────────── */
+
+async function carregarTurmas() {
+    const sel = document.getElementById('fichaTurmaSelect');
     try {
-        const r = await fetch(`${API}/api/ficha-aluno?codMatrizAluno=${codMatrizAluno}`);
+        const r = await fetch(`${API}/api/alunos/turmas/lista`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const turmas = await r.json();
+
+        if (!turmas || turmas.length === 0) {
+            sel.innerHTML = '<option value="">Nenhuma turma encontrada</option>';
+            return;
+        }
+
+        sel.innerHTML = '<option value="">Selecione a turma…</option>' +
+            turmas.map(t => `<option value="${t.codturma}">${escHtml(t.turma)}</option>`).join('');
+
+        sel.addEventListener('change', () => {
+            if (sel.value) carregarAlunos(sel.value);
+            else {
+                document.getElementById('fichaListaAlunos').innerHTML =
+                    '<div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>';
+            }
+        });
+    } catch (e) {
+        sel.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+    }
+}
+
+async function carregarAlunos(codturma) {
+    const listEl = document.getElementById('fichaListaAlunos');
+    listEl.innerHTML = '<div class="ficha-lista-loading"><div class="spinner" style="width:22px;height:22px;margin:0 auto 6px"></div>Carregando alunos…</div>';
+
+    try {
+        const r = await fetch(`${API}/api/ficha-aluno/resumo-turma?codturma=${encodeURIComponent(codturma)}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const { alunos } = await r.json();
+
+        if (!alunos || alunos.length === 0) {
+            listEl.innerHTML = '<div class="ficha-lista-placeholder">Nenhum aluno encontrado nesta turma.</div>';
+            return;
+        }
+
+        /* Ordena alfabeticamente */
+        alunos.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+
+        listEl.innerHTML = alunos.map(a => {
+            const { positivo = 0, atencao = 0, grave = 0 } = a.ocorrencias || {};
+            const badges = [
+                positivo > 0 ? `<span class="fai-badge fai-pos" title="${positivo} positiv${positivo===1?'a':'as'}">✅ ${positivo}</span>` : '',
+                atencao  > 0 ? `<span class="fai-badge fai-atencao" title="${atencao} atenção">⚠️ ${atencao}</span>` : '',
+                grave    > 0 ? `<span class="fai-badge fai-grave" title="${grave} grav${grave===1?'e':'es'}">❌ ${grave}</span>` : '',
+            ].filter(Boolean).join('');
+
+            return `<button class="ficha-aluno-item" data-cod="${a.codMatrizAluno}"
+                        onclick="selecionarAluno(${a.codMatrizAluno})"
+                        title="${escHtml(a.nome)}">
+                <div class="fai-linha1">
+                    ${a.numchamada ? `<span class="fai-num">Nº ${a.numchamada}</span>` : ''}
+                    <span class="fai-nome">${escHtml(a.nome)}</span>
+                </div>
+                ${badges ? `<div class="fai-badges">${badges}</div>` : ''}
+            </button>`;
+        }).join('');
+
+    } catch (e) {
+        listEl.innerHTML = `<div class="ficha-lista-placeholder" style="color:#dc2626">Erro: ${escHtml(e.message)}</div>`;
+    }
+}
+
+async function selecionarAluno(codMatrizAluno) {
+    /* Destaca na lista */
+    document.querySelectorAll('.ficha-aluno-item').forEach(btn => {
+        btn.classList.toggle('ativo', btn.dataset.cod == codMatrizAluno);
+    });
+
+    /* Mostra spinner no painel direito */
+    document.getElementById('fichaHeader').innerHTML = `
+        <div class="ficha-header-info">
+            <div class="ficha-loading">
+                <div class="spinner"></div>
+                <p>Carregando ficha…</p>
+            </div>
+        </div>`;
+    document.getElementById('fichaConteudo').innerHTML = '';
+
+    /* No mobile, rola para o painel da ficha */
+    document.querySelector('.ficha-detalhe-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    await carregarFicha(codMatrizAluno);
+}
+
+/* ── Carregamento da ficha (compartilhado pelos dois modos) ────────────────── */
+
+async function carregarFicha(codMatrizAluno) {
+    try {
+        const r = await fetch(`${API}/api/ficha-aluno?codMatrizAluno=${encodeURIComponent(codMatrizAluno)}`);
         if (!r.ok) {
             const err = await r.json().catch(() => ({}));
             throw new Error(err.erro || `Erro ${r.status}`);
@@ -44,6 +148,7 @@ async function init() {
         const dados = await r.json();
         renderFicha(dados);
     } catch (e) {
+        document.getElementById('fichaHeader').innerHTML = '';
         document.getElementById('fichaConteudo').innerHTML = `
             <div class="ficha-secao">
                 <div class="ficha-secao-corpo">
@@ -53,16 +158,17 @@ async function init() {
     }
 }
 
+/* ── Renderização ──────────────────────────────────────────────────────────── */
+
 function renderFicha(dados) {
     const { aluno, frequencias, ocorrencias, observacoes, emprestimos, geradoEm } = dados;
 
-    // Cabeçalho
     document.title = `Ficha — ${aluno.nome}`;
     document.getElementById('fichaHeader').innerHTML = `
         <div class="ficha-header-info">
             <h1 class="ficha-aluno-nome">${escHtml(aluno.nome)}</h1>
             <div class="ficha-meta">
-                ${aluno.turma   ? `<span class="ficha-meta-item">🏫 ${escHtml(aluno.turma)}</span>` : ''}
+                ${aluno.turma      ? `<span class="ficha-meta-item">🏫 ${escHtml(aluno.turma)}</span>` : ''}
                 ${aluno.numchamada ? `<span class="ficha-meta-item">📋 Nº ${aluno.numchamada}</span>` : ''}
                 ${aluno.codMatrizAluno ? `<span class="ficha-meta-item">🆔 Matrícula ${aluno.codMatrizAluno}</span>` : ''}
             </div>
@@ -72,7 +178,6 @@ function renderFicha(dados) {
             <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir / PDF</button>
         </div>`;
 
-    // Seções
     document.getElementById('fichaConteudo').innerHTML =
         renderSecaoFrequencias(frequencias) +
         renderSecaoOcorrencias(ocorrencias) +
@@ -131,7 +236,6 @@ function renderSecaoOcorrencias(ocorrencias) {
     if (!ocorrencias || ocorrencias.length === 0) {
         corpo = `<div class="ficha-vazio">Nenhuma ocorrência de comportamento registrada.</div>`;
     } else {
-        // Agrupar por turma
         const grupos = {};
         for (const o of ocorrencias) {
             const turma = o.nome_turma || `Turma ${o.cod_turma || 'desconhecida'}`;
@@ -180,7 +284,6 @@ function renderSecaoObservacoes(observacoes) {
     if (!observacoes || observacoes.length === 0) {
         corpo = `<div class="ficha-vazio">Nenhuma observação pedagógica do RCO registrada.</div>`;
     } else {
-        // Agrupar por disciplina (nome_disciplina enriquecido pelo backend)
         const grupos = {};
         for (const o of observacoes) {
             const chave = o.nome_disciplina || `Classe ${o.cod_classe || '?'}`;

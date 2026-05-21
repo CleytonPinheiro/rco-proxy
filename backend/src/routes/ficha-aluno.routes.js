@@ -10,6 +10,53 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
     router.use('/ficha-aluno', requireModulo('ficha-aluno'));
 
+    /* ── GET /api/ficha-aluno/resumo-turma?codturma=X ────────────────
+       Retorna alunos da turma com contagem de ocorrências por tipo
+       (rápido — sem chamada RCO) para popular o painel lateral.        */
+    router.get('/ficha-aluno/resumo-turma', async (req, res) => {
+        const { codturma } = req.query;
+        if (!codturma) return res.status(400).json({ erro: 'codturma é obrigatório' });
+
+        try {
+            const { data: alunos, error: alunosErr } = await supabaseAdmin
+                .from('alunos')
+                .select('nome, numchamada, codmatrizaluno, turma')
+                .eq('codturma', parseInt(codturma, 10))
+                .order('numchamada', { ascending: true, nullsFirst: false })
+                .order('nome',        { ascending: true });
+
+            if (alunosErr) throw alunosErr;
+            if (!alunos || alunos.length === 0) return res.json({ alunos: [] });
+
+            const codMatrizes = alunos.map(a => a.codmatrizaluno).filter(Boolean);
+
+            const { data: ocorrencias } = await supabaseAdmin
+                .from('aluno_ocorrencias')
+                .select('cod_matriz_aluno, tipo')
+                .in('cod_matriz_aluno', codMatrizes);
+
+            const ocorrMap = {};
+            for (const o of (ocorrencias || [])) {
+                const k = o.cod_matriz_aluno;
+                if (!ocorrMap[k]) ocorrMap[k] = { positivo: 0, atencao: 0, grave: 0 };
+                if (ocorrMap[k][o.tipo] !== undefined) ocorrMap[k][o.tipo]++;
+            }
+
+            res.json({
+                alunos: alunos.map(a => ({
+                    codMatrizAluno: a.codmatrizaluno,
+                    nome:          a.nome,
+                    numchamada:    a.numchamada,
+                    turma:         a.turma,
+                    ocorrencias:   ocorrMap[a.codmatrizaluno] || { positivo: 0, atencao: 0, grave: 0 },
+                })),
+            });
+        } catch (e) {
+            console.error('[FICHA-ALUNO] resumo-turma:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     router.get('/ficha-aluno', async (req, res) => {
         const codMatrizAluno = req.query.codMatrizAluno;
         if (!codMatrizAluno) {
