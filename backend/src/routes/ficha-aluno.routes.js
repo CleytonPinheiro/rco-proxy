@@ -186,13 +186,21 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                                 const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || `Disciplina ${cl.cod_disciplina}`;
                                 try {
                                     const resp = await rcoApiService.get(
-                                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=9&codPeriodoLetivo=261&page=1&perPage=200`
+                                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${process.env.RCO_COD_PERIODO_AVALIACAO ?? 9}&codPeriodoLetivo=${process.env.RCO_COD_PERIODO_LETIVO ?? 261}&page=1&perPage=200`
                                     );
                                     if (resp.status !== 200) return null;
                                     const raw = Array.isArray(resp.data) ? resp.data : [];
-                                    // Encontra o aluno pelo codMatrizAluno
-                                    const alunoFreq = raw.find(a => a.codMatrizAluno === codMatriz);
-                                    if (!alunoFreq) return null;
+
+                                    /* usa == (não ===) para tolerar string vs number */
+                                    // eslint-disable-next-line eqeqeq
+                                    const alunoFreq = raw.find(a => a.codMatrizAluno == codMatriz);
+
+                                    if (!alunoFreq) {
+                                        /* Disciplina existe para a turma mas ainda não tem aulas
+                                           registradas para este aluno (frequência não lançada).
+                                           Mostra a disciplina com zeros em vez de sumir. */
+                                        return { codClasse, nomeDisciplina, totalAulas: 0, presencas: 0, faltas: 0, percentual: null, semDados: true };
+                                    }
 
                                     const aulaKeys = Object.keys(alunoFreq).filter(k => /^\d+$/.test(k));
                                     const totalAulas = aulaKeys.filter(k => alunoFreq[k] != null).length;

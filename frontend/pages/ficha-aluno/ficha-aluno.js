@@ -254,10 +254,9 @@ function renderSecaoFrequencias(frequencias) {
             if (pct !== null && pct < 75)  pctClass = 'freq-pct-critico';
             else if (pct !== null && pct < 85) pctClass = 'freq-pct-alerta';
 
-            return `
-            <div class="freq-disciplina">
-                <div class="freq-disciplina-nome">📖 ${escHtml(f.nomeDisciplina)}</div>
-                <table class="freq-table">
+            const corpo = f.semDados
+                ? `<div class="freq-sem-dados">Nenhuma frequência registrada ainda nesta disciplina.</div>`
+                : `<table class="freq-table">
                     <thead>
                         <tr>
                             <th>Total de Aulas</th>
@@ -274,7 +273,12 @@ function renderSecaoFrequencias(frequencias) {
                             <td><span class="freq-pct ${pctClass}">${pct !== null ? pct + '%' : '—'}</span></td>
                         </tr>
                     </tbody>
-                </table>
+                </table>`;
+
+            return `
+            <div class="freq-disciplina${f.semDados ? ' freq-disciplina-sem-dados' : ''}">
+                <div class="freq-disciplina-nome">📖 ${escHtml(f.nomeDisciplina)}</div>
+                ${corpo}
             </div>`;
         }).join('');
     }

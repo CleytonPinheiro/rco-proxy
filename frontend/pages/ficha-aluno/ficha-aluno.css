@@ -329,6 +329,17 @@
     margin-bottom: 0;
 }
 
+.freq-disciplina-sem-dados {
+    opacity: .7;
+}
+
+.freq-sem-dados {
+    font-size: 12px;
+    color: var(--text-muted, #6b7280);
+    font-style: italic;
+    padding: 6px 2px;
+}
+
 .freq-disciplina-nome {
     font-size: 13px;
     font-weight: 700;
