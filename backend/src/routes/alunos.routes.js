@@ -5,12 +5,18 @@ export function createAlunosRouter({ supabase }) {
 
     router.get('/alunos', async (req, res) => {
         try {
-            const { turma, codturma, registro } = req.query;
-            let query = supabase.from('alunos').select('*');
+            const { turma, codturma, registro, search } = req.query;
+            let query = supabase.from('alunos').select('nome, turma, codturma, numchamada, codmatrizaluno, registro');
 
-            if (codturma) query = query.eq('codturma', parseInt(codturma));
-            else if (turma) query = query.eq('turma', turma);
-            if (registro) query = query.eq('registro', registro);
+            if (search) {
+                const term = search.trim();
+                if (term.length < 2) return res.json([]);
+                query = query.ilike('nome', `%${term}%`).limit(20);
+            } else {
+                if (codturma) query = query.eq('codturma', parseInt(codturma));
+                else if (turma) query = query.eq('turma', turma);
+                if (registro) query = query.eq('registro', registro);
+            }
 
             const { data, error } = await query
                 .order('numchamada', { ascending: true, nullsFirst: false })

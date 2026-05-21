@@ -48,6 +48,7 @@ async function init() {
 
 async function carregarTurmas() {
     const sel = document.getElementById('fichaTurmaSelect');
+
     try {
         const r = await fetch(`${API}/api/alunos/turmas/lista`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -155,6 +156,50 @@ async function carregarFicha(codMatrizAluno) {
                     <div class="ficha-aviso">❌ Erro ao carregar ficha: ${escHtml(e.message)}</div>
                 </div>
             </div>`;
+    }
+}
+
+/* ── Busca por nome (cross-turma) ──────────────────────────────────────────── */
+
+function ocultarResultados() {
+    const el = document.getElementById('fichaBuscaResultados');
+    if (el) { el.hidden = true; el.innerHTML = ''; }
+}
+
+async function buscarAlunos(termo) {
+    const resultadosEl = document.getElementById('fichaBuscaResultados');
+    if (!resultadosEl) return;
+
+    resultadosEl.hidden = false;
+    resultadosEl.innerHTML = `<div class="ficha-busca-carregando">Buscando...</div>`;
+
+    try {
+        const r = await fetch(`${API}/api/alunos?search=${encodeURIComponent(termo)}`);
+        if (!r.ok) throw new Error(`Erro ${r.status}`);
+        const alunos = await r.json();
+
+        if (!alunos || alunos.length === 0) {
+            resultadosEl.innerHTML = `<div class="ficha-busca-vazio">Nenhum aluno encontrado para "<strong>${escHtml(termo)}</strong>".</div>`;
+            return;
+        }
+
+        resultadosEl.innerHTML = alunos.map(a => `
+            <button class="ficha-busca-item" data-cod="${escHtml(String(a.codmatrizaluno || ''))}" type="button">
+                <span class="ficha-busca-item-nome">${escHtml(a.nome)}</span>
+                <span class="ficha-busca-item-turma">${escHtml(a.turma || '—')}</span>
+            </button>
+        `).join('');
+
+        resultadosEl.querySelectorAll('.ficha-busca-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cod = btn.dataset.cod;
+                if (!cod) return;
+                ocultarResultados();
+                selecionarAluno(parseInt(cod, 10));
+            });
+        });
+    } catch (e) {
+        resultadosEl.innerHTML = `<div class="ficha-busca-vazio">Erro ao buscar: ${escHtml(e.message)}</div>`;
     }
 }
 
