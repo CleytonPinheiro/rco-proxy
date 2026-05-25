@@ -143,18 +143,17 @@ export function createBoletimRouter(deps = {}) {
                 console.warn(`[BOLETIM] avaliacaoAlunos falhou — roster indisponível: ${err}`);
             }
 
-            /* ── Passo 3: detalhe de cada AV principal (com recuperacaos + alunos) ── */
+            /* ── Passo 3: detalhe de cada AV principal (com recuperacaos + recuperadas + alunos) ── */
             const detalhes = await Promise.allSettled(
                 avaliacoes.map(av =>
                     rcoApiService.get(
-                        `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=recuperacaos,alunos`
+                        `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=recuperacaos,recuperadas,alunos`
                     )
                 )
             );
 
-            /* ── Passo 4: coleta recuperações — inline ou para busca separada ─── */
-            const recInline  = {};   /* recId(str) → { nome, avPrincipalId, alunosMap } */
-            const recBuscar  = [];   /* [ { recId, nome, avPrincipalId } ] */
+            /* ── Passo 4: coleta recuperações via "recuperadas" da AV principal ── */
+            const recInline = {};   /* recId(str) → { nome, avPrincipalId, alunosMap } */
 
             function parseNome(obj, fallback) {
                 if (obj?.descrAvaliacaoParcial) {
@@ -166,40 +165,54 @@ export function createBoletimRouter(deps = {}) {
             avaliacoes.forEach((av, i) => {
                 const det = detalhes[i];
                 if (det.status !== 'fulfilled' || det.value?.status !== 200) return;
-                const recs = det.value.data?.recuperacaos ?? [];
-                recs.forEach(rec => {
+                const data = det.value.data ?? {};
+
+                const recs       = data.recuperacaos ?? [];   /* [ { codAvaliacaoParcialClasse } ] */
+                const recuperadas = data.recuperadas  ?? [];   /* notas de recuperação por aluno  */
+
+                /* ── Log diagnóstico (remover após confirmar) ─────────────── */
+                console.log(`[BOLETIM-DBG] AV${i} id=${av.codAvaliacaoParcialClasse} recs=${recs.length} recuperadas=${recuperadas.length}`);
+                if (recuperadas.length > 0) {
+                    console.log(`[BOLETIM-DBG] recuperadas[0] keys:`, Object.keys(recuperadas[0]));
+                    console.log(`[BOLETIM-DBG] recuperadas[0]:`, JSON.stringify(recuperadas[0]));
+                }
+                /* ─────────────────────────────────────────────────────────── */
+
+                if (recs.length === 0) return;
+
+                const nomeAv = parseNome(av, `AV${av.numAvaliacaoParcial ?? i + 1}`);
+
+                /*
+                 * "recuperadas" é um array de objetos de avaliação de recuperação,
+                 * cada um com seu próprio .alunos[]. Estrutura confirmada no lancamento:
+                 *   recuperadas[i] = { codAvaliacaoParcialClasse, pesoDecimal, alunos: [...] }
+                 * "recuperacaos" tem só o ID; "recuperadas" tem os dados completos.
+                 */
+                recs.forEach((rec, ri) => {
                     const recId = rec.codAvaliacaoParcialClasse;
                     if (!recId) return;
-                    const nome = parseNome(rec, `Recuperação AV${av.numAvaliacaoParcial ?? i + 1}`);
-                    if (rec.alunos?.length > 0) {
-                        const alunosMap = {};
-                        rec.alunos.forEach(a => {
-                            alunosMap[String(a.codMatrizAluno)] = a.notaDecimal ?? a.nota ?? null;
-                        });
-                        recInline[String(recId)] = { nome, avPrincipalId: av.codAvaliacaoParcialClasse, alunosMap };
-                    } else {
-                        recBuscar.push({ recId, nome, avPrincipalId: av.codAvaliacaoParcialClasse });
-                    }
+                    const nomeRec = `Recuperação ${nomeAv}`;
+
+                    /* Procura o objeto completo em recuperadas pelo ID */
+                    const recupObj = recuperadas.find(r =>
+                        String(r.codAvaliacaoParcialClasse) === String(recId)
+                    ) ?? (ri === 0 && recuperadas.length > 0 ? recuperadas[0] : null);
+
+                    const alunosMap = {};
+                    (recupObj?.alunos ?? []).forEach(a => {
+                        const nota = a.notaDecimal ?? a.nota ?? null;
+                        if (nota !== null) {
+                            alunosMap[String(a.codMatrizAluno)] = nota;
+                        }
+                    });
+
+                    recInline[String(recId)] = {
+                        nome:          nomeRec,
+                        avPrincipalId: av.codAvaliacaoParcialClasse,
+                        alunosMap,
+                    };
                 });
             });
-
-            /* Busca separada das recuperações sem alunos inline */
-            if (recBuscar.length > 0) {
-                const recDetalhes = await Promise.allSettled(
-                    recBuscar.map(r =>
-                        rcoApiService.get(`${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${r.recId}?listas=alunos`)
-                    )
-                );
-                recBuscar.forEach((r, i) => {
-                    const det = recDetalhes[i];
-                    if (det.status !== 'fulfilled' || det.value?.status !== 200) return;
-                    const alunosMap = {};
-                    (det.value.data?.alunos ?? []).forEach(a => {
-                        alunosMap[String(a.codMatrizAluno)] = a.notaDecimal ?? a.nota ?? null;
-                    });
-                    recInline[String(r.recId)] = { nome: r.nome, avPrincipalId: r.avPrincipalId, alunosMap };
-                });
-            }
 
             /* ── Passo 5: monta colunas ordenadas (AV1, R1, AV2, R2, …) ─── */
             const colunas = [];
