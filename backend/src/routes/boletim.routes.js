@@ -71,6 +71,11 @@ export function createBoletimRouter(deps = {}) {
 
     /* ── GET /api/boletim/notas
        Busca notas parciais de todos os alunos de uma classe no RCO.
+       Estratégia:
+         1. Lista avaliações da classe   → /avaliacaoParcialClasses?codClasse=X (colunas)
+         2. Roster de alunos (nomes)     → /relatorios/avaliacaoAlunos?codClasse=X
+         3. Notas por avaliação (linhas) → /avaliacaoParcialClasses/{id}?listas=alunos
+         4. Consolida: cada aluno → array de { nomeAvaliacao, notaDecimal }
        Query: codClasse (obrigatório), codPeriodoAvaliacao (default env ou 9)
     ─────────────────────────────────────────────────────── */
     router.get('/boletim/notas', async (req, res) => {
@@ -84,25 +89,80 @@ export function createBoletimRouter(deps = {}) {
         }
 
         try {
-            const r = await rcoApiService.get(
-                `${RCO_CLASSE_BASE}/relatorios/avaliacaoParcialAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`
-            );
+            /* Passo 1 + 2 em paralelo: lista de avaliações + roster */
+            const [avaliR, rosterR] = await Promise.all([
+                rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}&page=1&perPage=50`
+                ),
+                rcoApiService.get(
+                    `${RCO_CLASSE_BASE}/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`
+                ),
+            ]);
 
-            if (r.status !== 200) {
-                console.error(`[BOLETIM] RCO retornou ${r.status} para classe ${codClasse}`, r.data);
-                return res.status(r.status).json({
-                    erro:    'Erro ao buscar notas no RCO.',
-                    detalhe: r.data,
-                });
+            if (avaliR.status !== 200) {
+                console.error(`[BOLETIM] RCO /avaliacaoParcialClasses retornou ${avaliR.status}`, avaliR.data);
+                return res.status(avaliR.status).json({ erro: 'Erro ao buscar avaliações no RCO.', detalhe: avaliR.data });
             }
 
-            /* Normaliza: a API pode retornar array direto ou { data: [...] } */
-            const raw = Array.isArray(r.data)
-                ? r.data
-                : Array.isArray(r.data?.data) ? r.data.data : [];
+            /* Normaliza lista de avaliações */
+            const avaliacoes = Array.isArray(avaliR.data)
+                ? avaliR.data
+                : (avaliR.data?.content ?? avaliR.data?.data ?? []);
+
+            /* Normaliza roster */
+            const roster = Array.isArray(rosterR.data) ? rosterR.data : [];
+
+            /* Passo 3: busca notas de cada avaliação em paralelo */
+            const detalhes = await Promise.allSettled(
+                avaliacoes.map(av =>
+                    rcoApiService.get(
+                        `${RCO_CLASSE_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=alunos`
+                    )
+                )
+            );
+
+            /* Passo 4: monta mapa { codMatrizAluno → { nome, numChamada, avaliacoes[] } } */
+            const alunoMap = new Map();
+
+            /* Inicializa com roster (garante que alunos sem notas aparecem) */
+            roster.forEach(s => {
+                alunoMap.set(String(s.codMatrizAluno), {
+                    codMatrizAluno: s.codMatrizAluno,
+                    nome:           s.nome       ?? null,
+                    numChamada:     s.numChamada ?? null,
+                    avaliacoes:     [],
+                });
+            });
+
+            /* Preenche notas de cada avaliação */
+            avaliacoes.forEach((av, i) => {
+                const result = detalhes[i];
+                if (result.status !== 'fulfilled' || result.value?.status !== 200) return;
+
+                const avAlunos = result.value.data?.alunos ?? [];
+                const nomeAv = av.nomeAvaliacao ?? av.titulo ?? av.descricao
+                    ?? `Av. ${av.codAvaliacaoParcialClasse}`;
+
+                avAlunos.forEach(a => {
+                    const key = String(a.codMatrizAluno);
+                    if (!alunoMap.has(key)) {
+                        alunoMap.set(key, {
+                            codMatrizAluno: a.codMatrizAluno,
+                            nome:           a.nome       ?? null,
+                            numChamada:     a.numChamada ?? null,
+                            avaliacoes:     [],
+                        });
+                    }
+                    alunoMap.get(key).avaliacoes.push({
+                        codAvaliacaoParcialClasse: av.codAvaliacaoParcialClasse,
+                        nomeAvaliacao:             nomeAv,
+                        notaDecimal:               a.notaDecimal ?? a.nota ?? null,
+                    });
+                });
+            });
 
             /* Ordena por numChamada, depois nome */
-            raw.sort((a, b) => {
+            const alunos = [...alunoMap.values()].sort((a, b) => {
                 const ca = Number(a.numChamada ?? 9999);
                 const cb = Number(b.numChamada ?? 9999);
                 if (ca !== cb) return ca - cb;
@@ -112,7 +172,8 @@ export function createBoletimRouter(deps = {}) {
             res.json({
                 codClasse:           Number(codClasse),
                 codPeriodoAvaliacao: Number(codPeriodo),
-                alunos:              raw,
+                totalAvaliacoes:     avaliacoes.length,
+                alunos,
             });
         } catch (e) {
             console.error('[BOLETIM] Erro ao buscar notas:', e.message);

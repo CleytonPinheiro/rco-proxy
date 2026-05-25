@@ -115,6 +115,9 @@ body {
 /* ── Container ───────────────────────────────────────────────────────────── */
 .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 96px; }
 
+/* Variante sem rodapé de status (páginas que não têm o status-footer fixo) */
+.page-container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
+
 /* ── Rodapé de Status ────────────────────────────────────────────────────── */
 .status-footer {
     position: fixed;
