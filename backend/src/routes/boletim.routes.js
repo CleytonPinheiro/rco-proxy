@@ -102,19 +102,17 @@ export function createBoletimRouter(deps = {}) {
                 ),
             ]);
 
-            /* qtdeAvaliacao é um filtro EXATO no RCO (turma com 2 avaliações → qtde=2).
-               Tenta 2 (mais comum), depois 1, 3, 4 até obter resultados. */
             let avaliacoes = [];
             if (avaliResult.status === 'fulfilled' && avaliResult.value?.status === 200) {
                 const d = avaliResult.value.data;
                 avaliacoes = Array.isArray(d) ? d : (d?.content ?? d?.data ?? []);
             } else {
                 const err = avaliResult.reason?.message ?? JSON.stringify(avaliResult.value?.data ?? '?');
-                console.warn(`[BOLETIM] avaliacaoParcialClasses (qtde=2) falhou: ${err}`);
+                console.warn(`[BOLETIM] avaliacaoParcialClasses falhou: ${err}`);
             }
 
             if (avaliacoes.length === 0) {
-                for (const qtde of [1, 3, 4]) {
+                for (const qtde of [1, 3, 4, 5]) {
                     try {
                         const r = await rcoApiService.get(
                             `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
@@ -124,7 +122,7 @@ export function createBoletimRouter(deps = {}) {
                             const d = Array.isArray(r.data) ? r.data : (r.data?.content ?? r.data?.data ?? []);
                             if (d.length > 0) {
                                 avaliacoes = d;
-                                console.log(`[BOLETIM] avaliacaoParcialClasses: encontrou ${d.length} avaliação(ões) com qtdeAvaliacao=${qtde}`);
+                                console.log(`[BOLETIM] encontrou ${d.length} avaliação(ões) com qtdeAvaliacao=${qtde}`);
                                 break;
                             }
                         }
@@ -132,6 +130,15 @@ export function createBoletimRouter(deps = {}) {
                         console.warn(`[BOLETIM] qtdeAvaliacao=${qtde} falhou: ${e.message}`);
                     }
                 }
+            }
+
+            /* Filtra somente avaliações PRINCIPAIS (tipo≠2).
+               O RCO devolve avaliações de recuperação (codTipoAvaliacaoParcial=2)
+               misturadas na lista — elas serão incluídas via "recuperadas" de cada AV principal. */
+            const totalBruto = avaliacoes.length;
+            avaliacoes = avaliacoes.filter(av => Number(av.codTipoAvaliacaoParcial ?? 1) !== 2);
+            if (avaliacoes.length !== totalBruto) {
+                console.log(`[BOLETIM] Filtradas ${totalBruto - avaliacoes.length} recuperação(ões) da lista principal.`);
             }
 
             let roster = [];
@@ -169,14 +176,6 @@ export function createBoletimRouter(deps = {}) {
 
                 const recs       = data.recuperacaos ?? [];   /* [ { codAvaliacaoParcialClasse } ] */
                 const recuperadas = data.recuperadas  ?? [];   /* notas de recuperação por aluno  */
-
-                /* ── Log diagnóstico (remover após confirmar) ─────────────── */
-                console.log(`[BOLETIM-DBG] AV${i} id=${av.codAvaliacaoParcialClasse} recs=${recs.length} recuperadas=${recuperadas.length}`);
-                if (recuperadas.length > 0) {
-                    console.log(`[BOLETIM-DBG] recuperadas[0] keys:`, Object.keys(recuperadas[0]));
-                    console.log(`[BOLETIM-DBG] recuperadas[0]:`, JSON.stringify(recuperadas[0]));
-                }
-                /* ─────────────────────────────────────────────────────────── */
 
                 if (recs.length === 0) return;
 
