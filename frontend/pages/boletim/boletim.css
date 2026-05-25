@@ -214,6 +214,31 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Colunas de Recuperação ──────────────────────────────────────── */
+.bol-th-rec {
+    color: var(--text-tertiary, var(--text-secondary));
+    font-style: italic;
+    opacity: .8;
+}
+.bol-td-rec {
+    opacity: .85;
+}
+.bol-td-rec .bol-nota-val {
+    border: 1px dashed currentColor;
+    opacity: .9;
+}
+
+/* ── Coluna Nota Final ───────────────────────────────────────────── */
+.bol-th-final {
+    border-left: 2px solid var(--border-color);
+}
+.bol-th-final + * { border-left: none; }
+.bol-td-media {
+    border-left: 2px solid var(--border-subtle, var(--border-color));
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ── Responsivo ──────────────────────────────────────────────────── */
 @media (max-width: 600px) {
     .bol-filtros-grid { flex-direction: column; }

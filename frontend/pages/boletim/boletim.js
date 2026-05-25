@@ -1,9 +1,9 @@
 'use strict';
 
 /* ── Estado ─────────────────────────────────────────────────────── */
-let _classes      = [];   // lista completa do backend
-let _classeAtual  = null; // { codClasse, codTurma, descrTurma, nomeDisciplina, codPeriodoAvaliacao, … }
-let _dadosBoletim = null; // resposta de /api/boletim/notas
+let _classes      = [];
+let _classeAtual  = null;
+let _dadosBoletim = null;
 
 /* ── Elementos DOM ───────────────────────────────────────────────── */
 const selTurma       = document.getElementById('selTurma');
@@ -46,13 +46,9 @@ async function checkAuth() {
 async function carregarClasses() {
     try {
         const r = await fetch('/api/boletim/classes');
-        if (!r.ok) {
-            mostrarErro('Não foi possível carregar as turmas e disciplinas.');
-            return;
-        }
+        if (!r.ok) { mostrarErro('Não foi possível carregar as turmas e disciplinas.'); return; }
         _classes = await r.json();
 
-        /* Aplica filtro de escola se gravado no localStorage */
         const raw = localStorage.getItem('edusync_escola_codturmas');
         if (raw) {
             try {
@@ -62,53 +58,44 @@ async function carregarClasses() {
                 }
             } catch { /* ignora */ }
         }
-
         popularSelTurmas();
     } catch (e) {
         mostrarErro('Erro de rede ao carregar classes: ' + e.message);
     }
 }
 
-/* ── Popula select de turmas (distinct) ──────────────────────────── */
 function popularSelTurmas() {
-    const turmasVistas = new Map(); // codTurma → descrTurma
+    const turmasVistas = new Map();
     for (const c of _classes) {
         if (!turmasVistas.has(c.codTurma)) turmasVistas.set(c.codTurma, c.descrTurma);
     }
-
     selTurma.innerHTML = '<option value="">— selecione a turma —</option>';
     for (const [cod, descr] of [...turmasVistas].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))) {
         const opt = document.createElement('option');
-        opt.value       = cod;
-        opt.textContent = descr;
+        opt.value = cod; opt.textContent = descr;
         selTurma.appendChild(opt);
     }
 }
 
-/* ── Turma selecionada → popula disciplinas ──────────────────────── */
 function onTurmaMudou() {
     const codTurma = selTurma.value;
     selDisciplina.innerHTML = '<option value="">— selecione a disciplina —</option>';
     selDisciplina.disabled  = !codTurma;
     btnBuscar.disabled      = true;
     ocultarResultado();
-
     if (!codTurma) return;
-
     const disciplinas = _classes
         .filter(c => String(c.codTurma) === String(codTurma))
         .sort((a, b) => a.nomeDisciplina.localeCompare(b.nomeDisciplina, 'pt-BR'));
-
     for (const c of disciplinas) {
         const opt = document.createElement('option');
-        opt.value       = c.codClasse;
+        opt.value = c.codClasse;
         opt.textContent = c.nomeDisciplina + (c.siglaDisciplina ? ` (${c.siglaDisciplina})` : '');
         selDisciplina.appendChild(opt);
     }
     selDisciplina.disabled = false;
 }
 
-/* ── Disciplina selecionada → habilita botão ─────────────────────── */
 function onDisciplinaMudou() {
     btnBuscar.disabled = !selDisciplina.value;
     ocultarResultado();
@@ -118,22 +105,14 @@ function onDisciplinaMudou() {
 async function buscarNotas() {
     const codClasse = selDisciplina.value;
     if (!codClasse) return;
-
     _classeAtual = _classes.find(c => String(c.codClasse) === String(codClasse)) ?? null;
     const codPeriodo = _classeAtual?.codPeriodoAvaliacao ?? 9;
-
     mostrarLoading(true);
     ocultarResultado();
-
     try {
-        const r = await fetch(`/api/boletim/notas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`);
+        const r    = await fetch(`/api/boletim/notas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`);
         const json = await r.json();
-
-        if (!r.ok) {
-            mostrarErro(json.erro || `Erro ${r.status} ao buscar notas.`);
-            return;
-        }
-
+        if (!r.ok) { mostrarErro(json.erro || `Erro ${r.status} ao buscar notas.`); return; }
         _dadosBoletim = json;
         renderizarTabela(json);
     } catch (e) {
@@ -143,79 +122,135 @@ async function buscarNotas() {
     }
 }
 
+/* ── Normaliza colunas e grades (suporta formato novo e legado) ──── */
+function normalizarDados(dados) {
+    const alunos = dados.alunos ?? [];
+
+    /* Formato novo: dados.colunas + aluno.notas{} */
+    if (dados.colunas?.length) {
+        return {
+            colunas: dados.colunas,
+            getNota: (aluno, col) => aluno.notas?.[String(col.id)] ?? null,
+        };
+    }
+
+    /* Formato legado: descobrir colunas dos alunos[].avaliacoes[] */
+    const seen = new Set();
+    const colunas = [];
+    for (const a of alunos) {
+        for (const av of (a.avaliacoes ?? [])) {
+            const id = String(av.codAvaliacaoParcialClasse ?? av.nomeAvaliacao ?? 'av');
+            if (!seen.has(id)) {
+                seen.add(id);
+                colunas.push({
+                    id,
+                    nome:         av.nomeAvaliacao ?? id,
+                    tipo:         av.tipo          ?? 'principal',
+                    avPrincipalId: av.avPrincipalId ?? null,
+                });
+            }
+        }
+    }
+    return {
+        colunas,
+        getNota: (aluno, col) => {
+            const av = (aluno.avaliacoes ?? []).find(a => String(a.codAvaliacaoParcialClasse ?? a.nomeAvaliacao) === String(col.id));
+            return av?.notaDecimal ?? av?.nota ?? null;
+        },
+    };
+}
+
+/* ── Calcula Nota Final: soma de max(principal, recuperação) ─────── */
+function calcNotaFinal(aluno, colunas, getNota) {
+    /* Mapa principal → [recIds] */
+    const pairMap = {};
+    for (const col of colunas) {
+        if (col.tipo === 'recuperacao' && col.avPrincipalId) {
+            const key = String(col.avPrincipalId);
+            if (!pairMap[key]) pairMap[key] = [];
+            pairMap[key].push(String(col.id));
+        }
+    }
+    let total = 0, temAlguma = false;
+    for (const col of colunas) {
+        if (col.tipo !== 'principal') continue;
+        const mainNota = getNota(aluno, col);
+        const recs     = pairMap[String(col.id)] ?? [];
+        let best       = mainNota;
+        for (const recId of recs) {
+            const recNota = aluno.notas ? (aluno.notas[recId] ?? null)
+                : getNota(aluno, { id: recId });
+            if (recNota !== null && (best === null || Number(recNota) > Number(best))) best = recNota;
+        }
+        if (best !== null) { total += Number(best); temAlguma = true; }
+    }
+    return temAlguma ? total : null;
+}
+
 /* ── Renderiza tabela de notas ───────────────────────────────────── */
 function renderizarTabela(dados) {
     const alunos = dados.alunos ?? [];
-
     if (alunos.length === 0) {
-        mostrarErro('Nenhum aluno com notas encontrado para esta classe no RCO.');
+        mostrarErro('Nenhum aluno encontrado para esta classe no RCO.');
         return;
     }
 
-    /* Descobre todas as avaliações (colunas dinâmicas) */
-    const colunasSet = new Set();
-    for (const a of alunos) {
-        for (const av of (a.avaliacoes ?? [])) {
-            const key = av.nomeAvaliacao ?? av.codAvaliacaoParcialClasse ?? av.titulo ?? 'Av.';
-            colunasSet.add(key);
-        }
-    }
-    const colunas = [...colunasSet];
+    const { colunas, getNota } = normalizarDados(dados);
+    const temRecuperacao = colunas.some(c => c.tipo === 'recuperacao');
 
-    /* --- THEAD --- */
+    /* ── THEAD ── */
     const tr = document.createElement('tr');
+    const thsAv = colunas.map(col => {
+        const isRec = col.tipo === 'recuperacao';
+        return `<th class="bol-nota-th${isRec ? ' bol-th-rec' : ''}">${escHtml(col.nome)}</th>`;
+    }).join('');
     tr.innerHTML = `
         <th class="bol-nota-th" title="Número de chamada">#</th>
         <th>Aluno</th>
-        ${colunas.map(c => `<th class="bol-nota-th">${escHtml(c)}</th>`).join('')}
-        ${colunas.length > 1 ? '<th class="bol-nota-th">Média</th>' : ''}
+        ${thsAv}
+        <th class="bol-nota-th bol-th-final">${temRecuperacao ? 'Nota Final' : 'Total'}</th>
     `;
     theadBoletim.innerHTML = '';
     theadBoletim.appendChild(tr);
 
-    /* --- TBODY --- */
+    /* ── TBODY ── */
     tbodyBoletim.innerHTML = '';
     for (const aluno of alunos) {
-        const avMap = {};
-        for (const av of (aluno.avaliacoes ?? [])) {
-            const key = av.nomeAvaliacao ?? av.codAvaliacaoParcialClasse ?? av.titulo ?? 'Av.';
-            avMap[key] = av.notaDecimal ?? av.nota ?? null;
-        }
-
-        let soma = 0, cnt = 0;
-        const notasCells = colunas.map(c => {
-            const nota = avMap[c] ?? null;
-            if (nota !== null && nota !== undefined) { soma += Number(nota); cnt++; }
-            return `<td class="bol-td-nota">${badgeNota(nota)}</td>`;
+        const notasCells = colunas.map(col => {
+            const nota  = getNota(aluno, col);
+            const isRec = col.tipo === 'recuperacao';
+            return `<td class="bol-td-nota${isRec ? ' bol-td-rec' : ''}">${badgeNota(nota)}</td>`;
         }).join('');
 
-        const media = cnt > 0 ? (soma / cnt) : null;
-        const mediaCls = media === null ? 'bol-media-none'
-            : media >= 6 ? 'bol-media-ok'
-            : media >= 5 ? 'bol-media-med'
+        const nf    = calcNotaFinal(aluno, colunas, getNota);
+        const nfCls = nf === null ? 'bol-media-none'
+            : nf >= 6 ? 'bol-media-ok'
+            : nf >= 5 ? 'bol-media-med'
             : 'bol-media-bad';
-        const mediaHtml = colunas.length > 1
-            ? `<td class="bol-td-media"><span class="bol-media-val ${mediaCls}">${media !== null ? media.toFixed(1) : '—'}</span></td>`
-            : '';
+        const nfHtml = `<td class="bol-td-media"><span class="bol-media-val ${nfCls}">${nf !== null ? nf.toFixed(1) : '—'}</span></td>`;
 
         const rowTr = document.createElement('tr');
         rowTr.innerHTML = `
             <td class="bol-td-chamada">${escHtml(aluno.numChamada ?? '—')}</td>
             <td class="bol-td-nome">${escHtml(aluno.nome ?? '—')}</td>
             ${notasCells}
-            ${mediaHtml}
+            ${nfHtml}
         `;
         tbodyBoletim.appendChild(rowTr);
     }
 
-    /* Título */
+    /* ── Título ── */
     if (_classeAtual) {
-        tituloRes.textContent   = `${_classeAtual.descrTurma} — ${_classeAtual.nomeDisciplina}`;
-        subtituloRes.textContent = `${alunos.length} aluno${alunos.length !== 1 ? 's' : ''} · ${colunas.length} avaliação${colunas.length !== 1 ? 'ões' : ''}`;
+        tituloRes.textContent = `${_classeAtual.descrTurma} — ${_classeAtual.nomeDisciplina}`;
+        const nPrincipais = colunas.filter(c => c.tipo === 'principal').length;
+        const nRec        = colunas.filter(c => c.tipo === 'recuperacao').length;
+        const avParte     = `${nPrincipais} avaliação${nPrincipais !== 1 ? 'ões' : ''}`;
+        const recParte    = nRec ? ` + ${nRec} recuperação${nRec > 1 ? 'ões' : ''}` : '';
+        subtituloRes.textContent = `${alunos.length} aluno${alunos.length !== 1 ? 's' : ''} · ${avParte}${recParte}`;
     }
 
-    secVazio.style.display    = 'none';
-    secErro.style.display     = 'none';
+    secVazio.style.display     = 'none';
+    secErro.style.display      = 'none';
     secResultado.style.display = '';
 }
 
@@ -224,7 +259,7 @@ function badgeNota(nota) {
     if (nota === null || nota === undefined || nota === '') {
         return '<span class="bol-nota-val bol-nota-none">—</span>';
     }
-    const n = Number(nota);
+    const n   = Number(nota);
     const cls = isNaN(n) ? 'bol-nota-none'
         : n >= 6 ? 'bol-nota-ok'
         : n >= 5 ? 'bol-nota-med'
@@ -238,42 +273,36 @@ function exportarCSV() {
     const alunos = _dadosBoletim.alunos ?? [];
     if (!alunos.length) return;
 
-    const colunasSet = new Set();
-    for (const a of alunos) {
-        for (const av of (a.avaliacoes ?? [])) {
-            colunasSet.add(av.nomeAvaliacao ?? av.codAvaliacaoParcialClasse ?? av.titulo ?? 'Av.');
-        }
-    }
-    const colunas = [...colunasSet];
+    const { colunas, getNota } = normalizarDados(_dadosBoletim);
+    const temRecuperacao = colunas.some(c => c.tipo === 'recuperacao');
 
-    const cabecalho = ['#', 'Aluno', ...colunas, ...(colunas.length > 1 ? ['Média'] : [])];
+    const cabecalho = [
+        '#', 'Aluno',
+        ...colunas.map(c => c.nome + (c.tipo === 'recuperacao' ? ' (Rec)' : '')),
+        temRecuperacao ? 'Nota Final' : 'Total',
+    ];
     const linhas = [cabecalho.map(csvCell).join(';')];
 
     for (const a of alunos) {
-        const avMap = {};
-        for (const av of (a.avaliacoes ?? [])) {
-            avMap[av.nomeAvaliacao ?? av.codAvaliacaoParcialClasse ?? av.titulo ?? 'Av.'] = av.notaDecimal ?? av.nota ?? '';
-        }
-        let soma = 0, cnt = 0;
-        const notas = colunas.map(c => {
-            const n = avMap[c];
-            if (n !== undefined && n !== null && n !== '') { soma += Number(n); cnt++; }
-            return n !== undefined && n !== null && n !== '' ? String(n).replace('.', ',') : '';
+        const notas = colunas.map(col => {
+            const n = getNota(a, col);
+            return n !== null && n !== undefined ? String(n).replace('.', ',') : '';
         });
-        const media = cnt > 0 ? (soma / cnt).toFixed(1).replace('.', ',') : '';
-        linhas.push([a.numChamada ?? '', a.nome ?? '', ...notas, ...(colunas.length > 1 ? [media] : [])].map(csvCell).join(';'));
+        const nf  = calcNotaFinal(a, colunas, getNota);
+        const nfs = nf !== null ? nf.toFixed(1).replace('.', ',') : '';
+        linhas.push([a.numChamada ?? '', a.nome ?? '', ...notas, nfs].map(csvCell).join(';'));
     }
 
-    const bom = '\uFEFF';
+    const bom  = '\uFEFF';
     const blob = new Blob([bom + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+    const el   = document.createElement('a');
     const nome = _classeAtual
         ? `boletim_${_classeAtual.descrTurma}_${_classeAtual.siglaDisciplina || _classeAtual.nomeDisciplina}`.replace(/[^a-z0-9_]/gi, '_')
         : 'boletim';
-    a.href     = url;
-    a.download = `${nome}.csv`;
-    a.click();
+    el.href     = url;
+    el.download = `${nome}.csv`;
+    el.click();
     URL.revokeObjectURL(url);
 }
 
@@ -286,23 +315,21 @@ function csvCell(v) {
 /* ── Helpers de estado visual ────────────────────────────────────── */
 function mostrarLoading(show) {
     secLoading.style.display = show ? '' : 'none';
-    secVazio.style.display   = show ? 'none' : (secResultado.style.display === 'none' && secErro.style.display === 'none' ? '' : 'none');
-    btnBuscar.disabled       = show;
+    secVazio.style.display   = show ? 'none'
+        : (secResultado.style.display === 'none' && secErro.style.display === 'none' ? '' : 'none');
+    btnBuscar.disabled = show;
 }
-
 function ocultarResultado() {
     secResultado.style.display = 'none';
     secErro.style.display      = 'none';
     secVazio.style.display     = '';
 }
-
 function mostrarErro(msg) {
     msgErro.textContent        = msg;
     secErro.style.display      = '';
     secResultado.style.display = 'none';
     secVazio.style.display     = 'none';
 }
-
 function escHtml(str) {
     return String(str ?? '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
