@@ -89,28 +89,37 @@ export function createBoletimRouter(deps = {}) {
         }
 
         try {
-            /* Passo 1 + 2 em paralelo: lista de avaliações + roster */
-            const [avaliR, rosterR] = await Promise.all([
+            /* Passo 1 + 2 em paralelo: lista de avaliações + roster
+               codRegraCalculo=1 e qtdeAvaliacao=2 são obrigatórios no RCO — sem eles retorna 500 */
+            const [avaliResult, rosterResult] = await Promise.allSettled([
                 rcoApiService.get(
-                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}&page=1&perPage=50`
+                    `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
+                    `&codPeriodoAvaliacao=${codPeriodo}&codRegraCalculo=1&qtdeAvaliacao=2&page=1&perPage=50`
                 ),
                 rcoApiService.get(
                     `${RCO_CLASSE_BASE}/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`
                 ),
             ]);
 
-            if (avaliR.status !== 200) {
-                console.error(`[BOLETIM] RCO /avaliacaoParcialClasses retornou ${avaliR.status}`, avaliR.data);
-                return res.status(avaliR.status).json({ erro: 'Erro ao buscar avaliações no RCO.', detalhe: avaliR.data });
+            /* Lista de avaliações — não-fatal: turma pode ainda não ter avaliações cadastradas */
+            let avaliacoes = [];
+            if (avaliResult.status === 'fulfilled' && avaliResult.value?.status === 200) {
+                const d = avaliResult.value.data;
+                avaliacoes = Array.isArray(d) ? d : (d?.content ?? d?.data ?? []);
+            } else {
+                const err = avaliResult.reason?.message ?? avaliResult.value?.data ?? '?';
+                console.warn(`[BOLETIM] avaliacaoParcialClasses falhou — sem colunas de avaliação: ${err}`);
             }
 
-            /* Normaliza lista de avaliações */
-            const avaliacoes = Array.isArray(avaliR.data)
-                ? avaliR.data
-                : (avaliR.data?.content ?? avaliR.data?.data ?? []);
-
-            /* Normaliza roster */
-            const roster = Array.isArray(rosterR.data) ? rosterR.data : [];
+            /* Normaliza roster — não-fatal: se falhar retorna alunos sem nome */
+            let roster = [];
+            if (rosterResult.status === 'fulfilled' && rosterResult.value?.status === 200) {
+                const rd = rosterResult.value.data;
+                roster = Array.isArray(rd) ? rd : (rd?.data ?? []);
+            } else {
+                const err = rosterResult.reason?.message ?? rosterResult.value?.data ?? '?';
+                console.warn(`[BOLETIM] avaliacaoAlunos falhou — roster indisponível: ${err}`);
+            }
 
             /* Passo 3: busca notas de cada avaliação em paralelo */
             const detalhes = await Promise.allSettled(
