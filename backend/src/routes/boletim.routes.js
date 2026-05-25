@@ -132,13 +132,10 @@ export function createBoletimRouter(deps = {}) {
                 }
             }
 
-            /* Filtra somente avaliações PRINCIPAIS (tipo≠2).
-               O RCO devolve avaliações de recuperação (codTipoAvaliacaoParcial=2)
-               misturadas na lista — elas serão incluídas via "recuperadas" de cada AV principal. */
-            const totalBruto = avaliacoes.length;
-            avaliacoes = avaliacoes.filter(av => Number(av.codTipoAvaliacaoParcial ?? 1) !== 2);
-            if (avaliacoes.length !== totalBruto) {
-                console.log(`[BOLETIM] Filtradas ${totalBruto - avaliacoes.length} recuperação(ões) da lista principal.`);
+            /* Log: mostra o que chegou da lista para diagnóstico */
+            if (avaliacoes.length > 0) {
+                console.log(`[BOLETIM] Lista bruta (${avaliacoes.length}):`,
+                    avaliacoes.map(av => `[${av.codAvaliacaoParcialClasse}] tipo=${av.codTipoAvaliacaoParcial ?? '?'} "${av.descrAvaliacaoParcial ?? av.nomeAvaliacao ?? '?'}"`));
             }
 
             let roster = [];
@@ -214,8 +211,20 @@ export function createBoletimRouter(deps = {}) {
             });
 
             /* ── Passo 5: monta colunas ordenadas (AV1, R1, AV2, R2, …) ─── */
+            /*
+             * O RCO às vezes devolve avaliações de recuperação (tipo=2) misturadas
+             * na lista junto com as principais. Como já as incluímos via recInline,
+             * pulamos qualquer item de avaliacoes cujo ID coincide com uma recuperação.
+             */
+            const recInlineIds = new Set(Object.keys(recInline).map(Number));
+
             const colunas = [];
             avaliacoes.forEach((av, i) => {
+                /* Pula se este ID já é uma recuperação conhecida */
+                if (recInlineIds.has(av.codAvaliacaoParcialClasse)) {
+                    console.log(`[BOLETIM] Pulando av ${av.codAvaliacaoParcialClasse} (recuperação na lista principal)`);
+                    return;
+                }
                 const nomeAv = parseNome(av, `Avaliação #${av.numAvaliacaoParcial ?? av.codAvaliacaoParcialClasse}`);
                 colunas.push({
                     id:           av.codAvaliacaoParcialClasse,
