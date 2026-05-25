@@ -212,17 +212,40 @@ export function createBoletimRouter(deps = {}) {
 
             /* ── Passo 5: monta colunas ordenadas (AV1, R1, AV2, R2, …) ─── */
             /*
-             * O RCO às vezes devolve avaliações de recuperação (tipo=2) misturadas
-             * na lista junto com as principais. Como já as incluímos via recInline,
-             * pulamos qualquer item de avaliacoes cujo ID coincide com uma recuperação.
+             * Filtragem dupla:
+             *   a) Pula IDs que já são recuperações inline (evita duplicatas).
+             *   b) Pula avaliações principais sem nenhuma nota lançada E sem
+             *      recuperação associada (remove colunas completamente vazias, ex: AV3).
              */
             const recInlineIds = new Set(Object.keys(recInline).map(Number));
+
+            /* avs que têm pelo menos uma nota lançada */
+            const avComNotas = new Set();
+            avaliacoes.forEach((av, i) => {
+                const det = detalhes[i];
+                if (det.status !== 'fulfilled' || det.value?.status !== 200) return;
+                const alunos = det.value.data?.alunos ?? [];
+                if (alunos.some(a => a.notaDecimal != null || a.nota != null)) {
+                    avComNotas.add(av.codAvaliacaoParcialClasse);
+                }
+            });
+
+            /* avs que possuem ao menos uma recuperação */
+            const avComRecuperacao = new Set(
+                Object.values(recInline).map(r => r.avPrincipalId)
+            );
 
             const colunas = [];
             avaliacoes.forEach((av, i) => {
                 /* Pula se este ID já é uma recuperação conhecida */
                 if (recInlineIds.has(av.codAvaliacaoParcialClasse)) {
-                    console.log(`[BOLETIM] Pulando av ${av.codAvaliacaoParcialClasse} (recuperação na lista principal)`);
+                    console.log(`[BOLETIM] Pulando av ${av.codAvaliacaoParcialClasse} (recuperação inline)`);
+                    return;
+                }
+                /* Pula se não tem notas e não tem recuperação (ex: AV3 vazia) */
+                if (!avComNotas.has(av.codAvaliacaoParcialClasse) &&
+                    !avComRecuperacao.has(av.codAvaliacaoParcialClasse)) {
+                    console.log(`[BOLETIM] Pulando av ${av.codAvaliacaoParcialClasse} "${av.descrAvaliacaoParcial ?? '?'}" (sem notas e sem recuperação)`);
                     return;
                 }
                 const nomeAv = parseNome(av, `Avaliação #${av.numAvaliacaoParcial ?? av.codAvaliacaoParcialClasse}`);

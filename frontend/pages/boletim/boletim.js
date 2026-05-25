@@ -5,6 +5,13 @@ let _classes      = [];
 let _classeAtual  = null;
 let _dadosBoletim = null;
 
+/* ── Estado de ordenação ─────────────────────────────────────────── */
+let _sortCol   = null;   // null | 'chamada' | 'nome' | 'final' | String(colId)
+let _sortDir   = 'asc';
+let _colunasAtivas  = [];
+let _getNotaAtiva   = null;
+let _alunosOriginal = [];
+
 /* ── Elementos DOM ───────────────────────────────────────────────── */
 const selTurma       = document.getElementById('selTurma');
 const selDisciplina  = document.getElementById('selDisciplina');
@@ -162,7 +169,6 @@ function normalizarDados(dados) {
 
 /* ── Calcula Nota Final: soma de max(principal, recuperação) ─────── */
 function calcNotaFinal(aluno, colunas, getNota) {
-    /* Mapa principal → [recIds] */
     const pairMap = {};
     for (const col of colunas) {
         if (col.tipo === 'recuperacao' && col.avPrincipalId) {
@@ -187,35 +193,91 @@ function calcNotaFinal(aluno, colunas, getNota) {
     return temAlguma ? total : null;
 }
 
-/* ── Renderiza tabela de notas ───────────────────────────────────── */
-function renderizarTabela(dados) {
-    const alunos = dados.alunos ?? [];
-    if (alunos.length === 0) {
-        mostrarErro('Nenhum aluno encontrado para esta classe no RCO.');
-        return;
-    }
+/* ── Ordenação ───────────────────────────────────────────────────── */
+function alunosOrdenados() {
+    const arr = [..._alunosOriginal];
+    if (!_sortCol) return arr;
+    arr.sort((a, b) => {
+        const dir = _sortDir === 'asc' ? 1 : -1;
+        if (_sortCol === 'chamada') {
+            const ca = Number(a.numChamada ?? 9999);
+            const cb = Number(b.numChamada ?? 9999);
+            return (ca - cb) * dir;
+        }
+        if (_sortCol === 'nome') {
+            return (a.nome ?? '').localeCompare(b.nome ?? '', 'pt-BR') * dir;
+        }
+        if (_sortCol === 'final') {
+            const fa = calcNotaFinal(a, _colunasAtivas, _getNotaAtiva) ?? -1;
+            const fb = calcNotaFinal(b, _colunasAtivas, _getNotaAtiva) ?? -1;
+            return (fa - fb) * dir;
+        }
+        /* coluna de nota */
+        const va = Number(_getNotaAtiva(a, { id: _sortCol }) ?? -1);
+        const vb = Number(_getNotaAtiva(b, { id: _sortCol }) ?? -1);
+        if (va !== vb) return (va - vb) * dir;
+        /* empate: manter ordem de chamada */
+        return (Number(a.numChamada ?? 9999) - Number(b.numChamada ?? 9999));
+    });
+    return arr;
+}
 
-    const { colunas, getNota } = normalizarDados(dados);
-    const temRecuperacao = colunas.some(c => c.tipo === 'recuperacao');
+/* ── Ícone de ordenação ──────────────────────────────────────────── */
+function iconeSort(col) {
+    if (_sortCol !== col) return '<span class="bol-sort-icon">⇅</span>';
+    return `<span class="bol-sort-icon bol-sort-ativo">${_sortDir === 'asc' ? '↑' : '↓'}</span>`;
+}
 
-    /* ── THEAD ── */
+/* ── Renderiza thead ─────────────────────────────────────────────── */
+function renderThead(colunas, temRecuperacao) {
     const tr = document.createElement('tr');
     const thsAv = colunas.map(col => {
-        const isRec = col.tipo === 'recuperacao';
-        return `<th class="bol-nota-th${isRec ? ' bol-th-rec' : ''}">${escHtml(col.nome)}</th>`;
+        const isRec   = col.tipo === 'recuperacao';
+        const sortKey = String(col.id);
+        return `<th class="bol-nota-th${isRec ? ' bol-th-rec' : ''} bol-th-sortable" data-sort="${sortKey}">
+            ${escHtml(col.nome)}${iconeSort(sortKey)}
+        </th>`;
     }).join('');
     tr.innerHTML = `
-        <th class="bol-nota-th" title="Número de chamada">#</th>
-        <th>Aluno</th>
+        <th class="bol-nota-th bol-th-sortable" data-sort="chamada" title="Ordenar por número de chamada">
+            #${iconeSort('chamada')}
+        </th>
+        <th class="bol-th-sortable" data-sort="nome">
+            Aluno${iconeSort('nome')}
+        </th>
         ${thsAv}
-        <th class="bol-nota-th bol-th-final">${temRecuperacao ? 'Nota Final' : 'Total'}</th>
+        <th class="bol-nota-th bol-th-final bol-th-sortable" data-sort="final">
+            ${temRecuperacao ? 'Nota Final' : 'Total'}${iconeSort('final')}
+        </th>
     `;
     theadBoletim.innerHTML = '';
     theadBoletim.appendChild(tr);
 
-    /* ── TBODY ── */
+    /* Click handlers de ordenação */
+    theadBoletim.querySelectorAll('.bol-th-sortable[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            if (_sortCol === col) {
+                _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                _sortCol = col;
+                /* padrão: nome → asc, demais → desc */
+                _sortDir = col === 'nome' ? 'asc' : 'desc';
+            }
+            renderThead(_colunasAtivas, _colunasAtivas.some(c => c.tipo === 'recuperacao'));
+            renderTbody();
+        });
+    });
+}
+
+/* ── Renderiza tbody ─────────────────────────────────────────────── */
+function renderTbody() {
+    const colunas  = _colunasAtivas;
+    const getNota  = _getNotaAtiva;
+    const alunos   = alunosOrdenados();
+
     tbodyBoletim.innerHTML = '';
-    for (const aluno of alunos) {
+    alunos.forEach((aluno, idx) => {
         const notasCells = colunas.map(col => {
             const nota  = getNota(aluno, col);
             const isRec = col.tipo === 'recuperacao';
@@ -237,7 +299,29 @@ function renderizarTabela(dados) {
             ${nfHtml}
         `;
         tbodyBoletim.appendChild(rowTr);
+    });
+}
+
+/* ── Renderiza tabela de notas ───────────────────────────────────── */
+function renderizarTabela(dados) {
+    const alunos = dados.alunos ?? [];
+    if (alunos.length === 0) {
+        mostrarErro('Nenhum aluno encontrado para esta classe no RCO.');
+        return;
     }
+
+    const { colunas, getNota } = normalizarDados(dados);
+    const temRecuperacao = colunas.some(c => c.tipo === 'recuperacao');
+
+    /* Salva estado para re-ordenação */
+    _colunasAtivas  = colunas;
+    _getNotaAtiva   = getNota;
+    _alunosOriginal = [...alunos];
+    _sortCol        = null;
+    _sortDir        = 'asc';
+
+    renderThead(colunas, temRecuperacao);
+    renderTbody();
 
     /* ── Título ── */
     if (_classeAtual) {
@@ -283,6 +367,7 @@ function exportarCSV() {
     ];
     const linhas = [cabecalho.map(csvCell).join(';')];
 
+    /* CSV usa a ordem original (por chamada), independente da ordenação da tela */
     for (const a of alunos) {
         const notas = colunas.map(col => {
             const n = getNota(a, col);
