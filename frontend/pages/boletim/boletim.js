@@ -49,6 +49,21 @@ async function checkAuth() {
     btnExportar.addEventListener('click', exportarCSV);
 })();
 
+/* ── Ordenação: delegação única no thead (resiste a rebuilds de innerHTML) ── */
+theadBoletim.addEventListener('click', e => {
+    const th = e.target.closest('[data-sort]');
+    if (!th || !_colunasAtivas.length) return;
+    const col = th.dataset.sort;
+    if (_sortCol === col) {
+        _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _sortCol = col;
+        _sortDir = col === 'nome' ? 'asc' : 'desc';
+    }
+    renderThead(_colunasAtivas, _colunasAtivas.some(c => c.tipo === 'recuperacao'));
+    renderTbody();
+});
+
 /* ── Carrega lista de classes do backend ─────────────────────────── */
 async function carregarClasses() {
     try {
@@ -252,22 +267,6 @@ function renderThead(colunas, temRecuperacao) {
     `;
     theadBoletim.innerHTML = '';
     theadBoletim.appendChild(tr);
-
-    /* Click handlers de ordenação */
-    theadBoletim.querySelectorAll('.bol-th-sortable[data-sort]').forEach(th => {
-        th.addEventListener('click', () => {
-            const col = th.dataset.sort;
-            if (_sortCol === col) {
-                _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                _sortCol = col;
-                /* padrão: nome → asc, demais → desc */
-                _sortDir = col === 'nome' ? 'asc' : 'desc';
-            }
-            renderThead(_colunasAtivas, _colunasAtivas.some(c => c.tipo === 'recuperacao'));
-            renderTbody();
-        });
-    });
 }
 
 /* ── Renderiza tbody ─────────────────────────────────────────────── */
