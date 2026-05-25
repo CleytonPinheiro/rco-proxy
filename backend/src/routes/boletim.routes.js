@@ -90,11 +90,11 @@ export function createBoletimRouter(deps = {}) {
 
         try {
             /* Passo 1 + 2 em paralelo: lista de avaliações + roster
-               codRegraCalculo=1 e qtdeAvaliacao=2 são obrigatórios no RCO — sem eles retorna 500 */
+               codRegraCalculo=1 é obrigatório; qtdeAvaliacao=10 garante buscar até 10 avaliações por período */
             const [avaliResult, rosterResult] = await Promise.allSettled([
                 rcoApiService.get(
                     `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
-                    `&codPeriodoAvaliacao=${codPeriodo}&codRegraCalculo=1&qtdeAvaliacao=2&page=1&perPage=50`
+                    `&codPeriodoAvaliacao=${codPeriodo}&codRegraCalculo=1&qtdeAvaliacao=10&page=1&perPage=100`
                 ),
                 rcoApiService.get(
                     `${RCO_CLASSE_BASE}/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`
@@ -149,8 +149,9 @@ export function createBoletimRouter(deps = {}) {
                 if (result.status !== 'fulfilled' || result.value?.status !== 200) return;
 
                 const avAlunos = result.value.data?.alunos ?? [];
-                const nomeAv = av.nomeAvaliacao ?? av.titulo ?? av.descricao
-                    ?? `Av. ${av.codAvaliacaoParcialClasse}`;
+                const nomeAv = av.descrAvaliacaoParcial
+                    ? String(av.descrAvaliacaoParcial).replace(/\n\s*/g, ' ').trim()
+                    : (av.nomeAvaliacao ?? av.titulo ?? `Avaliação #${av.numAvaliacaoParcial ?? av.codAvaliacaoParcialClasse}`);
 
                 avAlunos.forEach(a => {
                     const key = String(a.codMatrizAluno);
