@@ -95,20 +95,43 @@ export function createBoletimRouter(deps = {}) {
             const [avaliResult, rosterResult] = await Promise.allSettled([
                 rcoApiService.get(
                     `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
-                    `&codPeriodoAvaliacao=${codPeriodo}&codRegraCalculo=1&qtdeAvaliacao=10&page=1&perPage=100`
+                    `&codPeriodoAvaliacao=${codPeriodo}&codRegraCalculo=1&qtdeAvaliacao=2&page=1&perPage=100`
                 ),
                 rcoApiService.get(
                     `${RCO_CLASSE_BASE}/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPeriodo}`
                 ),
             ]);
 
+            /* qtdeAvaliacao é um filtro EXATO no RCO (turma com 2 avaliações → qtde=2).
+               Tenta 2 (mais comum), depois 1, 3, 4 até obter resultados. */
             let avaliacoes = [];
             if (avaliResult.status === 'fulfilled' && avaliResult.value?.status === 200) {
                 const d = avaliResult.value.data;
                 avaliacoes = Array.isArray(d) ? d : (d?.content ?? d?.data ?? []);
             } else {
                 const err = avaliResult.reason?.message ?? JSON.stringify(avaliResult.value?.data ?? '?');
-                console.warn(`[BOLETIM] avaliacaoParcialClasses falhou — sem avaliações: ${err}`);
+                console.warn(`[BOLETIM] avaliacaoParcialClasses (qtde=2) falhou: ${err}`);
+            }
+
+            if (avaliacoes.length === 0) {
+                for (const qtde of [1, 3, 4]) {
+                    try {
+                        const r = await rcoApiService.get(
+                            `${RCO_CLASSE_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
+                            `&codPeriodoAvaliacao=${codPeriodo}&codRegraCalculo=1&qtdeAvaliacao=${qtde}&page=1&perPage=100`
+                        );
+                        if (r.status === 200) {
+                            const d = Array.isArray(r.data) ? r.data : (r.data?.content ?? r.data?.data ?? []);
+                            if (d.length > 0) {
+                                avaliacoes = d;
+                                console.log(`[BOLETIM] avaliacaoParcialClasses: encontrou ${d.length} avaliação(ões) com qtdeAvaliacao=${qtde}`);
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[BOLETIM] qtdeAvaliacao=${qtde} falhou: ${e.message}`);
+                    }
+                }
             }
 
             let roster = [];
