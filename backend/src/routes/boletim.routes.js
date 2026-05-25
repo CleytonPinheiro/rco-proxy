@@ -36,7 +36,7 @@ export function createBoletimRouter(deps = {}) {
             ] = await Promise.all([
                 supabaseAdmin
                     .from('rco_classes')
-                    .select('cod_classe, cod_turma, cod_disciplina, cod_estabelecimento, periodo_letivo, cod_periodo_avaliacao')
+                    .select('cod_classe, cod_turma, cod_disciplina, cod_estabelecimento, periodo_letivo')
                     .order('cod_turma', { ascending: true }),
                 supabaseAdmin.from('rco_turmas').select('cod_turma, descr_turma'),
                 supabaseAdmin.from('rco_disciplinas').select('cod_disciplina, nome_disciplina, sigla'),
