@@ -106,6 +106,19 @@ apiRouter.use((req, res, next) => {
 });
 app.use('/api', apiRouter);
 
+// Vídeo de apresentação EduSync — servido a partir do build Vite em /dist
+app.use('/video', express.static(path.join(__dirname, '../dist'), {
+    setHeaders(res, filePath) {
+        if (/\.html?$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'no-cache');
+        } else if (/\.(css|js|svg|ico|png|jpe?g|webp|gif|woff2?|ttf|eot|otf)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+    },
+}));
+app.get('/video', (_req, res) => res.redirect('/video/'));
+app.get('/video/', (_req, res) => res.sendFile(path.join(__dirname, '../dist/index.html')));
+
 // Página pública de aluno (Passeios) — /p/:eventoId/:alunoToken
 app.get('/p/*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/p/index.html'));

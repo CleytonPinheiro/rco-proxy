@@ -3,8 +3,10 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
+const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+
 export default defineConfig({
-  base: "/",
+  base: "/video/",
   plugins: [
     react(),
     tailwindcss(),
@@ -25,5 +27,12 @@ export default defineConfig({
     strictPort: false,
     host: "0.0.0.0",
     allowedHosts: true,
+    hmr: replitDomain
+      ? {
+          host: `5173-${replitDomain}`,
+          clientPort: 443,
+          protocol: "wss",
+        }
+      : true,
   },
 });
