@@ -29,7 +29,8 @@ import { createProvasRouter, createProvasPublicRouter } from './provas.routes.js
 import { createPasseiosRouter } from './passeios.routes.js';
 import { createBoletimRouter }        from './boletim.routes.js';
 import { createAlertasFaltasRouter }  from './alertas-faltas.routes.js';
-import { createFichaAlunoRouter }     from './ficha-aluno.routes.js';
+import { createFichaAlunoRouter }          from './ficha-aluno.routes.js';
+import { createRelatorioOcorrenciasRouter } from './relatorio-ocorrencias.routes.js';
 
 export function createApiRouter(deps) {
     const router = Router();
@@ -91,6 +92,7 @@ export function createApiRouter(deps) {
     router.use('/', createAlertasFaltasRouter(deps));
     router.use('/', createSuporteRouter());
     router.use('/', createFichaAlunoRouter(deps));
+    router.use('/', createRelatorioOcorrenciasRouter(deps));
     /* Provas: rotas do professor — requer módulo 'provas'.
        Endpoints exclusivos de análise de cola também aceitam módulo 'analise-cola';
        essa permissão secundária é aplicada dentro de provas.routes.js por rota. */

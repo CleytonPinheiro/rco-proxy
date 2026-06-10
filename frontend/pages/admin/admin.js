@@ -995,7 +995,7 @@ async function carregarConfig() {
         const res = await api('/admin/config');
         const configs = await res.json();
 
-        const ESCOLA_CHAVES = ['escola_nome_oficial', 'escola_endereco', 'escola_logo_base64'];
+        const ESCOLA_CHAVES = ['escola_nome_oficial', 'escola_endereco', 'escola_telefone', 'escola_email', 'escola_cidade_ref', 'escola_logo_base64'];
         const configsFiltradas = configs.filter(c => !ESCOLA_CHAVES.includes(c.chave));
         if (!configsFiltradas.length) {
             el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhuma configuração disponível.</div>';
@@ -1121,12 +1121,18 @@ async function carregarDadosEscola() {
         const configs = await res.json();
         const get = chave => (configs.find(c => c.chave === chave) || {}).valor || '';
 
-        const nome = get('escola_nome_oficial');
-        const end  = get('escola_endereco');
-        const logo = get('escola_logo_base64');
+        const nome      = get('escola_nome_oficial');
+        const end       = get('escola_endereco');
+        const telefone  = get('escola_telefone');
+        const email     = get('escola_email');
+        const cidadeRef = get('escola_cidade_ref');
+        const logo      = get('escola_logo_base64');
 
-        const elNome = document.getElementById('escolaNomeOficial');
-        const elEnd  = document.getElementById('escolaEndereco');
+        const elNome      = document.getElementById('escolaNomeOficial');
+        const elEnd       = document.getElementById('escolaEndereco');
+        const elTelefone  = document.getElementById('escolaTelefone');
+        const elEmail     = document.getElementById('escolaEmail');
+        const elCidadeRef = document.getElementById('escolaCidadeRef');
 
         const pendingNome = sessionStorage.getItem('escolaNomePendente');
         const pendingEnd  = sessionStorage.getItem('escolaEnderecoPendente');
@@ -1147,6 +1153,9 @@ async function carregarDadosEscola() {
                 });
             }
         }
+        if (elTelefone  && !elTelefone.dataset.loaded)  { elTelefone.value  = telefone;  elTelefone.dataset.loaded  = '1'; }
+        if (elEmail     && !elEmail.dataset.loaded)      { elEmail.value     = email;     elEmail.dataset.loaded     = '1'; }
+        if (elCidadeRef && !elCidadeRef.dataset.loaded)  { elCidadeRef.value = cidadeRef; elCidadeRef.dataset.loaded = '1'; }
         _escolaCamposListenersOk = true;
 
         _escolaLogoBase64Pendente = null;
@@ -1289,8 +1298,11 @@ window.removerLogoEscola = function () {
 };
 
 window.salvarDadosEscola = async function () {
-    const nome = (document.getElementById('escolaNomeOficial')?.value || '').trim();
-    const end  = (document.getElementById('escolaEndereco')?.value || '').trim();
+    const nome      = (document.getElementById('escolaNomeOficial')?.value || '').trim();
+    const end       = (document.getElementById('escolaEndereco')?.value || '').trim();
+    const telefone  = (document.getElementById('escolaTelefone')?.value || '').trim();
+    const email     = (document.getElementById('escolaEmail')?.value || '').trim();
+    const cidadeRef = (document.getElementById('escolaCidadeRef')?.value || '').trim();
 
     const salvar = async (chave, valor) => {
         const r = await api(`/admin/config/${chave}`, {
@@ -1304,6 +1316,9 @@ window.salvarDadosEscola = async function () {
     try {
         await salvar('escola_nome_oficial', nome);
         await salvar('escola_endereco', end);
+        await salvar('escola_telefone', telefone);
+        await salvar('escola_email', email);
+        if (cidadeRef) await salvar('escola_cidade_ref', cidadeRef);
         if (_escolaLogoBase64Pendente !== null) {
             await salvar('escola_logo_base64', _escolaLogoBase64Pendente);
             _escolaLogoBase64Pendente = null;

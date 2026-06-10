@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 18mm 20mm 18mm 20mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #111; background: #fff; }
+
+  .termo-wrapper {
+    page-break-after: always;
+    border: 2px solid #111;
+    padding: 0;
+    min-height: 240mm;
+    display: flex;
+    flex-direction: column;
+  }
+  .termo-wrapper:last-child { page-break-after: avoid; }
+
+  /* ── Cabeçalho ── */
+  .cabecalho {
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid #111;
+    padding: 10px 14px;
+    gap: 14px;
+  }
+  .cabecalho-logo {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cabecalho-logo img {
+    max-width: 72px;
+    max-height: 72px;
+    object-fit: contain;
+  }
+  .cabecalho-logo-placeholder {
+    width: 64px;
+    height: 64px;
+    border: 1.5px dashed #aaa;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    color: #aaa;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .cabecalho-texto {
+    flex: 1;
+    text-align: center;
+  }
+  .cabecalho-orgao {
+    font-size: 8.5pt;
+    color: #444;
+    margin-bottom: 2px;
+  }
+  .cabecalho-escola {
+    font-size: 13pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.25;
+    margin-bottom: 3px;
+  }
+  .cabecalho-endereco {
+    font-size: 8.5pt;
+    color: #333;
+    line-height: 1.5;
+  }
+
+  /* ── Título ── */
+  .titulo-bloco {
+    border-bottom: 1.5px solid #111;
+    padding: 8px 14px;
+    text-align: center;
+  }
+  .titulo-principal {
+    font-size: 13pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── Corpo ── */
+  .corpo {
+    flex: 1;
+    padding: 14px 16px 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .campo-linha {
+    display: flex;
+    align-items: flex-end;
+    margin-bottom: 11px;
+    flex-wrap: wrap;
+    gap: 4px 0;
+  }
+  .campo-label {
+    font-size: 10.5pt;
+    font-weight: 700;
+    white-space: nowrap;
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+  .campo-valor {
+    border-bottom: 1px solid #333;
+    flex: 1;
+    min-width: 80px;
+    padding: 0 4px 1px 4px;
+    font-size: 10.5pt;
+    min-height: 18px;
+  }
+  .campo-sep {
+    margin: 0 8px;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-size: 10.5pt;
+  }
+
+  .campo-linha-narrow .campo-valor {
+    min-width: 40px;
+  }
+
+  /* Área de descrição */
+  .desc-label {
+    font-size: 10.5pt;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .desc-area {
+    border: 1px solid #555;
+    min-height: 82px;
+    padding: 6px 8px;
+    font-size: 10.5pt;
+    line-height: 1.7;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .desc-linhas {
+    border: none;
+    border-bottom: 1px solid #555;
+    margin-bottom: 12px;
+  }
+  .desc-linha-item {
+    border-bottom: 1px solid #bbb;
+    min-height: 22px;
+    margin-bottom: 0;
+  }
+
+  /* Cidade e data */
+  .cidade-data {
+    text-align: right;
+    font-size: 10.5pt;
+    margin-bottom: 18px;
+    margin-top: 4px;
+  }
+
+  /* Assinaturas */
+  .assinaturas {
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+    display: flex;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .assinatura-bloco {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+    padding: 0 8px;
+    border-right: 1px solid #ddd;
+  }
+  .assinatura-bloco:last-child { border-right: none; }
+  .assinatura-linha {
+    border-bottom: 1.5px solid #333;
+    margin: 0 auto 5px auto;
+    width: 90%;
+    height: 36px;
+  }
+  .assinatura-label {
+    font-size: 8.5pt;
+    color: #444;
+    font-weight: 600;
+  }
+
+  /* Obs */
+  .obs-bloco {
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid #ccc;
+  }
+  .obs-label {
+    font-size: 10pt;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .obs-linha {
+    border-bottom: 1px solid #bbb;
+    min-height: 20px;
+    margin-bottom: 6px;
+  }
+
+  /* Tipo badge */
+  .tipo-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 9pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .tipo-grave    { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  .tipo-atencao  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .tipo-positivo { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+</style>
+</head>
+<body>
+{{OCORRENCIAS}}
+</body>
+</html>

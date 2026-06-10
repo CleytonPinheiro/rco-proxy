@@ -215,8 +215,68 @@ async function buscarAlunos(termo) {
 
 /* ── Renderização ──────────────────────────────────────────────────────────── */
 
+function buildTermoUrl(codMatrizAluno, filtros) {
+    const params = new URLSearchParams();
+    if (filtros?.de)   params.set('de',   filtros.de);
+    if (filtros?.ate)  params.set('ate',  filtros.ate);
+    if (filtros?.tipo) params.set('tipo', filtros.tipo);
+    const qs = params.toString();
+    return `/api/relatorio-ocorrencias/${codMatrizAluno}${qs ? '?' + qs : ''}`;
+}
+
+async function gerarTermoPDF(codMatrizAluno, btn) {
+    const de   = document.getElementById('termoDe')?.value  || '';
+    const ate  = document.getElementById('termoAte')?.value || '';
+    const tipo = document.getElementById('termoTipo')?.value || '';
+    const url  = buildTermoUrl(codMatrizAluno, { de, ate, tipo });
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando PDF…'; }
+    try {
+        const r = await fetch(url);
+        if (r.status === 204) {
+            if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Termos PDF'; }
+            alert('Nenhuma ocorrência encontrada para os filtros informados.');
+            return;
+        }
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.erro || `Erro ${r.status}`);
+        }
+        const blob = await r.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = `termos-ocorrencia.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+    } catch (e) {
+        alert('Erro ao gerar PDF: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Termos PDF'; }
+    }
+}
+
 function renderFicha(dados) {
     const { aluno, frequencias, ocorrencias, observacoes, emprestimos, geradoEm } = dados;
+
+    const temOcorrencias = ocorrencias && ocorrencias.length > 0;
+    const btnTermoHtml = temOcorrencias ? `
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
+            <input type="date" id="termoDe"  title="Data inicial (opcional)"
+                   style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)" />
+            <span style="font-size:.8rem;color:var(--text-muted)">até</span>
+            <input type="date" id="termoAte" title="Data final (opcional)"
+                   style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)" />
+            <select id="termoTipo" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)">
+                <option value="">Todos os tipos</option>
+                <option value="grave">Grave</option>
+                <option value="atencao">Atenção</option>
+                <option value="positivo">Positivo</option>
+            </select>
+            <button id="btnGerarTermo" class="btn-imprimir"
+                    onclick="gerarTermoPDF(${aluno.codMatrizAluno}, this)"
+                    style="background:#dc2626;color:#fff;border-color:#dc2626">📄 Gerar Termos PDF</button>
+        </div>` : '';
 
     document.title = `Ficha — ${aluno.nome}`;
     document.getElementById('fichaHeader').innerHTML = `
@@ -227,6 +287,7 @@ function renderFicha(dados) {
                 ${aluno.numchamada ? `<span class="ficha-meta-item">📋 Nº ${aluno.numchamada}</span>` : ''}
                 ${aluno.codMatrizAluno ? `<span class="ficha-meta-item">🆔 Matrícula ${aluno.codMatrizAluno}</span>` : ''}
             </div>
+            ${btnTermoHtml}
         </div>
         <div class="ficha-header-actions">
             <span class="ficha-data-geracao">Gerado em ${formatarData(geradoEm)}</span>

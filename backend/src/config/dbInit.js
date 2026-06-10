@@ -241,6 +241,9 @@ export async function initializeDatabase() {
             INSERT INTO edusync_config (chave, valor, obs) VALUES
                 ('escola_nome_oficial', '', 'Nome oficial da escola para o cabeçalho do PDF'),
                 ('escola_endereco',     '', 'Endereço da escola para o cabeçalho do PDF'),
+                ('escola_telefone',     '', 'Telefone da escola para o cabeçalho do PDF'),
+                ('escola_email',        '', 'E-mail da escola para o cabeçalho do PDF'),
+                ('escola_cidade_ref',   'Maringá', 'Cidade de referência usada na linha de data do Termo de Ocorrência (ex.: Maringá)'),
                 ('escola_logo_base64',  '', 'Logo da escola em Base64 para o cabeçalho do PDF')
             ON CONFLICT (chave) DO NOTHING
         `);
