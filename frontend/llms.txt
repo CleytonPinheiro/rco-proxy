@@ -1,0 +1,15 @@
+# EduSync
+EduSync is a school management platform for teachers, coordinators, students, and families in Paraná, Brazil.
+
+## Public pages
+- https://edusync.com.br/login/
+- https://edusync.com.br/alunos/
+- https://edusync.com.br/pedagogico-portal/
+- https://edusync.com.br/privacidade/
+- https://edusync.com.br/termos/
+- https://edusync.com.br/qrcode/
+- https://edusync.com.br/video/
+
+## Avoid
+- Internal application pages under /pages/
+- Tokenized or user-specific URLs unless explicitly intended for public citation

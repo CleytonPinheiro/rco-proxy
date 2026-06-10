@@ -124,9 +124,9 @@ app.get('/p/*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/p/index.html'));
 });
 
-// SPA fallback (deve vir DEPOIS do static e API)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+// Rota desconhecida — retorna 404 real para evitar soft-404 nos crawlers
+app.use((req, res) => {
+    res.status(404).send('Not Found');
 });
 
 // Servidor sobe imediatamente para não travar o health check
