@@ -25,6 +25,10 @@ author = "agent"
 task = "workflow.run"
 args = "backend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "video"
+
 [[workflows.workflow]]
 name = "backend"
 author = "agent"
@@ -37,6 +41,18 @@ task = "shell.exec"
 args = "cd backend && node scripts/build-portal.js && node index.js"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "video"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev:video"
+waitForPort = 5173
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [userenv]
 
 [userenv.shared]
@@ -48,3 +64,7 @@ timeoutMs = 120000
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5173
+externalPort = 5173
