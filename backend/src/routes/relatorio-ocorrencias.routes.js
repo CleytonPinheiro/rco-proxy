@@ -226,18 +226,42 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
             ).join('\n');
             const html = templateHtml.replace('{{OCORRENCIAS}}', blocosHtml);
 
-            const browser = await getBrowser();
-            const page    = await browser.newPage();
+            // Use an isolated BrowserContext so PDF pages never share cookies or
+            // sessions with the login pages that run in the default context.
+            // If the browser is not ready yet (cold start), retry once before giving up.
+            let browser;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    browser = await getBrowser();
+                    break;
+                } catch (browserErr) {
+                    if (attempt === 2) {
+                        console.error('[RELATORIO-OCORRENCIAS] Browser indisponível após 2 tentativas:', browserErr.message);
+                        return res.status(503).json({
+                            erro: 'Serviço temporariamente indisponível. O navegador ainda está iniciando — tente novamente em alguns segundos.',
+                        });
+                    }
+                    console.warn('[RELATORIO-OCORRENCIAS] Browser não pronto, tentando novamente em 3 s...', browserErr.message);
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+            }
+
+            const context = await browser.createBrowserContext();
             let pdfBuffer;
             try {
-                await page.setContent(html, { waitUntil: 'domcontentloaded' });
-                pdfBuffer = await page.pdf({
-                    format:          'A4',
-                    printBackground: true,
-                    margin: { top: '0', bottom: '0', left: '0', right: '0' },
-                });
+                const page = await context.newPage();
+                try {
+                    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+                    pdfBuffer = await page.pdf({
+                        format:          'A4',
+                        printBackground: true,
+                        margin: { top: '0', bottom: '0', left: '0', right: '0' },
+                    });
+                } finally {
+                    try { await page.close(); } catch {}
+                }
             } finally {
-                try { await page.close(); } catch {}
+                try { await context.close(); } catch {}
             }
 
             const nomeArquivo = `termos-${(aluno.nome || 'aluno').replace(/\s+/g, '-').toLowerCase()}.pdf`;
