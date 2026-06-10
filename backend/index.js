@@ -1,12 +1,15 @@
 import express      from 'express';
 import path         from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync }  from 'fs';
 import cookieParser from 'cookie-parser';
 import helmet       from 'helmet';
 import rateLimit    from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
+
+let _pool = null; // set during initializeApp(); used for server-side metadata in /p/ routes
 
 const app = express();
 
@@ -120,8 +123,75 @@ app.get('/video', (_req, res) => res.redirect('/video/'));
 app.get('/video/', (_req, res) => res.sendFile(path.join(__dirname, '../dist/index.html')));
 
 // Página pública de aluno (Passeios) — /p/:eventoId/:alunoToken
-app.get('/p/*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/p/index.html'));
+// Injects server-side metadata (title, description, OG/Twitter tags) for social previews.
+const _pHtmlPath = path.join(__dirname, '../frontend/p/index.html');
+const _pHtmlRaw  = readFileSync(_pHtmlPath, 'utf-8');
+
+async function _servePPublicPage(req, res) {
+    const { eventoId, alunoToken } = req.params;
+    const canonical = `${req.protocol}://${req.get('host')}/p/${eventoId}/${alunoToken}`;
+
+    let title       = 'EduSync — Informações do Aluno';
+    let description = 'Acesse as informações de participação do aluno no passeio escolar.';
+
+    if (_pool) {
+        try {
+            const { rows } = await _pool.query(`
+                SELECT ei.nome_aluno, ei.turma,
+                       e.nome AS evento_nome, e.destino, e.data_evento
+                FROM evento_inscricoes ei
+                JOIN eventos e ON e.id = ei.evento_id
+                WHERE ei.evento_id = $1 AND ei.aluno_token = $2
+                LIMIT 1
+            `, [eventoId, alunoToken]);
+
+            if (rows.length) {
+                const r = rows[0];
+                const dataStr = r.data_evento
+                    ? new Date(r.data_evento + 'T12:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+                    : null;
+                title = `${r.evento_nome} — ${r.nome_aluno} | EduSync`;
+                description = [
+                    `Informações de participação de ${r.nome_aluno}`,
+                    r.turma ? ` (${r.turma})` : '',
+                    ` no passeio ${r.evento_nome}`,
+                    r.destino ? ` — destino: ${r.destino}` : '',
+                    dataStr ? ` — ${dataStr}` : '',
+                    '.',
+                ].join('');
+            }
+        } catch (_) { /* fall through to generic metadata */ }
+    }
+
+    const escAttr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const origin  = `${req.protocol}://${req.get('host')}`;
+    const ogImage = `${origin}/shared/assets/favicon.svg`;
+    const metaTags = [
+        `<meta name="robots" content="noindex">`,
+        `<meta name="description" content="${escAttr(description)}">`,
+        `<link rel="canonical" href="${escAttr(canonical)}">`,
+        `<meta property="og:type" content="website">`,
+        `<meta property="og:title" content="${escAttr(title)}">`,
+        `<meta property="og:description" content="${escAttr(description)}">`,
+        `<meta property="og:url" content="${escAttr(canonical)}">`,
+        `<meta property="og:image" content="${escAttr(ogImage)}">`,
+        `<meta name="twitter:card" content="summary">`,
+        `<meta name="twitter:title" content="${escAttr(title)}">`,
+        `<meta name="twitter:description" content="${escAttr(description)}">`,
+        `<meta name="twitter:image" content="${escAttr(ogImage)}">`,
+    ].join('\n    ');
+
+    const html = _pHtmlRaw
+        .replace('<title>EduSync — Informações do Aluno</title>', `<title>${escAttr(title)}</title>\n    ${metaTags}`);
+
+    res.set('Cache-Control', 'no-cache').type('html').send(html);
+}
+
+app.get('/p/:eventoId/:alunoToken',  _servePPublicPage);
+app.get('/p/:eventoId/:alunoToken/', _servePPublicPage);
+
+app.get('/p/*', (_req, res) => {
+    res.sendFile(_pHtmlPath);
 });
 
 // Rota desconhecida — retorna 404 real para evitar soft-404 nos crawlers
@@ -144,6 +214,7 @@ async function initializeApp() {
 
         const { initializeDatabase, pool: localPool } = await import('./src/config/dbInit.js');
         await initializeDatabase();
+        _pool = localPool;
 
         // Restaurar contadores de rate-limit por CPF que sobreviveram ao restart
         const { loadCpfRateLimitFromDb } = await import('./src/services/cpfRateLimitStore.js');
