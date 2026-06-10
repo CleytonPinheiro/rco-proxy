@@ -3,8 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Portal do Aluno EduSync — veja suas atividades pendentes, notas e entregas do Google Classroom da sua escola.">
     <title>EduSync — Portal do Aluno</title>
+    <meta name="description" content="Portal do Aluno EduSync — veja suas atividades pendentes, notas e entregas do Google Classroom da sua escola.">
+    <link rel="canonical" href="https://edusync.com.br/alunos/">
+    <meta property="og:title" content="EduSync — Portal do Aluno">
+    <meta property="og:description" content="Portal do Aluno EduSync — veja suas atividades pendentes, notas e entregas do Google Classroom da sua escola.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://edusync.com.br/alunos/">
+    <meta property="og:image" content="https://edusync.com.br/shared/assets/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="EduSync — Portal do Aluno">
+    <meta name="twitter:description" content="Portal do Aluno EduSync — veja suas atividades pendentes, notas e entregas do Google Classroom da sua escola.">
+    <meta name="twitter:image" content="https://edusync.com.br/shared/assets/og-image.png">
     <link rel="icon" type="image/svg+xml" href="/shared/assets/favicon.svg">
     <link rel="stylesheet" href="./alunos.css">
     <!-- Anti-flash: aplica tema salvo antes de renderizar -->
@@ -13,6 +23,21 @@
             const t = localStorage.getItem('aluno_tema');
             if (t) document.documentElement.setAttribute('data-theme', t);
         })();
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "EduSync — Portal do Aluno",
+      "description": "Portal do Aluno EduSync — veja suas atividades pendentes, notas e entregas do Google Classroom da sua escola.",
+      "url": "https://edusync.com.br/alunos/",
+      "inLanguage": "pt-BR",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "EduSync",
+        "url": "https://edusync.com.br"
+      }
+    }
     </script>
 </head>
 <body>
