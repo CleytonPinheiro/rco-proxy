@@ -192,6 +192,7 @@ migrarTabelas();
  *  página (já com PHPSESSID válido).
  * ═══════════════════════════════════════════════════════════════════ */
 let _gpPage        = null;              // puppeteer Page autenticada
+let _gpContext     = null;              // BrowserContext isolado da sessão GradePen
 let _gpPageExp     = 0;                 // timestamp local de expiração (~30 min)
 let _gpLoginLock   = null;              // Promise atual de login (mutex)
 let _gpMutexChain  = Promise.resolve(); // cadeia de serialização dos fetches
@@ -205,11 +206,27 @@ async function gpLogin() {
         const pwd   = process.env.GOOGLE_PASSWORD;
         if (!email || !pwd) throw new Error('GOOGLE_EMAIL/GOOGLE_PASSWORD não configurados.');
 
-        /* Fecha página antiga se houver */
+        /* Fecha página e contexto antigos se houver */
         if (_gpPage) { try { await _gpPage.close(); } catch {} _gpPage = null; }
+        if (_gpContext) { try { await _gpContext.close(); } catch {} _gpContext = null; }
 
-        const browser = await getBrowser();
-        const page = await browser.newPage();
+        // Use an isolated BrowserContext so the GradePen session never shares cookies
+        // or sessions with RCO login pages that run in the default context.
+        // If the browser is not ready yet (cold start), retry once before giving up.
+        let browser;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                browser = await getBrowser();
+                break;
+            } catch (browserErr) {
+                if (attempt === 2) throw browserErr;
+                console.warn('[PROVAS] Browser não pronto, tentando novamente em 3 s...', browserErr.message);
+                await new Promise(r => setTimeout(r, 3000));
+            }
+        }
+
+        const context = await browser.createBrowserContext();
+        const page = await context.newPage();
 
         /* ── Anti-detecção de automação ──────────────────────────────────────── */
         /* Esconde as marcas de Puppeteer/headless que o Google usa para CAPTCHA */
@@ -400,6 +417,7 @@ async function gpLogin() {
             if (sessionOk) {
                 console.log('[PROVAS] Sessão GradePen restaurada via cookies — sem necessidade de Google OAuth');
                 _gpPage    = page;
+                _gpContext = context;
                 _gpPageExp = Date.now() + 25 * 60 * 1000;
                 return;
             }
@@ -571,10 +589,12 @@ async function gpLogin() {
             } catch (e) { console.log('[PROVAS] Falha ao salvar cookies:', e.message); }
 
             _gpPage    = page;
+            _gpContext = context;
             _gpPageExp = Date.now() + 25 * 60 * 1000;
             console.log('[PROVAS] Login GradePen via Google OK:', email);
         } catch (e) {
             try { await page.close(); } catch {}
+            try { await context.close(); } catch {}
             throw e;
         }
     })().finally(() => { _gpLoginLock = null; });
@@ -626,9 +646,10 @@ async function gpFetchAnswers(jobId, index, retried = false) {
             throw fetchError;
         }
         if (retried) throw fetchError;
-        const oldPage = _gpPage;
-        _gpPage = null;
+        const oldPage = _gpPage; const oldCtx = _gpContext;
+        _gpPage = null; _gpContext = null;
         try { await oldPage.close(); } catch {}
+        try { await oldCtx?.close(); } catch {}
         return gpFetchAnswers(jobId, index, true);
     }
 
@@ -637,9 +658,10 @@ async function gpFetchAnswers(jobId, index, retried = false) {
     }
     if (!j || j.success === false) {
         if (!retried && (j.errorCode === 1 || j.errorCode === 2 || j.errorCode === 3)) {
-            const oldPage = _gpPage;
-            _gpPage = null;
+            const oldPage = _gpPage; const oldCtx = _gpContext;
+            _gpPage = null; _gpContext = null;
             try { await oldPage.close(); } catch {}
+            try { await oldCtx?.close(); } catch {}
             return gpFetchAnswers(jobId, index, true);
         }
         /* "Job not found" means the ansid itself doesn't exist — wrong ID entered by the teacher */
@@ -742,11 +764,12 @@ async function gpHealthPing() {
     /* Sessão expirou pela validade local — não é necessário pingar; invalida diretamente */
     if (Date.now() > _gpPageExp) {
         console.log('[PROVAS][ping] GradePen: sessão local expirada — invalidando sem ping.');
-        const old = _gpPage;
-        _gpPage = null;
+        const old = _gpPage; const oldCtx = _gpContext;
+        _gpPage = null; _gpContext = null;
         _gpLastPingOk = false;
         _gpLastPingTs = Date.now();
         try { await old.close(); } catch {}
+        try { await oldCtx?.close(); } catch {}
         return;
     }
 
@@ -797,9 +820,10 @@ async function gpHealthPing() {
         console.log('[PROVAS][ping] GradePen: sessão OK —', new Date().toISOString());
     } else {
         console.warn('[PROVAS][ping] GradePen: sessão INVÁLIDA — invalidando _gpPage para forçar re-login na próxima requisição.');
-        const old = _gpPage;
-        _gpPage = null;
+        const old = _gpPage; const oldCtx = _gpContext;
+        _gpPage = null; _gpContext = null;
         try { await old.close(); } catch {}
+        try { await oldCtx?.close(); } catch {}
     }
 }
 
@@ -984,8 +1008,11 @@ export function createProvasRouter({ getClassroomAuth } = {}) {
     router.delete('/provas/gradepen/connect', async (req, res) => {
         if (!req.userSession) return res.status(401).json({ erro: 'Não autenticado.' });
         /* Invalida a sessão GradePen e remove cookies salvos */
+        const _delCtx = _gpContext;
         _gpPage    = null;
+        _gpContext = null;
         _gpPageExp = 0;
+        try { await _delCtx?.close(); } catch {}
         try { fs.unlinkSync('/tmp/gp-session-cookies.json'); } catch {}
         res.json({ ok: true });
     });

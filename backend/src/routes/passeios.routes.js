@@ -811,7 +811,7 @@ export function createPasseiosRouter({ supabase }) {
     router.get('/passeios/:id/pulseiras/pdf', guardPasseios, async (req, res) => {
         const eventoId = parseInt(req.params.id);
         const { onibus_id } = req.query;
-        let page;
+        let page; let context;
         try {
             const { rows: [ev] } = await pool.query(`SELECT * FROM eventos WHERE id=$1`, [eventoId]);
             if (!ev) return res.status(404).json({ erro: 'Evento não encontrado' });
@@ -882,16 +882,45 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
 <div class="grade">${cardsHtml}</div>
 </body></html>`;
 
-            const browser = await getBrowser();
-            page = await browser.newPage();
-            await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
-            const pdfBuffer = await page.pdf({
-                format: 'A4',
-                printBackground: true,
-                margin: { top: '0', right: '0', bottom: '0', left: '0' },
-            });
-            await page.close();
-            page = null;
+            // Use an isolated BrowserContext so PDF pages never share cookies or
+            // sessions with the login pages that run in the default context.
+            // If the browser is not ready yet (cold start), retry once before giving up.
+            let browser;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    browser = await getBrowser();
+                    break;
+                } catch (browserErr) {
+                    if (attempt === 2) {
+                        console.error('[Passeios PDF] Browser indisponível após 2 tentativas:', browserErr.message);
+                        return res.status(503).json({
+                            erro: 'Serviço temporariamente indisponível. O navegador ainda está iniciando — tente novamente em alguns segundos.',
+                        });
+                    }
+                    console.warn('[Passeios PDF] Browser não pronto, tentando novamente em 3 s...', browserErr.message);
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+            }
+
+            context = await browser.createBrowserContext();
+            let pdfBuffer;
+            try {
+                page = await context.newPage();
+                try {
+                    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+                    pdfBuffer = await page.pdf({
+                        format: 'A4',
+                        printBackground: true,
+                        margin: { top: '0', right: '0', bottom: '0', left: '0' },
+                    });
+                } finally {
+                    try { await page.close(); } catch {}
+                    page = null;
+                }
+            } finally {
+                try { await context.close(); } catch {}
+                context = null;
+            }
 
             const nomeArquivo = encodeURIComponent(`pulseiras-${ev.nome}-${eventoId}`);
             res.setHeader('Content-Type', 'application/pdf');
@@ -899,6 +928,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
             res.send(Buffer.from(pdfBuffer));
         } catch (e) {
             if (page) { try { await page.close(); } catch {} }
+            if (context) { try { await context.close(); } catch {} }
             console.error('[Passeios PDF]', e.message);
             res.status(500).json({ erro: e.message });
         }
