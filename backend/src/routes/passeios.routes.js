@@ -907,7 +907,7 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
             try {
                 page = await context.newPage();
                 try {
-                    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+                    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
                     pdfBuffer = await page.pdf({
                         format: 'A4',
                         printBackground: true,
