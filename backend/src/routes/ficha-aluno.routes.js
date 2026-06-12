@@ -149,7 +149,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     const ids = ocorrenciasRaw.map(o => o.id);
                     const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
                     const metaResult = await pool.query(
-                        `SELECT id_ocorrencia, professor_nome, nome_turma
+                        `SELECT id_ocorrencia, professor_nome, nome_turma, disciplina
                          FROM ocorrencia_meta
                          WHERE id_ocorrencia IN (${placeholders})`,
                         ids
@@ -162,6 +162,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                         ...o,
                         professor_nome: metaMap[o.id]?.professor_nome || '',
                         nome_turma:     metaMap[o.id]?.nome_turma || o.cod_turma?.toString() || '',
+                        disciplina:     metaMap[o.id]?.disciplina  || '',
                     }));
                 } catch (e) {
                     console.warn('[FICHA-ALUNO] Erro ao buscar ocorrencia_meta:', e.message);

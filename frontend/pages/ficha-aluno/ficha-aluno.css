@@ -394,6 +394,75 @@
 .freq-pct-alerta { background: #fef9c3; color: #854d0e; }
 .freq-pct-critico { background: #fee2e2; color: #991b1b; }
 
+/* ── Ocorrências dentro de cada disciplina (freq section) ───────── */
+.freq-ocorr-bloco {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #f8f9ff;
+    border-radius: 8px;
+    border: 1px solid #e0e7ff;
+}
+
+.freq-ocorr-titulo {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+}
+
+.freq-ocorr-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border-left: 3px solid transparent;
+}
+.freq-ocorr-item:last-child { margin-bottom: 0; }
+.freq-ocorr-positivo { background: #f0fdf4; border-left-color: #16a34a; }
+.freq-ocorr-atencao  { background: #fffbeb; border-left-color: #d97706; }
+.freq-ocorr-grave    { background: #fff1f2; border-left-color: #dc2626; }
+
+.freq-ocorr-icone { font-size: 14px; line-height: 1.4; flex-shrink: 0; }
+
+.freq-ocorr-info {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.freq-ocorr-cat {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary, #111);
+}
+.freq-ocorr-data,
+.freq-ocorr-prof {
+    font-size: 11px;
+    color: var(--text-muted, #6b7280);
+}
+
+.freq-ocorr-pts {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.freq-ocorr-pts-positivo { color: #16a34a; }
+.freq-ocorr-pts-atencao  { color: #d97706; }
+.freq-ocorr-pts-grave    { color: #dc2626; }
+
+[data-theme="dark"] .freq-ocorr-bloco  { background: #1a1d30; border-color: #312e81; }
+[data-theme="dark"] .freq-ocorr-titulo { color: #a5b4fc; }
+[data-theme="dark"] .freq-ocorr-positivo { background: #052e16; border-left-color: #4ade80; }
+[data-theme="dark"] .freq-ocorr-atencao  { background: #1c1400; border-left-color: #fbbf24; }
+[data-theme="dark"] .freq-ocorr-grave    { background: #2d0a0a; border-left-color: #f87171; }
+
 /* ── Ocorrências ────────────────────────────────────────────────── */
 .ocorr-grupo-titulo {
     font-size: 12px;

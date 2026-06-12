@@ -322,27 +322,51 @@ function renderFicha(dados) {
         </div>`;
 
     document.getElementById('fichaConteudo').innerHTML =
-        renderSecaoFrequencias(frequencias) +
+        renderSecaoFrequencias(frequencias, ocorrencias) +
         renderSecaoOcorrencias(ocorrencias) +
         renderSecaoObservacoes(observacoes) +
         renderSecaoEmprestimos(emprestimos) +
         `<div class="ficha-print-footer">Gerado pelo EduSync em ${formatarData(geradoEm)} — Ficha do aluno: ${escHtml(aluno.nome)}</div>`;
 }
 
-function renderSecaoFrequencias(frequencias) {
+/* Normaliza string para comparação de nomes de disciplina:
+   remove acentos, lowercase, mantém apenas letras e números */
+function normalizarDisciplina(str) {
+    return (str || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/* Retorna true se ocorrDisciplina corresponde (parcialmente) ao nome da disciplina RCO */
+function disciplinaCorresponde(nomeDisciplina, ocorrDisciplina) {
+    if (!ocorrDisciplina) return false;
+    const nd = normalizarDisciplina(nomeDisciplina);
+    const od = normalizarDisciplina(ocorrDisciplina);
+    if (!nd || !od) return false;
+    // Match bidirecional por substring (cobre "Lógica" ↔ "LOGICA COMPUTACIONAL")
+    return nd.includes(od) || od.includes(nd);
+}
+
+function renderSecaoFrequencias(frequencias, ocorrencias) {
     let corpo = '';
     if (frequencias === null) {
         corpo = `<div class="ficha-aviso">⚠️ Frequências indisponíveis — o token RCO não está ativo para esta sessão.</div>`;
     } else if (!frequencias || frequencias.length === 0) {
         corpo = `<div class="ficha-vazio">Nenhuma frequência encontrada para este aluno.</div>`;
     } else {
+        // Ocorrências com disciplina registrada (campo vindo de ocorrencia_meta)
+        const ocorrComDisc = (ocorrencias || []).filter(o => o.disciplina);
+
         corpo = frequencias.map(f => {
             const pct = f.percentual;
             let pctClass = 'freq-pct-ok';
             if (pct !== null && pct < 75)  pctClass = 'freq-pct-critico';
             else if (pct !== null && pct < 85) pctClass = 'freq-pct-alerta';
 
-            const corpo = f.semDados
+            const freqHtml = f.semDados
                 ? `<div class="freq-sem-dados">Nenhuma frequência registrada ainda nesta disciplina.</div>`
                 : `<table class="freq-table">
                     <thead>
@@ -363,12 +387,80 @@ function renderSecaoFrequencias(frequencias) {
                     </tbody>
                 </table>`;
 
+            // Ocorrências que correspondem a esta disciplina
+            const ocorrDisc = ocorrComDisc.filter(o => disciplinaCorresponde(f.nomeDisciplina, o.disciplina));
+            let ocorrDiscHtml = '';
+            if (ocorrDisc.length > 0) {
+                const items = ocorrDisc.map(o => {
+                    const icone = o.tipo === 'positivo' ? '✅' : o.tipo === 'atencao' ? '⚠️' : '❌';
+                    const ptsSign = o.pontos > 0 ? '+' : '';
+                    return `
+                    <div class="freq-ocorr-item freq-ocorr-${o.tipo}">
+                        <span class="freq-ocorr-icone">${icone}</span>
+                        <div class="freq-ocorr-info">
+                            <span class="freq-ocorr-cat">${escHtml(o.categoria_label || o.categoria)}</span>
+                            <span class="freq-ocorr-data">📅 ${formatarData(o.data)}</span>
+                            ${o.professor_nome ? `<span class="freq-ocorr-prof">👤 ${escHtml(o.professor_nome)}</span>` : ''}
+                        </div>
+                        <span class="freq-ocorr-pts freq-ocorr-pts-${o.tipo}">${ptsSign}${o.pontos}</span>
+                    </div>`;
+                }).join('');
+
+                ocorrDiscHtml = `
+                <div class="freq-ocorr-bloco">
+                    <div class="freq-ocorr-titulo">📋 Ocorrências nesta disciplina (${ocorrDisc.length})</div>
+                    ${items}
+                </div>`;
+            }
+
             return `
             <div class="freq-disciplina${f.semDados ? ' freq-disciplina-sem-dados' : ''}">
                 <div class="freq-disciplina-nome">📖 ${escHtml(f.nomeDisciplina)}</div>
-                ${corpo}
+                ${freqHtml}
+                ${ocorrDiscHtml}
             </div>`;
         }).join('');
+
+        // Ocorrências com disciplina que não casou com nenhuma disciplina RCO
+        const nomesRco = frequencias.map(f => f.nomeDisciplina);
+        const ocorrSemMatch = ocorrComDisc.filter(o =>
+            !nomesRco.some(nd => disciplinaCorresponde(nd, o.disciplina))
+        );
+        if (ocorrSemMatch.length > 0) {
+            // Agrupar por disciplina digitada
+            const grupos = {};
+            for (const o of ocorrSemMatch) {
+                const k = o.disciplina;
+                if (!grupos[k]) grupos[k] = [];
+                grupos[k].push(o);
+            }
+            const extras = Object.entries(grupos).map(([disc, items]) => {
+                const rows = items.map(o => {
+                    const icone = o.tipo === 'positivo' ? '✅' : o.tipo === 'atencao' ? '⚠️' : '❌';
+                    const ptsSign = o.pontos > 0 ? '+' : '';
+                    return `
+                    <div class="freq-ocorr-item freq-ocorr-${o.tipo}">
+                        <span class="freq-ocorr-icone">${icone}</span>
+                        <div class="freq-ocorr-info">
+                            <span class="freq-ocorr-cat">${escHtml(o.categoria_label || o.categoria)}</span>
+                            <span class="freq-ocorr-data">📅 ${formatarData(o.data)}</span>
+                            ${o.professor_nome ? `<span class="freq-ocorr-prof">👤 ${escHtml(o.professor_nome)}</span>` : ''}
+                        </div>
+                        <span class="freq-ocorr-pts freq-ocorr-pts-${o.tipo}">${ptsSign}${o.pontos}</span>
+                    </div>`;
+                }).join('');
+                return `
+                <div class="freq-disciplina freq-disciplina-sem-dados">
+                    <div class="freq-disciplina-nome">📖 ${escHtml(disc)}</div>
+                    <div class="freq-sem-dados">Frequência não vinculada ao RCO.</div>
+                    <div class="freq-ocorr-bloco">
+                        <div class="freq-ocorr-titulo">📋 Ocorrências (${items.length})</div>
+                        ${rows}
+                    </div>
+                </div>`;
+            }).join('');
+            corpo += extras;
+        }
     }
 
     return `
