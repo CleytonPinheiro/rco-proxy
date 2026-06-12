@@ -14,6 +14,10 @@ async function migrarOcorrenciaMeta() {
                 criado_em      TIMESTAMPTZ DEFAULT NOW()
             )
         `);
+        await pool.query(`
+            ALTER TABLE ocorrencia_meta
+            ADD COLUMN IF NOT EXISTS disciplina TEXT NOT NULL DEFAULT ''
+        `);
         console.log('[COMPORTAMENTO] Tabela ocorrencia_meta OK');
     } catch (e) {
         console.warn('[COMPORTAMENTO] Erro migração ocorrencia_meta:', e.message);
@@ -54,7 +58,7 @@ export function createComportamentoRouter({ supabaseAdmin }) {
     router.post('/comportamento', async (req, res) => {
         const { cod_matriz_aluno, cod_turma, nome_aluno, num_chamada,
                 data, tipo, categoria, categoria_label, descricao, pontos,
-                professor_nome, nome_turma } = req.body;
+                professor_nome, nome_turma, disciplina } = req.body;
         if (!cod_matriz_aluno || !cod_turma || !tipo || !categoria) {
             return res.status(400).json({ erro: 'Campos obrigatórios ausentes' });
         }
@@ -71,12 +75,13 @@ export function createComportamentoRouter({ supabaseAdmin }) {
 
             // Salva metadados do professor em PG local (sem alterar schema do Supabase)
             await pool.query(
-                `INSERT INTO ocorrencia_meta (id_ocorrencia, professor_nome, nome_turma)
-                 VALUES ($1, $2, $3)
+                `INSERT INTO ocorrencia_meta (id_ocorrencia, professor_nome, nome_turma, disciplina)
+                 VALUES ($1, $2, $3, $4)
                  ON CONFLICT (id_ocorrencia) DO UPDATE
                  SET professor_nome = EXCLUDED.professor_nome,
-                     nome_turma     = EXCLUDED.nome_turma`,
-                [id, professor_nome || '', nome_turma || '']
+                     nome_turma     = EXCLUDED.nome_turma,
+                     disciplina     = EXCLUDED.disciplina`,
+                [id, professor_nome || '', nome_turma || '', disciplina || '']
             );
 
             const { data: row } = await supabaseAdmin.from('aluno_ocorrencias').select('*').eq('id', id).single();

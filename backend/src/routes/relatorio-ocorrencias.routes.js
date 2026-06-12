@@ -47,11 +47,10 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
     const dataDaOcorrencia = ocorrencia.data ? dataExtenso(ocorrencia.data) : '___/___/______';
     const serie = deriveSerieFromTurma(ocorrencia.nome_turma || aluno.turma);
     const turmaDisplay = ocorrencia.nome_turma || aluno.turma || '';
-
     const cidade = cidadeRef || 'Maringá';
-
     const descricao = ocorrencia.descricao || '';
     const categoria = ocorrencia.categoria_label || ocorrencia.categoria || '';
+    const disciplina = ocorrencia.disciplina || '';
 
     const enderecoHtml = [escola.endereco, escola.telefone, escola.email]
         .filter(Boolean).join(' &nbsp;|&nbsp; ');
@@ -76,17 +75,21 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
     <div class="campo-linha">
       <span class="campo-label">Professor(a):</span>
       <span class="campo-valor">${esc(ocorrencia.professor_nome)}</span>
-      <span class="campo-sep">Turma:</span>
-      <span class="campo-valor" style="max-width:120px">${esc(turmaDisplay)}</span>
+      ${disciplina ? `<span class="campo-sep">Disciplina:</span><span class="campo-valor" style="max-width:110px">${esc(disciplina)}</span>` : ''}
+    </div>
+
+    <div class="campo-linha">
+      <span class="campo-label">Turma:</span>
+      <span class="campo-valor" style="max-width:110px">${esc(turmaDisplay)}</span>
       <span class="campo-sep">Série:</span>
-      <span class="campo-valor" style="max-width:100px">${esc(serie)}</span>
+      <span class="campo-valor" style="max-width:90px">${esc(serie)}</span>
     </div>
 
     <div class="campo-linha">
       <span class="campo-label">Aluno(a):</span>
       <span class="campo-valor">${esc(aluno.nome)}</span>
       <span class="campo-sep">Nº:</span>
-      <span class="campo-valor" style="max-width:50px">${esc(aluno.numchamada || '')}</span>
+      <span class="campo-valor" style="max-width:40px">${esc(aluno.numchamada || '')}</span>
     </div>
 
     <div class="campo-linha">
@@ -96,10 +99,10 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
         <span class="tipo-badge ${tipoClass}">${esc(tipoLabel)}</span>
       </span>
       <span class="campo-sep">Data:</span>
-      <span class="campo-valor" style="max-width:160px">${esc(dataDaOcorrencia)}</span>
+      <span class="campo-valor" style="max-width:140px">${esc(dataDaOcorrencia)}</span>
     </div>
 
-    <div style="margin-bottom:10px">
+    <div style="margin-bottom:6px;flex:1;display:flex;flex-direction:column">
       <div class="desc-label">Descrição do fato ocorrido:</div>
       <div class="desc-area">${esc(descricao)}</div>
     </div>
@@ -128,7 +131,6 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
     <div class="obs-bloco">
       <div class="obs-label">Obs.:</div>
       <div class="obs-linha"></div>
-      <div class="obs-linha"></div>
     </div>
 
   </div>
@@ -138,13 +140,43 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
 export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
     const router = Router();
 
+    // ── Lista de professores distintos de um aluno (para o filtro no frontend) ──
+    router.get('/relatorio-ocorrencias/:codMatrizAluno/professores', requireModulo('ficha-aluno'), async (req, res) => {
+        const codMatriz = parseInt(req.params.codMatrizAluno, 10);
+        if (isNaN(codMatriz)) return res.status(400).json({ erro: 'codMatrizAluno inválido.' });
+
+        try {
+            const { data: ocorrencias } = await supabaseAdmin
+                .from('aluno_ocorrencias')
+                .select('id')
+                .eq('cod_matriz_aluno', codMatriz);
+
+            if (!ocorrencias || ocorrencias.length === 0) return res.json([]);
+
+            const ids = ocorrencias.map(o => o.id);
+            const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+            const { rows } = await pool.query(
+                `SELECT DISTINCT professor_nome
+                 FROM ocorrencia_meta
+                 WHERE id_ocorrencia IN (${placeholders})
+                   AND professor_nome <> ''
+                 ORDER BY professor_nome`,
+                ids
+            );
+            res.json(rows.map(r => r.professor_nome));
+        } catch (e) {
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    // ── Gera PDF de termos de ocorrência ──────────────────────────────────────
     router.get('/relatorio-ocorrencias/:codMatrizAluno', requireModulo('ficha-aluno'), async (req, res) => {
         const codMatriz = parseInt(req.params.codMatrizAluno, 10);
         if (isNaN(codMatriz)) {
             return res.status(400).json({ erro: 'codMatrizAluno inválido.' });
         }
 
-        const { de, ate, tipo } = req.query;
+        const { de, ate, tipo, professor } = req.query;
 
         try {
             const [alunoResult, ocorrenciasResult, configResult] = await Promise.all([
@@ -202,33 +234,62 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
             };
             const cidadeRef = cfgMap['escola_cidade_ref'] || 'Maringá';
 
+            // Busca metadados (professor, turma, disciplina)
             const ids = ocorrenciasRaw.map(o => o.id);
             let metaMap = {};
             if (ids.length > 0) {
                 const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
                 const metaResult = await pool.query(
-                    `SELECT id_ocorrencia, professor_nome, nome_turma
+                    `SELECT id_ocorrencia, professor_nome, nome_turma, disciplina
                      FROM ocorrencia_meta WHERE id_ocorrencia IN (${placeholders})`,
                     ids
                 );
                 for (const row of metaResult.rows) metaMap[row.id_ocorrencia] = row;
             }
 
-            const ocorrencias = ocorrenciasRaw.map(o => ({
+            let ocorrencias = ocorrenciasRaw.map(o => ({
                 ...o,
                 professor_nome: metaMap[o.id]?.professor_nome || '',
                 nome_turma:     metaMap[o.id]?.nome_turma     || aluno.turma || '',
+                disciplina:     metaMap[o.id]?.disciplina     || '',
             }));
 
+            // Filtro por professor (aplicado após enriquecer com metadados)
+            if (professor) {
+                ocorrencias = ocorrencias.filter(o =>
+                    o.professor_nome.toLowerCase().includes(professor.toLowerCase())
+                );
+            }
+
+            if (ocorrencias.length === 0) {
+                return res.status(204).json({ mensagem: 'Nenhuma ocorrência encontrada para os filtros informados.' });
+            }
+
+            // Ordena por professor → disciplina → data
+            ocorrencias.sort((a, b) => {
+                const profCmp = (a.professor_nome || '').localeCompare(b.professor_nome || '', 'pt-BR');
+                if (profCmp !== 0) return profCmp;
+                const discCmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
+                if (discCmp !== 0) return discCmp;
+                return (a.data || '').localeCompare(b.data || '');
+            });
+
+            // Agrupa em pares de 2 para o layout landscape (2 termos por folha)
             const templateHtml = fs.readFileSync(TEMPLATE, 'utf8');
-            const blocosHtml   = ocorrencias.map(o =>
-                renderOcorrencia({ escola, aluno, ocorrencia: o, cidadeRef })
-            ).join('\n');
+            const pares = [];
+            for (let i = 0; i < ocorrencias.length; i += 2) {
+                pares.push(ocorrencias.slice(i, i + 2));
+            }
+            const blocosHtml = pares.map(par => {
+                const termos = par.map(o =>
+                    renderOcorrencia({ escola, aluno, ocorrencia: o, cidadeRef })
+                ).join('\n');
+                const padding = par.length < 2 ? '<div class="termo-vazio"></div>' : '';
+                return `<div class="page-pair">${termos}${padding}</div>`;
+            }).join('\n');
+
             const html = templateHtml.replace('{{OCORRENCIAS}}', blocosHtml);
 
-            // Use an isolated BrowserContext so PDF pages never share cookies or
-            // sessions with the login pages that run in the default context.
-            // If the browser is not ready yet (cold start), retry once before giving up.
             let browser;
             for (let attempt = 1; attempt <= 2; attempt++) {
                 try {
@@ -254,6 +315,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
                     await page.setContent(html, { waitUntil: 'domcontentloaded' });
                     pdfBuffer = await page.pdf({
                         format:          'A4',
+                        landscape:       true,
                         printBackground: true,
                         margin: { top: '0', bottom: '0', left: '0', right: '0' },
                     });

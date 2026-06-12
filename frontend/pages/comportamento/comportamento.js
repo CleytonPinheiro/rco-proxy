@@ -308,6 +308,7 @@ async function salvarOcorrencia() {
     const codMatrizAluno = parseInt(document.getElementById('ocorrAluno').value);
     const data           = document.getElementById('ocorrData').value;
     const descricao      = document.getElementById('ocorrDescricao').value.trim();
+    const disciplina     = document.getElementById('ocorrDisciplina')?.value.trim() || '';
 
     if (!categoriaSelecionada) { await notificar('Atenção', 'Selecione uma categoria.', {tipo: 'info'}); return; }
     if (!data) { await notificar('Atenção', 'Informe a data.', {tipo: 'info'}); return; }
@@ -330,6 +331,7 @@ async function salvarOcorrencia() {
             pontos:           categoriaSelecionada.pontos,
             professor_nome:   professorNome || localStorage.getItem('professorNome') || '',
             nome_turma:       turmaAtual.nomeTurma || '',
+            disciplina,
         }),
     });
 

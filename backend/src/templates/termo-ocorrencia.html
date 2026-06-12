@@ -3,222 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: A4; margin: 18mm 20mm 18mm 20mm; }
+  @page { size: A4 landscape; margin: 8mm 10mm 8mm 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #111; background: #fff; }
+  html, body { width: 100%; height: 100%; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; color: #111; background: #fff; }
+
+  .page-pair {
+    display: flex;
+    gap: 6mm;
+    page-break-after: always;
+    height: calc(210mm - 16mm); /* A4 height minus margins */
+  }
+  .page-pair:last-child { page-break-after: avoid; }
 
   .termo-wrapper {
-    page-break-after: always;
+    flex: 1;
     border: 2px solid #111;
-    padding: 0;
-    min-height: 240mm;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
-  .termo-wrapper:last-child { page-break-after: avoid; }
+  .termo-vazio { flex: 1; }
+
+  /* ── Divisória vertical central ── */
+  .page-pair .termo-wrapper:first-child {
+    border-right: 1px solid #555;
+  }
 
   /* ── Cabeçalho ── */
   .cabecalho {
     display: flex;
     align-items: center;
-    border-bottom: 2px solid #111;
-    padding: 10px 14px;
-    gap: 14px;
+    border-bottom: 1.5px solid #111;
+    padding: 5px 8px;
+    gap: 8px;
   }
   .cabecalho-logo {
     flex-shrink: 0;
-    width: 72px;
-    height: 72px;
+    width: 46px;
+    height: 46px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .cabecalho-logo img {
-    max-width: 72px;
-    max-height: 72px;
+    max-width: 46px;
+    max-height: 46px;
     object-fit: contain;
   }
   .cabecalho-logo-placeholder {
-    width: 64px;
-    height: 64px;
-    border: 1.5px dashed #aaa;
-    border-radius: 4px;
+    width: 42px;
+    height: 42px;
+    border: 1px dashed #aaa;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 8pt;
+    font-size: 7pt;
     color: #aaa;
     text-align: center;
-    line-height: 1.3;
+    line-height: 1.2;
   }
   .cabecalho-texto {
     flex: 1;
     text-align: center;
   }
   .cabecalho-orgao {
-    font-size: 8.5pt;
+    font-size: 7pt;
     color: #444;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
   .cabecalho-escola {
-    font-size: 13pt;
+    font-size: 10pt;
     font-weight: 700;
     text-transform: uppercase;
-    line-height: 1.25;
-    margin-bottom: 3px;
+    line-height: 1.2;
+    margin-bottom: 2px;
   }
   .cabecalho-endereco {
-    font-size: 8.5pt;
+    font-size: 7pt;
     color: #333;
-    line-height: 1.5;
   }
 
   /* ── Título ── */
   .titulo-bloco {
-    border-bottom: 1.5px solid #111;
-    padding: 8px 14px;
+    border-bottom: 1px solid #111;
+    padding: 4px 8px;
     text-align: center;
   }
   .titulo-principal {
-    font-size: 13pt;
+    font-size: 10pt;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: .5px;
   }
 
   /* ── Corpo ── */
   .corpo {
     flex: 1;
-    padding: 14px 16px 10px 16px;
+    padding: 7px 8px 5px 8px;
     display: flex;
     flex-direction: column;
-    gap: 0;
   }
 
   .campo-linha {
     display: flex;
     align-items: flex-end;
-    margin-bottom: 11px;
+    margin-bottom: 7px;
     flex-wrap: wrap;
-    gap: 4px 0;
+    gap: 2px 0;
   }
   .campo-label {
-    font-size: 10.5pt;
+    font-size: 8.5pt;
     font-weight: 700;
     white-space: nowrap;
-    margin-right: 4px;
+    margin-right: 3px;
     flex-shrink: 0;
   }
   .campo-valor {
     border-bottom: 1px solid #333;
     flex: 1;
-    min-width: 80px;
-    padding: 0 4px 1px 4px;
-    font-size: 10.5pt;
-    min-height: 18px;
+    min-width: 50px;
+    padding: 0 3px 1px 3px;
+    font-size: 8.5pt;
+    min-height: 15px;
   }
   .campo-sep {
-    margin: 0 8px;
+    margin: 0 5px;
     font-weight: 700;
     flex-shrink: 0;
-    font-size: 10.5pt;
-  }
-
-  .campo-linha-narrow .campo-valor {
-    min-width: 40px;
+    font-size: 8.5pt;
   }
 
   /* Área de descrição */
   .desc-label {
-    font-size: 10.5pt;
+    font-size: 8.5pt;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
   .desc-area {
     border: 1px solid #555;
-    min-height: 82px;
-    padding: 6px 8px;
-    font-size: 10.5pt;
-    line-height: 1.7;
-    margin-bottom: 12px;
+    flex: 1;
+    min-height: 38px;
+    padding: 4px 6px;
+    font-size: 8.5pt;
+    line-height: 1.55;
+    margin-bottom: 6px;
     white-space: pre-wrap;
     word-break: break-word;
-  }
-  .desc-linhas {
-    border: none;
-    border-bottom: 1px solid #555;
-    margin-bottom: 12px;
-  }
-  .desc-linha-item {
-    border-bottom: 1px solid #bbb;
-    min-height: 22px;
-    margin-bottom: 0;
   }
 
   /* Cidade e data */
   .cidade-data {
     text-align: right;
-    font-size: 10.5pt;
-    margin-bottom: 18px;
-    margin-top: 4px;
+    font-size: 8.5pt;
+    margin-bottom: 8px;
+    margin-top: 2px;
   }
 
   /* Assinaturas */
   .assinaturas {
     border-top: 1px solid #ccc;
-    padding-top: 10px;
+    padding-top: 6px;
     display: flex;
     gap: 0;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
   }
   .assinatura-bloco {
     flex: 1;
-    min-width: 100px;
     text-align: center;
-    padding: 0 8px;
+    padding: 0 4px;
     border-right: 1px solid #ddd;
   }
   .assinatura-bloco:last-child { border-right: none; }
   .assinatura-linha {
     border-bottom: 1.5px solid #333;
-    margin: 0 auto 5px auto;
+    margin: 0 auto 3px auto;
     width: 90%;
-    height: 36px;
+    height: 26px;
   }
   .assinatura-label {
-    font-size: 8.5pt;
+    font-size: 7.5pt;
     color: #444;
     font-weight: 600;
   }
 
   /* Obs */
   .obs-bloco {
-    margin-top: 4px;
-    padding-top: 6px;
+    margin-top: 2px;
+    padding-top: 4px;
     border-top: 1px solid #ccc;
   }
   .obs-label {
-    font-size: 10pt;
+    font-size: 8.5pt;
     font-weight: 700;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
+    display: inline;
   }
   .obs-linha {
     border-bottom: 1px solid #bbb;
-    min-height: 20px;
-    margin-bottom: 6px;
+    min-height: 16px;
+    margin-bottom: 4px;
   }
 
   /* Tipo badge */
   .tipo-badge {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 1px 6px;
     border-radius: 3px;
-    font-size: 9pt;
+    font-size: 7.5pt;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .5px;
-    margin-left: 6px;
+    letter-spacing: .3px;
+    margin-left: 4px;
     vertical-align: middle;
   }
   .tipo-grave    { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }

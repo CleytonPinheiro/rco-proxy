@@ -158,6 +158,19 @@ async function carregarFicha(codMatrizAluno) {
         }
         const dados = await r.json();
         renderFicha(dados);
+        // Carrega professores distintos para o select de filtro (em background)
+        if (dados.ocorrencias && dados.ocorrencias.length > 0) {
+            carregarProfessoresTermo(codMatrizAluno).then(profs => {
+                const sel = document.getElementById('termoProfessor');
+                if (!sel || !profs.length) return;
+                profs.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    sel.appendChild(opt);
+                });
+            });
+        }
     } catch (e) {
         document.getElementById('fichaHeader').innerHTML = '';
         document.getElementById('fichaConteudo').innerHTML = `
@@ -217,18 +230,28 @@ async function buscarAlunos(termo) {
 
 function buildTermoUrl(codMatrizAluno, filtros) {
     const params = new URLSearchParams();
-    if (filtros?.de)   params.set('de',   filtros.de);
-    if (filtros?.ate)  params.set('ate',  filtros.ate);
-    if (filtros?.tipo) params.set('tipo', filtros.tipo);
+    if (filtros?.de)        params.set('de',        filtros.de);
+    if (filtros?.ate)       params.set('ate',        filtros.ate);
+    if (filtros?.tipo)      params.set('tipo',       filtros.tipo);
+    if (filtros?.professor) params.set('professor',  filtros.professor);
     const qs = params.toString();
     return `/api/relatorio-ocorrencias/${codMatrizAluno}${qs ? '?' + qs : ''}`;
 }
 
+async function carregarProfessoresTermo(codMatrizAluno) {
+    try {
+        const r = await fetch(`/api/relatorio-ocorrencias/${codMatrizAluno}/professores`);
+        if (!r.ok) return [];
+        return await r.json();
+    } catch { return []; }
+}
+
 async function gerarTermoPDF(codMatrizAluno, btn) {
-    const de   = document.getElementById('termoDe')?.value  || '';
-    const ate  = document.getElementById('termoAte')?.value || '';
-    const tipo = document.getElementById('termoTipo')?.value || '';
-    const url  = buildTermoUrl(codMatrizAluno, { de, ate, tipo });
+    const de        = document.getElementById('termoDe')?.value        || '';
+    const ate       = document.getElementById('termoAte')?.value       || '';
+    const tipo      = document.getElementById('termoTipo')?.value      || '';
+    const professor = document.getElementById('termoProfessor')?.value || '';
+    const url       = buildTermoUrl(codMatrizAluno, { de, ate, tipo, professor });
 
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando PDF…'; }
     try {
@@ -272,6 +295,10 @@ function renderFicha(dados) {
                 <option value="grave">Grave</option>
                 <option value="atencao">Atenção</option>
                 <option value="positivo">Positivo</option>
+            </select>
+            <select id="termoProfessor" title="Filtrar por professor"
+                    style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)">
+                <option value="">Todos os professores</option>
             </select>
             <button id="btnGerarTermo" class="btn-imprimir"
                     onclick="gerarTermoPDF(${aluno.codMatrizAluno}, this)"
