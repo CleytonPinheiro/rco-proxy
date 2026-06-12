@@ -835,6 +835,96 @@
     color: #fbbf24;
 }
 
+/* ── Observações RCO ─────────────────────────────────── */
+[data-theme="dark"] .obs-grupo-titulo {
+    background: #292200;
+    color: #fbbf24;
+}
+
+[data-theme="dark"] .obs-item {
+    background: #1a1600;
+    border-left-color: #b45309;
+}
+
+[data-theme="dark"] .obs-data {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .obs-texto {
+    color: var(--text-secondary);
+}
+
+/* ── Ocorrências ─────────────────────────────────────── */
+[data-theme="dark"] .ocorr-item.positivo {
+    background: #052e16;
+    border-color: #166534;
+}
+[data-theme="dark"] .ocorr-item.atencao {
+    background: #1c1400;
+    border-color: #78570a;
+}
+[data-theme="dark"] .ocorr-item.grave {
+    background: #2d0a0a;
+    border-color: #7f1d1d;
+}
+
+[data-theme="dark"] .ocorr-meta  { color: var(--text-muted); }
+[data-theme="dark"] .ocorr-desc  { color: var(--text-secondary); }
+
+[data-theme="dark"] .ocorr-grupo-titulo {
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+/* ── Frequências ─────────────────────────────────────── */
+[data-theme="dark"] .freq-disciplina-nome {
+    color: #818cf8;
+    border-color: #312e81;
+}
+
+[data-theme="dark"] .freq-pct-ok      { background: #052e16; color: #4ade80; }
+[data-theme="dark"] .freq-pct-alerta  { background: #1c1400; color: #fbbf24; }
+[data-theme="dark"] .freq-pct-critico { background: #2d0a0a; color: #f87171; }
+
+/* ── Empréstimos ─────────────────────────────────────── */
+[data-theme="dark"] .emp-status-emprestado { background: #1e2d4a; color: #60a5fa; }
+[data-theme="dark"] .emp-status-devolvido  { background: #052e16; color: #4ade80; }
+[data-theme="dark"] .emp-status-perdido    { background: #2d0a0a; color: #f87171; }
+
+/* ── Painel lateral da lista ─────────────────────────── */
+[data-theme="dark"] .ficha-lista-panel {
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+[data-theme="dark"] .ficha-lista-topo {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+[data-theme="dark"] .ficha-lista-titulo { color: var(--text-muted); }
+
+[data-theme="dark"] .ficha-turma-sel {
+    background: var(--bg-input);
+    border-color: var(--border-input);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .ficha-aluno-item { color: var(--text-primary); }
+[data-theme="dark"] .ficha-aluno-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .ficha-lista-placeholder,
+[data-theme="dark"] .ficha-lista-loading { color: var(--text-muted); }
+
+/* ── Texto mudo geral ────────────────────────────────── */
+[data-theme="dark"] .ficha-vazio    { color: var(--text-muted); }
+[data-theme="dark"] .ficha-loading  { color: var(--text-secondary); }
+[data-theme="dark"] .ficha-loading .spinner {
+    border-color: var(--border);
+    border-top-color: #818cf8;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    IMPRESSÃO / PDF
    ═══════════════════════════════════════════════════════════════════ */
