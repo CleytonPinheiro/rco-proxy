@@ -563,13 +563,32 @@ function aplicarFiltrosPainel() {
     const ate     = document.getElementById('painelFiltroAte').value;
 
     const filtrado = painelDados.filter(o => {
-        if (tipo  && o.tipo         !== tipo)                   return false;
+        if (tipo  && o.tipo              !== tipo)              return false;
         if (turma && String(o.cod_turma) !== turma)             return false;
         if (de    && (o.data || '') < de)                       return false;
         if (ate   && (o.data || '') > ate)                      return false;
         return true;
     });
     renderPainel(filtrado);
+}
+
+async function buscarPainel() {
+    const btn = document.querySelector('.painel-btn-buscar');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando…'; }
+    document.getElementById('painelLista').innerHTML =
+        '<div class="painel-loading"><div class="spinner"></div><span>Buscando registros…</span></div>';
+
+    try {
+        const r = await fetch(`${API}/api/comportamento/painel`);
+        if (!r.ok) throw new Error(`Erro ${r.status}`);
+        painelDados = await r.json();
+        aplicarFiltrosPainel();
+    } catch (e) {
+        document.getElementById('painelLista').innerHTML =
+            `<div class="painel-vazio">Erro ao buscar: ${escHtml(e.message)}</div>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar'; }
+    }
 }
 
 function limparFiltrosPainel() {
