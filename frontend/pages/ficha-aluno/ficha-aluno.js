@@ -280,7 +280,8 @@ async function gerarTermoPDF(codMatrizAluno, btn) {
 }
 
 function renderFicha(dados) {
-    const { aluno, frequencias, ocorrencias, observacoes, emprestimos, geradoEm } = dados;
+    const { aluno, frequencias, ocorrencias, observacoes, emprestimos, geradoEm,
+            escolaLogo, escolaNome } = dados;
 
     const temOcorrencias = ocorrencias && ocorrencias.length > 0;
     const btnTermoHtml = temOcorrencias ? `
@@ -317,6 +318,11 @@ function renderFicha(dados) {
             ${btnTermoHtml}
         </div>
         <div class="ficha-header-actions">
+            ${(escolaLogo || escolaNome) ? `
+            <div class="ficha-escola-bloco">
+                ${escolaLogo ? `<img class="ficha-escola-logo" src="${escolaLogo}" alt="Logo da escola">` : ''}
+                ${escolaNome ? `<div class="ficha-escola-nome">${escHtml(escolaNome)}</div>` : ''}
+            </div>` : ''}
             <span class="ficha-data-geracao">Gerado em ${formatarData(geradoEm)}</span>
             <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir / PDF</button>
         </div>`;
@@ -326,7 +332,16 @@ function renderFicha(dados) {
         renderSecaoOcorrencias(ocorrencias) +
         renderSecaoObservacoes(observacoes) +
         renderSecaoEmprestimos(emprestimos) +
-        `<div class="ficha-print-footer">Gerado pelo EduSync em ${formatarData(geradoEm)} — Ficha do aluno: ${escHtml(aluno.nome)}</div>`;
+        `<div class="ficha-print-footer">
+            <div class="ficha-print-footer-esq">
+                <span class="ficha-print-footer-sistema">⚡ EduSync</span>
+                <span class="ficha-print-footer-sub">Sistema de Gestão Escolar — Paraná</span>
+            </div>
+            <div class="ficha-print-footer-dir">
+                <span>📋 ${escHtml(aluno.nome)}</span>
+                <span>🗓️ Gerado em ${formatarData(geradoEm)}</span>
+            </div>
+        </div>`;
 }
 
 /* Normaliza string para comparação de nomes de disciplina:

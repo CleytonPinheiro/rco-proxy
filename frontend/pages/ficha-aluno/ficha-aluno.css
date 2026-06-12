@@ -224,6 +224,34 @@
     flex-shrink: 0;
 }
 
+/* ── Logo da escola no cabeçalho ─────────────────────────────── */
+.ficha-escola-bloco {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+
+.ficha-escola-logo {
+    max-height: 64px;
+    max-width: 110px;
+    object-fit: contain;
+    /* filtro para ficar visível sobre fundo escuro */
+    filter: brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.4));
+}
+
+.ficha-escola-nome {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    text-align: center;
+    max-width: 130px;
+    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
 .ficha-data-geracao {
     font-size: 11px;
     color: rgba(255,255,255,0.6);
@@ -891,18 +919,57 @@
 
     /* Rodapé de impressão */
     .ficha-print-footer {
-        display: block !important;
-        text-align: center;
-        font-size: 10px;
-        color: #6b7280;
+        display: flex !important;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
         margin-top: 20px;
         padding-top: 10px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 2px solid #1a1a2e;
+        font-size: 10px;
+        color: #374151;
+    }
+
+    .ficha-print-footer-esq {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .ficha-print-footer-sistema {
+        font-size: 13px;
+        font-weight: 800;
+        color: #1a1a2e;
+        letter-spacing: -0.2px;
+    }
+
+    .ficha-print-footer-sub {
+        font-size: 9px;
+        color: #6b7280;
+    }
+
+    .ficha-print-footer-dir {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        text-align: right;
+        color: #374151;
+    }
+
+    /* Mostrar logo da escola no PDF */
+    .ficha-escola-bloco {
+        display: flex !important;
     }
 }
 
 /* Rodapé de impressão oculto em tela */
 .ficha-print-footer {
+    display: none;
+}
+
+/* Logo da escola oculta em tela — aparece apenas no PDF */
+.ficha-escola-bloco {
     display: none;
 }
 

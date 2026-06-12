@@ -69,7 +69,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
         }
 
         try {
-            const [alunoResult, ocorrenciasResult, observacoesResult, emprestimosResult] =
+            const [alunoResult, ocorrenciasResult, observacoesResult, emprestimosResult, configResult] =
                 await Promise.allSettled([
                     supabaseAdmin
                         .from('alunos')
@@ -98,6 +98,12 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                          WHERE e.cod_matriz_aluno = $1
                          ORDER BY e.data_emprestimo DESC`,
                         [codMatriz]
+                    ),
+
+                    // Logo e nome da escola (best-effort)
+                    pool.query(
+                        `SELECT chave, valor FROM edusync_config
+                         WHERE chave IN ('escola_logo_base64', 'escola_nome')`
                     ),
                 ]);
 
@@ -141,6 +147,16 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             const emprestimos = emprestimosResult.status === 'fulfilled'
                 ? (emprestimosResult.value?.rows || [])
                 : [];
+
+            // Logo e nome da escola
+            const configMap = {};
+            if (configResult.status === 'fulfilled') {
+                for (const row of (configResult.value?.rows || [])) {
+                    configMap[row.chave] = row.valor;
+                }
+            }
+            const escolaLogo = configMap['escola_logo_base64'] || null;
+            const escolaNome = configMap['escola_nome'] || null;
 
             // Enriquecer ocorrências com dados do professor (tabela local ocorrencia_meta)
             let ocorrencias = ocorrenciasRaw;
@@ -239,6 +255,8 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ocorrencias,      // array completo com professor_nome e nome_turma
                 observacoes,      // rco_observacoes por cod_matriz_aluno
                 emprestimos,      // livros_emprestimos com join em livros_didaticos
+                escolaLogo,       // base64 da logo (null se não configurada)
+                escolaNome,       // nome da escola (null se não configurado)
                 geradoEm: new Date().toISOString(),
             });
         } catch (e) {
