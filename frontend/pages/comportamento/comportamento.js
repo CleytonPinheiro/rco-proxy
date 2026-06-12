@@ -197,7 +197,10 @@ function renderGrid() {
         return;
     }
     const lista = filtroComRegistros
-        ? todosAlunos.filter(a => (ocorrenciasMap[a.codMatrizAluno] || []).length > 0)
+        ? todosAlunos.filter(a =>
+            (ocorrenciasMap[a.codMatrizAluno] || []).length > 0 ||
+            (observacoesMap[a.codMatrizAluno] || []).length > 0
+          )
         : todosAlunos;
     if (!lista.length) {
         grid.innerHTML = '<div class="grid-loading">Nenhum aluno com registros nesta turma.</div>';
