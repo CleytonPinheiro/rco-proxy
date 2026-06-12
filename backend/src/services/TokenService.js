@@ -59,7 +59,18 @@ export class TokenService {
         }
 
         const session = requestContext.getStore();
-        if (session) return session.getRcoToken(forceRefresh);
+        if (session) {
+            try {
+                return await session.getRcoToken(forceRefresh);
+            } catch (err) {
+                /* Usuário sem credenciais RCO (ex: pedagogo via Google) →
+                   usa conta de serviço global para operações de leitura. */
+                if (err.message === 'SEM_TOKEN_RCO') {
+                    return this.#getGlobalToken(forceRefresh);
+                }
+                throw err;
+            }
+        }
 
         return this.#getGlobalToken(forceRefresh);
     }

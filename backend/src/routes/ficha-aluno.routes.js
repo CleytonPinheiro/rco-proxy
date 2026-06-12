@@ -186,10 +186,11 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             }
 
             // Frequências via RCO API (best-effort; não bloqueia a resposta se falhar)
+            // O TokenService usa o token do usuário quando disponível, ou o token
+            // global de serviço quando o usuário não tem credenciais RCO próprias.
             let frequencias = null;
-            const rcoDisponivel = req.userSession?.rcoDisponivel !== false;
 
-            if (rcoDisponivel && codturma) {
+            if (codturma) {
                 try {
                     const { data: classes, error: classesErr } = await supabaseAdmin
                         .from('rco_classes')
