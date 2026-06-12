@@ -1,0 +1,1 @@
+- [RCO codMatrizAluno por classe](rco-codmatrizaluno-por-classe.md) — ID de matrícula é por classe, não por aluno; use match por nome para outras disciplinas.

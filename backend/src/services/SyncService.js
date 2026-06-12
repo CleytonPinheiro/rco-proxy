@@ -320,6 +320,33 @@ export class SyncService {
                 }
             }
 
+            /* Salva mapa {cod_classe → {codPA, codPL}} no edusync_config (PostgreSQL local)
+               para que a ficha-aluno use os períodos corretos mesmo sem as migrations Supabase */
+            if (this.#pool) {
+                try {
+                    const periodoMap = {};
+                    classesUnicas.forEach(c => {
+                        if (c.cod_periodo_avaliacao != null || c.cod_periodo_letivo != null) {
+                            periodoMap[String(c.cod_classe)] = {
+                                codPA: c.cod_periodo_avaliacao,
+                                codPL: c.cod_periodo_letivo,
+                            };
+                        }
+                    });
+                    if (Object.keys(periodoMap).length > 0) {
+                        await this.#pool.query(
+                            `INSERT INTO edusync_config (chave, valor)
+                             VALUES ('rco_classes_periodos', $1)
+                             ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+                            [JSON.stringify(periodoMap)]
+                        );
+                        console.log(`[SYNC] Mapa de períodos salvo para ${Object.keys(periodoMap).length} classes.`);
+                    }
+                } catch (e) {
+                    console.warn('[SYNC] Falha ao salvar mapa de períodos em edusync_config:', e.message);
+                }
+            }
+
             let totalAlunos = 0;
             for (const [codTurmaStr, info] of Object.entries(turmaParaClasse)) {
                 const codTurma = parseInt(codTurmaStr);

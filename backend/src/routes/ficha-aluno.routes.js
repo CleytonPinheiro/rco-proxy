@@ -208,18 +208,31 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
                     console.log(`[FICHA-FREQ] codturma=${codturma} → classes encontradas: ${classes?.length ?? 0}${classesErr ? ' | erro: ' + classesErr.message : ''}`);
 
+                    /* Lê mapa de períodos salvo pelo SyncService no edusync_config local
+                       (fallback para quando as migrations Supabase ainda não foram aplicadas) */
+                    let classPeriodMap = {};
+                    try {
+                        const { rows: cfgRows } = await pool.query(
+                            `SELECT valor FROM edusync_config WHERE chave = 'rco_classes_periodos'`
+                        );
+                        if (cfgRows.length) classPeriodMap = JSON.parse(cfgRows[0].valor);
+                    } catch (_) {}
+
                     if (!classesErr && classes && classes.length > 0) {
                         const freqResults = await Promise.allSettled(
                             classes.map(async (cl) => {
                                 const codClasse = cl.cod_classe;
                                 const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || `Disciplina ${cl.cod_disciplina}`;
                                 try {
-                                    /* Usa o período armazenado por classe quando disponível;
-                                       cai nos defaults de env se ainda NULL (antes de re-sync). */
-                                    const codPA = cl.cod_periodo_avaliacao
+                                    /* Prioridade: (1) mapa local edusync_config (salvo no sync),
+                                       (2) coluna Supabase (após migrations), (3) env, (4) default */
+                                    const periodoLocal = classPeriodMap[String(codClasse)];
+                                    const codPA = periodoLocal?.codPA
+                                        ?? cl.cod_periodo_avaliacao
                                         ?? process.env.RCO_COD_PERIODO_AVALIACAO
                                         ?? 9;
-                                    const codPL = cl.cod_periodo_letivo
+                                    const codPL = periodoLocal?.codPL
+                                        ?? cl.cod_periodo_letivo
                                         ?? process.env.RCO_COD_PERIODO_LETIVO
                                         ?? 261;
 
@@ -264,7 +277,33 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
                                     /* usa == (não ===) para tolerar string vs number */
                                     // eslint-disable-next-line eqeqeq
-                                    const alunoFreq = raw.find(a => a.codMatrizAluno == codMatriz);
+                                    let alunoFreq = raw.find(a => a.codMatrizAluno == codMatriz);
+
+                                    /* O RCO usa codMatrizAluno específico por classe/matrícula.
+                                       O sync só armazena o ID da primeira classe por turma.
+                                       Se não encontrado mas a turma tem dados, busca o ID correto
+                                       via avaliacaoAlunos e faz match por nome do aluno. */
+                                    if (!alunoFreq && raw.length > 0 && nomeAluno && !nomeAluno.startsWith('Aluno #')) {
+                                        try {
+                                            const respV1Lista = await rcoApiService.get(
+                                                `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}`
+                                            );
+                                            if (respV1Lista.status === 200) {
+                                                const listaAlunos = normalizeRaw(respV1Lista.data);
+                                                const nomeNorm = nomeAluno.trim().toUpperCase();
+                                                const match = listaAlunos.find(s =>
+                                                    s.nome?.trim().toUpperCase() === nomeNorm
+                                                );
+                                                if (match?.codMatrizAluno) {
+                                                    // eslint-disable-next-line eqeqeq
+                                                    alunoFreq = raw.find(a => a.codMatrizAluno == match.codMatrizAluno);
+                                                    if (alunoFreq) {
+                                                        console.log(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): aluno encontrado via nome (codMatrizAluno classe=${match.codMatrizAluno})`);
+                                                    }
+                                                }
+                                            }
+                                        } catch { /* ignora */ }
+                                    }
 
                                     if (!alunoFreq) {
                                         /* Disciplina existe para a turma mas ainda não tem aulas
