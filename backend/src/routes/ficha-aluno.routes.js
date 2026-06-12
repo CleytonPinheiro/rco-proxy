@@ -202,11 +202,47 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                                 const codClasse = cl.cod_classe;
                                 const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || `Disciplina ${cl.cod_disciplina}`;
                                 try {
-                                    const resp = await rcoApiService.get(
-                                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${process.env.RCO_COD_PERIODO_AVALIACAO ?? 9}&codPeriodoLetivo=${process.env.RCO_COD_PERIODO_LETIVO ?? 261}&page=1&perPage=200`
+                                    const codPA = process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+                                    const codPL = process.env.RCO_COD_PERIODO_LETIVO ?? 261;
+
+                                    /* Tenta v3/frequenciaAulas. O RCO retorna array direto em
+                                       algumas disciplinas e objeto paginado { data:[...] } em
+                                       outras — ambos são tratados. */
+                                    const normalizeRaw = (responseData) => {
+                                        if (Array.isArray(responseData)) return responseData;
+                                        if (responseData && Array.isArray(responseData.data)) return responseData.data;
+                                        if (responseData && Array.isArray(responseData.content)) return responseData.content;
+                                        return [];
+                                    };
+
+                                    let raw = [];
+                                    const respV3 = await rcoApiService.get(
+                                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
                                     );
-                                    if (resp.status !== 200) return null;
-                                    const raw = Array.isArray(resp.data) ? resp.data : [];
+                                    if (respV3.status === 200) {
+                                        raw = normalizeRaw(respV3.data);
+                                        if (raw.length === 0) {
+                                            console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v3 status=200 mas raw vazio. data type=${Array.isArray(respV3.data) ? 'array' : typeof respV3.data}, data keys=${respV3.data && typeof respV3.data === 'object' ? Object.keys(respV3.data).join(',') : 'n/a'}`);
+                                        }
+                                    } else {
+                                        console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v3 status=${respV3.status}`);
+                                    }
+
+                                    /* Fallback: v1/avaliacaoAlunos (estrutura diferente mas
+                                       também identifica o aluno por codMatrizAluno) */
+                                    if (raw.length === 0) {
+                                        try {
+                                            const respV1 = await rcoApiService.get(
+                                                `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}`
+                                            );
+                                            if (respV1.status === 200) {
+                                                raw = normalizeRaw(respV1.data);
+                                                console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v1 fallback, raw.length=${raw.length}`);
+                                            } else {
+                                                console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v1 status=${respV1.status}`);
+                                            }
+                                        } catch { /* ignora */ }
+                                    }
 
                                     /* usa == (não ===) para tolerar string vs number */
                                     // eslint-disable-next-line eqeqeq
