@@ -847,10 +847,12 @@
         display: none !important;
     }
 
-    /* Resetar tema escuro para impressão limpa */
-    body, [data-theme="dark"] * {
+    /* Resetar tema — impressão sempre clara para economizar tinta */
+    *, body, [data-theme="dark"] * {
         background: white !important;
         color: #111 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
     }
 
     main.container {
@@ -863,23 +865,35 @@
         padding: 0;
     }
 
-    /* Cabeçalho — fundo escuro preservado na impressão */
+    /* Cabeçalho — versão clara para economizar tinta */
     .ficha-header {
-        background: #1a1a2e !important;
-        color: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        background: white !important;
+        color: #111 !important;
+        border: 2px solid #1a1a2e !important;
         border-radius: 8px;
         margin-bottom: 16px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .ficha-header-info .ficha-aluno-nome,
+    .ficha-data-geracao,
+    .ficha-escola-nome {
+        color: #111 !important;
     }
 
     .ficha-meta-item {
-        background: rgba(255,255,255,0.2) !important;
+        background: #f3f4f6 !important;
+        color: #111 !important;
+        border: 1px solid #d1d5db !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
-    .ficha-data-geracao { color: rgba(255,255,255,0.7) !important; }
+    /* Logo da escola: exibir com cores originais (sem inversão) */
+    .ficha-escola-logo {
+        filter: none !important;
+    }
 
     /* Seções */
     .ficha-secao {
