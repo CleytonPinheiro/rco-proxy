@@ -460,6 +460,118 @@ async function excluirOcorrencia(id, codMatrizAluno) {
     }
 }
 
+// ── Painel de Registros ────────────────────────────────────────────────────────
+
+let painelDados = [];   // todos os registros carregados da API
+let painelTurmas = [];  // lista de turmas distintas para o filtro
+
+async function abrirPainel() {
+    document.getElementById('modalPainel').style.display = 'flex';
+    document.getElementById('painelLista').innerHTML =
+        '<div class="painel-loading"><div class="spinner"></div><span>Carregando registros…</span></div>';
+    document.getElementById('painelResumo').textContent = '';
+
+    try {
+        const r = await fetch(`${API}/api/comportamento/painel`);
+        if (!r.ok) throw new Error(`Erro ${r.status}`);
+        painelDados = await r.json();
+
+        // Monta lista de turmas distintas para o filtro
+        const turmasSeen = {};
+        painelDados.forEach(o => {
+            if (o.cod_turma && !turmasSeen[o.cod_turma]) {
+                turmasSeen[o.cod_turma] = o.nome_turma || String(o.cod_turma);
+            }
+        });
+        painelTurmas = Object.entries(turmasSeen).map(([cod, nome]) => ({ cod, nome }));
+
+        const sel = document.getElementById('painelFiltroTurma');
+        sel.innerHTML = '<option value="">Todas as turmas</option>' +
+            painelTurmas.map(t => `<option value="${t.cod}">${escHtml(t.nome)}</option>`).join('');
+
+        renderPainel(painelDados);
+    } catch (e) {
+        document.getElementById('painelLista').innerHTML =
+            `<div class="painel-vazio">Erro ao carregar: ${escHtml(e.message)}</div>`;
+    }
+}
+
+function fecharPainel(e) {
+    if (e && e.target !== document.getElementById('modalPainel')) return;
+    document.getElementById('modalPainel').style.display = 'none';
+}
+
+function aplicarFiltrosPainel() {
+    const tipo    = document.getElementById('painelFiltroTipo').value;
+    const turma   = document.getElementById('painelFiltroTurma').value;
+    const de      = document.getElementById('painelFiltroDe').value;
+    const ate     = document.getElementById('painelFiltroAte').value;
+
+    const filtrado = painelDados.filter(o => {
+        if (tipo  && o.tipo         !== tipo)                   return false;
+        if (turma && String(o.cod_turma) !== turma)             return false;
+        if (de    && (o.data || '') < de)                       return false;
+        if (ate   && (o.data || '') > ate)                      return false;
+        return true;
+    });
+    renderPainel(filtrado);
+}
+
+function limparFiltrosPainel() {
+    document.getElementById('painelFiltroTipo').value  = '';
+    document.getElementById('painelFiltroTurma').value = '';
+    document.getElementById('painelFiltroDe').value    = '';
+    document.getElementById('painelFiltroAte').value   = '';
+    renderPainel(painelDados);
+}
+
+function renderPainel(lista) {
+    const resumo = document.getElementById('painelResumo');
+    const div    = document.getElementById('painelLista');
+
+    const total    = lista.length;
+    const graves   = lista.filter(o => o.tipo === 'grave').length;
+    const atencao  = lista.filter(o => o.tipo === 'atencao').length;
+    const positivos = lista.filter(o => o.tipo === 'positivo').length;
+
+    resumo.textContent = total
+        ? `${total} registro${total !== 1 ? 's' : ''} — ✅ ${positivos}  ⚠️ ${atencao}  ❌ ${graves}`
+        : '';
+
+    if (!total) {
+        div.innerHTML = '<div class="painel-vazio">Nenhum registro encontrado para os filtros selecionados.</div>';
+        return;
+    }
+
+    div.innerHTML = lista.map(o => {
+        const icone     = o.tipo === 'positivo' ? '✅' : o.tipo === 'atencao' ? '⚠️' : '❌';
+        const tipoLabel = o.tipo === 'positivo' ? 'Positivo' : o.tipo === 'atencao' ? 'Atenção' : 'Grave';
+        const pts       = o.pontos != null ? (o.pontos > 0 ? `+${o.pontos}` : String(o.pontos)) : '';
+        const metaStr   = [o.professor_nome, o.disciplina].filter(Boolean).join(' · ');
+        const turmaStr  = o.nome_turma || '';
+
+        return `
+        <div class="painel-item painel-item-${o.tipo}"
+             onclick="window.open('/pages/ficha-aluno/?codMatrizAluno=${o.cod_matriz_aluno}','_blank')"
+             title="Abrir ficha de ${escHtml(o.nome_aluno || '')}">
+            <div class="painel-item-tipo">
+                <span class="painel-icone">${icone}</span>
+                ${pts ? `<span class="painel-pts pts-${o.tipo}">${pts}</span>` : ''}
+            </div>
+            <div class="painel-item-info">
+                <div class="painel-item-aluno">${escHtml(o.nome_aluno || '—')}</div>
+                <div class="painel-item-meta">
+                    <span class="painel-tag painel-tag-turma">${escHtml(turmaStr)}</span>
+                    <span class="painel-tag painel-tag-cat">${escHtml(o.categoria_label || o.categoria || '')}</span>
+                    ${metaStr ? `<span class="painel-tag painel-tag-prof">${escHtml(metaStr)}</span>` : ''}
+                </div>
+                ${o.descricao ? `<div class="painel-item-desc">${escHtml(o.descricao)}</div>` : ''}
+            </div>
+            <div class="painel-item-data">${formatarData(o.data)}</div>
+        </div>`;
+    }).join('');
+}
+
 // ── Ranking ────────────────────────────────────────────────────────────────────
 function abrirRanking() {
     const posicoes = todosAlunos

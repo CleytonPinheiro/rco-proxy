@@ -89,6 +89,53 @@ export function createComportamentoRouter({ supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
+    // ── Painel: todos os registros das turmas do professor, cronológico ──────────
+    router.get('/comportamento/painel', async (req, res) => {
+        const { tipo, codTurma, de, ate } = req.query;
+        try {
+            // 1) Busca turmas do professor no Supabase
+            const { data: turmasData } = await supabaseAdmin
+                .from('rco_turmas')
+                .select('cod_turma');
+            const codigos = (turmasData || []).map(t => t.cod_turma);
+            if (!codigos.length) return res.json([]);
+
+            // 2) Monta query de ocorrências
+            let q = supabaseAdmin
+                .from('aluno_ocorrencias')
+                .select('*')
+                .in('cod_turma', codigos)
+                .order('criado_em', { ascending: false });
+
+            if (tipo)     q = q.eq('tipo', tipo);
+            if (codTurma) q = q.eq('cod_turma', parseInt(codTurma));
+            if (de)       q = q.gte('data', de);
+            if (ate)      q = q.lte('data', ate);
+
+            const { data: ocorrs, error } = await q;
+            if (error) return res.status(500).json({ erro: error.message });
+            if (!ocorrs || !ocorrs.length) return res.json([]);
+
+            // 3) Enriquece com meta (professor, disciplina) do PG local
+            const ids = ocorrs.map(o => o.id);
+            const metaRows = await pool.query(
+                `SELECT id_ocorrencia, professor_nome, nome_turma, disciplina
+                 FROM ocorrencia_meta WHERE id_ocorrencia = ANY($1)`,
+                [ids]
+            );
+            const metaMap = {};
+            for (const r of metaRows.rows) metaMap[r.id_ocorrencia] = r;
+
+            const resultado = ocorrs.map(o => ({
+                ...o,
+                professor_nome: metaMap[o.id]?.professor_nome || '',
+                disciplina:     metaMap[o.id]?.disciplina     || '',
+            }));
+
+            res.json(resultado);
+        } catch (e) { res.status(500).json({ erro: e.message }); }
+    });
+
     router.delete('/comportamento/:id', async (req, res) => {
         try {
             const { error } = await supabaseAdmin.from('aluno_ocorrencias').delete().eq('id', req.params.id);

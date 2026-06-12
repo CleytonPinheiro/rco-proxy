@@ -64,6 +64,7 @@
                     <div id="turmaTabs" class="turma-tabs"></div>
                 </div>
                 <div class="comp-top-actions">
+                    <button class="btn-painel-registros" onclick="abrirPainel()" title="Ver todos os registros ordenados por data">📋 Painel</button>
                     <button class="btn-ranking" onclick="abrirRanking()" title="Ranking da turma">🏆 Ranking</button>
                     <button class="btn-nova-ocorrencia" onclick="abrirModalOcorrencia(null)">+ Registrar</button>
                 </div>
@@ -145,6 +146,39 @@
                 <button class="btn-cancelar" onclick="fecharModalHistorico()">Fechar</button>
                 <button class="btn-ficha-aluno" id="btnVerFichaCompleta" onclick="abrirFichaCompleta()">📋 Ver Ficha Completa</button>
                 <button class="btn-salvar" id="btnRegistrarParaAluno" onclick="registrarParaAluno()">+ Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Painel de Registros -->
+    <div id="modalPainel" class="modal-overlay" style="display:none;" onclick="fecharPainel(event)">
+        <div class="modal-box modal-box-xl">
+            <div class="modal-header">
+                <div>
+                    <h3>📋 Painel de Registros</h3>
+                    <p id="painelResumo" style="margin:4px 0 0;font-size:12px;color:#6b7280;"></p>
+                </div>
+                <button class="modal-close" onclick="fecharPainel()">✕</button>
+            </div>
+            <div class="modal-body" style="padding-bottom:4px;">
+                <!-- Filtros -->
+                <div class="painel-filtros">
+                    <select id="painelFiltroTipo" onchange="aplicarFiltrosPainel()">
+                        <option value="">Todos os tipos</option>
+                        <option value="positivo">✅ Positivo</option>
+                        <option value="atencao">⚠️ Atenção</option>
+                        <option value="grave">❌ Grave</option>
+                    </select>
+                    <select id="painelFiltroTurma" onchange="aplicarFiltrosPainel()">
+                        <option value="">Todas as turmas</option>
+                    </select>
+                    <input type="date" id="painelFiltroDe"  title="Data inicial" onchange="aplicarFiltrosPainel()">
+                    <span style="font-size:12px;color:#9ca3af;align-self:center;">até</span>
+                    <input type="date" id="painelFiltroAte" title="Data final"   onchange="aplicarFiltrosPainel()">
+                    <button class="painel-btn-limpar" onclick="limparFiltrosPainel()">✕ Limpar</button>
+                </div>
+                <!-- Lista -->
+                <div id="painelLista" class="painel-lista"></div>
             </div>
         </div>
     </div>
