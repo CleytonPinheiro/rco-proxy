@@ -129,6 +129,7 @@ export function createComportamentoRouter({ supabaseAdmin }) {
             const resultado = ocorrs.map(o => ({
                 ...o,
                 professor_nome: metaMap[o.id]?.professor_nome || '',
+                nome_turma:     metaMap[o.id]?.nome_turma     || '',
                 disciplina:     metaMap[o.id]?.disciplina     || '',
             }));
 

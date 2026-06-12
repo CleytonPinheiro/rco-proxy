@@ -94,6 +94,7 @@ async function init() {
         return;
     }
     const turmas = extrairTurmas(acessos);
+    todasTurmas = turmas;
     renderTurmaTabs(turmas);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
@@ -179,6 +180,7 @@ async function carregarObservacoes(codClasse) {
 
 // ── Filtro "apenas com registros" ───────────────────────────────────────────────
 let filtroComRegistros = false;
+let todasTurmas = [];   // turmas disponíveis (tabs) — usadas também no filtro do painel
 
 function toggleFiltroComRegistros() {
     filtroComRegistros = !filtroComRegistros;
@@ -524,11 +526,16 @@ async function abrirPainel() {
         if (!r.ok) throw new Error(`Erro ${r.status}`);
         painelDados = await r.json();
 
-        // Monta lista de turmas distintas para o filtro
+        // Popula turmas a partir das tabs (sempre disponíveis, mesmo sem registros)
+        // Complementa com eventuais turmas extras que apareçam nos dados do painel
         const turmasSeen = {};
+        todasTurmas.forEach(t => {
+            turmasSeen[String(t.codTurma)] = t.nomeTurma || t.serie || String(t.codTurma);
+        });
         painelDados.forEach(o => {
-            if (o.cod_turma && !turmasSeen[o.cod_turma]) {
-                turmasSeen[o.cod_turma] = o.nome_turma || String(o.cod_turma);
+            const key = String(o.cod_turma);
+            if (o.cod_turma && !turmasSeen[key]) {
+                turmasSeen[key] = o.nome_turma || String(o.cod_turma);
             }
         });
         painelTurmas = Object.entries(turmasSeen).map(([cod, nome]) => ({ cod, nome }));
