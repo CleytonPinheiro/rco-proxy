@@ -41,3 +41,9 @@ id = "fNDOFgb91k6nDdx-UqThj"
 uri = "file://docs/supabase-pro-evaluation.md"
 type = "text"
 title = "Avaliação Supabase Free vs Pro"
+
+[[outputs]]
+id = "NEXgv5f11Cc1E1KQhI6bB"
+uri = "file://edusync-skills.tar.gz"
+type = "unspecified"
+title = "EduSync Custom Skills (tar.gz)"
