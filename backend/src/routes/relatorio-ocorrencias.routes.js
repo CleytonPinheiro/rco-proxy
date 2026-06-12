@@ -187,7 +187,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
         const { de, ate, tipo, professor } = req.query;
 
         try {
-            const [alunoResult, ocorrenciasResult, configResult] = await Promise.all([
+            const [alunoResult, ocorrenciasResult, obsRcoResult, configResult] = await Promise.all([
                 supabaseAdmin
                     .from('alunos')
                     .select('nome, turma, numchamada, codmatrizaluno')
@@ -199,6 +199,12 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
                     .select('*')
                     .eq('cod_matriz_aluno', codMatriz)
                     .order('data', { ascending: true }),
+
+                supabaseAdmin
+                    .from('rco_observacoes')
+                    .select('*')
+                    .eq('cod_matriz_aluno', codMatriz)
+                    .order('data_aula', { ascending: true }),
 
                 pool.query(
                     `SELECT chave, valor FROM edusync_config
@@ -212,6 +218,19 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
                 return res.status(404).json({ erro: 'Aluno não encontrado.' });
             }
 
+            const cfgMap = {};
+            for (const r of (configResult.rows || [])) cfgMap[r.chave] = r.valor;
+
+            const escola = {
+                nome:     cfgMap['escola_nome_oficial'] || 'Escola',
+                endereco: cfgMap['escola_endereco']     || '',
+                telefone: cfgMap['escola_telefone']     || '',
+                email:    cfgMap['escola_email']        || '',
+                logo:     cfgMap['escola_logo_base64']  || '',
+            };
+            const cidadeRef = cfgMap['escola_cidade_ref'] || 'Maringá';
+
+            // ── 1. Ocorrências de comportamento (aluno_ocorrencias) ────────────
             let ocorrenciasRaw = ocorrenciasResult.data || [];
 
             if (de) {
@@ -225,22 +244,6 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
             if (tipo && ['grave','atencao','positivo'].includes(tipo)) {
                 ocorrenciasRaw = ocorrenciasRaw.filter(o => o.tipo === tipo);
             }
-
-            if (ocorrenciasRaw.length === 0) {
-                return res.status(204).json({ mensagem: 'Nenhuma ocorrência encontrada para os filtros informados.' });
-            }
-
-            const cfgMap = {};
-            for (const r of (configResult.rows || [])) cfgMap[r.chave] = r.valor;
-
-            const escola = {
-                nome:     cfgMap['escola_nome_oficial'] || 'Escola',
-                endereco: cfgMap['escola_endereco']     || '',
-                telefone: cfgMap['escola_telefone']     || '',
-                email:    cfgMap['escola_email']        || '',
-                logo:     cfgMap['escola_logo_base64']  || '',
-            };
-            const cidadeRef = cfgMap['escola_cidade_ref'] || 'Maringá';
 
             // Busca metadados (professor, turma, disciplina)
             const ids = ocorrenciasRaw.map(o => o.id);
@@ -262,19 +265,69 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
                 disciplina:     metaMap[o.id]?.disciplina     || '',
             }));
 
-            // Filtro por professor (aplicado após enriquecer com metadados)
             if (professor) {
                 ocorrencias = ocorrencias.filter(o =>
                     o.professor_nome.toLowerCase().includes(professor.toLowerCase())
                 );
             }
 
-            if (ocorrencias.length === 0) {
-                return res.status(204).json({ mensagem: 'Nenhuma ocorrência encontrada para os filtros informados.' });
+            // ── 2. Observações do RCO (rco_observacoes) ───────────────────────
+            // Incluídas somente quando não há filtro de professor (obs. não têm professor)
+            // e o filtro de tipo não exclui 'atencao'
+            let ocorrenciasRco = [];
+            const incluirRco = !professor && (!tipo || tipo === 'atencao');
+
+            if (incluirRco) {
+                let obsRaw = obsRcoResult.data || [];
+
+                if (de) {
+                    const dataInicio = new Date(de + 'T00:00:00');
+                    obsRaw = obsRaw.filter(o => o.data_aula && new Date(o.data_aula) >= dataInicio);
+                }
+                if (ate) {
+                    const dataFim = new Date(ate + 'T23:59:59');
+                    obsRaw = obsRaw.filter(o => o.data_aula && new Date(o.data_aula) <= dataFim);
+                }
+
+                if (obsRaw.length > 0) {
+                    // Enriquecer com nome da disciplina
+                    const codClassesUnicos = [...new Set(obsRaw.map(o => o.cod_classe).filter(Boolean))];
+                    const disciplinaMap = {};
+                    if (codClassesUnicos.length > 0) {
+                        try {
+                            const { data: classesDisciplinas } = await supabaseAdmin
+                                .from('rco_classes')
+                                .select('cod_classe, rco_disciplinas(nome_disciplina)')
+                                .in('cod_classe', codClassesUnicos);
+                            for (const c of (classesDisciplinas || [])) {
+                                disciplinaMap[c.cod_classe] = c.rco_disciplinas?.nome_disciplina || '';
+                            }
+                        } catch {}
+                    }
+
+                    ocorrenciasRco = obsRaw.map(o => ({
+                        id:              `rco_${o.id || o.cod_classe}`,
+                        tipo:            'atencao',
+                        categoria:       'observacao_rco',
+                        categoria_label: 'Observação Pedagógica (RCO)',
+                        data:            o.data_aula,
+                        descricao:       o.observacao || '',
+                        professor_nome:  '',
+                        nome_turma:      aluno.turma || '',
+                        disciplina:      disciplinaMap[o.cod_classe] || '',
+                    }));
+                }
+            }
+
+            // ── 3. Combina e verifica ──────────────────────────────────────────
+            const combinadas = [...ocorrencias, ...ocorrenciasRco];
+
+            if (combinadas.length === 0) {
+                return res.status(204).json({ mensagem: 'Nenhum registro encontrado para os filtros informados.' });
             }
 
             // Ordena por professor → disciplina → data
-            ocorrencias.sort((a, b) => {
+            combinadas.sort((a, b) => {
                 const profCmp = (a.professor_nome || '').localeCompare(b.professor_nome || '', 'pt-BR');
                 if (profCmp !== 0) return profCmp;
                 const discCmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
@@ -284,7 +337,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
 
             // Dois termos por folha A4 paisagem (duplicata: via professor + via responsável)
             const templateHtml = fs.readFileSync(TEMPLATE, 'utf8');
-            const blocosHtml = ocorrencias.map(o => {
+            const blocosHtml = combinadas.map(o => {
                 const conteudo = renderOcorrencia({ escola, aluno, ocorrencia: o, cidadeRef });
                 return `<div class="termo-page">
   <div class="termo-coluna">${conteudo}</div>

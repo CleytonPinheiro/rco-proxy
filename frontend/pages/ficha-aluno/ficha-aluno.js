@@ -283,8 +283,9 @@ function renderFicha(dados) {
     const { aluno, frequencias, ocorrencias, observacoes, emprestimos, geradoEm,
             escolaLogo, escolaNome } = dados;
 
-    const temOcorrencias = ocorrencias && ocorrencias.length > 0;
-    const btnTermoHtml = temOcorrencias ? `
+    const temOcorrencias  = ocorrencias  && ocorrencias.length  > 0;
+    const temObservacoes  = observacoes  && observacoes.length  > 0;
+    const btnTermoHtml = (temOcorrencias || temObservacoes) ? `
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
             <input type="date" id="termoDe"  title="Data inicial (opcional)"
                    style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)" />
