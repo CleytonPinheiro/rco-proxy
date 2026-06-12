@@ -12,7 +12,7 @@
     display: flex;
     gap: 6mm;
     page-break-after: always;
-    height: calc(210mm - 16mm); /* A4 height minus margins */
+    height: calc(210mm - 16mm);
   }
   .page-pair:last-child { page-break-after: avoid; }
 
@@ -25,7 +25,6 @@
   }
   .termo-vazio { flex: 1; }
 
-  /* ── Divisória vertical central ── */
   .page-pair .termo-wrapper:first-child {
     border-right: 1px solid #555;
   }
@@ -92,7 +91,7 @@
     text-align: center;
   }
   .titulo-principal {
-    font-size: 10pt;
+    font-size: 10.5pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .5px;
@@ -101,67 +100,85 @@
   /* ── Corpo ── */
   .corpo {
     flex: 1;
-    padding: 7px 8px 5px 8px;
+    padding: 8px 10px 5px 10px;
     display: flex;
     flex-direction: column;
+    gap: 0;
   }
 
-  .campo-linha {
+  /* ── Linhas de frase (estilo formulário físico) ── */
+  .frase-linha {
     display: flex;
     align-items: flex-end;
-    margin-bottom: 7px;
     flex-wrap: wrap;
-    gap: 2px 0;
-  }
-  .campo-label {
     font-size: 8.5pt;
-    font-weight: 700;
-    white-space: nowrap;
-    margin-right: 3px;
-    flex-shrink: 0;
-  }
-  .campo-valor {
-    border-bottom: 1px solid #333;
-    flex: 1;
-    min-width: 50px;
-    padding: 0 3px 1px 3px;
-    font-size: 8.5pt;
-    min-height: 15px;
-  }
-  .campo-sep {
-    margin: 0 5px;
-    font-weight: 700;
-    flex-shrink: 0;
-    font-size: 8.5pt;
+    line-height: 1.7;
+    margin-bottom: 2px;
+    gap: 0;
   }
 
-  /* Área de descrição */
-  .desc-label {
+  .campo-inline {
+    border-bottom: 1px solid #333;
+    display: inline-block;
+    padding: 0 3px 1px 3px;
+    min-height: 14px;
     font-size: 8.5pt;
-    font-weight: 700;
+  }
+  .campo-inline.largo  { min-width: 120px; flex: 1; max-width: 200px; }
+  .campo-inline.medio  { min-width: 80px; flex: 0.6; max-width: 140px; }
+  .campo-inline.curto  { min-width: 40px; flex: 0.3; max-width: 70px; }
+  .campo-inline.destaque { font-weight: 700; }
+
+  .frase-comportamento {
+    font-size: 8.5pt;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+
+  /* ── Linhas de descrição (manuscrito) ── */
+  .desc-linhas {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     margin-bottom: 4px;
   }
-  .desc-area {
-    border: 1px solid #555;
-    flex: 1;
-    min-height: 38px;
-    padding: 4px 6px;
+  .desc-linha {
+    border-bottom: 1px solid #aaa;
+    min-height: 18px;
+    width: 100%;
+  }
+  .desc-conteudo {
     font-size: 8.5pt;
     line-height: 1.55;
-    margin-bottom: 6px;
     white-space: pre-wrap;
     word-break: break-word;
+    border: 1px solid #555;
+    padding: 3px 5px;
+    flex: 1;
+    min-height: 60px;
   }
 
-  /* Cidade e data */
-  .cidade-data {
-    text-align: right;
-    font-size: 8.5pt;
-    margin-bottom: 8px;
+  /* ── Data e tipo ── */
+  .data-tipo-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
     margin-top: 2px;
+    justify-content: flex-end;
+  }
+  .categoria-texto {
+    font-size: 8pt;
+    color: #444;
+  }
+  .cidade-data {
+    font-size: 8.5pt;
+    text-align: right;
   }
 
-  /* Assinaturas */
+  /* ── Assinaturas ── */
   .assinaturas {
     border-top: 1px solid #ccc;
     padding-top: 6px;
@@ -172,7 +189,7 @@
   .assinatura-bloco {
     flex: 1;
     text-align: center;
-    padding: 0 4px;
+    padding: 0 3px;
     border-right: 1px solid #ddd;
   }
   .assinatura-bloco:last-child { border-right: none; }
@@ -180,33 +197,33 @@
     border-bottom: 1.5px solid #333;
     margin: 0 auto 3px auto;
     width: 90%;
-    height: 26px;
+    height: 24px;
   }
   .assinatura-label {
-    font-size: 7.5pt;
+    font-size: 7pt;
     color: #444;
     font-weight: 600;
+    line-height: 1.2;
   }
 
-  /* Obs */
+  /* ── Obs ── */
   .obs-bloco {
-    margin-top: 2px;
+    margin-top: 3px;
     padding-top: 4px;
     border-top: 1px solid #ccc;
   }
   .obs-label {
     font-size: 8.5pt;
     font-weight: 700;
-    margin-bottom: 1px;
-    display: inline;
+    margin-right: 4px;
   }
   .obs-linha {
     border-bottom: 1px solid #bbb;
-    min-height: 16px;
-    margin-bottom: 4px;
+    min-height: 14px;
+    margin-bottom: 3px;
   }
 
-  /* Tipo badge */
+  /* ── Badges de tipo ── */
   .tipo-badge {
     display: inline-block;
     padding: 1px 6px;
@@ -215,7 +232,6 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .3px;
-    margin-left: 4px;
     vertical-align: middle;
   }
   .tipo-grave    { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }

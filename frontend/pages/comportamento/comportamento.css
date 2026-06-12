@@ -226,10 +226,12 @@
 .ultima-atencao  { color: #d97706; }
 .ultima-grave    { color: #dc2626; }
 
-/* Rodapé do card com botão */
+/* Rodapé do card com botões */
 .card-footer {
     border-top: 1px solid #f3f4f6;
     padding: 8px 14px;
+    display: flex;
+    gap: 5px;
 }
 /* Observações RCO – badge no card */
 .obs-rco-badge {
@@ -265,7 +267,7 @@
 }
 
 .btn-card-registrar {
-    width: 100%;
+    flex: 1;
     background: #f8faff;
     color: #4338ca;
     border: 1px solid #e0e7ff;
@@ -277,6 +279,22 @@
     transition: background 0.13s;
 }
 .btn-card-registrar:hover { background: #e0e7ff; }
+
+.btn-card-termo {
+    flex-shrink: 0;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+    border-radius: 7px;
+    padding: 6px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.13s;
+}
+.btn-card-termo:hover { background: #ffedd5; border-color: #fb923c; }
+.btn-card-termo:disabled { opacity: .55; cursor: not-allowed; }
 
 /* ── Modais — ver frontend/shared/css/modal-forms.css ────────────────────── */
 
@@ -524,6 +542,15 @@
 [data-theme="dark"] .btn-card-registrar:hover {
     background: #2d2f50;
     border-color: #4f46e5;
+}
+[data-theme="dark"] .btn-card-termo {
+    background: #2a1a0e;
+    color: #fb923c;
+    border-color: #7c2d12;
+}
+[data-theme="dark"] .btn-card-termo:hover {
+    background: #3b1f0a;
+    border-color: #ea580c;
 }
 
 /* Legenda de níveis */

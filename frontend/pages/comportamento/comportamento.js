@@ -253,8 +253,39 @@ function renderCardAluno(aluno) {
                 <button class="btn-card-registrar" onclick="event.stopPropagation(); abrirModalOcorrencia(${aluno.codMatrizAluno})">
                     + Registrar ocorrência
                 </button>
+                ${ocs.length > 0 ? `
+                <button class="btn-card-termo" onclick="event.stopPropagation(); gerarTermoAluno(${aluno.codMatrizAluno}, this)" title="Gerar Termo de Ocorrência em PDF">
+                    📄 Termo PDF
+                </button>` : ''}
             </div>
         </div>`;
+}
+
+// ── Gerar Termo de Ocorrência PDF ──────────────────────────────────────────────
+async function gerarTermoAluno(codMatrizAluno, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+    try {
+        const r = await fetch(`${API}/api/relatorio-ocorrencias/${codMatrizAluno}`);
+        if (r.status === 204) {
+            alert('Nenhuma ocorrência encontrada para este aluno.');
+            return;
+        }
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.erro || `Erro ${r.status}`);
+        }
+        const blob    = await r.blob();
+        const objUrl  = URL.createObjectURL(blob);
+        const a       = document.createElement('a');
+        a.href        = objUrl;
+        a.download    = `termo-ocorrencia.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+    } catch (e) {
+        alert('Erro ao gerar PDF: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📄 Termo PDF'; }
+    }
 }
 
 // ── Modal: Registrar ocorrência ────────────────────────────────────────────────

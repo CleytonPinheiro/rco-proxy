@@ -55,6 +55,19 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
     const enderecoHtml = [escola.endereco, escola.telefone, escola.email]
         .filter(Boolean).join(' &nbsp;|&nbsp; ');
 
+    // Inferir nível de ensino a partir do nome da turma
+    function inferirEnsino(nomeTurma) {
+        if (!nomeTurma) return '____________________';
+        const n = nomeTurma.trim();
+        if (/médio/i.test(n)) return 'Médio';
+        if (/fund/i.test(n)) return 'Fundamental';
+        const ano = parseInt(n);
+        if (!isNaN(ano) && ano >= 1 && ano <= 9) return 'Fundamental';
+        if (!isNaN(ano) && ano >= 10 && ano <= 12) return 'Médio';
+        return '____________________';
+    }
+    const ensino = inferirEnsino(ocorrencia.nome_turma || aluno.turma);
+
     return `
 <div class="termo-wrapper">
   <div class="cabecalho">
@@ -72,64 +85,59 @@ function renderOcorrencia({ escola, aluno, ocorrencia, cidadeRef }) {
 
   <div class="corpo">
 
-    <div class="campo-linha">
-      <span class="campo-label">Professor(a):</span>
-      <span class="campo-valor">${esc(ocorrencia.professor_nome)}</span>
-      ${disciplina ? `<span class="campo-sep">Disciplina:</span><span class="campo-valor" style="max-width:110px">${esc(disciplina)}</span>` : ''}
+    <div class="frase-linha">
+      Eu,&nbsp;<span class="campo-inline largo">${esc(ocorrencia.professor_nome || '')}</span>,
+      Professor(a) da disciplina de:&nbsp;<span class="campo-inline medio">${esc(disciplina)}</span>&nbsp;declaro que o(a)
     </div>
 
-    <div class="campo-linha">
-      <span class="campo-label">Turma:</span>
-      <span class="campo-valor" style="max-width:110px">${esc(turmaDisplay)}</span>
-      <span class="campo-sep">Série:</span>
-      <span class="campo-valor" style="max-width:90px">${esc(serie)}</span>
+    <div class="frase-linha">
+      aluno(a):&nbsp;<span class="campo-inline largo destaque">${esc(aluno.nome)}</span>${aluno.numchamada ? `&nbsp;&nbsp;Nº:&nbsp;<span class="campo-inline curto">${esc(String(aluno.numchamada))}</span>` : ''}
     </div>
 
-    <div class="campo-linha">
-      <span class="campo-label">Aluno(a):</span>
-      <span class="campo-valor">${esc(aluno.nome)}</span>
-      <span class="campo-sep">Nº:</span>
-      <span class="campo-valor" style="max-width:40px">${esc(aluno.numchamada || '')}</span>
+    <div class="frase-linha">
+      da série:&nbsp;<span class="campo-inline medio">${esc(serie)}</span>,&nbsp;
+      turma:&nbsp;<span class="campo-inline curto">${esc(turmaDisplay)}</span>,&nbsp;
+      do Ensino&nbsp;<span class="campo-inline medio">${esc(ensino)}</span>
     </div>
 
-    <div class="campo-linha">
-      <span class="campo-label">Tipo de Ocorrência:</span>
-      <span class="campo-valor">
-        ${esc(categoria)}
-        <span class="tipo-badge ${tipoClass}">${esc(tipoLabel)}</span>
-      </span>
-      <span class="campo-sep">Data:</span>
-      <span class="campo-valor" style="max-width:140px">${esc(dataDaOcorrencia)}</span>
+    <div class="frase-comportamento">
+      manifestou o seguinte comportamento em sala de aula:
     </div>
 
-    <div style="margin-bottom:6px;flex:1;display:flex;flex-direction:column">
-      <div class="desc-label">Descrição do fato ocorrido:</div>
-      <div class="desc-area">${esc(descricao)}</div>
+    <div class="desc-linhas">
+      ${descricao
+        ? `<div class="desc-conteudo">${esc(descricao)}</div>`
+        : '<div class="desc-linha"></div><div class="desc-linha"></div><div class="desc-linha"></div><div class="desc-linha"></div><div class="desc-linha"></div>'}
     </div>
 
-    <div class="cidade-data">${esc(cidade)}, ${dataExtenso(ocorrencia.data || new Date().toISOString())}</div>
+    <div class="data-tipo-row">
+      <span class="tipo-badge ${tipoClass}">${esc(tipoLabel)}</span>
+      ${categoria ? `<span class="categoria-texto">${esc(categoria)}</span>` : ''}
+      <span class="cidade-data">${esc(cidade)},&nbsp;${esc(dataDaOcorrencia)}.</span>
+    </div>
 
     <div class="assinaturas">
       <div class="assinatura-bloco">
         <div class="assinatura-linha"></div>
-        <div class="assinatura-label">Professor(a)</div>
+        <div class="assinatura-label">Assinatura do(a) Professor(a)</div>
       </div>
       <div class="assinatura-bloco">
         <div class="assinatura-linha"></div>
-        <div class="assinatura-label">Aluno(a)</div>
+        <div class="assinatura-label">Assinatura do(a) Aluno(a)</div>
       </div>
       <div class="assinatura-bloco">
         <div class="assinatura-linha"></div>
-        <div class="assinatura-label">Pai / Responsável</div>
+        <div class="assinatura-label">Assinatura do Pai ou Responsável</div>
       </div>
       <div class="assinatura-bloco">
         <div class="assinatura-linha"></div>
-        <div class="assinatura-label">Testemunha</div>
+        <div class="assinatura-label">Assinatura de Testemunha</div>
       </div>
     </div>
 
     <div class="obs-bloco">
-      <div class="obs-label">Obs.:</div>
+      <span class="obs-label">Obs.:</span>
+      <div class="obs-linha"></div>
       <div class="obs-linha"></div>
     </div>
 
