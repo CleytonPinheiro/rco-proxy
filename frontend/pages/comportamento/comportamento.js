@@ -576,16 +576,32 @@ function aplicarFiltrosPainel() {
 }
 
 async function buscarPainel() {
-    const btn = document.querySelector('.painel-btn-buscar');
+    const btn   = document.querySelector('.painel-btn-buscar');
+    const tipo  = document.getElementById('painelFiltroTipo').value;
+    const turma = document.getElementById('painelFiltroTurma').value;
+    const de    = document.getElementById('painelFiltroDe').value;
+    const ate   = document.getElementById('painelFiltroAte').value;
+
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando…'; }
     document.getElementById('painelLista').innerHTML =
         '<div class="painel-loading"><div class="spinner"></div><span>Buscando registros…</span></div>';
 
     try {
-        const r = await fetch(`${API}/api/comportamento/painel`);
+        /* Monta query params: envia apenas os filtros realmente preenchidos.
+           Datas omitidas = sem restrição de período. */
+        const params = new URLSearchParams();
+        if (tipo)  params.set('tipo',     tipo);
+        if (turma) params.set('codTurma', turma);
+        if (de)    params.set('de',       de);
+        if (ate)   params.set('ate',      ate);
+
+        const url = `${API}/api/comportamento/painel${params.toString() ? '?' + params : ''}`;
+        const r = await fetch(url);
         if (!r.ok) throw new Error(`Erro ${r.status}`);
         painelDados = await r.json();
-        aplicarFiltrosPainel();
+
+        /* Filtragem client-side adicional (caso params não cubram tudo) */
+        renderPainel(painelDados);
     } catch (e) {
         document.getElementById('painelLista').innerHTML =
             `<div class="painel-vazio">Erro ao buscar: ${escHtml(e.message)}</div>`;
