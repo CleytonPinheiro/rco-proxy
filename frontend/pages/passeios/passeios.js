@@ -847,13 +847,18 @@ async function baixarPulseirasEmPDF() {
             toast('Erro: ' + (d.erro || r.status), 'erro');
             return;
         }
+        const missingPhotos = parseInt(r.headers.get('X-Missing-Photos') || '0', 10);
         const blob = await r.blob();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `pulseiras-${esc(eventoAtual.nome || eventoAtual.id)}.pdf`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-        toast('PDF gerado com sucesso!', 'sucesso');
+        if (missingPhotos > 0) {
+            toast(`${missingPhotos} foto${missingPhotos > 1 ? 's' : ''} não carregada${missingPhotos > 1 ? 's' : ''} — pulseiras geradas com iniciais`, 'aviso');
+        } else {
+            toast('PDF gerado com sucesso!', 'sucesso');
+        }
     } catch (e) { toast('Erro ao gerar PDF: ' + e.message, 'erro'); }
 }
 

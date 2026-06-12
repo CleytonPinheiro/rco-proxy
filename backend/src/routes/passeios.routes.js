@@ -841,6 +841,21 @@ export function createPasseiosRouter({ supabase }) {
                 return { ...i, qrDataUrl: qr, cor, label, ini };
             }));
 
+            /* ── Pré-validar URLs de foto (HEAD rápido, timeout 5 s) ── */
+            let fotosFaltando = 0;
+            await Promise.all(items.map(async (i) => {
+                if (!i.foto_url) { fotosFaltando++; return; }
+                try {
+                    const ctrl = new AbortController();
+                    const tid  = setTimeout(() => ctrl.abort(), 5000);
+                    const resp = await fetch(i.foto_url, { method: 'HEAD', signal: ctrl.signal });
+                    clearTimeout(tid);
+                    if (!resp.ok) fotosFaltando++;
+                } catch {
+                    fotosFaltando++;
+                }
+            }));
+
             /* ── Escapar HTML para evitar injeção no template do PDF ── */
             const esc2 = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -925,6 +940,8 @@ body{font-family:Arial,Helvetica,sans-serif;background:#fff}
             const nomeArquivo = encodeURIComponent(`pulseiras-${ev.nome}-${eventoId}`);
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.pdf"`);
+            res.setHeader('Access-Control-Expose-Headers', 'X-Missing-Photos');
+            if (fotosFaltando > 0) res.setHeader('X-Missing-Photos', String(fotosFaltando));
             res.send(Buffer.from(pdfBuffer));
         } catch (e) {
             if (page) { try { await page.close(); } catch {} }

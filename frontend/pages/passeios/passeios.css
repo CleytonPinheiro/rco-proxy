@@ -746,3 +746,26 @@
     .modal-header { flex-wrap: wrap; }
     .ps-detalhe-actions { order: 3; width: 100%; }
 }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1a1d27;
+    color: #f0f0f0;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    max-width: 340px;
+}
+.toast.show        { transform: translateY(0); opacity: 1; }
+.toast.toast-sucesso { background: #16a34a; }
+.toast.toast-erro    { background: #dc2626; }
+.toast.toast-aviso   { background: #d97706; }
