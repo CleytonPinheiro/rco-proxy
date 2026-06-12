@@ -193,7 +193,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 try {
                     const { data: classes, error: classesErr } = await supabaseAdmin
                         .from('rco_classes')
-                        .select('cod_classe, cod_disciplina, rco_disciplinas(nome_disciplina)')
+                        .select('cod_classe, cod_disciplina, cod_periodo_avaliacao, cod_periodo_letivo, rco_disciplinas(nome_disciplina)')
                         .eq('cod_turma', codturma);
 
                     if (!classesErr && classes && classes.length > 0) {
@@ -202,8 +202,14 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                                 const codClasse = cl.cod_classe;
                                 const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || `Disciplina ${cl.cod_disciplina}`;
                                 try {
-                                    const codPA = process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
-                                    const codPL = process.env.RCO_COD_PERIODO_LETIVO ?? 261;
+                                    /* Usa o período armazenado por classe quando disponível;
+                                       cai nos defaults de env se ainda NULL (antes de re-sync). */
+                                    const codPA = cl.cod_periodo_avaliacao
+                                        ?? process.env.RCO_COD_PERIODO_AVALIACAO
+                                        ?? 9;
+                                    const codPL = cl.cod_periodo_letivo
+                                        ?? process.env.RCO_COD_PERIODO_LETIVO
+                                        ?? 261;
 
                                     /* Tenta v3/frequenciaAulas. O RCO retorna array direto em
                                        algumas disciplinas e objeto paginado { data:[...] } em
@@ -222,10 +228,10 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                                     if (respV3.status === 200) {
                                         raw = normalizeRaw(respV3.data);
                                         if (raw.length === 0) {
-                                            console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v3 status=200 mas raw vazio. data type=${Array.isArray(respV3.data) ? 'array' : typeof respV3.data}, data keys=${respV3.data && typeof respV3.data === 'object' ? Object.keys(respV3.data).join(',') : 'n/a'}`);
+                                            console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v3 PA=${codPA} PL=${codPL} status=200 mas raw vazio. data type=${Array.isArray(respV3.data) ? 'array' : typeof respV3.data}, data keys=${respV3.data && typeof respV3.data === 'object' ? Object.keys(respV3.data).join(',') : 'n/a'}`);
                                         }
                                     } else {
-                                        console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v3 status=${respV3.status}`);
+                                        console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): v3 PA=${codPA} PL=${codPL} status=${respV3.status}`);
                                     }
 
                                     /* Fallback: v1/avaliacaoAlunos (estrutura diferente mas

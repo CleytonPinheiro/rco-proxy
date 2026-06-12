@@ -264,12 +264,15 @@ export class SyncService {
                         }
 
                         if (classe.codClasse) {
+                            const firstCA = (livro.calendarioAvaliacaos || [])[0];
                             classesPayload.push({
                                 cod_classe: classe.codClasse,
                                 cod_turma: turma.codTurma || null,
                                 cod_disciplina: disc.codDisciplina || null,
                                 cod_estabelecimento: estab.codEstabelecimento,
                                 periodo_letivo: periodo.descrPeriodoLetivo || null,
+                                cod_periodo_avaliacao: firstCA?.periodoAvaliacao?.codPeriodoAvaliacao || null,
+                                cod_periodo_letivo: periodo.codPeriodoLetivo || null,
                                 atualizado_em: agora,
                             });
                         }
@@ -296,8 +299,26 @@ export class SyncService {
             const { error: e3 } = await this.#supabaseAdmin.from('rco_disciplinas').upsert(disciplinasUnicas, { onConflict: 'cod_disciplina' });
             if (e3) throw new Error(`Erro em rco_disciplinas: ${e3.message}`);
 
-            const { error: e4 } = await this.#supabaseAdmin.from('rco_classes').upsert(classesUnicas, { onConflict: 'cod_classe' });
-            if (e4) throw new Error(`Erro em rco_classes: ${e4.message}`);
+            let e4res = await this.#supabaseAdmin.from('rco_classes').upsert(classesUnicas, { onConflict: 'cod_classe' });
+            if (e4res.error) {
+                /* Se falhou por coluna inexistente (migration pendente), tenta sem os campos de período */
+                const isSchemaErr = e4res.error.code === 'PGRST204' ||
+                    e4res.error.message?.includes('cod_periodo_avaliacao') ||
+                    e4res.error.message?.includes('cod_periodo_letivo') ||
+                    e4res.error.message?.includes('column') ||
+                    e4res.error.message?.includes('schema cache');
+                if (isSchemaErr) {
+                    console.warn('[SYNC] rco_classes: colunas de período ainda não existem no Supabase. Aplicar migrations 013 e 014. Sincronizando sem elas.');
+                    const classesCompat = classesUnicas.map(c => {
+                        const { cod_periodo_avaliacao, cod_periodo_letivo, ...rest } = c;
+                        return rest;
+                    });
+                    const { error: e4b } = await this.#supabaseAdmin.from('rco_classes').upsert(classesCompat, { onConflict: 'cod_classe' });
+                    if (e4b) throw new Error(`Erro em rco_classes: ${e4b.message}`);
+                } else {
+                    throw new Error(`Erro em rco_classes: ${e4res.error.message}`);
+                }
+            }
 
             let totalAlunos = 0;
             for (const [codTurmaStr, info] of Object.entries(turmaParaClasse)) {
