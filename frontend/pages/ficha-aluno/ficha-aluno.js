@@ -567,10 +567,9 @@ function renderSecaoObservacoes(observacoes) {
 }
 
 function renderSecaoEmprestimos(emprestimos) {
+    if (!emprestimos || emprestimos.length === 0) return '';
     let corpo = '';
-    if (!emprestimos || emprestimos.length === 0) {
-        corpo = `<div class="ficha-vazio">Nenhum empréstimo de livro registrado.</div>`;
-    } else {
+    {
         const linhas = emprestimos.map(e => {
             const statusLabel = { emprestado: 'Emprestado', devolvido: 'Devolvido', perdido: 'Perdido' }[e.status] || e.status;
             const statusClass = `emp-status-${e.status}`;

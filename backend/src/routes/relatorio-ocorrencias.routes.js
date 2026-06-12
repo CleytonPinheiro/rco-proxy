@@ -282,11 +282,20 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
                 return (a.data || '').localeCompare(b.data || '');
             });
 
-            // Um termo por folha A4 retrato
+            // Dois termos por folha A4 paisagem (duplicata: via professor + via responsável)
             const templateHtml = fs.readFileSync(TEMPLATE, 'utf8');
-            const blocosHtml = ocorrencias.map(o =>
-                `<div class="termo-page">${renderOcorrencia({ escola, aluno, ocorrencia: o, cidadeRef })}</div>`
-            ).join('\n');
+            const blocosHtml = ocorrencias.map(o => {
+                const conteudo = renderOcorrencia({ escola, aluno, ocorrencia: o, cidadeRef });
+                return `<div class="termo-page">
+  <div class="termo-coluna">${conteudo}</div>
+  <div class="termo-separador">
+    <div class="termo-sep-linha"></div>
+    <span class="termo-sep-icone">✂</span>
+    <div class="termo-sep-linha"></div>
+  </div>
+  <div class="termo-coluna">${conteudo}</div>
+</div>`;
+            }).join('\n');
 
             const html = templateHtml.replace('{{OCORRENCIAS}}', blocosHtml);
 
@@ -315,7 +324,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
                     await page.setContent(html, { waitUntil: 'domcontentloaded' });
                     pdfBuffer = await page.pdf({
                         format:          'A4',
-                        landscape:       false,
+                        landscape:       true,
                         printBackground: true,
                         margin: { top: '0', bottom: '0', left: '0', right: '0' },
                     });
