@@ -177,6 +177,16 @@ async function carregarObservacoes(codClasse) {
     } catch { observacoesMap = {}; }
 }
 
+// ── Filtro "apenas com registros" ───────────────────────────────────────────────
+let filtroComRegistros = false;
+
+function toggleFiltroComRegistros() {
+    filtroComRegistros = !filtroComRegistros;
+    const btn = document.getElementById('btnFiltroComRegistros');
+    if (btn) btn.classList.toggle('ativo', filtroComRegistros);
+    renderGrid();
+}
+
 // ── Render grid ────────────────────────────────────────────────────────────────
 function renderGrid() {
     const grid = document.getElementById('alunosGrid');
@@ -184,7 +194,14 @@ function renderGrid() {
         grid.innerHTML = '<div class="grid-loading">Nenhum aluno encontrado.</div>';
         return;
     }
-    grid.innerHTML = todosAlunos.map(a => renderCardAluno(a)).join('');
+    const lista = filtroComRegistros
+        ? todosAlunos.filter(a => (ocorrenciasMap[a.codMatrizAluno] || []).length > 0)
+        : todosAlunos;
+    if (!lista.length) {
+        grid.innerHTML = '<div class="grid-loading">Nenhum aluno com registros nesta turma.</div>';
+        return;
+    }
+    grid.innerHTML = lista.map(a => renderCardAluno(a)).join('');
 }
 
 function renderCardAluno(aluno) {
