@@ -192,10 +192,21 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
             if (codturma) {
                 try {
-                    const { data: classes, error: classesErr } = await supabaseAdmin
+                    let { data: classes, error: classesErr } = await supabaseAdmin
                         .from('rco_classes')
                         .select('cod_classe, cod_disciplina, cod_periodo_avaliacao, cod_periodo_letivo, rco_disciplinas(nome_disciplina)')
                         .eq('cod_turma', codturma);
+
+                    /* Migrations 013/014 ainda não aplicadas — retentar sem as colunas de período */
+                    if (classesErr && classesErr.message?.includes('cod_periodo_avaliacao')) {
+                        console.warn('[FICHA-FREQ] Colunas de período ausentes; buscando classes sem elas (aplique as migrations 013+014).');
+                        ({ data: classes, error: classesErr } = await supabaseAdmin
+                            .from('rco_classes')
+                            .select('cod_classe, cod_disciplina, rco_disciplinas(nome_disciplina)')
+                            .eq('cod_turma', codturma));
+                    }
+
+                    console.log(`[FICHA-FREQ] codturma=${codturma} → classes encontradas: ${classes?.length ?? 0}${classesErr ? ' | erro: ' + classesErr.message : ''}`);
 
                     if (!classesErr && classes && classes.length > 0) {
                         const freqResults = await Promise.allSettled(
@@ -269,7 +280,8 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                                     const percentual = totalAulas > 0 ? Math.round((presencas / totalAulas) * 100) : null;
 
                                     return { codClasse, nomeDisciplina, totalAulas, presencas, faltas, percentual };
-                                } catch {
+                                } catch (freqErr) {
+                                    console.warn(`[FICHA-FREQ] classe ${codClasse} (${nomeDisciplina}): ERRO → ${freqErr.message}`);
                                     return null;
                                 }
                             })
