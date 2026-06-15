@@ -83,6 +83,9 @@ async function carregarTurmas() {
         sel.innerHTML = '<option value="">Selecione a turma…</option>' +
             turmas.map(t => `<option value="${t.codturma}">${escHtml(t.turma)}</option>`).join('');
 
+        /* Converte para custom select (sem dropdown nativo do SO) */
+        if (window.createCustomSelect) createCustomSelect(sel);
+
         sel.addEventListener('change', () => {
             if (sel.value) carregarAlunos(sel.value);
             else {
@@ -341,9 +344,9 @@ function renderFicha(dados) {
 
     document.getElementById('fichaConteudo').innerHTML =
         renderSecaoFrequencias(frequencias, ocorrencias) +
-        renderSecaoOcorrencias(ocorrencias) +
         renderSecaoObservacoes(observacoes) +
         renderSecaoEmprestimos(emprestimos) +
+        renderSecaoOcorrencias(ocorrencias) +
         `<div class="ficha-print-footer">
             <div class="ficha-print-footer-esq">
                 <span class="ficha-print-footer-sistema">⚡ EduSync</span>

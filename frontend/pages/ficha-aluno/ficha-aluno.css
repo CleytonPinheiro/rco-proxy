@@ -76,6 +76,11 @@
 .ficha-turma-sel:hover  { border-color: #818cf8; }
 .ficha-turma-sel:focus  { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
 
+/* Custom-select dentro do painel lateral — ocupa largura total */
+.ficha-lista-topo .csel              { width: 100%; display: flex; }
+.ficha-lista-topo .csel-trigger      { width: 100%; font-size: 13px; font-weight: 500; padding: 7px 10px; border-radius: 8px; border-width: 1.5px; }
+.ficha-lista-topo .csel-panel        { border-radius: 10px; font-size: 13px; }
+
 .ficha-lista-alunos {
     flex: 1;
     overflow-y: auto;
