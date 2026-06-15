@@ -364,6 +364,7 @@
         injetarLinkRetorno(user);
         injetarLinkBoletim(user);
         injetarLinkAlertasFaltas(user);
+        injetarLinkFichaAluno(user);
         injetarLinkAdmin(user);
         injetarLinkPlanos(user);
         if (user.impersonando) {
@@ -709,6 +710,34 @@
         nav.appendChild(link);
     }
 
+    /* ══════════════════════════════════════════════════════════════════════
+       4e. Link Ficha do Aluno no nav (professor, pedagogo, secretaria)
+    ══════════════════════════════════════════════════════════════════════ */
+    function injetarLinkFichaAluno(user) {
+        const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
+        if (!podeAcessar(perfilEfetivo, 'ficha-aluno')) return;
+        const nav = document.querySelector('.nav-menu');
+        if (!nav || nav.querySelector('a[href="/pages/ficha-aluno/"]')) return;
+
+        const link = document.createElement('a');
+        link.href        = '/pages/ficha-aluno/';
+        link.textContent = 'Ficha do Aluno';
+        if (location.pathname.startsWith('/pages/ficha-aluno/')) link.classList.add('active');
+        /* Insere após Alertas de Faltas, ou Boletim, ou Retorno Pedagógico, senão antes do Admin */
+        const altLink = nav.querySelector('a[href="/pages/alertas-faltas/"]');
+        const bolLink = nav.querySelector('a[href="/pages/boletim/"]');
+        const retLink = nav.querySelector('a[href="/pages/retorno-pedagogico/"]');
+        const admLink = nav.querySelector('a[href="/pages/admin/"]');
+        const anchor  = altLink ?? bolLink ?? retLink;
+        if (anchor && anchor.nextSibling) {
+            nav.insertBefore(link, anchor.nextSibling);
+        } else if (admLink) {
+            nav.insertBefore(link, admLink);
+        } else {
+            nav.appendChild(link);
+        }
+    }
+
     function injetarLinkPlanos(user) {
         if (user.perfilReal !== 'admin' && user.perfil !== 'admin') return;
         if (user.impersonando) return;
@@ -907,6 +936,7 @@
             '/pages/planos/':                 '💎',
             '/pages/suporte/':               '🎫',
             '/pages/passeios/':              '🚌',
+            '/pages/ficha-aluno/':           '📋',
         };
         return m[href] || '🔗';
     }
