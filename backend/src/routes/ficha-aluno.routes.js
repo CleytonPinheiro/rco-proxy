@@ -119,6 +119,23 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ? (observacoesResult.value?.data || [])
                 : [];
 
+            // Busca todas as disciplinas da turma (para listar mesmo as sem observações)
+            let todasDisciplinas = [];
+            if (codturma) {
+                try {
+                    const { data: classesDisc } = await supabaseAdmin
+                        .from('rco_classes')
+                        .select('cod_classe, rco_disciplinas(nome_disciplina)')
+                        .eq('cod_turma', codturma);
+                    const seen = new Set();
+                    todasDisciplinas = (classesDisc || [])
+                        .map(c => ({ cod_classe: c.cod_classe, nome_disciplina: c.rco_disciplinas?.nome_disciplina || null }))
+                        .filter(d => d.nome_disciplina && !seen.has(d.nome_disciplina) && seen.add(d.nome_disciplina));
+                } catch (e) {
+                    console.warn('[FICHA-ALUNO] Erro ao buscar todas disciplinas:', e.message);
+                }
+            }
+
             // Enriquecer observações com nome da disciplina (cod_classe → rco_classes → rco_disciplinas)
             let observacoes = observacoesRaw;
             if (observacoesRaw.length > 0) {
@@ -348,6 +365,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 frequencias,      // null se RCO indisponível; array de { codClasse, nomeDisciplina, totalAulas, presencas, faltas, percentual } se disponível
                 ocorrencias,      // array completo com professor_nome e nome_turma
                 observacoes,      // rco_observacoes por cod_matriz_aluno
+                todasDisciplinas, // todas as disciplinas da turma (para listar mesmo as sem obs)
                 emprestimos,      // livros_emprestimos com join em livros_didaticos
                 escolaLogo,       // base64 da logo (null se não configurada)
                 escolaNome,       // nome da escola (null se não configurado)

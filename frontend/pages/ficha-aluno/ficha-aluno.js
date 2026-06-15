@@ -56,6 +56,25 @@ async function init() {
 
 /* ── Modo seletor ──────────────────────────────────────────────────────────── */
 
+async function sincronizarTurma() {
+    const sel = document.getElementById('fichaTurmaSelect');
+    const btn = document.getElementById('fichaSyncBtn');
+    if (!sel || !sel.value) {
+        alert('Selecione uma turma antes de sincronizar.');
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    try {
+        const r = await fetch(`${API}/api/sync/force`, { method: 'POST' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        await carregarAlunos(sel.value);
+    } catch (e) {
+        alert('Erro ao sincronizar: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄'; }
+    }
+}
+
 async function carregarTurmas() {
     const sel = document.getElementById('fichaTurmaSelect');
 
@@ -344,7 +363,7 @@ function renderFicha(dados) {
 
     document.getElementById('fichaConteudo').innerHTML =
         renderSecaoFrequencias(frequencias, ocorrencias) +
-        renderSecaoObservacoes(observacoes) +
+        renderSecaoObservacoes(observacoes, dados.todasDisciplinas) +
         renderSecaoEmprestimos(emprestimos) +
         renderSecaoOcorrencias(ocorrencias) +
         `<div class="ficha-print-footer">
@@ -548,29 +567,88 @@ function renderSecaoOcorrencias(ocorrencias) {
     </div>`;
 }
 
-function renderSecaoObservacoes(observacoes) {
+function renderSecaoObservacoes(observacoes, todasDisciplinas) {
     let corpo = '';
-    if (!observacoes || observacoes.length === 0) {
-        corpo = `<div class="ficha-vazio">Nenhuma observação pedagógica do RCO registrada.</div>`;
-    } else {
-        const grupos = {};
-        for (const o of observacoes) {
-            const chave = o.nome_disciplina || `Classe ${o.cod_classe || '?'}`;
-            if (!grupos[chave]) grupos[chave] = [];
-            grupos[chave].push(o);
+    const obs = observacoes || [];
+
+    if (todasDisciplinas && todasDisciplinas.length > 0) {
+        /* Agrupa observações por cod_classe */
+        const obsPorClasse = {};
+        for (const o of obs) {
+            const k = o.cod_classe;
+            if (!obsPorClasse[k]) obsPorClasse[k] = [];
+            obsPorClasse[k].push(o);
         }
 
-        for (const [chave, obs] of Object.entries(grupos)) {
-            corpo += `<div class="obs-grupo">
-                <span class="obs-grupo-titulo">📝 ${escHtml(chave)}</span>`;
-            for (const o of obs) {
-                corpo += `
-                <div class="obs-item">
-                    <span class="obs-data">${formatarData(o.data_aula)}</span>
-                    <span class="obs-texto">${escHtml(o.observacao)}</span>
-                </div>`;
+        /* Disciplinas conhecidas */
+        const classesConhecidas = new Set(todasDisciplinas.map(d => d.cod_classe));
+
+        /* Exibe todas as disciplinas da turma */
+        for (const disc of todasDisciplinas) {
+            const discObs = obsPorClasse[disc.cod_classe] || [];
+            corpo += `<div class="obs-grupo${discObs.length === 0 ? ' obs-grupo-vazio' : ''}">
+                <span class="obs-grupo-titulo">📝 ${escHtml(disc.nome_disciplina)}</span>`;
+            if (discObs.length > 0) {
+                for (const o of discObs) {
+                    corpo += `
+                    <div class="obs-item">
+                        <span class="obs-data">${formatarData(o.data_aula)}</span>
+                        <span class="obs-texto">${escHtml(o.observacao)}</span>
+                    </div>`;
+                }
+            } else {
+                corpo += `<div class="obs-disc-vazia">Nenhuma observação registrada.</div>`;
             }
             corpo += `</div>`;
+        }
+
+        /* Observações cujo cod_classe não está nas disciplinas conhecidas */
+        const obsOrfas = obs.filter(o => !classesConhecidas.has(o.cod_classe));
+        if (obsOrfas.length > 0) {
+            const grupos = {};
+            for (const o of obsOrfas) {
+                const chave = o.nome_disciplina || `Classe ${o.cod_classe || '?'}`;
+                if (!grupos[chave]) grupos[chave] = [];
+                grupos[chave].push(o);
+            }
+            for (const [chave, items] of Object.entries(grupos)) {
+                corpo += `<div class="obs-grupo"><span class="obs-grupo-titulo">📝 ${escHtml(chave)}</span>`;
+                for (const o of items) {
+                    corpo += `
+                    <div class="obs-item">
+                        <span class="obs-data">${formatarData(o.data_aula)}</span>
+                        <span class="obs-texto">${escHtml(o.observacao)}</span>
+                    </div>`;
+                }
+                corpo += `</div>`;
+            }
+        }
+
+        if (!corpo) {
+            corpo = `<div class="ficha-vazio">Nenhuma observação pedagógica do RCO registrada.</div>`;
+        }
+    } else {
+        /* Fallback: sem lista de disciplinas — agrupa pelo nome_disciplina da obs */
+        if (obs.length === 0) {
+            corpo = `<div class="ficha-vazio">Nenhuma observação pedagógica do RCO registrada.</div>`;
+        } else {
+            const grupos = {};
+            for (const o of obs) {
+                const chave = o.nome_disciplina || `Classe ${o.cod_classe || '?'}`;
+                if (!grupos[chave]) grupos[chave] = [];
+                grupos[chave].push(o);
+            }
+            for (const [chave, items] of Object.entries(grupos)) {
+                corpo += `<div class="obs-grupo"><span class="obs-grupo-titulo">📝 ${escHtml(chave)}</span>`;
+                for (const o of items) {
+                    corpo += `
+                    <div class="obs-item">
+                        <span class="obs-data">${formatarData(o.data_aula)}</span>
+                        <span class="obs-texto">${escHtml(o.observacao)}</span>
+                    </div>`;
+                }
+                corpo += `</div>`;
+            }
         }
     }
 

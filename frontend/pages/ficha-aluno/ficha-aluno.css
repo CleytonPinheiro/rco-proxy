@@ -50,14 +50,42 @@
     z-index: 10;
 }
 
+.ficha-lista-titulo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
 .ficha-lista-titulo {
     font-size: 12px;
     font-weight: 700;
     color: var(--text-muted, #6b7280);
     text-transform: uppercase;
     letter-spacing: .05em;
-    margin-bottom: 8px;
 }
+
+.ficha-sync-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 6px;
+    color: var(--text-muted, #6b7280);
+    transition: background .15s, color .15s;
+    line-height: 1;
+}
+.ficha-sync-btn:hover   { background: var(--bg-hover, #e8f0ff); color: #4285F4; }
+.ficha-sync-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.obs-disc-vazia {
+    font-size: 12px;
+    color: var(--text-muted, #9ca3af);
+    font-style: italic;
+    padding: 4px 0 2px 2px;
+}
+.obs-grupo-vazio .obs-grupo-titulo { opacity: .6; }
 
 .ficha-turma-sel {
     width: 100%;

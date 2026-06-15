@@ -50,7 +50,10 @@
         <!-- ── Painel esquerdo: lista de alunos (modo seletor) ─────── -->
         <aside class="ficha-lista-panel" id="fichaListaPanel">
             <div class="ficha-lista-topo">
-                <div class="ficha-lista-titulo">📋 Selecionar aluno</div>
+                <div class="ficha-lista-titulo-row">
+                    <span class="ficha-lista-titulo">📋 Selecionar aluno</span>
+                    <button class="ficha-sync-btn" id="fichaSyncBtn" onclick="sincronizarTurma()" title="Sincronizar lista de alunos com o RCO">🔄</button>
+                </div>
                 <select id="fichaTurmaSelect" class="ficha-turma-sel">
                     <option value="">Carregando turmas…</option>
                 </select>
