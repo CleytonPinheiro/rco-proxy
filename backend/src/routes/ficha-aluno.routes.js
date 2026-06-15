@@ -28,7 +28,17 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             if (alunosErr) throw alunosErr;
             if (!alunos || alunos.length === 0) return res.json({ alunos: [] });
 
-            const codMatrizes = alunos.map(a => a.codmatrizaluno).filter(Boolean);
+            /* Deduplica por nome (normalizado) — evita duplicatas quando o mesmo aluno
+               foi sincronizado com codMatrizAluno diferente em classes distintas */
+            const vistos = new Set();
+            const alunosUnicos = (alunos || []).filter(a => {
+                const chave = (a.nome || '').toUpperCase().trim();
+                if (vistos.has(chave)) return false;
+                vistos.add(chave);
+                return true;
+            });
+
+            const codMatrizes = alunosUnicos.map(a => a.codmatrizaluno).filter(Boolean);
 
             const { data: ocorrencias } = await supabaseAdmin
                 .from('aluno_ocorrencias')
@@ -43,7 +53,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             }
 
             res.json({
-                alunos: alunos.map(a => ({
+                alunos: alunosUnicos.map(a => ({
                     codMatrizAluno: a.codmatrizaluno,
                     nome:          a.nome,
                     numchamada:    a.numchamada,

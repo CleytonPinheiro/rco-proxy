@@ -385,11 +385,13 @@ export class SyncService {
                         }
 
                         for (const a of alunos) {
-                            if (!a.codMatrizAluno) continue;
-                            const reg = String(a.codMatrizAluno);
-                            if (!alunosMap[reg]) {
-                                alunosMap[reg] = {
-                                    registro:       truncate(reg, 50),
+                            if (!a.codMatrizAluno || !a.nome) continue;
+                            /* Chave de dedup: nome normalizado — o mesmo aluno pode ter
+                               codMatrizAluno diferente em classes distintas da mesma turma */
+                            const chaveNome = String(a.nome).toUpperCase().trim();
+                            if (!alunosMap[chaveNome]) {
+                                alunosMap[chaveNome] = {
+                                    registro:       truncate(String(a.codMatrizAluno), 50),
                                     nome:           truncate(a.nome, 120),
                                     turma:          truncate(info.descrTurma, 50),
                                     codmatrizaluno: a.codMatrizAluno,
