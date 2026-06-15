@@ -213,7 +213,8 @@ export class SyncService {
             const turmasPayload = [];
             const disciplinasPayload = [];
             const classesPayload = [];
-            const turmaParaClasse = {};
+            /* turmaParaClasses: turma → TODAS as classes (para buscar alunos com fallback) */
+            const turmaParaClasses = {};
 
             estabs.forEach(estab => {
                 estabelecimentosPayload.push({
@@ -241,14 +242,19 @@ export class SyncService {
                                 atualizado_em: agora,
                             });
 
-                            if (!turmaParaClasse[turma.codTurma] && classe.codClasse) {
+                            if (classe.codClasse) {
                                 const firstPeriodo = (livro.calendarioAvaliacaos || [])[0];
-                                turmaParaClasse[turma.codTurma] = {
+                                if (!turmaParaClasses[turma.codTurma]) {
+                                    turmaParaClasses[turma.codTurma] = {
+                                        descrTurma: turma.descrTurma || '',
+                                        classes: [],
+                                    };
+                                }
+                                turmaParaClasses[turma.codTurma].classes.push({
                                     codClasse: classe.codClasse,
-                                    descrTurma: turma.descrTurma || '',
                                     codPeriodoAvaliacao: firstPeriodo?.periodoAvaliacao?.codPeriodoAvaliacao || 9,
                                     codPeriodoLetivo: periodo.codPeriodoLetivo || 261,
-                                };
+                                });
                             }
                         }
 
@@ -347,34 +353,60 @@ export class SyncService {
                 }
             }
 
+            const normalizeAlunos = (d) => {
+                if (Array.isArray(d)) return d;
+                if (d && Array.isArray(d.data)) return d.data;
+                if (d && Array.isArray(d.content)) return d.content;
+                return [];
+            };
+
+            const truncate = (str, max) => str ? String(str).substring(0, max) : null;
+
             let totalAlunos = 0;
-            for (const [codTurmaStr, info] of Object.entries(turmaParaClasse)) {
+            for (const [codTurmaStr, info] of Object.entries(turmaParaClasses)) {
                 const codTurma = parseInt(codTurmaStr);
-                try {
-                    let alunosResp = await this.#rcoApiService.get(
-                        `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${info.codClasse}&codPeriodoAvaliacao=${info.codPeriodoAvaliacao}`
-                    );
-                    let alunos = Array.isArray(alunosResp.data) ? alunosResp.data : [];
+                /* Acumula alunos de TODAS as classes para não perder transferidos */
+                const alunosMap = {};  /* registro → payload, para deduplicar */
 
-                    if (alunos.length === 0) {
-                        alunosResp = await this.#rcoApiService.get(
-                            `/classe/v3/relatorios/frequenciaAulas?codClasse=${info.codClasse}&codPeriodoAvaliacao=${info.codPeriodoAvaliacao}&codPeriodoLetivo=${info.codPeriodoLetivo}&page=1&perPage=200`
+                for (const cl of info.classes) {
+                    try {
+                        /* Tenta v1/avaliacaoAlunos primeiro */
+                        let resp = await this.#rcoApiService.get(
+                            `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${cl.codClasse}&codPeriodoAvaliacao=${cl.codPeriodoAvaliacao}`
                         );
-                        alunos = Array.isArray(alunosResp.data) ? alunosResp.data : [];
+                        let alunos = normalizeAlunos(resp.data);
+
+                        /* Fallback: v3/frequenciaAulas (resposta pode ser paginada) */
+                        if (alunos.length === 0) {
+                            resp = await this.#rcoApiService.get(
+                                `/classe/v3/relatorios/frequenciaAulas?codClasse=${cl.codClasse}&codPeriodoAvaliacao=${cl.codPeriodoAvaliacao}&codPeriodoLetivo=${cl.codPeriodoLetivo}&page=1&perPage=500`
+                            );
+                            alunos = normalizeAlunos(resp.data);
+                        }
+
+                        for (const a of alunos) {
+                            if (!a.codMatrizAluno) continue;
+                            const reg = String(a.codMatrizAluno);
+                            if (!alunosMap[reg]) {
+                                alunosMap[reg] = {
+                                    registro:       truncate(reg, 50),
+                                    nome:           truncate(a.nome, 120),
+                                    turma:          truncate(info.descrTurma, 50),
+                                    codmatrizaluno: a.codMatrizAluno,
+                                    codturma:       codTurma,
+                                    numchamada:     a.numChamada ?? a.numchamada ?? null,
+                                };
+                            }
+                        }
+                    } catch (errClasse) {
+                        console.warn(`[SYNC] Erro ao buscar alunos da classe ${cl.codClasse} (turma ${codTurma}):`, errClasse.message);
                     }
+                }
 
-                    if (alunos.length === 0) continue;
+                const alunosPayload = Object.values(alunosMap);
+                if (alunosPayload.length === 0) continue;
 
-                    const truncate = (str, max) => str ? String(str).substring(0, max) : null;
-                    const alunosPayload = alunos.map(a => ({
-                        registro:       truncate(String(a.codMatrizAluno), 50),
-                        nome:           truncate(a.nome, 120),
-                        turma:          truncate(info.descrTurma, 50),
-                        codmatrizaluno: a.codMatrizAluno,
-                        codturma:       codTurma,
-                        numchamada:     a.numChamada,
-                    }));
-
+                try {
                     const { error: eA } = await this.#supabaseAdmin.from('alunos').upsert(alunosPayload, { onConflict: 'registro' });
                     if (eA) {
                         console.warn(`[SYNC] Aviso alunos turma ${codTurma}:`, eA.message);
@@ -383,7 +415,7 @@ export class SyncService {
                         console.log(`[SYNC] ${alunosPayload.length} alunos sincronizados (turma ${codTurma})`);
                     }
                 } catch (errAluno) {
-                    console.warn(`[SYNC] Erro ao buscar alunos da turma ${codTurma}:`, errAluno.message);
+                    console.warn(`[SYNC] Erro ao upsert alunos turma ${codTurma}:`, errAluno.message);
                 }
             }
 
