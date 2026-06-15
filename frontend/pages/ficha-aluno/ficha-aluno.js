@@ -202,6 +202,8 @@ async function carregarFicha(codMatrizAluno) {
                     opt.textContent = p;
                     sel.appendChild(opt);
                 });
+                /* Atualiza o painel do custom-select com as novas opções */
+                if (window.refreshCustomSelect) refreshCustomSelect(sel);
             });
         }
     } catch (e) {
@@ -360,6 +362,14 @@ function renderFicha(dados) {
             <span class="ficha-data-geracao">Gerado em ${formatarData(geradoEm)}</span>
             <button class="btn-imprimir" onclick="window.print()">🖨️ Imprimir / PDF</button>
         </div>`;
+
+    /* Converte os selects de filtro de termo para custom-select */
+    if (window.createCustomSelect) {
+        const sTipo = document.getElementById('termoTipo');
+        const sProf = document.getElementById('termoProfessor');
+        if (sTipo) createCustomSelect(sTipo);
+        if (sProf) createCustomSelect(sProf);
+    }
 
     document.getElementById('fichaConteudo').innerHTML =
         renderSecaoFrequencias(frequencias, ocorrencias) +

@@ -113,6 +113,17 @@
 .ficha-lista-topo .csel-panel        { border-radius: 10px; font-size: 13px; width: max-content; min-width: 100%; }
 .ficha-lista-topo .csel-option       { white-space: nowrap; }
 
+/* Custom-select nos filtros de termo (cabeçalho da ficha) — compacto */
+.ficha-termo-controles .csel-trigger {
+    padding: 5px 28px 5px 8px;
+    font-size: .8rem;
+    border-radius: 6px;
+    border-width: 1.5px;
+    min-width: unset;
+}
+.ficha-termo-controles .csel-panel   { border-radius: 8px; font-size: .8rem; width: max-content; min-width: 100%; }
+.ficha-termo-controles .csel-option  { white-space: nowrap; padding: 6px 12px; }
+
 .ficha-lista-alunos {
     flex: 1;
     overflow-y: auto;
