@@ -34,7 +34,7 @@
     background: var(--card-bg, #fff);
     border: 1px solid var(--border, #e1e5ea);
     border-radius: 12px;
-    overflow: hidden;
+    overflow: visible;
     position: sticky;
     top: 68px;
     max-height: calc(100vh - 88px);
@@ -45,6 +45,9 @@
     border-bottom: 1px solid var(--border, #e1e5ea);
     background: var(--bg, #f4f6f8);
     flex-shrink: 0;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+    z-index: 10;
 }
 
 .ficha-lista-titulo {
