@@ -79,7 +79,8 @@
 /* Custom-select dentro do painel lateral — ocupa largura total */
 .ficha-lista-topo .csel              { width: 100%; display: flex; }
 .ficha-lista-topo .csel-trigger      { width: 100%; font-size: 13px; font-weight: 500; padding: 7px 10px; border-radius: 8px; border-width: 1.5px; }
-.ficha-lista-topo .csel-panel        { border-radius: 10px; font-size: 13px; }
+.ficha-lista-topo .csel-panel        { border-radius: 10px; font-size: 13px; width: max-content; min-width: 100%; }
+.ficha-lista-topo .csel-option       { white-space: nowrap; }
 
 .ficha-lista-alunos {
     flex: 1;
