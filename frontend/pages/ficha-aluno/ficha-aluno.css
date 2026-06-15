@@ -944,6 +944,8 @@
    IMPRESSÃO / PDF
    ═══════════════════════════════════════════════════════════════════ */
 @media print {
+    @page { margin: 12mm 14mm; }
+
     /* Ocultar elementos de navegação, painel de lista e filtros */
     .header, .status-footer, .btn-imprimir,
     .side-panel, .side-overlay,
