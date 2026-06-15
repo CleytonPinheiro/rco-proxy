@@ -58,16 +58,23 @@
 
 .ficha-turma-sel {
     width: 100%;
-    padding: 7px 10px;
-    border: 1px solid var(--border, #e1e5ea);
-    border-radius: 7px;
-    background: var(--card-bg, #fff);
-    color: var(--text, #1f2933);
+    padding: 7px 32px 7px 10px;
+    border: 1.5px solid var(--border, #e1e5ea);
+    border-radius: 8px;
+    background: var(--bg-secondary, #f9fafb);
+    color: var(--text-primary, #1f2933);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color .18s, box-shadow .18s;
 }
-.ficha-turma-sel:focus { outline: none; border-color: var(--primary, #4285F4); }
+.ficha-turma-sel:hover  { border-color: #818cf8; }
+.ficha-turma-sel:focus  { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
 
 .ficha-lista-alunos {
     flex: 1;
@@ -903,9 +910,12 @@
 [data-theme="dark"] .ficha-lista-titulo { color: var(--text-muted); }
 
 [data-theme="dark"] .ficha-turma-sel {
-    background: var(--bg-input);
+    background-color: var(--bg-input);
     border-color: var(--border-input);
     color: var(--text-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
 }
 
 [data-theme="dark"] .ficha-aluno-item { color: var(--text-primary); }
@@ -929,11 +939,12 @@
    IMPRESSÃO / PDF
    ═══════════════════════════════════════════════════════════════════ */
 @media print {
-    /* Ocultar elementos de navegação e botões */
+    /* Ocultar elementos de navegação, painel de lista e filtros */
     .header, .status-footer, .btn-imprimir,
     .side-panel, .side-overlay,
     .nav-menu, .header-actions, .btn-side-menu,
-    .perm-block-toast, .ficha-busca-wrap {
+    .perm-block-toast, .ficha-busca-wrap,
+    .ficha-lista-panel, .ficha-termo-controles {
         display: none !important;
     }
 

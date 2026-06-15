@@ -62,7 +62,18 @@ async function carregarTurmas() {
     try {
         const r = await fetch(`${API}/api/alunos/turmas/lista`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const turmas = await r.json();
+        let turmas = await r.json();
+
+        /* Filtra pela escola selecionada no menu principal */
+        try {
+            const raw = localStorage.getItem('edusync_escola_codturmas');
+            if (raw) {
+                const codturmasFiltro = JSON.parse(raw);
+                if (Array.isArray(codturmasFiltro) && codturmasFiltro.length > 0) {
+                    turmas = turmas.filter(t => codturmasFiltro.includes(t.codturma));
+                }
+            }
+        } catch {}
 
         if (!turmas || turmas.length === 0) {
             sel.innerHTML = '<option value="">Nenhuma turma encontrada</option>';
@@ -286,7 +297,7 @@ function renderFicha(dados) {
     const temOcorrencias  = ocorrencias  && ocorrencias.length  > 0;
     const temObservacoes  = observacoes  && observacoes.length  > 0;
     const btnTermoHtml = (temOcorrencias || temObservacoes) ? `
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
+        <div class="ficha-termo-controles" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
             <input type="date" id="termoDe"  title="Data inicial (opcional)"
                    style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)" />
             <span style="font-size:.8rem;color:var(--text-muted)">até</span>
