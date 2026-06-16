@@ -318,9 +318,7 @@ function renderFicha(dados) {
     const { aluno, frequencias, ocorrencias, observacoes, emprestimos, geradoEm,
             escolaLogo, escolaNome } = dados;
 
-    const temOcorrencias  = ocorrencias  && ocorrencias.length  > 0;
-    const temObservacoes  = observacoes  && observacoes.length  > 0;
-    const btnTermoHtml = (temOcorrencias || temObservacoes) ? `
+    const btnTermoHtml = `
         <div class="ficha-termo-controles" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
             <input type="date" id="termoDe"  title="Data inicial (opcional)"
                    style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;background:var(--bg-input);color:var(--text-primary)" />
@@ -340,7 +338,7 @@ function renderFicha(dados) {
             <button id="btnGerarTermo" class="btn-imprimir"
                     onclick="gerarTermoPDF(${aluno.codMatrizAluno}, this)"
                     style="background:#dc2626;color:#fff;border-color:#dc2626">📄 Gerar Termos PDF</button>
-        </div>` : '';
+        </div>`;
 
     document.title = `Ficha — ${aluno.nome}`;
     document.getElementById('fichaHeader').innerHTML = `
