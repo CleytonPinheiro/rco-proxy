@@ -52,7 +52,10 @@
             <div class="ficha-lista-topo">
                 <div class="ficha-lista-titulo-row">
                     <span class="ficha-lista-titulo">📋 Selecionar aluno</span>
-                    <button class="ficha-sync-btn" id="fichaSyncBtn" onclick="sincronizarTurma()" title="Sincronizar lista de alunos com o RCO">🔄</button>
+                    <div style="display:flex;gap:4px;align-items:center">
+                        <button class="ficha-sync-btn" id="fichaMultiBtn" onclick="toggleMultiMode()" title="Selecionar múltiplos alunos para gerar PDF em lote">☑</button>
+                        <button class="ficha-sync-btn" id="fichaSyncBtn" onclick="sincronizarTurma()" title="Sincronizar lista de alunos com o RCO">🔄</button>
+                    </div>
                 </div>
                 <select id="fichaTurmaSelect" class="ficha-turma-sel">
                     <option value="">Carregando turmas…</option>
@@ -60,6 +63,12 @@
             </div>
             <div id="fichaListaAlunos" class="ficha-lista-alunos">
                 <div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>
+            </div>
+            <div id="fichaBatchBar" class="ficha-batch-bar" style="display:none">
+                <span id="fichaBatchContador" class="ficha-batch-contador">0 selecionados</span>
+                <button id="fichaBatchBtn" class="ficha-batch-gerar" onclick="gerarTermosBatch(this)">
+                    📄 Gerar PDF
+                </button>
             </div>
         </aside>
 

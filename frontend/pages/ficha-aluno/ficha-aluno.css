@@ -131,6 +131,80 @@
     scrollbar-width: thin;
 }
 
+/* ── Multi-seleção ─────────────────────────────────────────────────────────── */
+.fai-item-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Checkbox escondido por padrão — aparece em modo multi */
+.fai-check {
+    display: none;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    accent-color: #6366f1;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Quando a lista está em modo multi */
+.ficha-lista-alunos.multi-mode .fai-check {
+    display: block;
+}
+.ficha-lista-alunos.multi-mode .ficha-aluno-item {
+    cursor: pointer;
+}
+
+/* Item selecionado em modo multi */
+.ficha-aluno-item.selecionado {
+    background: rgba(99,102,241,.1) !important;
+    border-color: #6366f1 !important;
+    color: #4338ca;
+}
+
+/* Botão de toggle ativo */
+.ficha-sync-btn.ativo {
+    background: rgba(99,102,241,.15);
+    color: #6366f1;
+}
+
+/* Barra inferior de lote */
+.ficha-batch-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border, #e1e5ea);
+    background: var(--bg, #f4f6f8);
+    border-radius: 0 0 12px 12px;
+    flex-shrink: 0;
+}
+
+.ficha-batch-contador {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted, #6b7280);
+    white-space: nowrap;
+}
+
+.ficha-batch-gerar {
+    padding: 7px 14px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+    white-space: nowrap;
+}
+.ficha-batch-gerar:hover:not(:disabled)   { background: #4f46e5; }
+.ficha-batch-gerar:disabled { opacity: .45; cursor: not-allowed; }
+
 .ficha-lista-placeholder,
 .ficha-lista-loading {
     padding: 20px 12px;

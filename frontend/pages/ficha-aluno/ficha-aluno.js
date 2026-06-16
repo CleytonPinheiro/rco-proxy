@@ -2,6 +2,10 @@
 
 const API = '';
 
+/* ── Estado de multi-seleção ─────────────────────────────────────────────────*/
+window._fichaMultiMode      = false;
+window._fichaAlunosSelecionados = new Set();
+
 function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -134,6 +138,10 @@ async function carregarAlunos(codturma) {
         /* Ordena alfabeticamente */
         alunos.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
 
+        /* Reset seleção ao carregar nova turma */
+        window._fichaAlunosSelecionados = new Set();
+        updateBatchBtn();
+
         listEl.innerHTML = alunos.map(a => {
             const { positivo = 0, atencao = 0, grave = 0 } = a.ocorrencias || {};
             const badges = [
@@ -142,15 +150,19 @@ async function carregarAlunos(codturma) {
                 grave    > 0 ? `<span class="fai-badge fai-grave" title="${grave} grav${grave===1?'e':'es'}">❌ ${grave}</span>` : '',
             ].filter(Boolean).join('');
 
-            return `<button class="ficha-aluno-item" data-cod="${a.codMatrizAluno}"
+            return `<div class="fai-item-wrap">
+                <input type="checkbox" class="fai-check" id="faic-${a.codMatrizAluno}"
+                       onchange="toggleAlunoSelecao(${a.codMatrizAluno}, this.checked)">
+                <button class="ficha-aluno-item" data-cod="${a.codMatrizAluno}"
                         onclick="selecionarAluno(${a.codMatrizAluno})"
                         title="${escHtml(a.nome)}">
-                <div class="fai-linha1">
-                    ${a.numchamada ? `<span class="fai-num">Nº ${a.numchamada}</span>` : ''}
-                    <span class="fai-nome">${escHtml(a.nome)}</span>
-                </div>
-                ${badges ? `<div class="fai-badges">${badges}</div>` : ''}
-            </button>`;
+                    <div class="fai-linha1">
+                        ${a.numchamada ? `<span class="fai-num">Nº ${a.numchamada}</span>` : ''}
+                        <span class="fai-nome">${escHtml(a.nome)}</span>
+                    </div>
+                    ${badges ? `<div class="fai-badges">${badges}</div>` : ''}
+                </button>
+            </div>`;
         }).join('');
 
     } catch (e) {
@@ -159,6 +171,16 @@ async function carregarAlunos(codturma) {
 }
 
 async function selecionarAluno(codMatrizAluno) {
+    /* Em modo multi-seleção: marca/desmarca o checkbox em vez de abrir ficha */
+    if (window._fichaMultiMode) {
+        const chk = document.getElementById(`faic-${codMatrizAluno}`);
+        if (chk) {
+            chk.checked = !chk.checked;
+            toggleAlunoSelecao(codMatrizAluno, chk.checked);
+        }
+        return;
+    }
+
     /* Destaca na lista */
     document.querySelectorAll('.ficha-aluno-item').forEach(btn => {
         btn.classList.toggle('ativo', btn.dataset.cod == codMatrizAluno);
@@ -178,6 +200,84 @@ async function selecionarAluno(codMatrizAluno) {
     document.querySelector('.ficha-detalhe-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     await carregarFicha(codMatrizAluno);
+}
+
+/* ── Multi-seleção ─────────────────────────────────────────────────────────── */
+
+function toggleMultiMode() {
+    window._fichaMultiMode = !window._fichaMultiMode;
+    window._fichaAlunosSelecionados = new Set();
+
+    const listEl = document.getElementById('fichaListaAlunos');
+    const btn    = document.getElementById('fichaMultiBtn');
+
+    listEl?.classList.toggle('multi-mode', window._fichaMultiMode);
+    if (btn) {
+        btn.classList.toggle('ativo', window._fichaMultiMode);
+        btn.title = window._fichaMultiMode ? 'Sair da seleção múltipla' : 'Selecionar múltiplos alunos para gerar PDF em lote';
+    }
+
+    /* Desmarca todos */
+    document.querySelectorAll('.fai-check').forEach(c => { c.checked = false; });
+    document.querySelectorAll('.ficha-aluno-item').forEach(b => b.classList.remove('ativo'));
+
+    updateBatchBtn();
+}
+
+function toggleAlunoSelecao(codMatrizAluno, selecionado) {
+    if (selecionado) {
+        window._fichaAlunosSelecionados.add(codMatrizAluno);
+    } else {
+        window._fichaAlunosSelecionados.delete(codMatrizAluno);
+    }
+    /* Destaque visual no botão */
+    const btn = document.querySelector(`.ficha-aluno-item[data-cod="${codMatrizAluno}"]`);
+    if (btn) btn.classList.toggle('selecionado', selecionado);
+    updateBatchBtn();
+}
+
+function updateBatchBtn() {
+    const bar       = document.getElementById('fichaBatchBar');
+    const contador  = document.getElementById('fichaBatchContador');
+    const n         = window._fichaAlunosSelecionados?.size ?? 0;
+
+    if (!bar) return;
+    bar.style.display = (window._fichaMultiMode) ? 'flex' : 'none';
+    if (contador) contador.textContent = `${n} aluno${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}`;
+    const gerarBtn = document.getElementById('fichaBatchBtn');
+    if (gerarBtn) gerarBtn.disabled = n === 0;
+}
+
+async function gerarTermosBatch(btn) {
+    const selecionados = Array.from(window._fichaAlunosSelecionados || []);
+    if (selecionados.length === 0) { alert('Selecione ao menos um aluno.'); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando…'; }
+    try {
+        const r = await fetch('/api/relatorio-ocorrencias/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codMatrizes: selecionados }),
+        });
+        if (r.status === 204) {
+            alert('Nenhuma ocorrência encontrada para os alunos selecionados.');
+            return;
+        }
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.erro || `Erro ${r.status}`);
+        }
+        const blob   = await r.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a      = document.createElement('a');
+        a.href = objUrl; a.download = 'termos-ocorrencia.pdf'; a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+    } catch (e) {
+        alert('Erro ao gerar PDF: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar PDF'; }
+        updateBatchBtn();
+    }
 }
 
 /* ── Carregamento da ficha (compartilhado pelos dois modos) ────────────────── */
