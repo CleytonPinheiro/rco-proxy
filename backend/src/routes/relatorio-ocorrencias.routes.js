@@ -233,9 +233,13 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW
     const ySepIn   = ySig1Lab - 6;            // separador interno desc/rodapé
     const yDate    = ySepIn   - FS - 4;       // data
 
-    // Área de texto da descrição (de dentro da caixa até a linha separadora)
+    // ── Faixa de frequência (opcional, acima do separador interno) ───────────
+    const freqResumo = ocorrencia.freqResumo || null;
+    const FREQ_H     = freqResumo ? 22 : 0;
+
+    // Área de texto da descrição (de dentro da caixa até a faixa/separador)
     const yTxtStart = BOX_Y + IP + 2;
-    const yTxtEnd   = yDate  - 4;
+    const yTxtEnd   = yDate - 4 - (FREQ_H > 0 ? FREQ_H + 4 : 0);
     const txtH      = Math.max(20, yTxtEnd - yTxtStart);
 
     const descricao = (ocorrencia.descricao || '').trim();
@@ -250,6 +254,35 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW
                .lineTo(colX + colW - IP, yTxtStart + i * step)
                .lineWidth(0.4).stroke('#d0d6e0').lineWidth(1);
         }
+    }
+
+    // Renderiza a faixa de frequência se houver dados
+    if (freqResumo) {
+        const yF  = yTxtEnd + 2;
+        const fW  = colW - IP * 2;
+        const fTY = yF + (FREQ_H - 7) / 2;     // centro vertical da faixa
+
+        doc.rect(colX + IP, yF, fW, FREQ_H).fill('#eef3ff');
+        doc.rect(colX + IP, yF, fW, FREQ_H).lineWidth(0.5).stroke('#b3c6f0').lineWidth(1);
+
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#3455b0')
+           .text('FREQ.: ', colX + IP + 5, fTY, { lineBreak: false });
+        const lblW = doc.widthOfString('FREQ.: ');
+
+        let freqTxt;
+        let freqColor = '#334';
+        if (freqResumo.semDados) {
+            freqTxt = `${freqResumo.nomeDisciplina.toUpperCase()} — sem dados de frequência registrados`;
+        } else {
+            freqTxt = `${freqResumo.nomeDisciplina.toUpperCase()}  ·  ${freqResumo.totalAulas} aulas  ·  ${freqResumo.presencas} presenças  ·  ${freqResumo.faltas} faltas`;
+            if (freqResumo.percentual != null) {
+                freqTxt += `  ·  ${freqResumo.percentual}%`;
+                freqColor = freqResumo.percentual < 75 ? '#c0392b' : '#1a7a3a';
+            }
+        }
+        doc.font('Helvetica').fontSize(7).fillColor(freqColor)
+           .text(freqTxt, colX + IP + 5 + lblW, fTY, { width: fW - 10 - lblW, lineBreak: false, ellipsis: true });
+        doc.fillColor('#000');
     }
 
     // Separador interno (desc / rodapé)
@@ -316,10 +349,84 @@ function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef }) {
                   OUTER_M + COL_W + COL_GAP, COL_W, 'VIA RESPONSÁVEL');
 }
 
+// ─── Monta mapa de frequência por disciplina (via RCO API) ───────────────────
+async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatriz, nomeAluno) {
+    let classes;
+    try {
+        const r = await supabaseAdmin
+            .from('rco_classes')
+            .select('cod_classe, cod_periodo_avaliacao, cod_periodo_letivo, rco_disciplinas(nome_disciplina)')
+            .eq('cod_turma', codturma);
+        if (r.error) throw r.error;
+        classes = r.data || [];
+    } catch {
+        // sem colunas de período — tenta sem elas
+        const r2 = await supabaseAdmin
+            .from('rco_classes')
+            .select('cod_classe, rco_disciplinas(nome_disciplina)')
+            .eq('cod_turma', codturma);
+        classes = r2.data || [];
+    }
+
+    if (!classes.length) return {};
+
+    let classPeriodMap = {};
+    try {
+        const { rows } = await pool.query(`SELECT valor FROM edusync_config WHERE chave = 'rco_classes_periodos'`);
+        if (rows.length) classPeriodMap = JSON.parse(rows[0].valor);
+    } catch {}
+
+    const freqMap = {};
+    const normalize = (d) =>
+        Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : Array.isArray(d?.content) ? d.content : [];
+
+    await Promise.allSettled(classes.map(async (cl) => {
+        const codClasse     = cl.cod_classe;
+        const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || '';
+        if (!nomeDisciplina) return;
+
+        try {
+            const periodoLocal = classPeriodMap[String(codClasse)];
+            const codPA = periodoLocal?.codPA ?? cl.cod_periodo_avaliacao ?? process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+            const codPL = periodoLocal?.codPL ?? cl.cod_periodo_letivo ?? process.env.RCO_COD_PERIODO_LETIVO ?? 261;
+
+            const resp = await rcoApiService.get(
+                `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
+            );
+            if (resp.status !== 200) return;
+
+            const raw = normalize(resp.data);
+            // eslint-disable-next-line eqeqeq
+            let alunoFreq = raw.find(a => a.codMatrizAluno == codMatriz);
+
+            // Tenta match por nome se não achou por ID
+            if (!alunoFreq && raw.length > 0 && nomeAluno) {
+                const nomeNorm = nomeAluno.trim().toUpperCase();
+                alunoFreq = raw.find(a => a.nome?.trim().toUpperCase() === nomeNorm);
+            }
+
+            const key = nomeDisciplina.trim().toUpperCase();
+            if (!alunoFreq) {
+                freqMap[key] = { nomeDisciplina, totalAulas: 0, presencas: 0, faltas: 0, percentual: null, semDados: true };
+                return;
+            }
+
+            const aulaKeys  = Object.keys(alunoFreq).filter(k => /^\d+$/.test(k));
+            const totalAulas = aulaKeys.filter(k => alunoFreq[k] != null).length;
+            const presencas  = aulaKeys.filter(k => alunoFreq[k] === 'C').length;
+            const faltas     = aulaKeys.filter(k => alunoFreq[k] && alunoFreq[k] !== 'C').length;
+            const percentual = totalAulas > 0 ? Math.round((presencas / totalAulas) * 100) : null;
+            freqMap[key] = { nomeDisciplina, totalAulas, presencas, faltas, percentual };
+        } catch { /* ignora — frequência é best-effort */ }
+    }));
+
+    return freqMap;
+}
+
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
-async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, professor }) {
+async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, professor }, rcoApiService) {
     const [alunoResult, ocorrenciasResult, obsRcoResult] = await Promise.all([
-        supabaseAdmin.from('alunos').select('nome, turma, numchamada, codmatrizaluno')
+        supabaseAdmin.from('alunos').select('nome, turma, numchamada, codmatrizaluno, codturma')
             .eq('codmatrizaluno', codMatriz).limit(1),
         supabaseAdmin.from('aluno_ocorrencias').select('*')
             .eq('cod_matriz_aluno', codMatriz).order('data', { ascending: true }).limit(9999),
@@ -387,8 +494,23 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
         }
     }
 
-    const combinadas = [...ocorrencias, ...ocorrenciasRco]
+    const combinadasBase = [...ocorrencias, ...ocorrenciasRco]
         .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+
+    // ── Frequência por disciplina (best-effort via RCO API) ───────────────────
+    let freqMap = {};
+    if (rcoApiService && aluno.codturma) {
+        try {
+            freqMap = await buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome);
+        } catch (e) {
+            console.warn('[RELATORIO-OCORR] freq:', e.message);
+        }
+    }
+
+    const combinadas = combinadasBase.map(o => {
+        const key = (o.disciplina || '').trim().toUpperCase();
+        return { ...o, freqResumo: key ? (freqMap[key] ?? null) : null };
+    });
 
     return { aluno, combinadas };
 }
@@ -412,7 +534,7 @@ function gerarPDF(registros, escola, cidadeRef) {
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
-export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
+export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService } = {}) {
     const router = Router();
 
     /* ── Lista de professores ── */
@@ -451,7 +573,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
             };
             const cidadeRef = cfgMap['escola_cidade_ref'] || 'Maringá';
 
-            const dado = await fetchAlunoData(supabaseAdmin, codMatriz, req.query);
+            const dado = await fetchAlunoData(supabaseAdmin, codMatriz, req.query, rcoApiService);
             if (!dado) return res.status(404).json({ erro: 'Aluno não encontrado.' });
             if (dado.combinadas.length === 0) return res.status(204).end();
 
@@ -493,7 +615,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin } = {}) {
             const cidadeRef = cfgMap['escola_cidade_ref'] || 'Maringá';
             const filtros = { de, ate, tipo, professor };
 
-            const resultados = await Promise.all(ids.map(id => fetchAlunoData(supabaseAdmin, id, filtros)));
+            const resultados = await Promise.all(ids.map(id => fetchAlunoData(supabaseAdmin, id, filtros, rcoApiService)));
             const registros  = resultados.filter(r => r && r.combinadas.length > 0);
             if (registros.length === 0) return res.status(204).end();
 
