@@ -431,18 +431,52 @@ async function carregarProfessoresTermo(codMatrizAluno) {
     } catch { return []; }
 }
 
+// ── Visor de PDF inline ───────────────────────────────────────────────────────
+let _termoBlobUrl = null;
+
+function fecharTermoViewer() {
+    const v = document.getElementById('fichaTermoViewer');
+    if (v) v.remove();
+    if (_termoBlobUrl) { URL.revokeObjectURL(_termoBlobUrl); _termoBlobUrl = null; }
+}
+
+function _abrirTermoViewer(blobUrl, nomeAluno) {
+    fecharTermoViewer();
+    _termoBlobUrl = blobUrl;
+
+    const detalhe = document.querySelector('.ficha-detalhe-panel');
+    if (!detalhe) { window.open(blobUrl, '_blank'); return; }
+
+    const viewer = document.createElement('div');
+    viewer.id = 'fichaTermoViewer';
+    viewer.className = 'ficha-termo-viewer';
+    viewer.innerHTML = `
+        <div class="ficha-termo-viewer-bar">
+            <span class="ficha-termo-viewer-titulo">📄 Termos de Ocorrência${nomeAluno ? ' — ' + nomeAluno : ''}</span>
+            <div class="ficha-termo-viewer-acoes">
+                <a href="${blobUrl}" download="termos-ocorrencias.pdf" class="ficha-termo-viewer-dl" title="Baixar PDF">⬇ Baixar</a>
+                <button class="ficha-termo-viewer-fs" title="Abrir em tela cheia" onclick="window.open('${blobUrl}','_blank')">⛶ Tela cheia</button>
+                <button class="ficha-termo-viewer-close" title="Fechar visor" onclick="fecharTermoViewer()">✕</button>
+            </div>
+        </div>
+        <iframe src="${blobUrl}" class="ficha-termo-viewer-iframe" title="PDF Termos de Ocorrência"></iframe>`;
+
+    detalhe.insertBefore(viewer, detalhe.firstChild);
+    viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function gerarTermoPDF(codMatrizAluno, btn) {
     const de        = document.getElementById('termoDe')?.value        || '';
     const ate       = document.getElementById('termoAte')?.value       || '';
     const tipo      = document.getElementById('termoTipo')?.value      || '';
     const professor = document.getElementById('termoProfessor')?.value || '';
     const url       = buildTermoUrl(codMatrizAluno, { de, ate, tipo, professor });
+    const nomeAluno = document.querySelector('.ficha-aluno-nome')?.textContent?.trim() || '';
 
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando PDF…'; }
     try {
         const r = await fetch(url);
         if (r.status === 204) {
-            if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Termos PDF'; }
             notificar('Sem ocorrências', 'Nenhuma ocorrência ou observação encontrada para os filtros informados. Tente ampliar o período ou remover filtros.', { tipo: 'info', icone: '📋', okLabel: 'OK' });
             return;
         }
@@ -450,11 +484,9 @@ async function gerarTermoPDF(codMatrizAluno, btn) {
             const err = await r.json().catch(() => ({}));
             throw new Error(err.erro || `Erro ${r.status}`);
         }
-        const blob = await r.blob();
+        const blob   = await r.blob();
         const objUrl = URL.createObjectURL(blob);
-        window.open(objUrl, '_blank');
-        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
-        toast('PDF aberto em nova aba!', 'ok');
+        _abrirTermoViewer(objUrl, nomeAluno);
     } catch (e) {
         notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
