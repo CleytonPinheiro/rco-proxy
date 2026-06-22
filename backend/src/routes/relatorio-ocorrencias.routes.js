@@ -322,9 +322,9 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
         supabaseAdmin.from('alunos').select('nome, turma, numchamada, codmatrizaluno')
             .eq('codmatrizaluno', codMatriz).limit(1),
         supabaseAdmin.from('aluno_ocorrencias').select('*')
-            .eq('cod_matriz_aluno', codMatriz).order('data', { ascending: true }),
+            .eq('cod_matriz_aluno', codMatriz).order('data', { ascending: true }).limit(9999),
         supabaseAdmin.from('rco_observacoes').select('*')
-            .eq('cod_matriz_aluno', codMatriz).order('data_aula', { ascending: true }),
+            .eq('cod_matriz_aluno', codMatriz).order('data_aula', { ascending: true }).limit(9999),
     ]);
 
     if (alunoResult.error) throw new Error(`Supabase: ${alunoResult.error.message}`);
