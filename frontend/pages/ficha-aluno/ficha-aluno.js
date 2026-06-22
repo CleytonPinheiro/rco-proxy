@@ -209,18 +209,22 @@ function toggleMultiMode() {
     window._fichaMultiMode = !window._fichaMultiMode;
     window._fichaAlunosSelecionados = new Set();
 
-    const listEl = document.getElementById('fichaListaAlunos');
-    const btn    = document.getElementById('fichaMultiBtn');
+    const listEl        = document.getElementById('fichaListaAlunos');
+    const btn           = document.getElementById('fichaMultiBtn');
+    const selectAllRow  = document.getElementById('fichaSelectAllRow');
+    const masterCheck   = document.getElementById('fichaSelectAllCheck');
 
     listEl?.classList.toggle('multi-mode', window._fichaMultiMode);
     if (btn) {
         btn.classList.toggle('ativo', window._fichaMultiMode);
         btn.title = window._fichaMultiMode ? 'Sair da seleção múltipla' : 'Selecionar múltiplos alunos para gerar PDF em lote';
     }
+    if (selectAllRow) selectAllRow.style.display = window._fichaMultiMode ? 'flex' : 'none';
+    if (masterCheck)  { masterCheck.checked = false; masterCheck.indeterminate = false; }
 
     /* Desmarca todos */
     document.querySelectorAll('.fai-check').forEach(c => { c.checked = false; });
-    document.querySelectorAll('.ficha-aluno-item').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.ficha-aluno-item').forEach(b => b.classList.remove('selecionado'));
 
     updateBatchBtn();
 }
@@ -248,10 +252,21 @@ function updateBatchBtn() {
     const gerarBtn  = document.getElementById('fichaBatchBtn');
     if (gerarBtn) gerarBtn.disabled = n === 0;
 
-    /* Atualiza botão "Todos / Nenhum" */
-    const todosBtn  = document.getElementById('fichaBatchTodosBtn');
+    const total = document.querySelectorAll('.fai-check').length;
+
+    /* Sincroniza checkbox mestre */
+    const masterCheck = document.getElementById('fichaSelectAllCheck');
+    const textoMaster = document.getElementById('fichaSelectAllTexto');
+    if (masterCheck) {
+        const todosMarc = total > 0 && n === total;
+        masterCheck.checked       = todosMarc;
+        masterCheck.indeterminate = n > 0 && !todosMarc;
+        if (textoMaster) textoMaster.textContent = todosMarc ? 'Desmarcar todos' : 'Selecionar todos';
+    }
+
+    /* Atualiza botão "Todos / Nenhum" na barra */
+    const todosBtn = document.getElementById('fichaBatchTodosBtn');
     if (todosBtn) {
-        const total     = document.querySelectorAll('.fai-check').length;
         const todosMarc = total > 0 && n === total;
         todosBtn.textContent = todosMarc ? '✕ Nenhum' : '☑ Todos';
         todosBtn.classList.toggle('todos-ativo', todosMarc);
@@ -259,10 +274,10 @@ function updateBatchBtn() {
     }
 }
 
-function selecionarTodos() {
+function selecionarTodos(forceState) {
     const checkboxes = Array.from(document.querySelectorAll('.fai-check'));
     const n          = window._fichaAlunosSelecionados?.size ?? 0;
-    const marcarTudo = n < checkboxes.length;
+    const marcarTudo = (typeof forceState === 'boolean') ? forceState : n < checkboxes.length;
 
     checkboxes.forEach(cb => {
         const cod = parseInt(cb.id.replace('faic-', ''), 10);

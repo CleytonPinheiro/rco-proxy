@@ -61,6 +61,12 @@
                     <option value="">Carregando turmas…</option>
                 </select>
             </div>
+            <div id="fichaSelectAllRow" class="ficha-select-all-row" style="display:none">
+                <label class="ficha-select-all-label">
+                    <input type="checkbox" id="fichaSelectAllCheck" onchange="selecionarTodos(this.checked)">
+                    <span id="fichaSelectAllTexto">Selecionar todos</span>
+                </label>
+            </div>
             <div id="fichaListaAlunos" class="ficha-lista-alunos">
                 <div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>
             </div>
