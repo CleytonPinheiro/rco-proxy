@@ -319,10 +319,9 @@ async function gerarTermosBatch(btn) {
         }
         const blob   = await r.blob();
         const objUrl = URL.createObjectURL(blob);
-        const a      = document.createElement('a');
-        a.href = objUrl; a.download = 'termos-ocorrencia.pdf'; a.click();
-        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
-        toast(`PDF gerado com ${selecionados.length} aluno${selecionados.length !== 1 ? 's' : ''}!`, 'ok');
+        window.open(objUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+        toast(`PDF aberto em nova aba — ${selecionados.length} aluno${selecionados.length !== 1 ? 's' : ''}!`, 'ok');
     } catch (e) {
         notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
@@ -453,12 +452,9 @@ async function gerarTermoPDF(codMatrizAluno, btn) {
         }
         const blob = await r.blob();
         const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objUrl;
-        a.download = `termos-ocorrencia.pdf`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
-        toast('PDF gerado e download iniciado!', 'ok');
+        window.open(objUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+        toast('PDF aberto em nova aba!', 'ok');
     } catch (e) {
         notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
