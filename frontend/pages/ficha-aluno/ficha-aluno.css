@@ -205,6 +205,21 @@
 .ficha-batch-gerar:hover:not(:disabled)   { background: #4f46e5; }
 .ficha-batch-gerar:disabled { opacity: .45; cursor: not-allowed; }
 
+.ficha-batch-todos {
+    padding: 7px 11px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+}
+.ficha-batch-todos:hover { background: #e5e7eb; border-color: #9ca3af; }
+.ficha-batch-todos.todos-ativo { background: #e0e7ff; border-color: #6366f1; color: #4338ca; }
+
 .ficha-lista-placeholder,
 .ficha-lista-loading {
     padding: 20px 12px;

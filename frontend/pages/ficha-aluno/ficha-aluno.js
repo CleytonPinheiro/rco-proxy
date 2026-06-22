@@ -245,8 +245,39 @@ function updateBatchBtn() {
     if (!bar) return;
     bar.style.display = (window._fichaMultiMode) ? 'flex' : 'none';
     if (contador) contador.textContent = `${n} aluno${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}`;
-    const gerarBtn = document.getElementById('fichaBatchBtn');
+    const gerarBtn  = document.getElementById('fichaBatchBtn');
     if (gerarBtn) gerarBtn.disabled = n === 0;
+
+    /* Atualiza botão "Todos / Nenhum" */
+    const todosBtn  = document.getElementById('fichaBatchTodosBtn');
+    if (todosBtn) {
+        const total     = document.querySelectorAll('.fai-check').length;
+        const todosMarc = total > 0 && n === total;
+        todosBtn.textContent = todosMarc ? '✕ Nenhum' : '☑ Todos';
+        todosBtn.classList.toggle('todos-ativo', todosMarc);
+        todosBtn.title = todosMarc ? 'Desmarcar todos os alunos' : 'Selecionar todos os alunos da turma';
+    }
+}
+
+function selecionarTodos() {
+    const checkboxes = Array.from(document.querySelectorAll('.fai-check'));
+    const n          = window._fichaAlunosSelecionados?.size ?? 0;
+    const marcarTudo = n < checkboxes.length;
+
+    checkboxes.forEach(cb => {
+        const cod = parseInt(cb.id.replace('faic-', ''), 10);
+        if (isNaN(cod)) return;
+        cb.checked = marcarTudo;
+        if (marcarTudo) {
+            window._fichaAlunosSelecionados.add(cod);
+        } else {
+            window._fichaAlunosSelecionados.delete(cod);
+        }
+        const item = document.querySelector(`.ficha-aluno-item[data-cod="${cod}"]`);
+        if (item) item.classList.toggle('selecionado', marcarTudo);
+    });
+
+    updateBatchBtn();
 }
 
 async function gerarTermosBatch(btn) {

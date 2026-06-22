@@ -66,9 +66,14 @@
             </div>
             <div id="fichaBatchBar" class="ficha-batch-bar" style="display:none">
                 <span id="fichaBatchContador" class="ficha-batch-contador">0 selecionados</span>
-                <button id="fichaBatchBtn" class="ficha-batch-gerar" onclick="gerarTermosBatch(this)">
-                    📄 Gerar PDF
-                </button>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <button id="fichaBatchTodosBtn" class="ficha-batch-todos" onclick="selecionarTodos()">
+                        ☑ Todos
+                    </button>
+                    <button id="fichaBatchBtn" class="ficha-batch-gerar" onclick="gerarTermosBatch(this)">
+                        📄 Gerar PDF
+                    </button>
+                </div>
             </div>
         </aside>
 
