@@ -141,9 +141,9 @@
 /* Checkbox escondido por padrão — aparece em modo multi */
 .ficha-select-all-row {
     align-items: center;
-    padding: 6px 12px 5px;
-    border-bottom: 1px solid var(--border, #e1e5ea);
-    background: var(--bg-subtle, #f8f9fb);
+    padding: 7px 0 2px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border, #e1e5ea);
     flex-shrink: 0;
 }
 .ficha-select-all-label {
