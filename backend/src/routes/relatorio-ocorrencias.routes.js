@@ -6,9 +6,9 @@ import PDFDocument       from 'pdfkit';
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// Dimensões A4 paisagem (pontos tipográficos)
-const PAGE_W = 841.89;
-const PAGE_H = 595.28;
+// Dimensões A4 retrato (pontos tipográficos)
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
 
 const MESES_PT = [
     'janeiro','fevereiro','março','abril','maio','junho',
@@ -71,22 +71,33 @@ function drawLogo(doc, cx, cy, R, logoDataUrl, escolaNome) {
     doc.fillColor('#000');
 }
 
-// ─── Desenha UM termo por página (paisagem) ───────────────────────────────────
-function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef }) {
-    const M  = 28;              // margem horizontal
-    const MT = 18;              // margem vertical topo
-    const x0 = M;
-    const W  = PAGE_W - M * 2; // ≈ 785 pt
-    const FS = 9;               // font size base (paisagem tem espaço)
-    const LH = 14;              // altura de linha
+// ─── Desenha UMA via do termo (retrato, coluna) ───────────────────────────────
+function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW, viaLabel) {
+    const FS = 8;       // font size base
+    const LH = 13;      // linha padrão (text + gap para sublinha)
 
-    // ── Mede labels com fonte definida ──────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function txt(str, x, y, opts) {
+        doc.text(str, x, y, { lineBreak: false, ...opts });
+    }
+
+    // Campo: valor em negrito+maiúsculo com sublinha
+    function field(x, y, fw, val) {
+        const v = (val || '').toUpperCase();
+        doc.font('Helvetica-Bold').fontSize(FS).fillColor('#111');
+        txt(v, x, y + 0.5, { width: fw, ellipsis: true });
+        doc.moveTo(x, y + LH - 0.5).lineTo(x + fw, y + LH - 0.5)
+           .lineWidth(0.8).stroke('#444').lineWidth(1);
+        doc.font('Helvetica').fontSize(FS).fillColor('#000');
+    }
+
+    // ── Mede larguras dos labels ──────────────────────────────────────────────
     doc.font('Helvetica').fontSize(FS);
     const lwEu   = doc.widthOfString('Eu, ');
-    const lwL2a  = doc.widthOfString('Professor(a) da disciplina de: ');
-    const lwL2b  = doc.widthOfString('  declaro que o(a)');
+    const lwL2a  = doc.widthOfString('Prof.(a) da disciplina de: ');
+    const lwL2b  = doc.widthOfString(' declaro que o(a)');
     const lwL3   = doc.widthOfString('aluno(a): ');
-    const lwNnum = doc.widthOfString('   Nº ');
+    const lwNnum = doc.widthOfString('  Nº ');
     const lwL4a  = doc.widthOfString('da série: ');
     const lwL4b  = doc.widthOfString(', turma: ');
     const lwL4c  = doc.widthOfString(', do Ensino ');
@@ -97,192 +108,215 @@ function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef }) {
     const nomeAluno = (aluno.nome                || '').trim();
     const numCham   = aluno.numchamada ? String(aluno.numchamada) : '';
     const { serie, periodo, ensino } = parseTurma(ocorrencia.nome_turma || aluno.turma || '');
-    const { dd, mes, ano } = dataExtenso(ocorrencia.data);
+    const { dd, mes, ano }           = dataExtenso(ocorrencia.data);
 
-    // ── Posições Y fixas ────────────────────────────────────────────────────
-    const HDR_H   = 64;
-    const yHdr    = MT;
-    const yTitle  = yHdr + HDR_H + 8;
-    const yL1     = yTitle + 15;
-    const yL2     = yL1 + LH + 3;
-    const yL3     = yL2 + LH + 3;
-    const yL4     = yL3 + LH + 3;
-    const yManif  = yL4 + LH + 3;
-    const yDesc   = yManif + LH + 4;
-    const BOTTOM  = 105;
-    const yDescFim = PAGE_H - BOTTOM;
-    const descH   = Math.max(40, yDescFim - yDesc);
-    const yDate   = yDescFim + 5;
-    const ySep    = yDate + LH + 5;
-    let   ySig    = ySep + 4;
+    // ── Y fixo a partir do topo ───────────────────────────────────────────────
+    const MT    = 10;
+    let   y     = MT;
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    function txt(str, x, y, opts) {
-        doc.text(str, x, y, { lineBreak: false, ...opts });
-    }
+    // VIA label (ex: "VIA COLÉGIO")
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#666')
+       .text(viaLabel, colX, y, { width: colW, align: 'center', lineBreak: false });
+    y += 13;
 
-    function field(x, y, fw, val, bold = false) {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(FS);
-        txt(val || '', x, y, { width: fw, ellipsis: true, lineBreak: false });
-        doc.moveTo(x, y + LH + 1).lineTo(x + fw, y + LH + 1).stroke('#555');
-        doc.font('Helvetica').fontSize(FS).fillColor('#000');
-    }
-
-    // ── CABEÇALHO ────────────────────────────────────────────────────────────
-    // Caixa externa com sombra suave (bordas)
-    doc.lineWidth(1.2).rect(x0, yHdr, W, HDR_H).stroke('#b0b8c4').lineWidth(1);
-
-    // Fundo cinza-claro levíssimo
-    doc.rect(x0, yHdr, W, HDR_H).fill('#f8f9fb');
-    doc.rect(x0, yHdr, W, HDR_H).stroke('#b0b8c4');
+    // ── Cabeçalho ─────────────────────────────────────────────────────────────
+    const HDR_H = 40;
+    doc.rect(colX, y, colW, HDR_H).fill('#f5f6f8');
+    doc.rect(colX, y, colW, HDR_H).lineWidth(1).stroke('#b0b8c4').lineWidth(1);
     doc.fillColor('#000');
 
-    // Logo circular
-    const LSZ = 48;
-    const R   = LSZ / 2;
-    const lCX = x0 + 14 + R;
-    const lCY = yHdr + HDR_H / 2;
+    const R   = 14;
+    const lCX = colX + 10 + R;
+    const lCY = y + HDR_H / 2;
     drawLogo(doc, lCX, lCY, R, escola.logo, escola.nome);
 
-    // Divisória vertical após logo
-    const divX = x0 + 14 + LSZ + 12;
-    doc.moveTo(divX, yHdr + 8).lineTo(divX, yHdr + HDR_H - 8).stroke('#d0d5de');
+    const divX = colX + 10 + R * 2 + 7;
+    doc.moveTo(divX, y + 6).lineTo(divX, y + HDR_H - 6).lineWidth(0.8).stroke('#d0d5de').lineWidth(1);
 
-    // Textos da escola
-    const hTX = divX + 14;
-    const hTW = W - (hTX - x0) - 10;
-
-    // Linha 1: estado/secretaria (pequena, discreta)
-    doc.font('Helvetica').fontSize(7).fillColor('#6b7280')
-       .text('ESTADO DO PARANÁ  ·  SECRETARIA DE ESTADO DA EDUCAÇÃO', hTX, yHdr + 10, {
-           width: hTW, align: 'left', lineBreak: false,
-       });
-
-    // Linha 2: nome da escola (destaque)
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#1a202c')
-       .text(escola.nome || 'Escola', hTX, yHdr + 21, { width: hTW, align: 'left', lineBreak: false });
-
-    // Linha 3: endereço e contatos
-    const ep = [escola.endereco, escola.telefone, escola.email].filter(Boolean).join('   ·   ');
+    const hTX = divX + 7;
+    const hTW = colW - (hTX - colX) - 6;
+    doc.font('Helvetica').fontSize(5.5).fillColor('#6b7280')
+       .text('ESTADO DO PARANÁ  ·  SECRETARIA DE ESTADO DA EDUCAÇÃO', hTX, y + 8, { width: hTW, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#1a202c')
+       .text((escola.nome || 'Escola').toUpperCase(), hTX, y + 18, { width: hTW, lineBreak: false });
+    const ep = [escola.endereco, escola.telefone].filter(Boolean).join('  ·  ');
     if (ep) {
-        doc.font('Helvetica').fontSize(7.5).fillColor('#4b5563')
-           .text(ep, hTX, yHdr + 37, { width: hTW, align: 'left', lineBreak: false });
+        doc.font('Helvetica').fontSize(5.5).fillColor('#555')
+           .text(ep, hTX, y + 31, { width: hTW, lineBreak: false });
     }
     doc.fillColor('#000');
+    y += HDR_H + 8;
 
-    // ── TÍTULO ───────────────────────────────────────────────────────────────
-    doc.font('Helvetica-Bold').fontSize(11)
-       .text('TERMO DE OCORRÊNCIA EM SALA DE AULA', x0, yTitle, { width: W, align: 'center', lineBreak: false });
-    // Linha decorativa sob o título
-    doc.moveTo(x0 + W * 0.2, yTitle + 14).lineTo(x0 + W * 0.8, yTitle + 14)
-       .lineWidth(0.5).stroke('#c0c7d2').lineWidth(1);
+    // ── Título ────────────────────────────────────────────────────────────────
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000')
+       .text('TERMO DE OCORRÊNCIA EM SALA DE AULA', colX, y, { width: colW, align: 'center', lineBreak: false });
+    doc.moveTo(colX + colW * 0.1, y + 11).lineTo(colX + colW * 0.9, y + 11)
+       .lineWidth(0.4).stroke('#b0b8c4').lineWidth(1);
+    y += 18;
 
-    // ── LINHA 1: Eu, [professor], ────────────────────────────────────────────
-    doc.font('Helvetica').fontSize(FS).fillColor('#000').text('Eu, ', x0, yL1, { lineBreak: false });
-    const fw1 = W - lwEu - 6;
-    field(x0 + lwEu, yL1, fw1, professor, true);
-    doc.font('Helvetica').fontSize(FS).text(',', x0 + lwEu + fw1 + 2, yL1, { lineBreak: false });
+    // ── L1: Eu, [professor], ──────────────────────────────────────────────────
+    doc.font('Helvetica').fontSize(FS).fillColor('#000').text('Eu, ', colX, y, { lineBreak: false });
+    const fw1 = colW - lwEu - 4;
+    field(colX + lwEu, y, fw1, professor);
+    doc.font('Helvetica').fontSize(FS).text(',', colX + lwEu + fw1 + 1, y, { lineBreak: false });
+    y += LH + 5;
 
-    // ── LINHA 2: Professor(a) da disciplina de: [disc] declaro que o(a) ──────
-    doc.font('Helvetica').fontSize(FS).text('Professor(a) da disciplina de: ', x0, yL2, { lineBreak: false });
-    const fw2 = Math.max(80, W - lwL2a - lwL2b);
-    field(x0 + lwL2a, yL2, fw2, disc, true);
-    doc.font('Helvetica').fontSize(FS).text('  declaro que o(a)', x0 + lwL2a + fw2, yL2, { lineBreak: false });
+    // ── L2: Prof.(a) da disciplina de: [disc] declaro que o(a) ───────────────
+    doc.font('Helvetica').fontSize(FS).text('Prof.(a) da disciplina de: ', colX, y, { lineBreak: false });
+    const fw2 = Math.max(36, colW - lwL2a - lwL2b);
+    field(colX + lwL2a, y, fw2, disc);
+    doc.font('Helvetica').fontSize(FS).text(' declaro que o(a)', colX + lwL2a + fw2, y, { lineBreak: false });
+    y += LH + 5;
 
-    // ── LINHA 3: aluno(a): [nome] Nº [num] ───────────────────────────────────
-    doc.font('Helvetica').fontSize(FS).text('aluno(a): ', x0, yL3, { lineBreak: false });
-    const numFW  = numCham ? 30 : 0;
-    const nameFW = W - lwL3 - (numCham ? lwNnum + numFW : 0);
-    field(x0 + lwL3, yL3, nameFW, nomeAluno, true);
+    // ── L3: aluno(a): [nome] Nº [num] ────────────────────────────────────────
+    doc.font('Helvetica').fontSize(FS).text('aluno(a): ', colX, y, { lineBreak: false });
+    const numFW  = numCham ? 20 : 0;
+    const nameFW = colW - lwL3 - (numCham ? lwNnum + numFW : 0);
+    field(colX + lwL3, y, nameFW, nomeAluno);
     if (numCham) {
-        doc.font('Helvetica').fontSize(FS).text('   Nº ', x0 + lwL3 + nameFW, yL3, { lineBreak: false });
-        field(x0 + lwL3 + nameFW + lwNnum, yL3, numFW, numCham, false);
+        doc.font('Helvetica').fontSize(FS).text('  Nº ', colX + lwL3 + nameFW, y, { lineBreak: false });
+        field(colX + lwL3 + nameFW + lwNnum, y, numFW, numCham);
     }
+    y += LH + 5;
 
-    // ── LINHA 4: da série: [serie], turma: [periodo], do Ensino [ensino] ──────
-    // Em paisagem temos ~785pt, campos bem mais largos
-    const SW = 160, PW = 90, EW = 70;
+    // ── L4: da série: [serie], turma: [periodo], do Ensino [ensino] ──────────
+    const SW = Math.min(80, colW * 0.30);
+    const PW = Math.min(44, colW * 0.17);
+    const EW = Math.min(40, colW * 0.15);
     {
-        let cx = x0;
-        doc.font('Helvetica').fontSize(FS).text('da série: ', cx, yL4, { lineBreak: false }); cx += lwL4a;
-        doc.font('Helvetica-Bold').fontSize(FS);
-        txt(serie, cx, yL4, { width: SW, ellipsis: true, lineBreak: false });
-        doc.moveTo(cx, yL4 + LH + 1).lineTo(cx + SW, yL4 + LH + 1).stroke('#555');
+        let cx = colX;
+        doc.font('Helvetica').fontSize(FS).text('da série: ', cx, y, { lineBreak: false }); cx += lwL4a;
+        doc.font('Helvetica-Bold').fontSize(FS).fillColor('#111');
+        txt(serie.toUpperCase(), cx, y + 0.5, { width: SW, ellipsis: true });
+        doc.moveTo(cx, y + LH - 0.5).lineTo(cx + SW, y + LH - 0.5).lineWidth(0.8).stroke('#444').lineWidth(1);
         cx += SW;
 
-        doc.font('Helvetica').fontSize(FS).text(', turma: ', cx, yL4, { lineBreak: false }); cx += lwL4b;
-        doc.font('Helvetica-Bold').fontSize(FS);
-        txt(periodo, cx, yL4, { width: PW, ellipsis: true, lineBreak: false });
-        doc.moveTo(cx, yL4 + LH + 1).lineTo(cx + PW, yL4 + LH + 1).stroke('#555');
+        doc.font('Helvetica').fontSize(FS).fillColor('#000').text(', turma: ', cx, y, { lineBreak: false }); cx += lwL4b;
+        doc.font('Helvetica-Bold').fontSize(FS).fillColor('#111');
+        txt(periodo.toUpperCase(), cx, y + 0.5, { width: PW, ellipsis: true });
+        doc.moveTo(cx, y + LH - 0.5).lineTo(cx + PW, y + LH - 0.5).lineWidth(0.8).stroke('#444').lineWidth(1);
         cx += PW;
 
-        doc.font('Helvetica').fontSize(FS).text(', do Ensino ', cx, yL4, { lineBreak: false }); cx += lwL4c;
-        doc.font('Helvetica-Bold').fontSize(FS);
-        txt(ensino, cx, yL4, { width: EW, ellipsis: true, lineBreak: false });
-        doc.moveTo(cx, yL4 + LH + 1).lineTo(cx + EW, yL4 + LH + 1).stroke('#555');
+        doc.font('Helvetica').fontSize(FS).fillColor('#000').text(', do Ensino ', cx, y, { lineBreak: false }); cx += lwL4c;
+        doc.font('Helvetica-Bold').fontSize(FS).fillColor('#111');
+        txt(ensino.toUpperCase(), cx, y + 0.5, { width: EW, ellipsis: true });
+        doc.moveTo(cx, y + LH - 0.5).lineTo(cx + EW, y + LH - 0.5).lineWidth(0.8).stroke('#444').lineWidth(1);
     }
     doc.fillColor('#000');
+    y += LH + 5;
 
     // ── "manifestou..." ───────────────────────────────────────────────────────
     doc.font('Helvetica').fontSize(FS).fillColor('#000')
-       .text('manifestou o seguinte comportamento em sala de aula:', x0, yManif, { lineBreak: false });
+       .text('manifestou o seguinte comportamento em sala de aula:', colX, y, { width: colW, lineBreak: false });
+    y += LH + 3;
+    const yDescStart = y;
 
-    // ── ÁREA DE DESCRIÇÃO ─────────────────────────────────────────────────────
-    const descricao = (ocorrencia.descricao || '').trim();
-    // Caixa com fundo levíssimo
-    doc.rect(x0, yDesc, W, descH).fill('#fafbfc');
-    doc.rect(x0, yDesc, W, descH).lineWidth(0.8).stroke('#b8c0cc').lineWidth(1);
+    // ── POSIÇÕES FIXAS DO RODAPÉ (de baixo para cima) ─────────────────────────
+    const MB        = 10;
+    const yPageEnd  = PAGE_H - MB;
+
+    // Obs: 2 linhas
+    const yObs2Ln   = yPageEnd;
+    const yObs1Ln   = yObs2Ln - 16;
+    const yObsLabel = yObs1Ln - 11;
+
+    // Assinaturas: 2 linhas × 2 colunas
+    const ySig2Ln   = yObsLabel - 10;
+    const ySig2Lab  = ySig2Ln   - 13;
+    const ySig1Ln   = ySig2Lab  - 10;
+    const ySig1Lab  = ySig1Ln   - 13;
+
+    const ySepLn    = ySig1Lab  - 7;
+    const yDate     = ySepLn    - LH - 2;
+    const yDescEnd  = yDate     - 5;
+
+    // ── Caixa de descrição (preenche o espaço disponível) ─────────────────────
+    const descH = Math.max(40, yDescEnd - yDescStart);
+    doc.rect(colX, yDescStart, colW, descH).fill('#fafbfc');
+    doc.rect(colX, yDescStart, colW, descH).lineWidth(0.7).stroke('#b8c0cc').lineWidth(1);
     doc.fillColor('#000');
 
+    const descricao = (ocorrencia.descricao || '').trim();
     if (descricao) {
-        doc.font('Helvetica').fontSize(9).fillColor('#111')
-           .text(descricao, x0 + 8, yDesc + 7, { width: W - 16, height: descH - 14, lineGap: 2 });
+        doc.font('Helvetica').fontSize(8).fillColor('#111')
+           .text(descricao, colX + 7, yDescStart + 6, { width: colW - 14, height: descH - 12, lineGap: 3 });
     } else {
-        const nL   = Math.max(4, Math.floor(descH / 16));
-        const step = descH / nL;
-        for (let i = 1; i < nL; i++) {
-            doc.moveTo(x0 + 8, yDesc + i * step)
-               .lineTo(x0 + W - 8, yDesc + i * step)
-               .stroke('#dce1e9');
+        // Linhas guia para preenchimento manual
+        const nL   = Math.max(4, Math.floor(descH / 18));
+        const step = descH / (nL + 1);
+        for (let i = 1; i <= nL; i++) {
+            doc.moveTo(colX + 6, yDescStart + i * step)
+               .lineTo(colX + colW - 6, yDescStart + i * step)
+               .lineWidth(0.5).stroke('#d8dde6').lineWidth(1);
         }
     }
 
-    // ── DATA ──────────────────────────────────────────────────────────────────
+    // ── Data ──────────────────────────────────────────────────────────────────
     const dateStr = `${cidadeRef || 'Maringá'}, ${dd} de ${mes} de ${ano}.`;
     doc.font('Helvetica').fontSize(FS).fillColor('#000')
-       .text(dateStr, x0, yDate, { width: W, align: 'right', lineBreak: false });
+       .text(dateStr, colX, yDate, { width: colW, align: 'right', lineBreak: false });
 
-    // ── ASSINATURAS (4 colunas horizontais em paisagem) ───────────────────────
-    doc.moveTo(x0, ySep).lineTo(x0 + W, ySep).lineWidth(0.6).stroke('#c0c7d2').lineWidth(1);
-    ySig = ySep + 8;
+    // ── Linha separadora ──────────────────────────────────────────────────────
+    doc.moveTo(colX, ySepLn).lineTo(colX + colW, ySepLn)
+       .lineWidth(0.5).stroke('#c0c7d2').lineWidth(1);
 
-    const sigs = [
-        'Assinatura do(a) Professor(a)',
-        'Assinatura do(a) Aluno(a)',
-        'Assinatura do Pai ou Responsável',
-        'Assinatura de Testemunha',
-    ];
+    // ── Assinaturas (2 linhas × 2 colunas) ───────────────────────────────────
+    const sigColW = colW / 2;
+    const sigPad  = 4;
 
-    // Distribui as 4 assinaturas em linha horizontal
-    const colW   = W / 4;
-    const sigLH  = 12;
-    sigs.forEach((sig, i) => {
-        const cx = x0 + i * colW;
-        doc.font('Helvetica').fontSize(7.5).fillColor('#555')
-           .text(sig, cx + 4, ySig, { lineBreak: false });
-        doc.moveTo(cx + 4, ySig + sigLH + 2)
-           .lineTo(cx + colW - 8, ySig + sigLH + 2)
-           .stroke('#444');
+    // Linha 1: Professor | Aluno
+    [['Assinatura do(a) Professor(a)', ySig1Lab, ySig1Ln],
+     ['Assinatura do(a) Aluno(a)',     ySig1Lab, ySig1Ln]].forEach(([label, yLab, yLn], i) => {
+        const sx = colX + i * sigColW;
+        doc.font('Helvetica').fontSize(6).fillColor('#555')
+           .text(label, sx + sigPad, yLab, { width: sigColW - sigPad * 2, lineBreak: false });
+        doc.moveTo(sx + sigPad, yLn).lineTo(sx + sigColW - sigPad, yLn)
+           .lineWidth(0.8).stroke('#555').lineWidth(1);
     });
 
-    // Obs na linha abaixo, largura total
-    const yObs = ySig + sigLH + 10;
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#000');
-    const obsW = doc.widthOfString('Obs.: ');
-    doc.text('Obs.: ', x0, yObs, { lineBreak: false });
-    doc.moveTo(x0 + obsW, yObs + 11).lineTo(x0 + W, yObs + 11).stroke('#bbb');
-    const yObs2 = yObs + 14;
-    doc.moveTo(x0, yObs2 + 11).lineTo(x0 + W, yObs2 + 11).stroke('#bbb');
+    // Linha 2: Pai/Responsável | Testemunha
+    [['Ass. do Pai ou Responsável', ySig2Lab, ySig2Ln],
+     ['Ass. de Testemunha',         ySig2Lab, ySig2Ln]].forEach(([label, yLab, yLn], i) => {
+        const sx = colX + i * sigColW;
+        doc.font('Helvetica').fontSize(6).fillColor('#555')
+           .text(label, sx + sigPad, yLab, { width: sigColW - sigPad * 2, lineBreak: false });
+        doc.moveTo(sx + sigPad, yLn).lineTo(sx + sigColW - sigPad, yLn)
+           .lineWidth(0.8).stroke('#555').lineWidth(1);
+    });
+
+    // ── Obs. ──────────────────────────────────────────────────────────────────
+    doc.font('Helvetica-Bold').fontSize(7).fillColor('#000')
+       .text('Obs.: ', colX, yObsLabel, { lineBreak: false });
+    doc.moveTo(colX + doc.widthOfString('Obs.: '), yObs1Ln)
+       .lineTo(colX + colW, yObs1Ln).lineWidth(0.6).stroke('#aaa').lineWidth(1);
+    doc.moveTo(colX, yObs2Ln)
+       .lineTo(colX + colW, yObs2Ln).lineWidth(0.6).stroke('#aaa').lineWidth(1);
+}
+
+// ─── Duas vias lado a lado numa página retrato ────────────────────────────────
+function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef }) {
+    const OUTER_M = 18;
+    const COL_GAP = 14;
+    const COL_W   = (PAGE_W - OUTER_M * 2 - COL_GAP) / 2;   // ≈ 269 pt
+
+    // Coluna esquerda: Via Colégio
+    drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef },
+                  OUTER_M, COL_W, 'VIA COLÉGIO');
+
+    // Separador vertical tracejado com tesoura
+    const sepX = OUTER_M + COL_W + COL_GAP / 2;
+    doc.save()
+       .dash(5, { space: 3 })
+       .moveTo(sepX, 6).lineTo(sepX, PAGE_H - 6)
+       .lineWidth(0.6).stroke('#aaa')
+       .undash()
+       .restore();
+    doc.font('Helvetica').fontSize(11).fillColor('#bbb')
+       .text('✂', sepX - 6.5, PAGE_H / 2 - 7, { lineBreak: false });
+
+    // Coluna direita: Via Responsável
+    drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef },
+                  OUTER_M + COL_W + COL_GAP, COL_W, 'VIA RESPONSÁVEL');
 }
 
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
@@ -362,9 +396,9 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     return { aluno, combinadas };
 }
 
-// ─── Gera PDF paisagem (1 termo = 1 página) ───────────────────────────────────
+// ─── Gera PDF retrato (2 vias por página) ─────────────────────────────────────
 function gerarPDF(registros, escola, cidadeRef) {
-    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0, autoFirstPage: false });
+    const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 0, autoFirstPage: false });
 
     const chunks = [];
     doc.on('data', c => chunks.push(c));
