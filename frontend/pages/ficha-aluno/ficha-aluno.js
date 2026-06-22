@@ -64,7 +64,7 @@ async function sincronizarTurma() {
     const sel = document.getElementById('fichaTurmaSelect');
     const btn = document.getElementById('fichaSyncBtn');
     if (!sel || !sel.value) {
-        alert('Selecione uma turma antes de sincronizar.');
+        notificar('Selecione uma turma', 'Escolha a turma no seletor acima antes de sincronizar a listagem de alunos.', { tipo: 'info', icone: '📋', okLabel: 'Entendido' });
         return;
     }
     if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
@@ -72,8 +72,9 @@ async function sincronizarTurma() {
         const r = await fetch(`${API}/api/sync/force`, { method: 'POST' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         await carregarAlunos(sel.value);
+        toast('Turma sincronizada com sucesso!', 'ok');
     } catch (e) {
-        alert('Erro ao sincronizar: ' + e.message);
+        notificar('Erro ao sincronizar', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🔄'; }
     }
@@ -250,7 +251,10 @@ function updateBatchBtn() {
 
 async function gerarTermosBatch(btn) {
     const selecionados = Array.from(window._fichaAlunosSelecionados || []);
-    if (selecionados.length === 0) { alert('Selecione ao menos um aluno.'); return; }
+    if (selecionados.length === 0) {
+        notificar('Nenhum aluno selecionado', 'Marque ao menos um aluno na lista antes de gerar o PDF em lote.', { tipo: 'info', icone: '☑️', okLabel: 'Entendido' });
+        return;
+    }
 
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando…'; }
     try {
@@ -260,7 +264,7 @@ async function gerarTermosBatch(btn) {
             body: JSON.stringify({ codMatrizes: selecionados }),
         });
         if (r.status === 204) {
-            alert('Nenhuma ocorrência encontrada para os alunos selecionados.');
+            notificar('Sem ocorrências', 'Nenhum dos alunos selecionados possui ocorrências ou observações registradas para os filtros informados.', { tipo: 'info', icone: '📋', okLabel: 'OK' });
             return;
         }
         if (!r.ok) {
@@ -272,8 +276,9 @@ async function gerarTermosBatch(btn) {
         const a      = document.createElement('a');
         a.href = objUrl; a.download = 'termos-ocorrencia.pdf'; a.click();
         setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+        toast(`PDF gerado com ${selecionados.length} aluno${selecionados.length !== 1 ? 's' : ''}!`, 'ok');
     } catch (e) {
-        alert('Erro ao gerar PDF: ' + e.message);
+        notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar PDF'; }
         updateBatchBtn();
@@ -393,7 +398,7 @@ async function gerarTermoPDF(codMatrizAluno, btn) {
         const r = await fetch(url);
         if (r.status === 204) {
             if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Termos PDF'; }
-            alert('Nenhuma ocorrência encontrada para os filtros informados.');
+            notificar('Sem ocorrências', 'Nenhuma ocorrência ou observação encontrada para os filtros informados. Tente ampliar o período ou remover filtros.', { tipo: 'info', icone: '📋', okLabel: 'OK' });
             return;
         }
         if (!r.ok) {
@@ -407,8 +412,9 @@ async function gerarTermoPDF(codMatrizAluno, btn) {
         a.download = `termos-ocorrencia.pdf`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+        toast('PDF gerado e download iniciado!', 'ok');
     } catch (e) {
-        alert('Erro ao gerar PDF: ' + e.message);
+        notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Termos PDF'; }
     }
