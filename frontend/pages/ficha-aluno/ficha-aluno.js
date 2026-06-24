@@ -97,6 +97,17 @@ async function carregarTurmas() {
     const selCurso = document.getElementById('fichaCursoSelect');
     const selTurma = document.getElementById('fichaTurmaSelect');
 
+    /* Inicializa custom selects ANTES do fetch para que o MutationObserver
+       esteja no lugar quando o innerHTML mudar depois. O WeakMap impede
+       dupla inicialização se carregarTurmas for chamado mais de uma vez. */
+    if (window.createCustomSelect) {
+        createCustomSelect(selCurso);
+        createCustomSelect(selTurma);
+    }
+
+    selCurso.addEventListener('change', _onFichaCursoChange);
+    selTurma.addEventListener('change', _onFichaTurmaChange);
+
     try {
         const r = await fetch(`${API}/api/alunos/turmas/lista`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -114,6 +125,7 @@ async function carregarTurmas() {
 
         if (!turmas || turmas.length === 0) {
             selCurso.innerHTML = '<option value="">Nenhum curso encontrado</option>';
+            if (window.refreshCustomSelect) refreshCustomSelect(selCurso);
             return;
         }
 
@@ -129,13 +141,18 @@ async function carregarTurmas() {
         selTurma.innerHTML = '<option value="">← Selecione o curso acima</option>';
         selTurma.disabled = true;
 
-        if (window.createCustomSelect) createCustomSelect(selCurso);
-
-        selCurso.addEventListener('change', _onFichaCursoChange);
-        selTurma.addEventListener('change', _onFichaTurmaChange);
+        /* Força atualização do display text — o MutationObserver faz isso
+           automaticamente mas chamar refreshCustomSelect garante sincronia. */
+        if (window.refreshCustomSelect) {
+            refreshCustomSelect(selCurso);
+            refreshCustomSelect(selTurma);
+        }
 
     } catch (e) {
-        if (selCurso) selCurso.innerHTML = '<option value="">Erro ao carregar cursos</option>';
+        if (selCurso) {
+            selCurso.innerHTML = '<option value="">Erro ao carregar cursos</option>';
+            if (window.refreshCustomSelect) refreshCustomSelect(selCurso);
+        }
     }
 }
 
@@ -163,7 +180,7 @@ function _onFichaCursoChange() {
     document.getElementById('fichaListaAlunos').innerHTML =
         '<div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>';
 
-    if (window.createCustomSelect) createCustomSelect(selTurma);
+    if (window.refreshCustomSelect) refreshCustomSelect(selTurma);
 }
 
 function _onFichaTurmaChange() {

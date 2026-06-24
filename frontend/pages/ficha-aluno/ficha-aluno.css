@@ -129,9 +129,17 @@
 
 /* Custom-select dentro do painel lateral — ocupa largura total */
 .ficha-lista-topo .csel              { width: 100%; display: flex; }
-.ficha-lista-topo .csel-trigger      { width: 100%; font-size: 13px; font-weight: 500; padding: 7px 10px; border-radius: 8px; border-width: 1.5px; }
+.ficha-lista-topo .csel-trigger      { width: 100%; font-size: 13px; font-weight: 500; padding: 7px 10px; border-radius: 8px; border-width: 1.5px; min-width: 0; }
 .ficha-lista-topo .csel-panel        { border-radius: 10px; font-size: 13px; width: max-content; min-width: 100%; }
 .ficha-lista-topo .csel-option       { white-space: nowrap; }
+
+/* Estado desabilitado: quando o <select> nativo está disabled, escurece o trigger */
+.ficha-lista-topo select:disabled ~ .csel-trigger {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    border-style: dashed;
+}
 
 /* Custom-select nos filtros de termo (cabeçalho da ficha) — compacto */
 .ficha-termo-controles .csel-trigger {
