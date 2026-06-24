@@ -459,8 +459,25 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const aluno = (alunoResult.data || [])[0];
     if (!aluno) return null;
 
+    /* Fallback: o RCO atribui codMatrizAluno por classe — o ID salvo na
+       ocorrência pode diferir do sincronizado no Supabase. Se a busca por ID
+       retornar 0 resultados e o aluno tiver nome + codturma, tenta pelo nome. */
+    let ocorrenciasRawTodas = ocorrenciasResult.data || [];
+    if (ocorrenciasRawTodas.length === 0 && aluno.nome && aluno.codturma) {
+        const { data: fbData } = await supabaseAdmin
+            .from('aluno_ocorrencias')
+            .select('*')
+            .eq('cod_turma', aluno.codturma)
+            .ilike('nome_aluno', aluno.nome.trim())
+            .order('data', { ascending: true })
+            .limit(9999);
+        if (fbData && fbData.length > 0) {
+            ocorrenciasRawTodas = fbData;
+            console.log(`[RELATORIO] fallback por nome "${aluno.nome}": ${fbData.length} ocorrência(s)`);
+        }
+    }
+
     /* Guarda lista COMPLETA (sem filtros) para calcular numeração de atas do ano */
-    const ocorrenciasRawTodas = ocorrenciasResult.data || [];
     let ocorrenciasRaw = [...ocorrenciasRawTodas];
     if (de)   ocorrenciasRaw = ocorrenciasRaw.filter(o => o.data && new Date(o.data) >= new Date(de  + 'T00:00:00'));
     if (ate)  ocorrenciasRaw = ocorrenciasRaw.filter(o => o.data && new Date(o.data) <= new Date(ate + 'T23:59:59'));

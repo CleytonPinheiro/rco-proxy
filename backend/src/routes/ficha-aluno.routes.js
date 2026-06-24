@@ -179,9 +179,26 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             const nomeAluno = aluno?.nome || `Aluno #${codMatriz}`;
             const codturma = aluno?.codturma || null;
 
-            const ocorrenciasRaw = ocorrenciasResult.status === 'fulfilled'
+            let ocorrenciasRaw = ocorrenciasResult.status === 'fulfilled'
                 ? (ocorrenciasResult.value?.data || [])
                 : [];
+
+            /* Fallback: o RCO atribui codMatrizAluno por classe — o ID salvo na
+               ocorrência pode diferir do sincronizado no Supabase. Se a busca
+               por ID retornar 0 resultados, tenta pelo nome + turma. */
+            if (ocorrenciasRaw.length === 0 && nomeAluno && !nomeAluno.startsWith('Aluno #') && codturma) {
+                const { data: fbData } = await supabaseAdmin
+                    .from('aluno_ocorrencias')
+                    .select('*')
+                    .eq('cod_turma', codturma)
+                    .ilike('nome_aluno', nomeAluno.trim())
+                    .order('data',       { ascending: false })
+                    .order('criado_em',  { ascending: false });
+                if (fbData && fbData.length > 0) {
+                    ocorrenciasRaw = fbData;
+                    console.log(`[FICHA-ALUNO] fallback por nome "${nomeAluno}": ${fbData.length} ocorrência(s) encontrada(s)`);
+                }
+            }
 
             const observacoesRaw = observacoesResult.status === 'fulfilled'
                 ? (observacoesResult.value?.data || [])
