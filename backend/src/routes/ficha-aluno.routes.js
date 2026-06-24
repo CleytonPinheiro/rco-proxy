@@ -316,9 +316,30 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             const turmaSample = (byTurmasResult.data||[]).slice(0,5).map(o=>({n:o.nome_aluno, id:o.cod_matriz_aluno}));
             console.log(`[FICHA-ALUNO] "${nomeAluno}": byIds=${(byIdsResult.data||[]).length} byNome=${(byNomeResult.data||[]).length} byTurmas=${(byTurmasResult.data||[]).length} total=${ocorrenciasRaw.length} | turma_sample=${JSON.stringify(turmaSample)}`);
 
-            const observacoesRaw = observacoesResult.status === 'fulfilled'
+            /* rco_observacoes: a query inicial (linha ~195) usou apenas codMatriz.
+               Aqui expandimos para TODOS os IDs conhecidos do aluno (outras disciplinas)
+               para capturar observações salvas com IDs diferentes entre classes RCO. */
+            const observacoesIniciais = observacoesResult.status === 'fulfilled'
                 ? (observacoesResult.value?.data || [])
                 : [];
+
+            const idsExtrasObs = todosIdsSupabase.filter(id => id !== codMatriz);
+            let observacoesExtras = [];
+            if (idsExtrasObs.length > 0) {
+                const { data: extrasData } = await supabaseAdmin
+                    .from('rco_observacoes')
+                    .select('*')
+                    .in('cod_matriz_aluno', idsExtrasObs)
+                    .order('data_aula', { ascending: false });
+                observacoesExtras = extrasData || [];
+            }
+
+            /* União deduplicada por id — ordem cronológica decrescente */
+            const seenObsIds = new Set(observacoesIniciais.map(o => o.id));
+            const observacoesRaw = [
+                ...observacoesIniciais,
+                ...observacoesExtras.filter(o => !seenObsIds.has(o.id)),
+            ].sort((a, b) => new Date(b.data_aula) - new Date(a.data_aula));
 
             // Busca todas as disciplinas da turma (para listar mesmo as sem observações)
             let todasDisciplinas = [];
