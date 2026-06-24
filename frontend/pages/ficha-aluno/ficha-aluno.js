@@ -10,13 +10,13 @@ window._fichaAlunosSelecionados = new Set();
 let _fichaTodasTurmas = [];
 
 function _extrairCurso(turma) {
-    const p = (turma || '').split(/\s*[-–]\s*/);
+    const p = (turma || '').split(' - ');
     return p.length > 1 ? p[0].trim() : (turma || '').trim();
 }
 
 function _extrairTurno(turma) {
-    const p = (turma || '').split(/\s*[-–]\s*/);
-    return p.length > 1 ? p.slice(1).join(' – ').trim() : (turma || '').trim();
+    const p = (turma || '').split(' - ');
+    return p.length > 1 ? p.slice(1).join(' - ').trim() : (turma || '').trim();
 }
 
 function escHtml(str) {
