@@ -145,7 +145,9 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             }
 
             const totalOcorrencias = seenOcorrIds.size;
-            console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências únicas (todas disciplinas)`);
+            if (totalOcorrencias > 0 || alunosUnicos.length > 0) {
+                console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências únicas`);
+            }
 
             const atasMap = {};
             for (const r of (atasResult.rows || [])) {
