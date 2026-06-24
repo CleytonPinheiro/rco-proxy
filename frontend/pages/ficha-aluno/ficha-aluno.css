@@ -31,6 +31,7 @@
     display: none; /* ativado via classe no JS */
     flex-direction: column;
     flex: 0 0 270px;
+    min-width: 220px;
     background: var(--card-bg, #fff);
     border: 1px solid var(--border, #e1e5ea);
     border-radius: 12px;
