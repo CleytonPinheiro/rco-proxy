@@ -88,11 +88,12 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ...Object.values(nomeParaTodosIds).flatMap(s => [...s]),
             ])];
 
-            /* ── Busca ocorrências sem filtro de turma ─────────────────────────
-               Consulta por todos os IDs conhecidos do aluno (todas as disciplinas).
-               Complementada pela busca por nome_aluno para capturar registros
-               normalizados (nome preenchido) de qualquer disciplina.              */
-            const [ocorrPorIdResult, ocorrPorNomeResult] = await Promise.all([
+            /* ── 3 fontes de ocorrências — sem filtro de turma exceto na 3ª ───────
+               1) byId   — todos os IDs do aluno em todas as disciplinas
+               2) byNome — nome_aluno exato (cobre IDs não conhecidos via sync)
+               3) byTurma — disciplina atual: captura registros orphãos com nome
+                            preenchido ou IDs novos nesta disciplina específica   */
+            const [ocorrPorIdResult, ocorrPorNomeResult, ocorrPorTurmaResult] = await Promise.all([
                 supabaseAdmin
                     .from('aluno_ocorrencias')
                     .select('id, nome_aluno, cod_matriz_aluno, tipo')
@@ -103,18 +104,38 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                         .select('id, nome_aluno, cod_matriz_aluno, tipo')
                         .in('nome_aluno', nomesAlunos)
                     : Promise.resolve({ data: [] }),
+                supabaseAdmin
+                    .from('aluno_ocorrencias')
+                    .select('id, nome_aluno, cod_matriz_aluno, tipo')
+                    .eq('cod_turma', parseInt(codturma, 10)),
             ]);
 
-            /* União deduplicada por id — evita dupla contagem de registros que
-               aparecem em ambas as queries (têm ID conhecido E nome_aluno preenchido). */
-            const ocorrMapCod = {};
-            const seenIds = new Set();
+            /* Expande nomeParaTodosIds com IDs descobertos nos próprios registros
+               (nome_aluno → cod_matriz_aluno). Cobre disciplinas não sincronizadas
+               em `alunos` onde o aluno tem registros com nome preenchido.         */
             for (const o of [
                 ...(ocorrPorIdResult.data   || []),
                 ...(ocorrPorNomeResult.data || []),
+                ...(ocorrPorTurmaResult.data || []),
             ]) {
-                if (o.id != null && seenIds.has(o.id)) continue;
-                if (o.id != null) seenIds.add(o.id);
+                const nomeKey = (o.nome_aluno || '').toUpperCase().trim();
+                const id      = parseInt(o.cod_matriz_aluno, 10);
+                if (nomeKey && !isNaN(id)) {
+                    if (!nomeParaTodosIds[nomeKey]) nomeParaTodosIds[nomeKey] = new Set();
+                    nomeParaTodosIds[nomeKey].add(id);
+                }
+            }
+
+            /* União deduplicada por id — monta mapa cod_matriz_aluno → contagens */
+            const ocorrMapCod = {};
+            const seenOcorrIds = new Set();
+            for (const o of [
+                ...(ocorrPorIdResult.data    || []),
+                ...(ocorrPorNomeResult.data  || []),
+                ...(ocorrPorTurmaResult.data || []),
+            ]) {
+                if (o.id != null && seenOcorrIds.has(o.id)) continue;
+                if (o.id != null) seenOcorrIds.add(o.id);
                 if (o.cod_matriz_aluno != null) {
                     if (!ocorrMapCod[o.cod_matriz_aluno])
                         ocorrMapCod[o.cod_matriz_aluno] = { positivo: 0, atencao: 0, grave: 0 };
@@ -123,7 +144,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 }
             }
 
-            const totalOcorrencias = seenIds.size;
+            const totalOcorrencias = seenOcorrIds.size;
             console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências únicas (todas disciplinas)`);
 
             const atasMap = {};
@@ -140,7 +161,8 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     const nomeKey = (a.nome || '').toUpperCase().trim();
                     const codSync = parseInt(a.codmatrizaluno, 10);
 
-                    /* Soma ocorrências de TODOS os IDs do aluno em todas as disciplinas */
+                    /* Soma ocorrências de TODOS os IDs do aluno (alunos table +
+                       IDs descobertos nos próprios registros de ocorrência)       */
                     const idsAluno = nomeParaTodosIds[nomeKey]
                         || new Set(isNaN(codSync) ? [] : [codSync]);
                     let ocorr = { positivo: 0, atencao: 0, grave: 0 };
