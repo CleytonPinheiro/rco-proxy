@@ -773,8 +773,22 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             const cidadeRef = cfgMap['escola_cidade_ref'] || 'Maringá';
             const filtros = { de, ate, tipo, professor };
 
-            const resultados = await Promise.all(ids.map(id => fetchAlunoData(supabaseAdmin, id, filtros, rcoApiService)));
-            const registros  = resultados.filter(r => r && r.combinadas.length > 0);
+            /* Processa em lotes de 5 para não sobrecarregar o pool Supabase.
+               Com 29+ alunos em parallel puro (~200 queries simultâneas) as
+               queries de expansão de nome falham silenciosamente (data:null),
+               fazendo a maioria retornar combinadas=[]. */
+            const LOTE = 5;
+            const resultados = [];
+            for (let i = 0; i < ids.length; i += LOTE) {
+                const loteIds = ids.slice(i, i + LOTE);
+                const loteRes = await Promise.all(
+                    loteIds.map(id => fetchAlunoData(supabaseAdmin, id, filtros, rcoApiService))
+                );
+                resultados.push(...loteRes);
+            }
+
+            const registros = resultados.filter(r => r && r.combinadas.length > 0);
+            console.log(`[BATCH] ${ids.length} solicitados → ${resultados.filter(Boolean).length} encontrados → ${registros.length} com ocorrências/observações`);
             if (registros.length === 0) return res.status(204).end();
 
             registros.sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR'));
