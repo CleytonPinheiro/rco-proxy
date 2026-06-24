@@ -535,11 +535,27 @@ function gerarPDF(registros, escola, cidadeRef, nomeProfLogado = '') {
     const chunks = [];
     doc.on('data', c => chunks.push(c));
 
+    /* Achata registros → páginas e ordena globalmente por nome do aluno,
+       depois por data da ocorrência — garante alfabético mesmo com
+       múltiplas disciplinas por aluno ou múltiplos alunos no lote. */
+    const paginas = [];
     for (const { aluno, combinadas } of registros) {
         for (const ocorrencia of combinadas) {
-            doc.addPage();
-            drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado });
+            paginas.push({ aluno, ocorrencia });
         }
+    }
+    paginas.sort((a, b) => {
+        const nA = (a.aluno.nome || '').toUpperCase();
+        const nB = (b.aluno.nome || '').toUpperCase();
+        const cmp = nA.localeCompare(nB, 'pt-BR', { sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+        // Mesmo aluno → ordena por data da ocorrência
+        return (a.ocorrencia.data || '').localeCompare(b.ocorrencia.data || '');
+    });
+
+    for (const { aluno, ocorrencia } of paginas) {
+        doc.addPage();
+        drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado });
     }
 
     doc.end();
