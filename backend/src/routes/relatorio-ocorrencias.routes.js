@@ -446,7 +446,7 @@ async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatriz, n
 
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
 async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, professor }, rcoApiService) {
-    const [alunoResult, ocorrenciasResult, obsRcoResult] = await Promise.all([
+    const [alunoResult, byIdResult, obsRcoResult] = await Promise.all([
         supabaseAdmin.from('alunos').select('nome, turma, numchamada, codmatrizaluno, codturma')
             .eq('codmatrizaluno', codMatriz).limit(1),
         supabaseAdmin.from('aluno_ocorrencias').select('*')
@@ -459,15 +459,16 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const aluno = (alunoResult.data || [])[0];
     if (!aluno) return null;
 
-    /* Fallback: o RCO atribui codMatrizAluno por classe — o ID salvo na
-       ocorrência pode diferir do sincronizado no Supabase. Se a busca por ID
-       retornar 0 resultados e o aluno tiver nome + codturma, tenta pelo nome. */
-    let ocorrenciasRawTodas = ocorrenciasResult.data || [];
-    if (ocorrenciasRawTodas.length === 0 && aluno.nome && aluno.codturma) {
-        /* Fallback 2 passos — o RCO atribui codMatrizAluno por classe; o ID
-           pode diferir entre classes. Passo 1: descobre o ID real pelo nome.
-           Passo 2: busca TODAS as ocorrências por esse ID (cobrindo registros
-           gravados sem nome_aluno). */
+    /* Busca robusta: o RCO atribui codMatrizAluno POR CLASSE — o mesmo aluno
+       pode ter IDs diferentes em disciplinas distintas. A query por ID Supabase
+       pega apenas os registros cujo ID coincide. Para obter TODOS os registros
+       (inclusive os gravados com outro ID), fazemos SEMPRE a descoberta pelo nome:
+       Passo 1 → nome + turma → IDs reais; Passo 2 → todos os registros por IDs reais.
+       Resultado final: união de byId + byRealId, deduplicada por id. */
+    const byId = byIdResult.data || [];
+
+    let byRealId = [];
+    if (aluno.nome && aluno.codturma) {
         const { data: idRows } = await supabaseAdmin
             .from('aluno_ocorrencias')
             .select('cod_matriz_aluno')
@@ -477,18 +478,23 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
         const idsReais = [...new Set((idRows || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
 
         if (idsReais.length > 0) {
-            const { data: fbData } = await supabaseAdmin
+            const { data: rdData } = await supabaseAdmin
                 .from('aluno_ocorrencias')
                 .select('*')
                 .in('cod_matriz_aluno', idsReais)
                 .order('data', { ascending: true })
                 .limit(9999);
-            if (fbData && fbData.length > 0) {
-                ocorrenciasRawTodas = fbData;
-                console.log(`[RELATORIO] fallback por nome "${aluno.nome}" (ids=${idsReais}): ${fbData.length} ocorrência(s)`);
+            byRealId = rdData || [];
+            if (byRealId.length !== byId.length) {
+                console.log(`[RELATORIO] "${aluno.nome}": byId=${byId.length} byRealId=${byRealId.length} (ids=${idsReais})`);
             }
         }
     }
+
+    const seenIds = new Set();
+    const ocorrenciasRawTodas = [...byId, ...byRealId]
+        .filter(o => { if (seenIds.has(o.id)) return false; seenIds.add(o.id); return true; })
+        .sort((a, b) => new Date(a.data) - new Date(b.data));
 
     /* Guarda lista COMPLETA (sem filtros) para calcular numeração de atas do ano */
     let ocorrenciasRaw = [...ocorrenciasRawTodas];

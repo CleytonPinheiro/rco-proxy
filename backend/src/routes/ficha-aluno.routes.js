@@ -209,11 +209,10 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     .order('data',      { ascending: false })
                     .order('criado_em', { ascending: false }),
 
-                (nomeAluno && !nomeAluno.startsWith('Aluno #') && codturma)
+                (nomeAluno && !nomeAluno.startsWith('Aluno #'))
                     ? supabaseAdmin
                         .from('aluno_ocorrencias')
                         .select('cod_matriz_aluno')
-                        .eq('cod_turma', codturma)
                         .ilike('nome_aluno', nomeAluno.trim())
                     : Promise.resolve({ data: [] }),
             ]);
