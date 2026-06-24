@@ -57,9 +57,18 @@
                         <button class="ficha-sync-btn" id="fichaSyncBtn" onclick="sincronizarTurma()" title="Sincronizar lista de alunos com o RCO">🔄</button>
                     </div>
                 </div>
-                <select id="fichaTurmaSelect" class="ficha-turma-sel">
-                    <option value="">Carregando turmas…</option>
-                </select>
+                <div class="ficha-sel-group">
+                    <label class="ficha-sel-label">Curso</label>
+                    <select id="fichaCursoSelect" class="ficha-turma-sel">
+                        <option value="">Carregando cursos…</option>
+                    </select>
+                </div>
+                <div class="ficha-sel-group" style="margin-top:6px">
+                    <label class="ficha-sel-label">Turma</label>
+                    <select id="fichaTurmaSelect" class="ficha-turma-sel" disabled>
+                        <option value="">← Selecione o curso</option>
+                    </select>
+                </div>
                 <div id="fichaSelectAllRow" class="ficha-select-all-row" style="display:none">
                     <label class="ficha-select-all-label">
                         <input type="checkbox" id="fichaSelectAllCheck" onchange="selecionarTodos(this.checked)">

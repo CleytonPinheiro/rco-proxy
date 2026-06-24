@@ -106,6 +106,26 @@
 }
 .ficha-turma-sel:hover  { border-color: #818cf8; }
 .ficha-turma-sel:focus  { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+.ficha-turma-sel:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+/* Grupo label + select em cascata */
+.ficha-sel-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ficha-sel-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted, #9ca3af);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding-left: 2px;
+}
 
 /* Custom-select dentro do painel lateral — ocupa largura total */
 .ficha-lista-topo .csel              { width: 100%; display: flex; }

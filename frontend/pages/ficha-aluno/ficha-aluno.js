@@ -6,6 +6,19 @@ const API = '';
 window._fichaMultiMode      = false;
 window._fichaAlunosSelecionados = new Set();
 
+/* ── Cache de turmas para filtragem por curso ────────────────────────────── */
+let _fichaTodasTurmas = [];
+
+function _extrairCurso(turma) {
+    const p = (turma || '').split(/\s*[-–]\s*/);
+    return p.length > 1 ? p[0].trim() : (turma || '').trim();
+}
+
+function _extrairTurno(turma) {
+    const p = (turma || '').split(/\s*[-–]\s*/);
+    return p.length > 1 ? p.slice(1).join(' – ').trim() : (turma || '').trim();
+}
+
 function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -81,7 +94,8 @@ async function sincronizarTurma() {
 }
 
 async function carregarTurmas() {
-    const sel = document.getElementById('fichaTurmaSelect');
+    const selCurso = document.getElementById('fichaCursoSelect');
+    const selTurma = document.getElementById('fichaTurmaSelect');
 
     try {
         const r = await fetch(`${API}/api/alunos/turmas/lista`);
@@ -93,32 +107,71 @@ async function carregarTurmas() {
             const raw = localStorage.getItem('edusync_escola_codturmas');
             if (raw) {
                 const codturmasFiltro = JSON.parse(raw);
-                if (Array.isArray(codturmasFiltro) && codturmasFiltro.length > 0) {
+                if (Array.isArray(codturmasFiltro) && codturmasFiltro.length > 0)
                     turmas = turmas.filter(t => codturmasFiltro.includes(t.codturma));
-                }
             }
         } catch {}
 
         if (!turmas || turmas.length === 0) {
-            sel.innerHTML = '<option value="">Nenhuma turma encontrada</option>';
+            selCurso.innerHTML = '<option value="">Nenhum curso encontrado</option>';
             return;
         }
 
-        sel.innerHTML = '<option value="">Selecione a turma…</option>' +
-            turmas.map(t => `<option value="${t.codturma}">${escHtml(t.turma)}</option>`).join('');
+        _fichaTodasTurmas = turmas;
 
-        /* Converte para custom select (sem dropdown nativo do SO) */
-        if (window.createCustomSelect) createCustomSelect(sel);
+        /* Cursos únicos extraídos da parte antes do " - " no nome da turma */
+        const cursosSet = new Set(turmas.map(t => _extrairCurso(t.turma)));
+        const cursos = [...cursosSet].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-        sel.addEventListener('change', () => {
-            if (sel.value) carregarAlunos(sel.value);
-            else {
-                document.getElementById('fichaListaAlunos').innerHTML =
-                    '<div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>';
-            }
-        });
+        selCurso.innerHTML = '<option value="">Selecione o curso…</option>' +
+            cursos.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+
+        selTurma.innerHTML = '<option value="">← Selecione o curso acima</option>';
+        selTurma.disabled = true;
+
+        if (window.createCustomSelect) createCustomSelect(selCurso);
+
+        selCurso.addEventListener('change', _onFichaCursoChange);
+        selTurma.addEventListener('change', _onFichaTurmaChange);
+
     } catch (e) {
-        sel.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+        if (selCurso) selCurso.innerHTML = '<option value="">Erro ao carregar cursos</option>';
+    }
+}
+
+function _onFichaCursoChange() {
+    const selCurso = document.getElementById('fichaCursoSelect');
+    const selTurma = document.getElementById('fichaTurmaSelect');
+    const curso = selCurso.value;
+
+    if (!curso) {
+        selTurma.innerHTML = '<option value="">← Selecione o curso acima</option>';
+        selTurma.disabled = true;
+        document.getElementById('fichaListaAlunos').innerHTML =
+            '<div class="ficha-lista-placeholder">Selecione um curso e depois a turma.</div>';
+        return;
+    }
+
+    const filtradas = _fichaTodasTurmas.filter(t => _extrairCurso(t.turma) === curso);
+    selTurma.disabled = false;
+    selTurma.innerHTML = '<option value="">Selecione a turma…</option>' +
+        filtradas.map(t => {
+            const label = _extrairTurno(t.turma);
+            return `<option value="${escHtml(String(t.codturma))}">${escHtml(label)}</option>`;
+        }).join('');
+
+    document.getElementById('fichaListaAlunos').innerHTML =
+        '<div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>';
+
+    if (window.createCustomSelect) createCustomSelect(selTurma);
+}
+
+function _onFichaTurmaChange() {
+    const selTurma = document.getElementById('fichaTurmaSelect');
+    if (selTurma.value) carregarAlunos(selTurma.value);
+    else {
+        document.getElementById('fichaListaAlunos').innerHTML =
+            '<div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>';
     }
 }
 
