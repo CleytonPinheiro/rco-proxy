@@ -202,11 +202,18 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                   → pega registros com nome_aluno vazio que compartilham turma+ID
                Resultado final: união de tudo, deduplicada por id. */
 
-            /* B: todos os IDs deste aluno em QUALQUER turma */
+            /* Padrão ilike com wildcards — tolerante a espaços duplos e
+               pequenas diferenças de formatação entre endpoints RCO.
+               Definido aqui para ser reutilizado também na busca de turmas. */
+            const nomeBuscaPattern = nomeAluno.trim().replace(/\s+/g, '%');
+
+            /* B: todos os IDs deste aluno em QUALQUER turma.
+               Usa padrão com wildcards entre palavras para tolerar pequenas
+               variações de nome que o RCO pode gravar por disciplina. */
             const { data: todasTurmasAluno } = await supabaseAdmin
                 .from('alunos')
                 .select('codmatrizaluno, codturma')
-                .ilike('nome', nomeAluno.trim());
+                .ilike('nome', `%${nomeBuscaPattern}%`);
 
             const todosIdsSupabase = [...new Set([
                 codMatriz,
@@ -215,10 +222,6 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             const todasTurmas = [...new Set(
                 (todasTurmasAluno || []).map(r => parseInt(r.codturma, 10)).filter(v => !isNaN(v))
             )];
-
-            /* Padrão ilike com wildcards — tolerante a espaços duplos e
-               pequenas diferenças de formatação entre endpoints RCO */
-            const nomeBuscaPattern = nomeAluno.trim().replace(/\s+/g, '%');
 
             console.log(`[FICHA-ALUNO] "${nomeAluno}" codMatriz=${codMatriz} | allIds=${todosIdsSupabase} | allTurmas=${todasTurmas} | pattern="${nomeBuscaPattern}"`);
 
