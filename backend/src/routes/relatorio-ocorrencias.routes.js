@@ -590,7 +590,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             if (!dado) return res.status(404).json({ erro: 'Aluno não encontrado.' });
             if (dado.combinadas.length === 0) return res.status(204).end();
 
-            const nomeProfLogado = req.user?.nome || '';
+            const nomeProfLogado = req.userSession?.nome || '';
             const { doc, chunks } = gerarPDF([dado], escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
@@ -635,7 +635,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
 
             registros.sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR'));
 
-            const nomeProfLogado = req.user?.nome || '';
+            const nomeProfLogado = req.userSession?.nome || '';
             const { doc, chunks } = gerarPDF(registros, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
