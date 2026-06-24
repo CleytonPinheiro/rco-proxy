@@ -124,7 +124,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             }
 
             const totalOcorrencias = seenIds.size;
-            console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências (todas disciplinas)`);
+            console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências únicas (todas disciplinas)`);
 
             const atasMap = {};
             for (const r of (atasResult.rows || [])) {
