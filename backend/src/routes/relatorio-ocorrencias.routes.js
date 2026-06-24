@@ -160,6 +160,14 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
     // ── Título ────────────────────────────────────────────────────────────────
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
        .text('TERMO DE OCORRÊNCIA EM SALA DE AULA', colX, y, { width: colW, align: 'center', lineBreak: false });
+
+    // Número de ata (direita do título, mesma linha)
+    if (ocorrencia.ataNum && ocorrencia.ataTotal) {
+        const ataTxt = `Ata Nº ${ocorrencia.ataNum} de ${ocorrencia.ataTotal}`;
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#4338ca')
+           .text(ataTxt, colX, y + 1.5, { width: colW - 4, align: 'right', lineBreak: false });
+    }
+
     doc.moveTo(colX + colW * 0.15, y + 13).lineTo(colX + colW * 0.85, y + 13)
        .lineWidth(0.4).stroke('#b0b8c4').lineWidth(1);
     y += LG + 6;
@@ -451,7 +459,9 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const aluno = (alunoResult.data || [])[0];
     if (!aluno) return null;
 
-    let ocorrenciasRaw = ocorrenciasResult.data || [];
+    /* Guarda lista COMPLETA (sem filtros) para calcular numeração de atas do ano */
+    const ocorrenciasRawTodas = ocorrenciasResult.data || [];
+    let ocorrenciasRaw = [...ocorrenciasRawTodas];
     if (de)   ocorrenciasRaw = ocorrenciasRaw.filter(o => o.data && new Date(o.data) >= new Date(de  + 'T00:00:00'));
     if (ate)  ocorrenciasRaw = ocorrenciasRaw.filter(o => o.data && new Date(o.data) <= new Date(ate + 'T23:59:59'));
     if (tipo && ['grave','atencao','positivo'].includes(tipo))
@@ -510,6 +520,17 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const combinadasBase = [...ocorrencias, ...ocorrenciasRco]
         .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
 
+    // ── Numeração de atas — total do ano (sem filtros) ────────────────────────
+    const anoAtual = new Date().getFullYear();
+    const todasParaAta = [
+        ...ocorrenciasRawTodas.map(o => ({ id: o.id,           data: o.data      || '' })),
+        ...(obsRcoResult.data  || []).map(o => ({ id: `rco_${o.id}`, data: o.data_aula || '' })),
+    ]
+        .filter(o => !o.data || new Date(o.data).getFullYear() === anoAtual)
+        .sort((a, b) => a.data.localeCompare(b.data));
+    const ataNumMap = new Map(todasParaAta.map((o, idx) => [String(o.id), idx + 1]));
+    const ataTotal  = todasParaAta.length;
+
     // ── Frequência por disciplina (best-effort via RCO API) ───────────────────
     let freqMap = {};
     if (rcoApiService && aluno.codturma) {
@@ -522,7 +543,12 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
 
     const combinadas = combinadasBase.map(o => {
         const key = (o.disciplina || '').trim().toUpperCase();
-        return { ...o, freqResumo: key ? (freqMap[key] ?? null) : null };
+        return {
+            ...o,
+            freqResumo: key ? (freqMap[key] ?? null) : null,
+            ataNum:  ataNumMap.get(String(o.id)) ?? null,
+            ataTotal,
+        };
     });
 
     return { aluno, combinadas };
