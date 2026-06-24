@@ -86,12 +86,12 @@ app.get('/ficha-aluno/', (req, res) => {
 });
 
 // Arquivos estáticos servidos ANTES do listen para evitar "Cannot GET" durante inicialização
-// HTML sempre revalidado; assets (CSS/JS/SVG/imagens/fontes) cacheados por 1 hora no browser
+// HTML e JS/CSS sempre revalidados (no-cache + ETag); imagens/fontes cacheadas por 1 hora
 app.use(express.static(path.join(__dirname, '../frontend'), {
     setHeaders(res, filePath) {
-        if (/\.html?$/i.test(filePath)) {
+        if (/\.(html?|css|js)$/i.test(filePath)) {
             res.setHeader('Cache-Control', 'no-cache');
-        } else if (/\.(css|js|svg|ico|png|jpe?g|webp|gif|woff2?|ttf|eot|otf|map)$/i.test(filePath)) {
+        } else if (/\.(svg|ico|png|jpe?g|webp|gif|woff2?|ttf|eot|otf|map)$/i.test(filePath)) {
             res.setHeader('Cache-Control', 'public, max-age=3600');
         }
     },
