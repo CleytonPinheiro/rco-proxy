@@ -227,13 +227,12 @@
 .ficha-batch-bar {
     display: none;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
     padding: 8px 12px;
     border-bottom: 1px solid var(--border, #e1e5ea);
     background: var(--bg-alt, #f0f2f5);
     flex-shrink: 0;
-    overflow: hidden;
 }
 
 .ficha-batch-contador {
