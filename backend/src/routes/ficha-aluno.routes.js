@@ -88,12 +88,14 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ...Object.values(nomeParaTodosIds).flatMap(s => [...s]),
             ])];
 
-            /* ── 3 fontes de ocorrências — sem filtro de turma exceto na 3ª ───────
+            /* ── 3 fontes de ocorrências + rco_observacoes cross-disciplina ─────
                1) byId   — todos os IDs do aluno em todas as disciplinas
                2) byNome — nome_aluno exato (cobre IDs não conhecidos via sync)
                3) byTurma — disciplina atual: captura registros orphãos com nome
-                            preenchido ou IDs novos nesta disciplina específica   */
-            const [ocorrPorIdResult, ocorrPorNomeResult, ocorrPorTurmaResult] = await Promise.all([
+                            preenchido ou IDs novos nesta disciplina específica
+               4) obsResult — rco_observacoes: soma de observações do RCO Digital
+                              de TODAS as disciplinas do aluno (usa todosIds)      */
+            const [ocorrPorIdResult, ocorrPorNomeResult, ocorrPorTurmaResult, obsResult] = await Promise.all([
                 supabaseAdmin
                     .from('aluno_ocorrencias')
                     .select('id, nome_aluno, cod_matriz_aluno, tipo')
@@ -108,6 +110,12 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     .from('aluno_ocorrencias')
                     .select('id, nome_aluno, cod_matriz_aluno, tipo')
                     .eq('cod_turma', parseInt(codturma, 10)),
+                todosIds.length > 0
+                    ? supabaseAdmin
+                        .from('rco_observacoes')
+                        .select('id, cod_matriz_aluno')
+                        .in('cod_matriz_aluno', todosIds)
+                    : Promise.resolve({ data: [] }),
             ]);
 
             /* Expande nomeParaTodosIds com IDs descobertos nos próprios registros
@@ -149,6 +157,16 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências únicas`);
             }
 
+            /* Mapa cod_matriz_aluno → contagem de rco_observacoes (cross-disciplina) */
+            const obsMapCod = {};
+            const seenObsIds = new Set();
+            for (const o of (obsResult?.data || [])) {
+                if (o.id != null && seenObsIds.has(o.id)) continue;
+                if (o.id != null) seenObsIds.add(o.id);
+                if (o.cod_matriz_aluno != null)
+                    obsMapCod[o.cod_matriz_aluno] = (obsMapCod[o.cod_matriz_aluno] || 0) + 1;
+            }
+
             const atasMap = {};
             for (const r of (atasResult.rows || [])) {
                 atasMap[r.cod_matriz_aluno] = {
@@ -168,11 +186,13 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     const idsAluno = nomeParaTodosIds[nomeKey]
                         || new Set(isNaN(codSync) ? [] : [codSync]);
                     let ocorr = { positivo: 0, atencao: 0, grave: 0 };
+                    let obsCount = 0;
                     for (const id of idsAluno) {
                         const c = ocorrMapCod[id] || {};
                         ocorr.positivo += c.positivo || 0;
                         ocorr.atencao  += c.atencao  || 0;
                         ocorr.grave    += c.grave    || 0;
+                        obsCount       += obsMapCod[id] || 0;
                     }
 
                     return {
@@ -181,6 +201,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                         numchamada:    a.numchamada,
                         turma:         a.turma,
                         ocorrencias:   ocorr,
+                        obsCount,
                         atasImpressas: atasMap[codSync] || atasMap[a.codmatrizaluno] || null,
                     };
                 }),

@@ -223,6 +223,7 @@ async function carregarAlunos(codturma) {
         listEl.innerHTML = alunos.map(a => {
             const { positivo = 0, atencao = 0, grave = 0 } = a.ocorrencias || {};
             const totalOcc = positivo + atencao + grave;
+            const obsCount = a.obsCount || 0;
             const ai = a.atasImpressas;
             const dataImp = ai?.ultimaImpressao
                 ? new Date(ai.ultimaImpressao).toLocaleDateString('pt-BR')
@@ -231,7 +232,12 @@ async function carregarAlunos(codturma) {
                 ? `🖨️ ${ai.qtd} ata${ai.qtd !== 1 ? 's' : ''} já impressa${ai.qtd !== 1 ? 's' : ''}${dataImp ? ' — última em ' + dataImp : ''}${ai.impressaPor ? ' por ' + ai.impressaPor : ''}`
                 : '';
 
-            /* Badge de total de ocorrências ao lado do nome */
+            /* Badge de observações do RCO — soma de TODAS as disciplinas */
+            const badgeObs = obsCount > 0
+                ? `<span class="fai-total-occ fai-tot-obs" title="${obsCount} observação${obsCount===1?'':'s'} do RCO em todas as disciplinas" style="flex-shrink:0">📝 ${obsCount}</span>`
+                : '';
+
+            /* Badge de total de ocorrências EduSync ao lado do nome */
             let tooltipTotal = '';
             if (totalOcc > 0) {
                 const partes = [];
@@ -241,7 +247,7 @@ async function carregarAlunos(codturma) {
                 tooltipTotal = `${totalOcc} ocorrência${totalOcc===1?'':'s'} — ${partes.join(', ')}`;
             }
             const badgeTotal = totalOcc > 0
-                ? `<span class="fai-total-occ${grave > 0 ? ' fai-tot-grave' : atencao > 0 ? ' fai-tot-atencao' : ' fai-tot-pos'}" title="${escHtml(tooltipTotal)}">📋 ${totalOcc}</span>`
+                ? `<span class="fai-total-occ${grave > 0 ? ' fai-tot-grave' : atencao > 0 ? ' fai-tot-atencao' : ' fai-tot-pos'}" title="${escHtml(tooltipTotal)}" style="flex-shrink:0">📋 ${totalOcc}</span>`
                 : '';
 
             const badges = [
@@ -260,7 +266,7 @@ async function carregarAlunos(codturma) {
                     <div class="fai-linha1">
                         ${a.numchamada ? `<span class="fai-num">Nº ${a.numchamada}</span>` : ''}
                         <span class="fai-nome">${escHtml(a.nome)}</span>
-                        ${badgeTotal}
+                        ${badgeObs}${badgeTotal}
                     </div>
                     ${badges ? `<div class="fai-badges">${badges}</div>` : ''}
                 </button>
