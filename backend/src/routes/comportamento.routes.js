@@ -26,7 +26,7 @@ async function migrarOcorrenciaMeta() {
 
 migrarOcorrenciaMeta();
 
-export function createComportamentoRouter({ supabaseAdmin }) {
+export function createComportamentoRouter({ supabaseAdmin, rcoApiService }) {
     const router = Router();
 
     router.get('/comportamento', async (req, res) => {
@@ -40,7 +40,6 @@ export function createComportamentoRouter({ supabaseAdmin }) {
             if (codTurma) {
                 query = query.eq('cod_turma', parseInt(codTurma));
             } else {
-                // Restringe às turmas do usuário atual para não exibir dados de outros professores
                 const { data: turmasData } = await supabaseAdmin
                     .from('rco_turmas')
                     .select('cod_turma');
@@ -73,7 +72,6 @@ export function createComportamentoRouter({ supabaseAdmin }) {
             });
             if (error) return res.status(500).json({ erro: error.message });
 
-            // Salva metadados do professor em PG local (sem alterar schema do Supabase)
             await pool.query(
                 `INSERT INTO ocorrencia_meta (id_ocorrencia, professor_nome, nome_turma, disciplina)
                  VALUES ($1, $2, $3, $4)
@@ -89,18 +87,149 @@ export function createComportamentoRouter({ supabaseAdmin }) {
         } catch (e) { res.status(500).json({ erro: e.message }); }
     });
 
+    // ── Normalizar ocorrências: corrige cod_matriz_aluno e nome_aluno ────────────
+    router.post('/comportamento/normalizar', async (req, res) => {
+        const { codturma } = req.body;
+        if (!codturma) return res.status(400).json({ erro: 'codturma obrigatório' });
+
+        try {
+            const codturmaInt = parseInt(codturma, 10);
+
+            // 1. Busca todas as ocorrências da turma
+            const { data: ocorrencias, error: ocErr } = await supabaseAdmin
+                .from('aluno_ocorrencias')
+                .select('id, cod_matriz_aluno, nome_aluno, cod_turma')
+                .eq('cod_turma', codturmaInt);
+            if (ocErr) throw new Error(ocErr.message);
+            if (!ocorrencias || ocorrencias.length === 0) {
+                return res.json({ atualizados: 0, naoIdentificados: 0, total: 0 });
+            }
+
+            // 2. Coleta nomes únicos das ocorrências com nome preenchido
+            const nomesUnicos = [...new Set(
+                ocorrencias
+                    .map(o => (o.nome_aluno || '').trim().toUpperCase())
+                    .filter(n => n.length > 0)
+            )];
+
+            // 3. Para cada nome, encontra o ID canônico no Supabase
+            const nomeParaId = {};
+            for (const nome of nomesUnicos) {
+                const { data: rows } = await supabaseAdmin
+                    .from('alunos')
+                    .select('codmatrizaluno, nome')
+                    .ilike('nome', nome)
+                    .limit(1);
+                if (rows && rows[0]) {
+                    nomeParaId[nome] = rows[0].codmatrizaluno;
+                }
+            }
+
+            // 4. Para ocorrências sem nome, tenta identificar via RCO
+            const idParaNome = {};
+            const idsOrfaos = [...new Set(
+                ocorrencias
+                    .filter(o => !(o.nome_aluno || '').trim())
+                    .map(o => o.cod_matriz_aluno)
+                    .filter(v => v != null)
+            )];
+
+            if (idsOrfaos.length > 0 && rcoApiService) {
+                try {
+                    const { data: classes } = await supabaseAdmin
+                        .from('rco_classes')
+                        .select('cod_classe')
+                        .eq('cod_turma', codturmaInt);
+
+                    for (const cl of (classes || [])) {
+                        try {
+                            const resp = await rcoApiService.get(
+                                `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${cl.cod_classe}&codPeriodoAvaliacao=9`
+                            );
+                            const alunos = Array.isArray(resp.data) ? resp.data : [];
+                            for (const a of alunos) {
+                                const rcoId = a.codMatrizAluno ?? a.registro ?? a.id;
+                                const nome  = (a.nome || '').trim();
+                                if (rcoId && nome) {
+                                    // Guarda ID-do-RCO → nome
+                                    idParaNome[String(rcoId)] = nome;
+                                    // Tenta descobrir ID canônico para este nome
+                                    const nomeUp = nome.toUpperCase();
+                                    if (!nomeParaId[nomeUp]) {
+                                        const { data: rows } = await supabaseAdmin
+                                            .from('alunos')
+                                            .select('codmatrizaluno')
+                                            .ilike('nome', nome)
+                                            .limit(1);
+                                        if (rows && rows[0]) {
+                                            nomeParaId[nomeUp] = rows[0].codmatrizaluno;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch { /* ignora falha de uma classe */ }
+                    }
+                } catch { /* ignora falha ao buscar classes do RCO */ }
+            }
+
+            // 5. Processa cada ocorrência e acumula atualizações
+            let atualizados = 0;
+            let naoIdentificados = 0;
+
+            for (const o of ocorrencias) {
+                let nomeAtual = (o.nome_aluno || '').trim();
+                const nomeOrigUp = nomeAtual.toUpperCase();
+
+                // Se não tem nome, tenta via mapa do RCO
+                if (!nomeAtual && idParaNome[String(o.cod_matriz_aluno)]) {
+                    nomeAtual = idParaNome[String(o.cod_matriz_aluno)];
+                }
+
+                const nomeUp = nomeAtual.toUpperCase();
+                const idCanonical = nomeUp ? (nomeParaId[nomeUp] ?? null) : null;
+
+                const idMudou   = idCanonical !== null && String(idCanonical) !== String(o.cod_matriz_aluno);
+                const nomeMudou = nomeAtual && nomeAtual !== (o.nome_aluno || '').trim();
+
+                if (idMudou || nomeMudou) {
+                    const patch = {};
+                    if (idMudou)   patch.cod_matriz_aluno = idCanonical;
+                    if (nomeMudou) patch.nome_aluno = nomeAtual;
+
+                    const { error: upErr } = await supabaseAdmin
+                        .from('aluno_ocorrencias')
+                        .update(patch)
+                        .eq('id', o.id);
+
+                    if (!upErr) {
+                        atualizados++;
+                    } else {
+                        console.warn('[NORMALIZAR] Falha ao atualizar ocorrência', o.id, upErr.message);
+                    }
+                } else if (!nomeAtual && !idCanonical) {
+                    naoIdentificados++;
+                }
+            }
+
+            console.log(`[NORMALIZAR] turma=${codturmaInt} total=${ocorrencias.length} atualizados=${atualizados} naoIdentificados=${naoIdentificados}`);
+            res.json({ atualizados, naoIdentificados, total: ocorrencias.length });
+
+        } catch (e) {
+            console.error('[NORMALIZAR] Erro:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
     // ── Painel: todos os registros das turmas do professor, cronológico ──────────
     router.get('/comportamento/painel', async (req, res) => {
         const { tipo, codTurma, de, ate } = req.query;
         try {
-            // 1) Busca turmas do professor no Supabase
             const { data: turmasData } = await supabaseAdmin
                 .from('rco_turmas')
                 .select('cod_turma');
             const codigos = (turmasData || []).map(t => t.cod_turma);
             if (!codigos.length) return res.json([]);
 
-            // 2) Monta query de ocorrências
             let q = supabaseAdmin
                 .from('aluno_ocorrencias')
                 .select('*')
@@ -116,7 +245,6 @@ export function createComportamentoRouter({ supabaseAdmin }) {
             if (error) return res.status(500).json({ erro: error.message });
             if (!ocorrs || !ocorrs.length) return res.json([]);
 
-            // 3) Enriquece com meta (professor, disciplina) do PG local
             const ids = ocorrs.map(o => o.id);
             const metaRows = await pool.query(
                 `SELECT id_ocorrencia, professor_nome, nome_turma, disciplina

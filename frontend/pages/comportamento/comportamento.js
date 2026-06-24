@@ -698,6 +698,81 @@ function fecharRanking(e) {
     document.getElementById('modalRanking').style.display = 'none';
 }
 
+// ── Normalizar ocorrências ────────────────────────────────────────────────────
+async function normalizarOcorrencias() {
+    if (!turmaAtual) return;
+    const btn = document.getElementById('btnNormalizar');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Normalizando…'; }
+
+    // Modal de progresso
+    let modal = document.getElementById('modalNormalizar');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalNormalizar';
+        modal.className = 'modal-normalizar-overlay';
+        modal.innerHTML = `
+            <div class="modal-normalizar-box">
+                <h3>🔧 Normalizando Ocorrências</h3>
+                <p id="normalizarStatus">Processando registros da turma…</p>
+                <div class="normalizar-spinner"></div>
+                <div id="normalizarResultado" style="display:none;"></div>
+                <button id="normalizarFechar" class="btn-normalizar-fechar" style="display:none;" onclick="document.getElementById('modalNormalizar').style.display='none'">Fechar</button>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+    const statusEl    = modal.querySelector('#normalizarStatus');
+    const spinner     = modal.querySelector('.normalizar-spinner');
+    const resultadoEl = modal.querySelector('#normalizarResultado');
+    const fecharBtn   = modal.querySelector('#normalizarFechar');
+
+    statusEl.textContent = 'Processando registros da turma…';
+    spinner.style.display = 'block';
+    resultadoEl.style.display = 'none';
+    fecharBtn.style.display = 'none';
+    modal.style.display = 'flex';
+
+    try {
+        const r = await fetch(`${API}/api/comportamento/normalizar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codturma: turmaAtual.codTurma }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || `Erro ${r.status}`);
+
+        spinner.style.display = 'none';
+        statusEl.textContent = 'Concluído!';
+
+        const linhas = [];
+        if (d.atualizados > 0) {
+            linhas.push(`<div class="norm-linha norm-ok">✅ ${d.atualizados} registro${d.atualizados !== 1 ? 's' : ''} corrigido${d.atualizados !== 1 ? 's' : ''}</div>`);
+        } else {
+            linhas.push(`<div class="norm-linha norm-ok">✅ Nenhuma inconsistência encontrada — registros já estão corretos</div>`);
+        }
+        if (d.naoIdentificados > 0) {
+            linhas.push(`<div class="norm-linha norm-warn">⚠️ ${d.naoIdentificados} registro${d.naoIdentificados !== 1 ? 's' : ''} sem aluno identificado (sem nome e sem correspondência no RCO)</div>`);
+        }
+        linhas.push(`<div class="norm-linha norm-info">📊 Total na turma: ${d.total} ocorrência${d.total !== 1 ? 's' : ''}</div>`);
+        resultadoEl.innerHTML = linhas.join('');
+        resultadoEl.style.display = 'block';
+        fecharBtn.style.display = 'inline-block';
+
+        // Recarrega os dados após normalização
+        if (d.atualizados > 0) {
+            await carregarOcorrencias(turmaAtual.codTurma);
+            renderGrid();
+        }
+    } catch (e) {
+        spinner.style.display = 'none';
+        statusEl.textContent = 'Erro ao normalizar';
+        resultadoEl.innerHTML = `<div class="norm-linha norm-erro">❌ ${escHtml(e.message)}</div>`;
+        resultadoEl.style.display = 'block';
+        fecharBtn.style.display = 'inline-block';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔧 Normalizar'; }
+    }
+}
+
 // ── Utilitários ───────────────────────────────────────────────────────────────
 function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
