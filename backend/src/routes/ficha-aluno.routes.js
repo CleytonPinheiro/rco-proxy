@@ -153,20 +153,15 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
         }
 
         try {
-            const [alunoResult, ocorrenciasResult, observacoesResult, emprestimosResult, configResult] =
+            /* Busca aluno primeiro para obter nome e codturma — necessários para
+               a busca robusta de ocorrências por nome (resolve mismatch de ID RCO). */
+            const [alunoResult, observacoesResult, emprestimosResult, configResult] =
                 await Promise.allSettled([
                     supabaseAdmin
                         .from('alunos')
                         .select('nome, turma, codturma, numchamada, codmatrizaluno')
                         .eq('codmatrizaluno', codMatriz)
                         .maybeSingle(),
-
-                    supabaseAdmin
-                        .from('aluno_ocorrencias')
-                        .select('*')
-                        .eq('cod_matriz_aluno', codMatriz)
-                        .order('data', { ascending: false })
-                        .order('criado_em', { ascending: false }),
 
                     supabaseAdmin
                         .from('rco_observacoes')
@@ -195,37 +190,60 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             const nomeAluno = aluno?.nome || `Aluno #${codMatriz}`;
             const codturma = aluno?.codturma || null;
 
-            let ocorrenciasRaw = ocorrenciasResult.status === 'fulfilled'
-                ? (ocorrenciasResult.value?.data || [])
-                : [];
+            /* ── Busca robusta de ocorrências ──────────────────────────────────
+               O RCO atribui codMatrizAluno POR CLASSE. O mesmo aluno pode ter
+               IDs diferentes em disciplinas distintas da mesma turma. A query
+               por ID Supabase só pega uma parte dos registros.
 
-            /* Fallback 2 passos: o RCO atribui codMatrizAluno por classe — o ID
-               salvo na ocorrência pode diferir do sincronizado no Supabase.
-               Passo 1: descobre o cod_matriz_aluno real pelo nome + turma.
-               Passo 2: busca TODAS as ocorrências por esse ID (inclusive as
-               que foram gravadas sem nome_aluno, cobrindo 100% dos registros). */
-            if (ocorrenciasRaw.length === 0 && nomeAluno && !nomeAluno.startsWith('Aluno #') && codturma) {
-                const { data: idRows } = await supabaseAdmin
+               Estratégia em 3 camadas (sempre executa todas):
+               A) Por ID Supabase (codMatriz) — rápido, pega registros que coincidem.
+               B) Por nome+turma (passo 1) → descobre o ID real do aluno nas ocorrências.
+               C) Por ID real (passo 2)     → pega TODOS os registros desse ID,
+                  inclusive os gravados sem nome_aluno.
+               Resultado final: união de A + C, deduplicada por id. */
+            const [byIdResult, byNomeIdResult] = await Promise.all([
+                supabaseAdmin
                     .from('aluno_ocorrencias')
-                    .select('cod_matriz_aluno')
-                    .eq('cod_turma', codturma)
-                    .ilike('nome_aluno', nomeAluno.trim());
+                    .select('*')
+                    .eq('cod_matriz_aluno', codMatriz)
+                    .order('data',      { ascending: false })
+                    .order('criado_em', { ascending: false }),
 
-                const idsReais = [...new Set((idRows || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
-
-                if (idsReais.length > 0) {
-                    const { data: fbData } = await supabaseAdmin
+                (nomeAluno && !nomeAluno.startsWith('Aluno #') && codturma)
+                    ? supabaseAdmin
                         .from('aluno_ocorrencias')
-                        .select('*')
-                        .in('cod_matriz_aluno', idsReais)
-                        .order('data',      { ascending: false })
-                        .order('criado_em', { ascending: false });
-                    if (fbData && fbData.length > 0) {
-                        ocorrenciasRaw = fbData;
-                        console.log(`[FICHA-ALUNO] fallback por nome "${nomeAluno}" (ids=${idsReais}): ${fbData.length} ocorrência(s)`);
-                    }
-                }
+                        .select('cod_matriz_aluno')
+                        .eq('cod_turma', codturma)
+                        .ilike('nome_aluno', nomeAluno.trim())
+                    : Promise.resolve({ data: [] }),
+            ]);
+
+            const byId = byIdResult.data || [];
+            const idsReais = [...new Set(
+                (byNomeIdResult.data || []).map(r => r.cod_matriz_aluno).filter(v => v != null)
+            )];
+
+            let byRealId = [];
+            if (idsReais.length > 0) {
+                const { data: rdData } = await supabaseAdmin
+                    .from('aluno_ocorrencias')
+                    .select('*')
+                    .in('cod_matriz_aluno', idsReais)
+                    .order('data',      { ascending: false })
+                    .order('criado_em', { ascending: false });
+                byRealId = rdData || [];
             }
+
+            /* União deduplicada por id; ordena por data desc */
+            const seenIds = new Set();
+            const ocorrenciasRaw = [...byId, ...byRealId]
+                .filter(o => { if (seenIds.has(o.id)) return false; seenIds.add(o.id); return true; })
+                .sort((a, b) => {
+                    const d = new Date(b.data) - new Date(a.data);
+                    return d !== 0 ? d : new Date(b.criado_em) - new Date(a.criado_em);
+                });
+
+            console.log(`[FICHA-ALUNO] "${nomeAluno}" (codMatriz=${codMatriz}, codturma=${codturma}): byId=${byId.length} byRealId=${byRealId.length} total=${ocorrenciasRaw.length}`);
 
             const observacoesRaw = observacoesResult.status === 'fulfilled'
                 ? (observacoesResult.value?.data || [])
