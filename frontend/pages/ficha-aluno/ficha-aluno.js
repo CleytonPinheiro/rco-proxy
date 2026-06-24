@@ -156,16 +156,33 @@ async function carregarTurmas() {
     }
 }
 
+function _zerarPainelDireito() {
+    /* Limpa ficha do aluno, deseleciona multi e esconde batch bar */
+    window._fichaMultiMode = false;
+    window._fichaAlunosSelecionados = new Set();
+    document.getElementById('fichaHeader').innerHTML = `
+        <div class="ficha-header-info">
+            <h2 class="ficha-aluno-nome" style="font-size:18px;opacity:.7">Selecione um aluno</h2>
+            <p style="margin:4px 0 0;opacity:.55;font-size:13px">Escolha a turma no painel à esquerda e clique em um aluno.</p>
+        </div>`;
+    document.getElementById('fichaDetalhe').innerHTML = '';
+    const bar = document.querySelector('.ficha-batch-bar');
+    if (bar) bar.style.display = 'none';
+}
+
 function _onFichaCursoChange() {
     const selCurso = document.getElementById('fichaCursoSelect');
     const selTurma = document.getElementById('fichaTurmaSelect');
     const curso = selCurso.value;
+
+    _zerarPainelDireito();
 
     if (!curso) {
         selTurma.innerHTML = '<option value="">← Selecione o curso acima</option>';
         selTurma.disabled = true;
         document.getElementById('fichaListaAlunos').innerHTML =
             '<div class="ficha-lista-placeholder">Selecione um curso e depois a turma.</div>';
+        if (window.refreshCustomSelect) refreshCustomSelect(selTurma);
         return;
     }
 
@@ -185,11 +202,32 @@ function _onFichaCursoChange() {
 
 function _onFichaTurmaChange() {
     const selTurma = document.getElementById('fichaTurmaSelect');
-    if (selTurma.value) carregarAlunos(selTurma.value);
-    else {
+    _zerarPainelDireito();
+    if (!selTurma.value) {
         document.getElementById('fichaListaAlunos').innerHTML =
             '<div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>';
+        return;
     }
+    /* Carrega alunos e, em paralelo, dispara sync de obs em background */
+    carregarAlunos(selTurma.value);
+    _sincronizarObsTurmaBackground(selTurma.value);
+}
+
+/**
+ * Fire-and-forget: sincroniza rco_observacoes da turma assim que ela é selecionada.
+ * Não bloqueia a UI. Quando termina, recarrega a lista para atualizar badges de obs.
+ */
+async function _sincronizarObsTurmaBackground(codturma) {
+    try {
+        const r = await fetch(`${API}/api/ficha-aluno/sync-obs?codturma=${codturma}`, { method: 'POST' });
+        if (!r.ok) return;
+        const data = await r.json().catch(() => ({}));
+        if (data.total > 0) {
+            /* Recarrega lista silenciosamente para atualizar badges de observações */
+            const selTurma = document.getElementById('fichaTurmaSelect');
+            if (selTurma && selTurma.value == codturma) await carregarAlunos(codturma);
+        }
+    } catch (_) { /* silencioso — não perturba a UX */ }
 }
 
 async function carregarAlunos(codturma) {

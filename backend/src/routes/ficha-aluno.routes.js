@@ -306,18 +306,29 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
        Busca observações frescas do RCO para TODAS as classes da turma do aluno
        e faz upsert em rco_observacoes. Bloqueante (aguarda conclusão).        */
     router.post('/ficha-aluno/sync-obs', async (req, res) => {
-        const codMatriz = parseInt(req.query.codMatrizAluno || req.body?.codMatrizAluno, 10);
-        if (isNaN(codMatriz)) return res.status(400).json({ erro: 'codMatrizAluno inválido' });
+        /* Aceita codturma direto OU codMatrizAluno (para lookup reverso) */
+        const qCodturma   = parseInt(req.query.codturma   || req.body?.codturma,   10);
+        const qCodMatriz  = parseInt(req.query.codMatrizAluno || req.body?.codMatrizAluno, 10);
+
+        let codturma = !isNaN(qCodturma) ? qCodturma : null;
+        let label    = `turma ${codturma}`;
+
         try {
-            const { data: aluno } = await supabaseAdmin
-                .from('alunos')
-                .select('codturma, nome')
-                .eq('codmatrizaluno', codMatriz)
-                .maybeSingle();
-            if (!aluno?.codturma) return res.status(404).json({ erro: 'Turma não encontrada para este aluno.' });
-            const total = await sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, aluno.codturma);
-            console.log(`[SYNC-OBS] "${aluno.nome}" turma ${aluno.codturma} → ${total} obs sincronizadas`);
-            res.json({ ok: true, total, codturma: aluno.codturma });
+            if (!codturma) {
+                if (isNaN(qCodMatriz)) return res.status(400).json({ erro: 'Informe codturma ou codMatrizAluno.' });
+                const { data: aluno } = await supabaseAdmin
+                    .from('alunos')
+                    .select('codturma, nome')
+                    .eq('codmatrizaluno', qCodMatriz)
+                    .maybeSingle();
+                if (!aluno?.codturma) return res.status(404).json({ erro: 'Turma não encontrada para este aluno.' });
+                codturma = aluno.codturma;
+                label    = `"${aluno.nome}" turma ${codturma}`;
+            }
+
+            const total = await sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codturma);
+            console.log(`[SYNC-OBS] ${label} → ${total} obs sincronizadas`);
+            res.json({ ok: true, total, codturma });
         } catch (e) {
             console.error('[SYNC-OBS]', e.message);
             res.status(500).json({ erro: e.message });
