@@ -472,7 +472,6 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
         const { data: idRows } = await supabaseAdmin
             .from('aluno_ocorrencias')
             .select('cod_matriz_aluno')
-            .eq('cod_turma', aluno.codturma)
             .ilike('nome_aluno', aluno.nome.trim());
 
         const idsReais = [...new Set((idRows || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
