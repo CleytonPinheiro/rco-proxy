@@ -787,14 +787,23 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
                 resultados.push(...loteRes);
             }
 
-            const registros = resultados.filter(r => r && r.combinadas.length > 0);
-            console.log(`[BATCH] ${ids.length} solicitados → ${resultados.filter(Boolean).length} encontrados → ${registros.length} com ocorrências/observações`);
+            /* Inclui TODOS os alunos encontrados — sem observações recebem
+               uma página em branco para preenchimento manual */
+            const registros = resultados.filter(r => r != null);
+            const comDados   = registros.filter(r => r.combinadas.length > 0).length;
+            console.log(`[BATCH] ${ids.length} solicitados → ${registros.length} encontrados → ${comDados} com ocorrências/observações → ${registros.length - comDados} em branco`);
             if (registros.length === 0) return res.status(204).end();
 
-            registros.sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR'));
+            /* Alunos sem ocorrências/observações ganham uma entrada vazia
+               para que o gerarPDF produza uma página de termo em branco */
+            const registrosNorm = registros.map(r =>
+                r.combinadas.length > 0 ? r : { ...r, combinadas: [{}] }
+            );
+
+            registrosNorm.sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR'));
 
             const nomeProfLogado = req.userSession?.nome || '';
-            const { doc, chunks, paginas } = gerarPDF(registros, escola, cidadeRef, nomeProfLogado);
+            const { doc, chunks, paginas } = gerarPDF(registrosNorm, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
             const nomeArqBatch = montarNomeArquivo(registros[0]?.aluno?.turma || '');
