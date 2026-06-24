@@ -602,7 +602,8 @@ async function gerarTermoPDF(codMatrizAluno, btn) {
         }
         const blob   = await r.blob();
         const objUrl = URL.createObjectURL(blob);
-        _abrirTermoViewer(objUrl, nomeAluno);
+        window.open(objUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
     } catch (e) {
         notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
