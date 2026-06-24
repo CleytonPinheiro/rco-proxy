@@ -157,6 +157,7 @@
     overflow-y: auto;
     padding: 6px 6px;
     scrollbar-width: thin;
+    scrollbar-gutter: stable;
 }
 
 /* ── Multi-seleção ─────────────────────────────────────────────────────────── */
@@ -232,6 +233,14 @@
     font-size: 12px;
     font-weight: 600;
     color: var(--text-muted, #6b7280);
+    white-space: nowrap;
+    min-width: 7ch;
+    text-align: center;
+}
+
+#fichaSelectAllTexto {
+    display: inline-block;
+    min-width: 8.5ch;
     white-space: nowrap;
 }
 
