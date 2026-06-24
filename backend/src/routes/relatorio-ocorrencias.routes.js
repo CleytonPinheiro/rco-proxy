@@ -528,6 +528,31 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     return { aluno, combinadas };
 }
 
+// ─── Monta nome do arquivo PDF ────────────────────────────────────────────────
+function montarNomeArquivo(turma) {
+    // Remove acentos e caracteres especiais
+    const slug = (str) =>
+        (str || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // remove acentos
+            .toUpperCase()
+            .replace(/[^A-Z0-9\s-]/g, '')                       // só letras, números, espaço, hífen
+            .trim()
+            .replace(/\s+/g, '-')                               // espaços → hífen
+            .replace(/-{2,}/g, '-');                            // hifens duplos → simples
+
+    // turma: "TEC EM DES DE SISTEMAS - MANHÃ"  →  curso="TEC EM DES DE SISTEMAS", turno="MANHÃ"
+    const partes = (turma || '').split(/\s*[-–]\s*/);
+    const curso  = slug(partes[0] || 'CURSO');
+    const turno  = slug(partes.slice(1).join('-') || 'TURMA');
+
+    const hoje = new Date();
+    const dd   = String(hoje.getDate()).padStart(2, '0');
+    const mm   = String(hoje.getMonth() + 1).padStart(2, '0');
+    const aaaa = hoje.getFullYear();
+
+    return `termos-${curso}-${turno}-${dd}-${mm}-${aaaa}.pdf`;
+}
+
 // ─── Gera PDF paisagem (2 vias por página) ────────────────────────────────────
 function gerarPDF(registros, escola, cidadeRef, nomeProfLogado = '') {
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0, autoFirstPage: false });
@@ -610,7 +635,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             const { doc, chunks } = gerarPDF([dado], escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
-            const nomeArq = `termos-${(dado.aluno.nome || 'aluno').replace(/\s+/g, '-').toLowerCase()}.pdf`;
+            const nomeArq = montarNomeArquivo(dado.aluno.turma);
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArq}"`);
             res.setHeader('Cache-Control', 'no-store');
@@ -655,8 +680,9 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             const { doc, chunks } = gerarPDF(registros, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
+            const nomeArqBatch = montarNomeArquivo(registros[0]?.aluno?.turma || '');
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'attachment; filename="termos-ocorrencia.pdf"');
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeArqBatch}"`);
             res.setHeader('Cache-Control', 'no-store');
             res.send(Buffer.concat(chunks));
         } catch (e) {
