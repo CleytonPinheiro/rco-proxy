@@ -52,10 +52,7 @@
             <div class="ficha-lista-topo">
                 <div class="ficha-lista-titulo-row">
                     <span class="ficha-lista-titulo">📋 Selecionar aluno</span>
-                    <div style="display:flex;gap:4px;align-items:center">
-                        <button class="ficha-sync-btn" id="fichaMultiBtn" onclick="toggleMultiMode()" title="Selecionar múltiplos alunos para gerar PDF em lote">☑</button>
-                        <button class="ficha-sync-btn" id="fichaSyncBtn" onclick="sincronizarTurma()" title="Sincronizar lista de alunos com o RCO">🔄</button>
-                    </div>
+                    <button class="ficha-sync-btn" id="fichaSyncBtn" onclick="sincronizarTurma()" title="Sincronizar lista de alunos com o RCO">🔄</button>
                 </div>
                 <div class="ficha-sel-group">
                     <label class="ficha-sel-label">Curso</label>
@@ -69,26 +66,20 @@
                         <option value="">← Selecione o curso</option>
                     </select>
                 </div>
-                <div id="fichaSelectAllRow" class="ficha-select-all-row" style="display:none">
-                    <label class="ficha-select-all-label">
-                        <input type="checkbox" id="fichaSelectAllCheck" onchange="selecionarTodos(this.checked)">
-                        <span id="fichaSelectAllTexto">Selecionar todos</span>
-                    </label>
-                </div>
+            </div>
+            <!-- Barra de ação — aparece NO TOPO da lista assim que a turma for carregada -->
+            <div id="fichaBatchBar" class="ficha-batch-bar" style="display:none">
+                <label class="ficha-select-all-label">
+                    <input type="checkbox" id="fichaSelectAllCheck" onchange="selecionarTodos(this.checked)">
+                    <span id="fichaSelectAllTexto">Todos</span>
+                </label>
+                <span id="fichaBatchContador" class="ficha-batch-contador">0 selecionados</span>
+                <button id="fichaBatchBtn" class="ficha-batch-gerar" onclick="gerarTermosBatch(this)" disabled>
+                    📄 Gerar PDF
+                </button>
             </div>
             <div id="fichaListaAlunos" class="ficha-lista-alunos">
                 <div class="ficha-lista-placeholder">Selecione uma turma para ver os alunos.</div>
-            </div>
-            <div id="fichaBatchBar" class="ficha-batch-bar" style="display:none">
-                <span id="fichaBatchContador" class="ficha-batch-contador">0 selecionados</span>
-                <div style="display:flex;gap:6px;align-items:center">
-                    <button id="fichaBatchTodosBtn" class="ficha-batch-todos" onclick="selecionarTodos()">
-                        ☑ Todos
-                    </button>
-                    <button id="fichaBatchBtn" class="ficha-batch-gerar" onclick="gerarTermosBatch(this)">
-                        📄 Gerar PDF
-                    </button>
-                </div>
             </div>
         </aside>
 

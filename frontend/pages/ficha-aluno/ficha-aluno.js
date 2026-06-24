@@ -192,9 +192,10 @@ async function carregarAlunos(codturma) {
         /* Ordena alfabeticamente */
         alunos.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
 
-        /* Reset seleção ao carregar nova turma */
+        /* Ativa modo multi automaticamente ao carregar turma */
+        window._fichaMultiMode = true;
         window._fichaAlunosSelecionados = new Set();
-        updateBatchBtn();
+        listEl.classList.add('multi-mode');
 
         listEl.innerHTML = alunos.map(a => {
             const { positivo = 0, atencao = 0, grave = 0 } = a.ocorrencias || {};
@@ -219,22 +220,15 @@ async function carregarAlunos(codturma) {
             </div>`;
         }).join('');
 
+        /* Mostra barra de ação agora que há alunos */
+        updateBatchBtn();
+
     } catch (e) {
         listEl.innerHTML = `<div class="ficha-lista-placeholder" style="color:#dc2626">Erro: ${escHtml(e.message)}</div>`;
     }
 }
 
 async function selecionarAluno(codMatrizAluno) {
-    /* Em modo multi-seleção: marca/desmarca o checkbox em vez de abrir ficha */
-    if (window._fichaMultiMode) {
-        const chk = document.getElementById(`faic-${codMatrizAluno}`);
-        if (chk) {
-            chk.checked = !chk.checked;
-            toggleAlunoSelecao(codMatrizAluno, chk.checked);
-        }
-        return;
-    }
-
     /* Destaca na lista */
     document.querySelectorAll('.ficha-aluno-item').forEach(btn => {
         btn.classList.toggle('ativo', btn.dataset.cod == codMatrizAluno);
@@ -259,23 +253,13 @@ async function selecionarAluno(codMatrizAluno) {
 /* ── Multi-seleção ─────────────────────────────────────────────────────────── */
 
 function toggleMultiMode() {
-    window._fichaMultiMode = !window._fichaMultiMode;
+    /* Modo multi sempre ligado — limpa seleção ao clicar no botão de sync */
+    window._fichaMultiMode = true;
     window._fichaAlunosSelecionados = new Set();
 
-    const listEl        = document.getElementById('fichaListaAlunos');
-    const btn           = document.getElementById('fichaMultiBtn');
-    const selectAllRow  = document.getElementById('fichaSelectAllRow');
-    const masterCheck   = document.getElementById('fichaSelectAllCheck');
-
-    listEl?.classList.toggle('multi-mode', window._fichaMultiMode);
-    if (btn) {
-        btn.classList.toggle('ativo', window._fichaMultiMode);
-        btn.title = window._fichaMultiMode ? 'Sair da seleção múltipla' : 'Selecionar múltiplos alunos para gerar PDF em lote';
-    }
-    if (selectAllRow) selectAllRow.style.display = window._fichaMultiMode ? 'flex' : 'none';
+    const masterCheck = document.getElementById('fichaSelectAllCheck');
     if (masterCheck)  { masterCheck.checked = false; masterCheck.indeterminate = false; }
 
-    /* Desmarca todos */
     document.querySelectorAll('.fai-check').forEach(c => { c.checked = false; });
     document.querySelectorAll('.ficha-aluno-item').forEach(b => b.classList.remove('selecionado'));
 
@@ -300,8 +284,9 @@ function updateBatchBtn() {
     const n         = window._fichaAlunosSelecionados?.size ?? 0;
 
     if (!bar) return;
-    bar.style.display = (window._fichaMultiMode) ? 'flex' : 'none';
-    if (contador) contador.textContent = `${n} aluno${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}`;
+    const hasAlunos = document.querySelectorAll('.fai-check').length > 0;
+    bar.style.display = hasAlunos ? 'flex' : 'none';
+    if (contador) contador.textContent = n > 0 ? `${n} selecionado${n !== 1 ? 's' : ''}` : '';
     const gerarBtn  = document.getElementById('fichaBatchBtn');
     if (gerarBtn) gerarBtn.disabled = n === 0;
 

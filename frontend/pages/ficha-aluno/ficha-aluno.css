@@ -186,21 +186,13 @@
 .ficha-select-all-label:hover { color: #6366f1; }
 
 .fai-check {
-    display: none;
+    display: block;
     flex-shrink: 0;
     width: 16px;
     height: 16px;
     accent-color: #6366f1;
     cursor: pointer;
     border-radius: 4px;
-}
-
-/* Quando a lista está em modo multi */
-.ficha-lista-alunos.multi-mode .fai-check {
-    display: block;
-}
-.ficha-lista-alunos.multi-mode .ficha-aluno-item {
-    cursor: pointer;
 }
 
 /* Item selecionado em modo multi */
@@ -216,16 +208,15 @@
     color: #6366f1;
 }
 
-/* Barra inferior de lote */
+/* Barra de ação — fica NO TOPO da lista */
 .ficha-batch-bar {
     display: none;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px 12px;
-    border-top: 1px solid var(--border, #e1e5ea);
-    background: var(--bg, #f4f6f8);
-    border-radius: 0 0 12px 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border, #e1e5ea);
+    background: var(--bg-alt, #f0f2f5);
     flex-shrink: 0;
 }
 
