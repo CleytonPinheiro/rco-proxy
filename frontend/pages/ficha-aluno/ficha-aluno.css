@@ -187,6 +187,9 @@
     font-weight: 600;
     color: var(--text-muted, #6b7280);
     user-select: none;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 .ficha-select-all-label input[type="checkbox"] {
     width: 15px;
@@ -230,6 +233,7 @@
     border-bottom: 1px solid var(--border, #e1e5ea);
     background: var(--bg-alt, #f0f2f5);
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .ficha-batch-contador {
@@ -246,8 +250,10 @@
 
 #fichaSelectAllTexto {
     display: inline-block;
-    min-width: 8.5ch;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .ficha-batch-gerar {
@@ -294,7 +300,8 @@
 /* Cartão de aluno na lista */
 .ficha-aluno-item {
     display: block;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     text-align: left;
     background: none;
     border: 1px solid transparent;
@@ -330,12 +337,15 @@
     color: var(--text-muted, #6b7280);
     white-space: nowrap;
     flex-shrink: 0;
+    min-width: 3.5ch;
 }
 .fai-nome {
     font-size: 12px;
     font-weight: 600;
     line-height: 1.35;
     word-break: break-word;
+    flex: 1;
+    min-width: 0;
 }
 .fai-badges {
     display: flex;
