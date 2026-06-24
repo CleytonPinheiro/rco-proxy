@@ -564,6 +564,22 @@ function _abrirTermoViewer(blobUrl, nomeAluno) {
     viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+async function sincronizarObsRCO(codMatrizAluno, btn) {
+    const txt = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sincronizando…'; }
+    try {
+        const r = await fetch(`${API}/api/ficha-aluno/sync-obs?codMatrizAluno=${codMatrizAluno}`, { method: 'POST' });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.erro || `Erro ${r.status}`);
+        toast(`✅ ${data.total} observações sincronizadas do RCO. Recarregando ficha…`, 'ok');
+        /* Recarrega ficha para exibir as observações novas */
+        await selecionarAluno(codMatrizAluno);
+    } catch (e) {
+        notificar('Erro ao sincronizar observações', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
+        if (btn) { btn.disabled = false; btn.textContent = txt; }
+    }
+}
+
 async function gerarTermoPDF(codMatrizAluno, btn) {
     const de        = document.getElementById('termoDe')?.value        || '';
     const ate       = document.getElementById('termoAte')?.value       || '';
@@ -618,6 +634,9 @@ function renderFicha(dados) {
             <button id="btnGerarTermo" class="btn-imprimir"
                     onclick="gerarTermoPDF(${aluno.codMatrizAluno}, this)"
                     style="background:#dc2626;color:#fff;border-color:#dc2626">📄 Gerar Termos PDF</button>
+            <button class="btn-imprimir" title="Busca observações mais recentes do RCO Digital para esta turma"
+                    onclick="sincronizarObsRCO(${aluno.codMatrizAluno}, this)"
+                    style="background:#0ea5e9;color:#fff;border-color:#0ea5e9">🔄 Obs. RCO</button>
         </div>`;
 
     document.title = `Ficha — ${aluno.nome}`;

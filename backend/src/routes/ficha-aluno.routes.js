@@ -5,6 +5,96 @@ const { Pool } = pkg;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+/**
+ * Sincroniza rco_observacoes para todas as classes de uma turma.
+ * Reutiliza a mesma lógica de GET /api/rco/observacoes.
+ * Retorna o total de observações inseridas/atualizadas (0 em caso de erro).
+ */
+async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codturma) {
+    try {
+        /* 1. Busca classes da turma */
+        const { data: classes } = await supabaseAdmin
+            .from('rco_classes')
+            .select('cod_classe')
+            .eq('cod_turma', codturma);
+        if (!classes || classes.length === 0) return 0;
+
+        /* 2. Lê mapa de períodos salvo pelo SyncService */
+        let classPeriodMap = {};
+        try {
+            const { rows } = await pool.query(
+                `SELECT valor FROM edusync_config WHERE chave = 'rco_classes_periodos'`
+            );
+            if (rows.length) classPeriodMap = JSON.parse(rows[0].valor);
+        } catch (_) {}
+
+        let total = 0;
+        for (const cl of classes) {
+            try {
+                const codClasse = cl.cod_classe;
+                const per = classPeriodMap[String(codClasse)] || {};
+                const codPA = per.codPA ?? 9;
+                const codPL = per.codPL ?? 261;
+
+                /* Busca lista de aulas (mesma chamada que o front de Frequências faz) */
+                const freqResp = await rcoApiService.get(
+                    `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
+                );
+                const alunosFreq = Array.isArray(freqResp.data)
+                    ? freqResp.data
+                    : (freqResp.data?.data || []);
+                const aulaSet = new Set();
+                alunosFreq.forEach(a =>
+                    Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); })
+                );
+                const codAulas = [...aulaSet];
+                if (!codAulas.length) continue;
+
+                /* Para cada aula, busca observações (lotes de 10) */
+                const LOTE = 10;
+                const todasObs = [];
+                for (let i = 0; i < codAulas.length; i += LOTE) {
+                    const lote = codAulas.slice(i, i + LOTE);
+                    const res = await Promise.all(lote.map(async (cod) => {
+                        try {
+                            const r = await rcoApiService.get(
+                                `/educador/grade/aula/v2/${cod}?codPeriodoLetivo=${codPL}`
+                            );
+                            const aula = r.data?.aula || {};
+                            const dataAula = aula.dataAula ? aula.dataAula.substring(0, 10) : null;
+                            return (aula.alunos || [])
+                                .filter(a => a.observacao && a.observacao.trim())
+                                .map(a => ({
+                                    cod_aula:         parseInt(cod),
+                                    cod_classe:       parseInt(codClasse),
+                                    cod_matriz_aluno: a.codMatrizAluno,
+                                    nome_aluno:       a.nome || '',
+                                    num_chamada:      a.numChamada || null,
+                                    data_aula:        dataAula,
+                                    observacao:       a.observacao.trim(),
+                                }));
+                        } catch { return []; }
+                    }));
+                    res.forEach(r => todasObs.push(...r));
+                }
+
+                if (todasObs.length > 0) {
+                    await supabaseAdmin
+                        .from('rco_observacoes')
+                        .upsert(todasObs, { onConflict: 'cod_aula,cod_matriz_aluno' });
+                    total += todasObs.length;
+                }
+            } catch (e) {
+                console.warn(`[SYNC-OBS] Erro na classe ${cl.cod_classe}:`, e.message);
+            }
+        }
+        return total;
+    } catch (e) {
+        console.warn('[SYNC-OBS] Erro geral:', e.message);
+        return 0;
+    }
+}
+
 export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
     const router = Router();
 
@@ -208,6 +298,28 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             });
         } catch (e) {
             console.error('[FICHA-ALUNO] resumo-turma:', e.message);
+            res.status(500).json({ erro: e.message });
+        }
+    });
+
+    /* ── POST /api/ficha-aluno/sync-obs?codMatrizAluno=X ────────────────────
+       Busca observações frescas do RCO para TODAS as classes da turma do aluno
+       e faz upsert em rco_observacoes. Bloqueante (aguarda conclusão).        */
+    router.post('/ficha-aluno/sync-obs', async (req, res) => {
+        const codMatriz = parseInt(req.query.codMatrizAluno || req.body?.codMatrizAluno, 10);
+        if (isNaN(codMatriz)) return res.status(400).json({ erro: 'codMatrizAluno inválido' });
+        try {
+            const { data: aluno } = await supabaseAdmin
+                .from('alunos')
+                .select('codturma, nome')
+                .eq('codmatrizaluno', codMatriz)
+                .maybeSingle();
+            if (!aluno?.codturma) return res.status(404).json({ erro: 'Turma não encontrada para este aluno.' });
+            const total = await sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, aluno.codturma);
+            console.log(`[SYNC-OBS] "${aluno.nome}" turma ${aluno.codturma} → ${total} obs sincronizadas`);
+            res.json({ ok: true, total, codturma: aluno.codturma });
+        } catch (e) {
+            console.error('[SYNC-OBS]', e.message);
             res.status(500).json({ erro: e.message });
         }
     });
