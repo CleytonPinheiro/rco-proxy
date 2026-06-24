@@ -38,13 +38,24 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 return true;
             });
 
-            const codMatrizes = alunosUnicos.map(a => a.codmatrizaluno).filter(Boolean);
+            /* codmatrizaluno na tabela alunos pode ser TEXT; garantimos inteiros
+               para o filtro da ata_impressa (coluna INTEGER) */
+            const codMatrizes = alunosUnicos
+                .map(a => parseInt(a.codmatrizaluno, 10))
+                .filter(n => !isNaN(n));
 
-            const [{ data: ocorrencias }, atasResult] = await Promise.all([
+            /* IMPORTANTE: o RCO atribui codMatrizAluno por CLASSE (não por turma).
+               O mesmo aluno pode ter IDs diferentes em disciplinas distintas da mesma
+               turma. As ocorrências são gravadas com o ID da classe que o professor
+               abriu no módulo Comportamento, enquanto o Supabase sincroniza o ID de
+               outra classe — causando mismatch no filtro .in().
+               Solução: buscar ocorrências pelo cod_turma (sempre consistente) e
+               parear com os alunos pelo nome (já usado para deduplicação acima). */
+            const [ocorrResult, atasResult] = await Promise.all([
                 supabaseAdmin
                     .from('aluno_ocorrencias')
-                    .select('cod_matriz_aluno, tipo')
-                    .in('cod_matriz_aluno', codMatrizes),
+                    .select('nome_aluno, cod_matriz_aluno, tipo')
+                    .eq('cod_turma', parseInt(codturma, 10)),
                 pool.query(
                     `SELECT cod_matriz_aluno,
                             COUNT(*)::int          AS qtd,
@@ -57,11 +68,27 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ).catch(() => ({ rows: [] })),
             ]);
 
-            const ocorrMap = {};
-            for (const o of (ocorrencias || [])) {
-                const k = o.cod_matriz_aluno;
-                if (!ocorrMap[k]) ocorrMap[k] = { positivo: 0, atencao: 0, grave: 0 };
-                if (ocorrMap[k][o.tipo] !== undefined) ocorrMap[k][o.tipo]++;
+            if (ocorrResult.error) {
+                console.error('[FICHA-ALUNO] Supabase aluno_ocorrencias error:', ocorrResult.error.message);
+            }
+            const ocorrencias = ocorrResult.data || [];
+            console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${ocorrencias.length} ocorrências`);
+
+            /* Mapa primário por nome normalizado (resolve mismatch de ID entre classes) */
+            const ocorrMapNome = {};
+            /* Mapa secundário por cod_matriz_aluno (para alunos sem nome_aluno gravado) */
+            const ocorrMapCod  = {};
+            for (const o of ocorrencias) {
+                const nomeKey = (o.nome_aluno || '').toUpperCase().trim();
+                if (nomeKey) {
+                    if (!ocorrMapNome[nomeKey]) ocorrMapNome[nomeKey] = { positivo: 0, atencao: 0, grave: 0 };
+                    if (ocorrMapNome[nomeKey][o.tipo] !== undefined) ocorrMapNome[nomeKey][o.tipo]++;
+                }
+                const codKey = o.cod_matriz_aluno;
+                if (codKey != null) {
+                    if (!ocorrMapCod[codKey]) ocorrMapCod[codKey] = { positivo: 0, atencao: 0, grave: 0 };
+                    if (ocorrMapCod[codKey][o.tipo] !== undefined) ocorrMapCod[codKey][o.tipo]++;
+                }
             }
 
             const atasMap = {};
@@ -74,14 +101,23 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             }
 
             res.json({
-                alunos: alunosUnicos.map(a => ({
-                    codMatrizAluno: a.codmatrizaluno,
-                    nome:          a.nome,
-                    numchamada:    a.numchamada,
-                    turma:         a.turma,
-                    ocorrencias:   ocorrMap[a.codmatrizaluno] || { positivo: 0, atencao: 0, grave: 0 },
-                    atasImpressas: atasMap[a.codmatrizaluno]  || null,
-                })),
+                alunos: alunosUnicos.map(a => {
+                    const nomeKey = (a.nome || '').toUpperCase().trim();
+                    const cod     = parseInt(a.codmatrizaluno, 10);
+                    /* Prioridade: nome > codMatrizAluno numérico > codMatrizAluno text */
+                    const ocorr = ocorrMapNome[nomeKey]
+                               || ocorrMapCod[cod]
+                               || ocorrMapCod[a.codmatrizaluno]
+                               || { positivo: 0, atencao: 0, grave: 0 };
+                    return {
+                        codMatrizAluno: a.codmatrizaluno,
+                        nome:          a.nome,
+                        numchamada:    a.numchamada,
+                        turma:         a.turma,
+                        ocorrencias:   ocorr,
+                        atasImpressas: atasMap[cod] || atasMap[a.codmatrizaluno] || null,
+                    };
+                }),
             });
         } catch (e) {
             console.error('[FICHA-ALUNO] resumo-turma:', e.message);

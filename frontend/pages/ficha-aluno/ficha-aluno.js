@@ -201,6 +201,15 @@ async function carregarAlunos(codturma) {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const { alunos } = await r.json();
 
+        /* DEBUG temporário — remover após confirmar correção */
+        const comOcorr = (alunos || []).filter(a => {
+            const { positivo=0, atencao=0, grave=0 } = a.ocorrencias || {};
+            return (positivo + atencao + grave) > 0;
+        });
+        console.log('[FICHA-ALUNO] total alunos:', (alunos||[]).length,
+                    '| com ocorrências:', comOcorr.length,
+                    '| exemplos:', comOcorr.slice(0,3).map(a => `${a.nome}: ${JSON.stringify(a.ocorrencias)}`));
+
         if (!alunos || alunos.length === 0) {
             listEl.innerHTML = '<div class="ficha-lista-placeholder">Nenhum aluno encontrado nesta turma.</div>';
             return;
