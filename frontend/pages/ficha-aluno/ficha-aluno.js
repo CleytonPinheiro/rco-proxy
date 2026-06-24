@@ -411,8 +411,9 @@ async function gerarTermosBatch(btn) {
         });
         if (comImpressas.length > 5) linhas.push(`  ...e mais ${comImpressas.length - 5} aluno(s)`);
         const ok = await confirmar(
+            `⚠️ ${comImpressas.length} aluno${comImpressas.length !== 1 ? 's' : ''} com atas já impressas`,
             linhas.join('\n'),
-            { titulo: `⚠️ ${comImpressas.length} aluno${comImpressas.length !== 1 ? 's' : ''} com atas já impressas`, confirmLabel: 'Imprimir mesmo assim', tipo: 'danger' }
+            { confirmLabel: 'Imprimir mesmo assim', tipo: 'danger' }
         );
         if (!ok) return;
     }
