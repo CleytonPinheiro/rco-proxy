@@ -74,17 +74,18 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             const ocorrencias = ocorrResult.data || [];
             console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${ocorrencias.length} ocorrências`);
 
-            /* Mapa primário por nome normalizado (resolve mismatch de ID entre classes) */
-            const ocorrMapNome = {};
-            /* Mapa secundário por cod_matriz_aluno (para alunos sem nome_aluno gravado) */
-            const ocorrMapCod  = {};
+            /* Mapa nome normalizado → Set de cod_matriz_aluno encontrados nas ocorrências.
+               Permite descobrir o ID real do aluno (RCO por classe) a partir do nome. */
+            const nomeParaIds = {};
+            /* Mapa cod_matriz_aluno → contagens por tipo (inclui ocorrências sem nome). */
+            const ocorrMapCod = {};
             for (const o of ocorrencias) {
                 const nomeKey = (o.nome_aluno || '').toUpperCase().trim();
-                if (nomeKey) {
-                    if (!ocorrMapNome[nomeKey]) ocorrMapNome[nomeKey] = { positivo: 0, atencao: 0, grave: 0 };
-                    if (ocorrMapNome[nomeKey][o.tipo] !== undefined) ocorrMapNome[nomeKey][o.tipo]++;
+                const codKey  = o.cod_matriz_aluno;
+                if (nomeKey && codKey != null) {
+                    if (!nomeParaIds[nomeKey]) nomeParaIds[nomeKey] = new Set();
+                    nomeParaIds[nomeKey].add(codKey);
                 }
-                const codKey = o.cod_matriz_aluno;
                 if (codKey != null) {
                     if (!ocorrMapCod[codKey]) ocorrMapCod[codKey] = { positivo: 0, atencao: 0, grave: 0 };
                     if (ocorrMapCod[codKey][o.tipo] !== undefined) ocorrMapCod[codKey][o.tipo]++;
@@ -103,19 +104,34 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
             res.json({
                 alunos: alunosUnicos.map(a => {
                     const nomeKey = (a.nome || '').toUpperCase().trim();
-                    const cod     = parseInt(a.codmatrizaluno, 10);
-                    /* Prioridade: nome > codMatrizAluno numérico > codMatrizAluno text */
-                    const ocorr = ocorrMapNome[nomeKey]
-                               || ocorrMapCod[cod]
-                               || ocorrMapCod[a.codmatrizaluno]
-                               || { positivo: 0, atencao: 0, grave: 0 };
+                    const codSync = parseInt(a.codmatrizaluno, 10);
+
+                    /* Estratégia:
+                       1. Usa o nome para encontrar o(s) cod_matriz_aluno real(is) do aluno
+                          nas ocorrências (resolve o mismatch de ID entre classes RCO).
+                       2. Soma TODAS as ocorrências por esses IDs — inclusive as gravadas
+                          sem nome_aluno, garantindo contagem completa (ex: 9/9, não 6/9).
+                       3. Fallback: se não há ocorrências com nome, tenta o ID do Supabase. */
+                    const idsReais = nomeParaIds[nomeKey];
+                    let ocorr = { positivo: 0, atencao: 0, grave: 0 };
+                    if (idsReais && idsReais.size > 0) {
+                        for (const id of idsReais) {
+                            const c = ocorrMapCod[id] || {};
+                            ocorr.positivo += c.positivo || 0;
+                            ocorr.atencao  += c.atencao  || 0;
+                            ocorr.grave    += c.grave    || 0;
+                        }
+                    } else {
+                        ocorr = ocorrMapCod[codSync] || ocorrMapCod[a.codmatrizaluno] || ocorr;
+                    }
+
                     return {
                         codMatrizAluno: a.codmatrizaluno,
                         nome:          a.nome,
                         numchamada:    a.numchamada,
                         turma:         a.turma,
                         ocorrencias:   ocorr,
-                        atasImpressas: atasMap[cod] || atasMap[a.codmatrizaluno] || null,
+                        atasImpressas: atasMap[codSync] || atasMap[a.codmatrizaluno] || null,
                     };
                 }),
             });
@@ -183,20 +199,31 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ? (ocorrenciasResult.value?.data || [])
                 : [];
 
-            /* Fallback: o RCO atribui codMatrizAluno por classe — o ID salvo na
-               ocorrência pode diferir do sincronizado no Supabase. Se a busca
-               por ID retornar 0 resultados, tenta pelo nome + turma. */
+            /* Fallback 2 passos: o RCO atribui codMatrizAluno por classe — o ID
+               salvo na ocorrência pode diferir do sincronizado no Supabase.
+               Passo 1: descobre o cod_matriz_aluno real pelo nome + turma.
+               Passo 2: busca TODAS as ocorrências por esse ID (inclusive as
+               que foram gravadas sem nome_aluno, cobrindo 100% dos registros). */
             if (ocorrenciasRaw.length === 0 && nomeAluno && !nomeAluno.startsWith('Aluno #') && codturma) {
-                const { data: fbData } = await supabaseAdmin
+                const { data: idRows } = await supabaseAdmin
                     .from('aluno_ocorrencias')
-                    .select('*')
+                    .select('cod_matriz_aluno')
                     .eq('cod_turma', codturma)
-                    .ilike('nome_aluno', nomeAluno.trim())
-                    .order('data',       { ascending: false })
-                    .order('criado_em',  { ascending: false });
-                if (fbData && fbData.length > 0) {
-                    ocorrenciasRaw = fbData;
-                    console.log(`[FICHA-ALUNO] fallback por nome "${nomeAluno}": ${fbData.length} ocorrência(s) encontrada(s)`);
+                    .ilike('nome_aluno', nomeAluno.trim());
+
+                const idsReais = [...new Set((idRows || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
+
+                if (idsReais.length > 0) {
+                    const { data: fbData } = await supabaseAdmin
+                        .from('aluno_ocorrencias')
+                        .select('*')
+                        .in('cod_matriz_aluno', idsReais)
+                        .order('data',      { ascending: false })
+                        .order('criado_em', { ascending: false });
+                    if (fbData && fbData.length > 0) {
+                        ocorrenciasRaw = fbData;
+                        console.log(`[FICHA-ALUNO] fallback por nome "${nomeAluno}" (ids=${idsReais}): ${fbData.length} ocorrência(s)`);
+                    }
                 }
             }
 

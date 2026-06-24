@@ -464,16 +464,29 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
        retornar 0 resultados e o aluno tiver nome + codturma, tenta pelo nome. */
     let ocorrenciasRawTodas = ocorrenciasResult.data || [];
     if (ocorrenciasRawTodas.length === 0 && aluno.nome && aluno.codturma) {
-        const { data: fbData } = await supabaseAdmin
+        /* Fallback 2 passos — o RCO atribui codMatrizAluno por classe; o ID
+           pode diferir entre classes. Passo 1: descobre o ID real pelo nome.
+           Passo 2: busca TODAS as ocorrências por esse ID (cobrindo registros
+           gravados sem nome_aluno). */
+        const { data: idRows } = await supabaseAdmin
             .from('aluno_ocorrencias')
-            .select('*')
+            .select('cod_matriz_aluno')
             .eq('cod_turma', aluno.codturma)
-            .ilike('nome_aluno', aluno.nome.trim())
-            .order('data', { ascending: true })
-            .limit(9999);
-        if (fbData && fbData.length > 0) {
-            ocorrenciasRawTodas = fbData;
-            console.log(`[RELATORIO] fallback por nome "${aluno.nome}": ${fbData.length} ocorrência(s)`);
+            .ilike('nome_aluno', aluno.nome.trim());
+
+        const idsReais = [...new Set((idRows || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
+
+        if (idsReais.length > 0) {
+            const { data: fbData } = await supabaseAdmin
+                .from('aluno_ocorrencias')
+                .select('*')
+                .in('cod_matriz_aluno', idsReais)
+                .order('data', { ascending: true })
+                .limit(9999);
+            if (fbData && fbData.length > 0) {
+                ocorrenciasRawTodas = fbData;
+                console.log(`[RELATORIO] fallback por nome "${aluno.nome}" (ids=${idsReais}): ${fbData.length} ocorrência(s)`);
+            }
         }
     }
 
