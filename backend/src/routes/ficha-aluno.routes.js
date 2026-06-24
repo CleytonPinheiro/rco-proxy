@@ -207,13 +207,21 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                Definido aqui para ser reutilizado também na busca de turmas. */
             const nomeBuscaPattern = nomeAluno.trim().replace(/\s+/g, '%');
 
+            /* Padrão reduzido para busca de turmas: usa apenas primeiro e último
+               token do nome. Isso tolera abreviações de nomes do meio que o RCO
+               pode gravar diferente por disciplina (ex: "NICHOLAS DE FREITAS" vs
+               "NICHOLAS FIORATI FUMAGALLI DE FREITAS"). */
+            const nomeTokens = nomeAluno.trim().split(/\s+/).filter(Boolean);
+            const nomePatternTurmas = nomeTokens.length >= 2
+                ? `%${nomeTokens[0]}%${nomeTokens[nomeTokens.length - 1]}%`
+                : `%${nomeAluno.trim()}%`;
+
             /* B: todos os IDs deste aluno em QUALQUER turma.
-               Usa padrão com wildcards entre palavras para tolerar pequenas
-               variações de nome que o RCO pode gravar por disciplina. */
+               Usa padrão reduzido (primeiro+último nome) para tolerar variações. */
             const { data: todasTurmasAluno } = await supabaseAdmin
                 .from('alunos')
                 .select('codmatrizaluno, codturma')
-                .ilike('nome', `%${nomeBuscaPattern}%`);
+                .ilike('nome', nomePatternTurmas);
 
             const todosIdsSupabase = [...new Set([
                 codMatriz,
