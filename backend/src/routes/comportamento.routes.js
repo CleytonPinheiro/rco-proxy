@@ -105,36 +105,12 @@ export function createComportamentoRouter({ supabaseAdmin, rcoApiService }) {
                 return res.json({ atualizados: 0, naoIdentificados: 0, total: 0 });
             }
 
-            // 2. Coleta nomes únicos das ocorrências com nome preenchido
-            const nomesUnicos = [...new Set(
-                ocorrencias
-                    .map(o => (o.nome_aluno || '').trim().toUpperCase())
-                    .filter(n => n.length > 0)
-            )];
+            // 2. Busca roster do RCO para esta disciplina (fonte de verdade para IDs)
+            //    Isso é essencial porque cada disciplina tem seu próprio codMatrizAluno por aluno.
+            const idParaNomeRco = {};   // codMatrizAluno(RCO) → nome
+            const nomeParaIdRco = {};   // nome.toUpperCase() → codMatrizAluno(RCO) correto p/ esta disciplina
 
-            // 3. Para cada nome, encontra o ID canônico no Supabase
-            const nomeParaId = {};
-            for (const nome of nomesUnicos) {
-                const { data: rows } = await supabaseAdmin
-                    .from('alunos')
-                    .select('codmatrizaluno, nome')
-                    .ilike('nome', nome)
-                    .limit(1);
-                if (rows && rows[0]) {
-                    nomeParaId[nome] = rows[0].codmatrizaluno;
-                }
-            }
-
-            // 4. Para ocorrências sem nome, tenta identificar via RCO
-            const idParaNome = {};
-            const idsOrfaos = [...new Set(
-                ocorrencias
-                    .filter(o => !(o.nome_aluno || '').trim())
-                    .map(o => o.cod_matriz_aluno)
-                    .filter(v => v != null)
-            )];
-
-            if (idsOrfaos.length > 0 && rcoApiService) {
+            if (rcoApiService) {
                 try {
                     const { data: classes } = await supabaseAdmin
                         .from('rco_classes')
@@ -146,30 +122,47 @@ export function createComportamentoRouter({ supabaseAdmin, rcoApiService }) {
                             const resp = await rcoApiService.get(
                                 `/classe/v1/relatorios/avaliacaoAlunos?codClasse=${cl.cod_classe}&codPeriodoAvaliacao=9`
                             );
-                            const alunos = Array.isArray(resp.data) ? resp.data : [];
-                            for (const a of alunos) {
+                            const alunosRco = Array.isArray(resp.data) ? resp.data : [];
+                            for (const a of alunosRco) {
                                 const rcoId = a.codMatrizAluno ?? a.registro ?? a.id;
                                 const nome  = (a.nome || '').trim();
                                 if (rcoId && nome) {
-                                    // Guarda ID-do-RCO → nome
-                                    idParaNome[String(rcoId)] = nome;
-                                    // Tenta descobrir ID canônico para este nome
-                                    const nomeUp = nome.toUpperCase();
-                                    if (!nomeParaId[nomeUp]) {
-                                        const { data: rows } = await supabaseAdmin
-                                            .from('alunos')
-                                            .select('codmatrizaluno')
-                                            .ilike('nome', nome)
-                                            .limit(1);
-                                        if (rows && rows[0]) {
-                                            nomeParaId[nomeUp] = rows[0].codmatrizaluno;
-                                        }
-                                    }
+                                    idParaNomeRco[String(rcoId)] = nome;
+                                    nomeParaIdRco[nome.toUpperCase()] = rcoId;
                                 }
                             }
                         } catch { /* ignora falha de uma classe */ }
                     }
-                } catch { /* ignora falha ao buscar classes do RCO */ }
+                } catch { /* ignora falha ao buscar classes */ }
+            }
+
+            // 3. Para nomes ainda não resolvidos pelo RCO, tenta Supabase
+            //    (busca primeiro na própria disciplina, depois em qualquer turma)
+            const nomesUnicos = [...new Set(
+                ocorrencias
+                    .map(o => (o.nome_aluno || '').trim().toUpperCase())
+                    .filter(n => n.length > 0)
+            )];
+
+            const nomeParaId = { ...nomeParaIdRco }; // começa com dados do RCO ao vivo
+
+            for (const nomeUp of nomesUnicos) {
+                if (nomeParaId[nomeUp] != null) continue; // já resolvido via RCO
+                // Fallback 1: Supabase filtrado pela própria disciplina
+                const { data: r1 } = await supabaseAdmin
+                    .from('alunos')
+                    .select('codmatrizaluno')
+                    .ilike('nome', nomeUp)
+                    .eq('codturma', codturmaInt)
+                    .limit(1);
+                if (r1 && r1[0]) { nomeParaId[nomeUp] = r1[0].codmatrizaluno; continue; }
+                // Fallback 2: qualquer turma (último recurso)
+                const { data: r2 } = await supabaseAdmin
+                    .from('alunos')
+                    .select('codmatrizaluno')
+                    .ilike('nome', nomeUp)
+                    .limit(1);
+                if (r2 && r2[0]) nomeParaId[nomeUp] = r2[0].codmatrizaluno;
             }
 
             // 5. Processa cada ocorrência e acumula atualizações
@@ -178,11 +171,10 @@ export function createComportamentoRouter({ supabaseAdmin, rcoApiService }) {
 
             for (const o of ocorrencias) {
                 let nomeAtual = (o.nome_aluno || '').trim();
-                const nomeOrigUp = nomeAtual.toUpperCase();
 
-                // Se não tem nome, tenta via mapa do RCO
-                if (!nomeAtual && idParaNome[String(o.cod_matriz_aluno)]) {
-                    nomeAtual = idParaNome[String(o.cod_matriz_aluno)];
+                // Se não tem nome, tenta via mapa id→nome do RCO desta disciplina
+                if (!nomeAtual && idParaNomeRco[String(o.cod_matriz_aluno)]) {
+                    nomeAtual = idParaNomeRco[String(o.cod_matriz_aluno)];
                 }
 
                 const nomeUp = nomeAtual.toUpperCase();
@@ -211,7 +203,7 @@ export function createComportamentoRouter({ supabaseAdmin, rcoApiService }) {
                 }
             }
 
-            console.log(`[NORMALIZAR] turma=${codturmaInt} total=${ocorrencias.length} atualizados=${atualizados} naoIdentificados=${naoIdentificados}`);
+            console.log(`[NORMALIZAR] disciplina/turma=${codturmaInt} total=${ocorrencias.length} atualizados=${atualizados} naoIdentificados=${naoIdentificados}`);
             res.json({ atualizados, naoIdentificados, total: ocorrencias.length });
 
         } catch (e) {

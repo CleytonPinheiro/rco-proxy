@@ -713,7 +713,7 @@ async function normalizarOcorrencias() {
         modal.innerHTML = `
             <div class="modal-normalizar-box">
                 <h3>🔧 Normalizando Ocorrências</h3>
-                <p id="normalizarStatus">Processando registros da turma…</p>
+                <p id="normalizarStatus">Processando registros da disciplina…</p>
                 <div class="normalizar-spinner"></div>
                 <div id="normalizarResultado" style="display:none;"></div>
                 <button id="normalizarFechar" class="btn-normalizar-fechar" style="display:none;" onclick="document.getElementById('modalNormalizar').style.display='none'">Fechar</button>
@@ -725,7 +725,7 @@ async function normalizarOcorrencias() {
     const resultadoEl = modal.querySelector('#normalizarResultado');
     const fecharBtn   = modal.querySelector('#normalizarFechar');
 
-    statusEl.textContent = 'Processando registros da turma…';
+    statusEl.textContent = 'Processando registros da disciplina…';
     spinner.style.display = 'block';
     resultadoEl.style.display = 'none';
     fecharBtn.style.display = 'none';
