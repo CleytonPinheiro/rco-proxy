@@ -460,34 +460,46 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     if (!aluno) return null;
 
     /* Busca robusta: o RCO atribui codMatrizAluno POR CLASSE — o mesmo aluno
-       pode ter IDs diferentes em disciplinas distintas. A query por ID Supabase
-       pega apenas os registros cujo ID coincide. Para obter TODOS os registros
-       (inclusive os gravados com outro ID), fazemos SEMPRE a descoberta pelo nome:
-       Passo 1 → nome + turma → IDs reais; Passo 2 → todos os registros por IDs reais.
-       Resultado final: união de byId + byRealId, deduplicada por id. */
+       pode ter IDs diferentes em disciplinas distintas.
+       Passo 1 (paralelo):
+         a) nome_aluno em aluno_ocorrencias → todos os IDs de ocorrências
+         b) nome    em alunos              → todos os codMatrizAluno de disciplinas
+       Passo 2 (paralelo):
+         a) busca byRealId em aluno_ocorrencias pelos IDs do passo 1a
+         b) busca rco_observacoes de TODAS as disciplinas pelos IDs do passo 1b
+       Resultado: union deduplicada de byId + byRealId (ocorrências)
+                + allObsRco (observações RCO de todas as disciplinas). */
     const byId = byIdResult.data || [];
 
-    let byRealId = [];
-    if (aluno.nome && aluno.codturma) {
-        const { data: idRows } = await supabaseAdmin
-            .from('aluno_ocorrencias')
-            .select('cod_matriz_aluno')
-            .ilike('nome_aluno', aluno.nome.trim());
+    const [ocorrIdsRes, matIdsRes] = await Promise.all([
+        aluno.nome
+            ? supabaseAdmin.from('aluno_ocorrencias').select('cod_matriz_aluno').ilike('nome_aluno', aluno.nome.trim())
+            : Promise.resolve({ data: [] }),
+        aluno.nome
+            ? supabaseAdmin.from('alunos').select('codmatrizaluno').ilike('nome', aluno.nome.trim())
+            : Promise.resolve({ data: [] }),
+    ]);
 
-        const idsReais = [...new Set((idRows || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
+    const idsReais    = [...new Set((ocorrIdsRes.data || []).map(r => r.cod_matriz_aluno).filter(v => v != null))];
+    const matExtras   = (matIdsRes.data || []).map(r => parseInt(r.codmatrizaluno, 10)).filter(n => !isNaN(n));
+    const todosIdsMat = [...new Set([codMatriz, ...matExtras])];
 
-        if (idsReais.length > 0) {
-            const { data: rdData } = await supabaseAdmin
-                .from('aluno_ocorrencias')
-                .select('*')
-                .in('cod_matriz_aluno', idsReais)
-                .order('data', { ascending: true })
-                .limit(9999);
-            byRealId = rdData || [];
-            if (byRealId.length !== byId.length) {
-                console.log(`[RELATORIO] "${aluno.nome}": byId=${byId.length} byRealId=${byRealId.length} (ids=${idsReais})`);
-            }
-        }
+    const [byRealIdRes, obsExpandRes] = await Promise.all([
+        idsReais.length > 0
+            ? supabaseAdmin.from('aluno_ocorrencias').select('*').in('cod_matriz_aluno', idsReais)
+                .order('data', { ascending: true }).limit(9999)
+            : Promise.resolve({ data: [] }),
+        todosIdsMat.length > 1
+            ? supabaseAdmin.from('rco_observacoes').select('*').in('cod_matriz_aluno', todosIdsMat)
+                .order('data_aula', { ascending: true }).limit(9999)
+            : Promise.resolve(null),
+    ]);
+
+    const byRealId  = byRealIdRes.data || [];
+    const allObsRco = (obsExpandRes?.data ?? obsRcoResult.data) || [];
+
+    if (byRealId.length !== byId.length || todosIdsMat.length > 1) {
+        console.log(`[RELATORIO] "${aluno.nome}": byId=${byId.length} byRealId=${byRealId.length} (ids=${idsReais}) | obsIdsMat=${todosIdsMat} obsTotal=${allObsRco.length}`);
     }
 
     const seenIds = new Set();
@@ -527,7 +539,7 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     let ocorrenciasRco = [];
     const incluirRco = !professor && (!tipo || tipo === 'atencao');
     if (incluirRco) {
-        let obsRaw = obsRcoResult.data || [];
+        let obsRaw = allObsRco;
         if (de)  obsRaw = obsRaw.filter(o => o.data_aula && new Date(o.data_aula) >= new Date(de  + 'T00:00:00'));
         if (ate) obsRaw = obsRaw.filter(o => o.data_aula && new Date(o.data_aula) <= new Date(ate + 'T23:59:59'));
 
@@ -559,7 +571,7 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const anoAtual = new Date().getFullYear();
     const todasParaAta = [
         ...ocorrenciasRawTodas.map(o => ({ id: o.id,           data: o.data      || '' })),
-        ...(obsRcoResult.data  || []).map(o => ({ id: `rco_${o.id}`, data: o.data_aula || '' })),
+        ...allObsRco.map(o => ({ id: `rco_${o.id}`, data: o.data_aula || '' })),
     ]
         .filter(o => !o.data || new Date(o.data).getFullYear() === anoAtual)
         .sort((a, b) => a.data.localeCompare(b.data));
