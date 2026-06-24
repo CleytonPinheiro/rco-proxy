@@ -72,24 +72,29 @@ function drawLogo(doc, cx, cy, R, logoDataUrl, escolaNome) {
 }
 
 // ─── Desenha UMA via do termo (paisagem, coluna) ─────────────────────────────
-function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW, viaLabel) {
+function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado }, colX, colW, viaLabel) {
     const FS = 9;       // font size base
-    const UL = FS + 2;  // deslocamento da sublinha abaixo do topo do texto (≈ baseline)
+    const UL = FS;      // sublinha na baseline do texto (texto senta sobre a linha)
+
+    // Retorna primeiro + último sobrenome
+    function primeiroSobrenome(nome) {
+        const p = (nome || '').trim().split(/\s+/).filter(Boolean);
+        if (p.length <= 2) return (nome || '').trim();
+        return `${p[0]} ${p[p.length - 1]}`;
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-    // Renderiza label simples em Helvetica normal
     function label(str, x, y) {
         doc.font('Helvetica').fontSize(FS).fillColor('#000')
            .text(str, x, y, { lineBreak: false });
     }
 
-    // Renderiza valor em Helvetica-Bold maiúsculo + sublinha abaixo da baseline
     function field(x, y, fw, val) {
         const v = (val || '').toUpperCase();
         doc.font('Helvetica-Bold').fontSize(FS).fillColor('#111')
            .text(v, x, y, { lineBreak: false, width: fw, ellipsis: true });
         doc.moveTo(x, y + UL).lineTo(x + fw, y + UL)
-           .lineWidth(0.8).stroke('#333').lineWidth(1);
+           .lineWidth(0.8).stroke('#444').lineWidth(1);
         doc.fillColor('#000');
     }
 
@@ -106,7 +111,7 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW
     const lwObs  = doc.widthOfString('Obs.: ');
 
     // ── Dados ────────────────────────────────────────────────────────────────
-    const professor = (ocorrencia.professor_nome || '').trim();
+    const professor = primeiroSobrenome(ocorrencia.professor_nome || nomeProfLogado || '');
     const disc      = (ocorrencia.disciplina     || '').trim();
     const nomeAluno = (aluno.nome                || '').trim();
     const numCham   = aluno.numchamada ? String(aluno.numchamada) : '';
@@ -118,10 +123,10 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW
     const LG = 16;   // espaçamento entre linhas de campos (label height + gap)
     let y = MT;
 
-    // VIA label
-    doc.font('Helvetica-Bold').fontSize(7).fillColor('#666')
+    // VIA label com destaque
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e293b')
        .text(viaLabel, colX, y, { width: colW, align: 'center', lineBreak: false });
-    y += 13;
+    y += 14;
 
     // ── Cabeçalho ─────────────────────────────────────────────────────────────
     const HDR_H = 46;
@@ -208,38 +213,37 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW
     y += LG - 2;
 
     // ── CAIXA: descrição + rodapé (data, assinaturas, obs) ────────────────────
-    const MB       = 12;                          // margem inferior da página
-    const BOX_Y    = y;
-    const BOX_H    = PAGE_H - MB - BOX_Y;         // caixa até a margem inferior
-    const BOX_END  = BOX_Y + BOX_H;
+    const MB      = 12;
+    const BOX_Y   = y;
+    const BOX_H   = PAGE_H - MB - BOX_Y;
+    const BOX_END = BOX_Y + BOX_H;
+    const IP      = 6;
 
-    // Fundo e borda da caixa
     doc.rect(colX, BOX_Y, colW, BOX_H).fill('#fafbfc');
     doc.rect(colX, BOX_Y, colW, BOX_H).lineWidth(0.8).stroke('#b8c0cc').lineWidth(1);
     doc.fillColor('#000');
 
-    // ── Rodapé: posições de baixo para cima (dentro da caixa) ────────────────
-    const IP = 6;   // inner padding
+    // ── Posições do rodapé — bottom-up ───────────────────────────────────────
+    // OBS
+    const yObs2Ln  = BOX_END - IP;            // segunda linha de obs
+    const yObs1Ln  = yObs2Ln - 14;            // primeira linha de obs (alinhada ao label)
+    // SIG 2 (Pai/Resp, Testemunha): linha ACIMA do label
+    const ySig2Lab = yObs1Ln - 10;            // label assinatura 2 (abaixo da linha)
+    const ySig2Ln  = ySig2Lab - 7;            // linha de assinatura 2
+    // SIG 1 (Prof, Aluno): linha ACIMA do label; espaço generoso para escrita
+    const ySig1Lab = ySig2Ln - 28;            // label assinatura 1 (28pt = espaço p/ assinar)
+    const ySig1Ln  = ySig1Lab - 7;            // linha de assinatura 1
+    // Separador e data
+    const ySepIn   = ySig1Ln - 30;            // separador desc/rodapé (30pt acima = espaço escrita sig1)
+    const yDate    = ySepIn + 4;              // data logo abaixo do separador
 
-    const yObs2Ln  = BOX_END  - IP;           // obs linha 2
-    const yObs1Ln  = yObs2Ln  - 14;           // obs linha 1
-    const yObsLab  = yObs1Ln  - 10;           // "Obs.:" label
-
-    const ySig2Ln  = yObsLab  - 10;           // assinatura linha 2
-    const ySig2Lab = ySig2Ln  - 10;           // label assinatura 2
-    const ySig1Ln  = ySig2Lab - 12;           // assinatura linha 1
-    const ySig1Lab = ySig1Ln  - 10;           // label assinatura 1
-
-    const ySepIn   = ySig1Lab - 6;            // separador interno desc/rodapé
-    const yDate    = ySepIn   - FS - 4;       // data
-
-    // ── Faixa de frequência (opcional, acima do separador interno) ───────────
+    // ── Faixa de frequência (opcional, acima do separador) ───────────────────
     const freqResumo = ocorrencia.freqResumo || null;
-    const FREQ_H     = freqResumo ? 22 : 0;
+    const FREQ_H     = freqResumo ? 26 : 0;
 
-    // Área de texto da descrição (de dentro da caixa até a faixa/separador)
+    // ── Área de texto da descrição ────────────────────────────────────────────
     const yTxtStart = BOX_Y + IP + 2;
-    const yTxtEnd   = yDate - 4 - (FREQ_H > 0 ? FREQ_H + 4 : 0);
+    const yTxtEnd   = ySepIn - 4 - (FREQ_H > 0 ? FREQ_H + 4 : 0);
     const txtH      = Math.max(20, yTxtEnd - yTxtStart);
 
     const descricao = (ocorrencia.descricao || '').trim();
@@ -256,82 +260,92 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef }, colX, colW
         }
     }
 
-    // Renderiza a faixa de frequência se houver dados
+    // ── Faixa de frequência ───────────────────────────────────────────────────
     if (freqResumo) {
         const yF  = yTxtEnd + 2;
         const fW  = colW - IP * 2;
-        const fTY = yF + (FREQ_H - 7) / 2;     // centro vertical da faixa
+        const fTY = yF + (FREQ_H - 8) / 2;
 
         doc.rect(colX + IP, yF, fW, FREQ_H).fill('#eef3ff');
         doc.rect(colX + IP, yF, fW, FREQ_H).lineWidth(0.5).stroke('#b3c6f0').lineWidth(1);
 
-        doc.font('Helvetica-Bold').fontSize(7).fillColor('#3455b0')
-           .text('FREQ.: ', colX + IP + 5, fTY, { lineBreak: false });
-        const lblW = doc.widthOfString('FREQ.: ');
+        // Label "FREQUÊNCIA:"
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#2a45a0')
+           .text('FREQUÊNCIA: ', colX + IP + 6, fTY, { lineBreak: false });
+        const lblW = doc.widthOfString('FREQUÊNCIA: ');
 
         let freqTxt;
-        let freqColor = '#334';
+        let freqColor = '#1a1d23';
         if (freqResumo.semDados) {
-            freqTxt = `${freqResumo.nomeDisciplina.toUpperCase()} — sem dados de frequência registrados`;
+            freqTxt = `${freqResumo.nomeDisciplina.toUpperCase()} — sem dados registrados`;
         } else {
-            freqTxt = `${freqResumo.nomeDisciplina.toUpperCase()}  ·  ${freqResumo.totalAulas} aulas  ·  ${freqResumo.presencas} presenças  ·  ${freqResumo.faltas} faltas`;
-            if (freqResumo.percentual != null) {
-                freqTxt += `  ·  ${freqResumo.percentual}%`;
-                freqColor = freqResumo.percentual < 75 ? '#c0392b' : '#1a7a3a';
-            }
+            const pct = freqResumo.percentual != null ? `  ·  ${freqResumo.percentual}%` : '';
+            freqTxt = `${freqResumo.nomeDisciplina.toUpperCase()}  ·  ${freqResumo.totalAulas} aulas  ·  ${freqResumo.presencas} presenças  ·  ${freqResumo.faltas} faltas${pct}`;
+            if (freqResumo.percentual != null)
+                freqColor = freqResumo.percentual < 75 ? '#b91c1c' : '#15803d';
         }
-        doc.font('Helvetica').fontSize(7).fillColor(freqColor)
-           .text(freqTxt, colX + IP + 5 + lblW, fTY, { width: fW - 10 - lblW, lineBreak: false, ellipsis: true });
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(freqColor)
+           .text(freqTxt, colX + IP + 6 + lblW, fTY, { width: fW - 12 - lblW, lineBreak: false, ellipsis: true });
         doc.fillColor('#000');
     }
 
-    // Separador interno (desc / rodapé)
+    // ── Separador interno (desc / rodapé) ─────────────────────────────────────
     doc.moveTo(colX + IP, ySepIn).lineTo(colX + colW - IP, ySepIn)
-       .lineWidth(0.5).stroke('#c8cfda').lineWidth(1);
+       .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
 
-    // Data (alinhada à direita)
+    // ── Data (direita, logo abaixo do separador) ──────────────────────────────
     const dateStr = `${cidadeRef || 'Maringá'}, ${dd} de ${mes} de ${ano}.`;
-    doc.font('Helvetica').fontSize(FS).fillColor('#000')
+    doc.font('Helvetica-Bold').fontSize(FS).fillColor('#1a1d23')
        .text(dateStr, colX + IP, yDate, { width: colW - IP * 2, align: 'right', lineBreak: false });
 
-    // Assinaturas 2 × 2
+    // ── Assinaturas 2 × 2 (linha acima, label abaixo) ────────────────────────
     const sigColW = (colW - IP * 2) / 2;
     const sigX0   = colX + IP;
-    const sigPad  = 4;
+    const sigPad  = 6;
+
+    // Fundo sutil para a área de assinaturas
+    doc.rect(sigX0, ySig1Ln - 1, colW - IP * 2, (ySig2Lab + 8) - (ySig1Ln - 1))
+       .fill('#f1f5f9').fillColor('#000');
+
+    // Divisória vertical central entre colunas de assinaturas
+    const midSig = sigX0 + sigColW;
+    doc.moveTo(midSig, ySig1Ln - 1).lineTo(midSig, ySig2Lab + 7)
+       .lineWidth(0.4).stroke('#cbd5e1').lineWidth(1);
 
     [
         ['Assinatura do(a) Professor(a)', 0, ySig1Lab, ySig1Ln],
         ['Assinatura do(a) Aluno(a)',     1, ySig1Lab, ySig1Ln],
-        ['Ass. do Pai ou Responsável',    0, ySig2Lab, ySig2Ln],
+        ['Ass. Pai/Mãe ou Responsável',   0, ySig2Lab, ySig2Ln],
         ['Ass. de Testemunha',            1, ySig2Lab, ySig2Ln],
     ].forEach(([lbl, col, yLab, yLn]) => {
         const sx = sigX0 + col * sigColW;
-        doc.font('Helvetica').fontSize(6.5).fillColor('#555')
-           .text(lbl, sx + sigPad, yLab, { width: sigColW - sigPad * 2, lineBreak: false });
+        // Linha de assinatura (mais proeminente)
         doc.moveTo(sx + sigPad, yLn).lineTo(sx + sigColW - sigPad, yLn)
-           .lineWidth(0.8).stroke('#555').lineWidth(1);
+           .lineWidth(1.0).stroke('#334155').lineWidth(1);
+        // Label abaixo da linha
+        doc.font('Helvetica').fontSize(6.5).fillColor('#475569')
+           .text(lbl, sx + sigPad, yLab, { width: sigColW - sigPad * 2, lineBreak: false });
     });
 
-    // Obs.
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000')
-       .text('Obs.: ', colX + IP, yObsLab, { lineBreak: false });
+    // ── Obs. ──────────────────────────────────────────────────────────────────
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1a1d23')
+       .text('Obs.: ', colX + IP, yObs1Ln, { lineBreak: false });
     doc.moveTo(colX + IP + lwObs, yObs1Ln)
        .lineTo(colX + colW - IP, yObs1Ln)
-       .lineWidth(0.6).stroke('#aaa').lineWidth(1);
+       .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
     doc.moveTo(colX + IP, yObs2Ln)
        .lineTo(colX + colW - IP, yObs2Ln)
-       .lineWidth(0.6).stroke('#aaa').lineWidth(1);
+       .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
 }
 
 // ─── Duas vias lado a lado em paisagem ───────────────────────────────────────
-function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef }) {
+function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado }) {
     const OUTER_M = 18;
     const COL_GAP = 14;
-    const COL_W   = (PAGE_W - OUTER_M * 2 - COL_GAP) / 2;   // ≈ 395 pt
+    const COL_W   = (PAGE_W - OUTER_M * 2 - COL_GAP) / 2;
 
-    // Coluna esquerda: Via Colégio
-    drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef },
-                  OUTER_M, COL_W, 'VIA COLÉGIO');
+    drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado },
+                  OUTER_M, COL_W, '1ª VIA — COLÉGIO');
 
     // Separador vertical tracejado com tesoura no centro
     const sepX = OUTER_M + COL_W + COL_GAP / 2;
@@ -344,9 +358,8 @@ function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef }) {
     doc.font('Helvetica').fontSize(11).fillColor('#bbb')
        .text('✂', sepX - 6.5, PAGE_H / 2 - 7, { lineBreak: false });
 
-    // Coluna direita: Via Responsável
-    drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef },
-                  OUTER_M + COL_W + COL_GAP, COL_W, 'VIA RESPONSÁVEL');
+    drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado },
+                  OUTER_M + COL_W + COL_GAP, COL_W, '2ª VIA — RESPONSÁVEL');
 }
 
 // ─── Monta mapa de frequência por disciplina (via RCO API) ───────────────────
@@ -516,7 +529,7 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
 }
 
 // ─── Gera PDF paisagem (2 vias por página) ────────────────────────────────────
-function gerarPDF(registros, escola, cidadeRef) {
+function gerarPDF(registros, escola, cidadeRef, nomeProfLogado = '') {
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 0, autoFirstPage: false });
 
     const chunks = [];
@@ -525,7 +538,7 @@ function gerarPDF(registros, escola, cidadeRef) {
     for (const { aluno, combinadas } of registros) {
         for (const ocorrencia of combinadas) {
             doc.addPage();
-            drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef });
+            drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado });
         }
     }
 
@@ -577,7 +590,8 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             if (!dado) return res.status(404).json({ erro: 'Aluno não encontrado.' });
             if (dado.combinadas.length === 0) return res.status(204).end();
 
-            const { doc, chunks } = gerarPDF([dado], escola, cidadeRef);
+            const nomeProfLogado = req.user?.nome || '';
+            const { doc, chunks } = gerarPDF([dado], escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
             const nomeArq = `termos-${(dado.aluno.nome || 'aluno').replace(/\s+/g, '-').toLowerCase()}.pdf`;
@@ -621,7 +635,8 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
 
             registros.sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR'));
 
-            const { doc, chunks } = gerarPDF(registros, escola, cidadeRef);
+            const nomeProfLogado = req.user?.nome || '';
+            const { doc, chunks } = gerarPDF(registros, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
             res.setHeader('Content-Type', 'application/pdf');
