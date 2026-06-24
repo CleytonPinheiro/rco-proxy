@@ -228,13 +228,13 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
     const yObs2Ln  = BOX_END - IP;            // segunda linha de obs
     const yObs1Ln  = yObs2Ln - 14;            // primeira linha de obs (alinhada ao label)
     // SIG 2 (Pai/Resp, Testemunha): linha ACIMA do label
-    const ySig2Lab = yObs1Ln - 10;            // label assinatura 2 (abaixo da linha)
-    const ySig2Ln  = ySig2Lab - 7;            // linha de assinatura 2
+    const ySig2Lab = yObs1Ln - 12;            // label assinatura 2 (abaixo da linha)
+    const ySig2Ln  = ySig2Lab - 8;            // linha de assinatura 2
     // SIG 1 (Prof, Aluno): linha ACIMA do label; espaço generoso para escrita
-    const ySig1Lab = ySig2Ln - 28;            // label assinatura 1 (28pt = espaço p/ assinar)
-    const ySig1Ln  = ySig1Lab - 7;            // linha de assinatura 1
+    const ySig1Lab = ySig2Ln - 44;            // label assinatura 1 (44pt = espaço entre fileiras)
+    const ySig1Ln  = ySig1Lab - 8;            // linha de assinatura 1
     // Separador e data
-    const ySepIn   = ySig1Ln - 30;            // separador desc/rodapé (30pt acima = espaço escrita sig1)
+    const ySepIn   = ySig1Ln - 38;            // separador desc/rodapé (38pt acima = espaço escrita sig1)
     const yDate    = ySepIn + 4;              // data logo abaixo do separador
 
     // ── Faixa de frequência (opcional, acima do separador) ───────────────────
