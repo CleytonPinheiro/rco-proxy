@@ -237,24 +237,8 @@ async function carregarAlunos(codturma) {
                 ? `<span class="fai-total-occ fai-tot-obs" title="${obsCount} observação${obsCount===1?'':'s'} do RCO em todas as disciplinas" style="flex-shrink:0">📝 ${obsCount}</span>`
                 : '';
 
-            /* Badge de total de ocorrências EduSync ao lado do nome */
-            let tooltipTotal = '';
-            if (totalOcc > 0) {
-                const partes = [];
-                if (positivo > 0) partes.push(`✅ ${positivo} positiv${positivo===1?'a':'as'}`);
-                if (atencao  > 0) partes.push(`⚠️ ${atencao} atenção`);
-                if (grave    > 0) partes.push(`❌ ${grave} grav${grave===1?'e':'es'}`);
-                tooltipTotal = `${totalOcc} ocorrência${totalOcc===1?'':'s'} — ${partes.join(', ')}`;
-            }
-            const badgeTotal = totalOcc > 0
-                ? `<span class="fai-total-occ${grave > 0 ? ' fai-tot-grave' : atencao > 0 ? ' fai-tot-atencao' : ' fai-tot-pos'}" title="${escHtml(tooltipTotal)}" style="flex-shrink:0">📋 ${totalOcc}</span>`
-                : '';
-
             const badges = [
-                ai       ? `<span class="fai-badge fai-impressa" title="${escHtml(tooltipImp)}">🖨️ ${ai.qtd}</span>` : '',
-                positivo > 0 ? `<span class="fai-badge fai-pos" title="${positivo} positiv${positivo===1?'a':'as'}">✅ ${positivo}</span>` : '',
-                atencao  > 0 ? `<span class="fai-badge fai-atencao" title="${atencao} atenção">⚠️ ${atencao}</span>` : '',
-                grave    > 0 ? `<span class="fai-badge fai-grave" title="${grave} grav${grave===1?'e':'es'}">❌ ${grave}</span>` : '',
+                ai ? `<span class="fai-badge fai-impressa" title="${escHtml(tooltipImp)}">🖨️ ${ai.qtd}</span>` : '',
             ].filter(Boolean).join('');
 
             return `<div class="fai-item-wrap">
@@ -266,7 +250,7 @@ async function carregarAlunos(codturma) {
                     <div class="fai-linha1">
                         ${a.numchamada ? `<span class="fai-num">Nº ${a.numchamada}</span>` : ''}
                         <span class="fai-nome">${escHtml(a.nome)}</span>
-                        ${badgeObs}${badgeTotal}
+                        ${badgeObs}
                     </div>
                     ${badges ? `<div class="fai-badges">${badges}</div>` : ''}
                 </button>
