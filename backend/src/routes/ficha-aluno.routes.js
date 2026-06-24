@@ -40,22 +40,25 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
             /* codmatrizaluno na tabela alunos pode ser TEXT; garantimos inteiros
                para o filtro da ata_impressa (coluna INTEGER) */
-            const codMatrizes = alunosUnicos
+            const codMatrizesTurma = alunosUnicos
                 .map(a => parseInt(a.codmatrizaluno, 10))
                 .filter(n => !isNaN(n));
 
-            /* IMPORTANTE: o RCO atribui codMatrizAluno por CLASSE (não por turma).
-               O mesmo aluno pode ter IDs diferentes em disciplinas distintas da mesma
-               turma. As ocorrências são gravadas com o ID da classe que o professor
-               abriu no módulo Comportamento, enquanto o Supabase sincroniza o ID de
-               outra classe — causando mismatch no filtro .in().
-               Solução: buscar ocorrências pelo cod_turma (sempre consistente) e
-               parear com os alunos pelo nome (já usado para deduplicação acima). */
-            const [ocorrResult, atasResult] = await Promise.all([
+            /* ── Busca todos os IDs de cada aluno em TODAS as disciplinas ──────
+               O RCO atribui um codMatrizAluno diferente por disciplina. Para
+               exibir a SOMA de ocorrências de todas as disciplinas, primeiro
+               buscamos na tabela `alunos` todos os registros desses alunos
+               (usando o nome exato, que é consistente entre disciplinas) para
+               obter todos os IDs de matrícula que podem aparecer nas ocorrências. */
+            const nomesAlunos = alunosUnicos
+                .map(a => (a.nome || '').trim())
+                .filter(Boolean);
+
+            const [todasMatriculasResult, atasResult] = await Promise.all([
                 supabaseAdmin
-                    .from('aluno_ocorrencias')
-                    .select('nome_aluno, cod_matriz_aluno, tipo')
-                    .eq('cod_turma', parseInt(codturma, 10)),
+                    .from('alunos')
+                    .select('nome, codmatrizaluno')
+                    .in('nome', nomesAlunos),
                 pool.query(
                     `SELECT cod_matriz_aluno,
                             COUNT(*)::int          AS qtd,
@@ -64,40 +67,71 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                      FROM ata_impressa
                      WHERE cod_matriz_aluno = ANY($1)
                      GROUP BY cod_matriz_aluno`,
-                    [codMatrizes]
+                    [codMatrizesTurma]
                 ).catch(() => ({ rows: [] })),
             ]);
 
-            if (ocorrResult.error) {
-                console.error('[FICHA-ALUNO] Supabase aluno_ocorrencias error:', ocorrResult.error.message);
+            /* Mapa nome-normalizado → Set<codMatrizAluno> em TODAS as disciplinas */
+            const nomeParaTodosIds = {};
+            for (const m of (todasMatriculasResult.data || [])) {
+                const key = (m.nome || '').toUpperCase().trim();
+                const id  = parseInt(m.codmatrizaluno, 10);
+                if (!isNaN(id)) {
+                    if (!nomeParaTodosIds[key]) nomeParaTodosIds[key] = new Set();
+                    nomeParaTodosIds[key].add(id);
+                }
             }
-            const ocorrencias = ocorrResult.data || [];
-            console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${ocorrencias.length} ocorrências`);
 
-            /* Mapa nome normalizado → Set de cod_matriz_aluno encontrados nas ocorrências.
-               Permite descobrir o ID real do aluno (RCO por classe) a partir do nome. */
-            const nomeParaIds = {};
-            /* Mapa cod_matriz_aluno → contagens por tipo (inclui ocorrências sem nome). */
+            /* União de todos os IDs conhecidos (turma atual + outras disciplinas) */
+            const todosIds = [...new Set([
+                ...codMatrizesTurma,
+                ...Object.values(nomeParaTodosIds).flatMap(s => [...s]),
+            ])];
+
+            /* ── Busca ocorrências sem filtro de turma ─────────────────────────
+               Consulta por todos os IDs conhecidos do aluno (todas as disciplinas).
+               Complementada pela busca por nome_aluno para capturar registros
+               normalizados (nome preenchido) de qualquer disciplina.              */
+            const [ocorrPorIdResult, ocorrPorNomeResult] = await Promise.all([
+                supabaseAdmin
+                    .from('aluno_ocorrencias')
+                    .select('id, nome_aluno, cod_matriz_aluno, tipo')
+                    .in('cod_matriz_aluno', todosIds),
+                nomesAlunos.length > 0
+                    ? supabaseAdmin
+                        .from('aluno_ocorrencias')
+                        .select('id, nome_aluno, cod_matriz_aluno, tipo')
+                        .in('nome_aluno', nomesAlunos)
+                    : Promise.resolve({ data: [] }),
+            ]);
+
+            /* União deduplicada por id — evita dupla contagem de registros que
+               aparecem em ambas as queries (têm ID conhecido E nome_aluno preenchido). */
             const ocorrMapCod = {};
-            for (const o of ocorrencias) {
-                const nomeKey = (o.nome_aluno || '').toUpperCase().trim();
-                const codKey  = o.cod_matriz_aluno;
-                if (nomeKey && codKey != null) {
-                    if (!nomeParaIds[nomeKey]) nomeParaIds[nomeKey] = new Set();
-                    nomeParaIds[nomeKey].add(codKey);
-                }
-                if (codKey != null) {
-                    if (!ocorrMapCod[codKey]) ocorrMapCod[codKey] = { positivo: 0, atencao: 0, grave: 0 };
-                    if (ocorrMapCod[codKey][o.tipo] !== undefined) ocorrMapCod[codKey][o.tipo]++;
+            const seenIds = new Set();
+            for (const o of [
+                ...(ocorrPorIdResult.data   || []),
+                ...(ocorrPorNomeResult.data || []),
+            ]) {
+                if (o.id != null && seenIds.has(o.id)) continue;
+                if (o.id != null) seenIds.add(o.id);
+                if (o.cod_matriz_aluno != null) {
+                    if (!ocorrMapCod[o.cod_matriz_aluno])
+                        ocorrMapCod[o.cod_matriz_aluno] = { positivo: 0, atencao: 0, grave: 0 };
+                    if (ocorrMapCod[o.cod_matriz_aluno][o.tipo] !== undefined)
+                        ocorrMapCod[o.cod_matriz_aluno][o.tipo]++;
                 }
             }
+
+            const totalOcorrencias = seenIds.size;
+            console.log(`[FICHA-ALUNO] resumo-turma ${codturma}: ${alunosUnicos.length} alunos, ${totalOcorrencias} ocorrências (todas disciplinas)`);
 
             const atasMap = {};
             for (const r of (atasResult.rows || [])) {
                 atasMap[r.cod_matriz_aluno] = {
-                    qtd:           r.qtd,
+                    qtd:            r.qtd,
                     ultimaImpressao: r.ultima_impressao,
-                    impressaPor:   r.impressa_por,
+                    impressaPor:    r.impressa_por,
                 };
             }
 
@@ -106,23 +140,15 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     const nomeKey = (a.nome || '').toUpperCase().trim();
                     const codSync = parseInt(a.codmatrizaluno, 10);
 
-                    /* Estratégia:
-                       1. Usa o nome para encontrar o(s) cod_matriz_aluno real(is) do aluno
-                          nas ocorrências (resolve o mismatch de ID entre classes RCO).
-                       2. Soma TODAS as ocorrências por esses IDs — inclusive as gravadas
-                          sem nome_aluno, garantindo contagem completa (ex: 9/9, não 6/9).
-                       3. Fallback: se não há ocorrências com nome, tenta o ID do Supabase. */
-                    const idsReais = nomeParaIds[nomeKey];
+                    /* Soma ocorrências de TODOS os IDs do aluno em todas as disciplinas */
+                    const idsAluno = nomeParaTodosIds[nomeKey]
+                        || new Set(isNaN(codSync) ? [] : [codSync]);
                     let ocorr = { positivo: 0, atencao: 0, grave: 0 };
-                    if (idsReais && idsReais.size > 0) {
-                        for (const id of idsReais) {
-                            const c = ocorrMapCod[id] || {};
-                            ocorr.positivo += c.positivo || 0;
-                            ocorr.atencao  += c.atencao  || 0;
-                            ocorr.grave    += c.grave    || 0;
-                        }
-                    } else {
-                        ocorr = ocorrMapCod[codSync] || ocorrMapCod[a.codmatrizaluno] || ocorr;
+                    for (const id of idsAluno) {
+                        const c = ocorrMapCod[id] || {};
+                        ocorr.positivo += c.positivo || 0;
+                        ocorr.atencao  += c.atencao  || 0;
+                        ocorr.grave    += c.grave    || 0;
                     }
 
                     return {
