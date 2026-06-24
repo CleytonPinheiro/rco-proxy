@@ -460,6 +460,7 @@
     function injetarAvatarHeader(user) {
         const headerActions = document.querySelector('.header-actions');
         if (!headerActions) return;
+        if (headerActions.querySelector('.nav-avatar-btn')) return; // guard anti-duplicata
 
         const perfilEfetivo = user.impersonando ? user.impersonandoPerfil : user.perfil;
         const perfilLabel   = PERFIL_LABEL[perfilEfetivo] || perfilEfetivo;
