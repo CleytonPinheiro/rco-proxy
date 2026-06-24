@@ -31,7 +31,9 @@
     display: none; /* ativado via classe no JS */
     flex-direction: column;
     flex: 0 0 270px;
+    width: 270px;
     min-width: 220px;
+    max-width: 270px;
     background: var(--card-bg, #fff);
     border: 1px solid var(--border, #e1e5ea);
     border-radius: 12px;
@@ -236,7 +238,10 @@
     color: var(--text-muted, #6b7280);
     white-space: nowrap;
     min-width: 7ch;
+    width: 7ch;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #fichaSelectAllTexto {
@@ -271,6 +276,8 @@
     cursor: pointer;
     transition: background .15s, border-color .15s;
     white-space: nowrap;
+    min-width: 7.5ch;
+    text-align: center;
 }
 .ficha-batch-todos:hover { background: #e5e7eb; border-color: #9ca3af; }
 .ficha-batch-todos.todos-ativo { background: #e0e7ff; border-color: #6366f1; color: #4338ca; }
