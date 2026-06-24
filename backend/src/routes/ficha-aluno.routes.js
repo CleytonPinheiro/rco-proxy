@@ -40,16 +40,37 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
             const codMatrizes = alunosUnicos.map(a => a.codmatrizaluno).filter(Boolean);
 
-            const { data: ocorrencias } = await supabaseAdmin
-                .from('aluno_ocorrencias')
-                .select('cod_matriz_aluno, tipo')
-                .in('cod_matriz_aluno', codMatrizes);
+            const [{ data: ocorrencias }, atasResult] = await Promise.all([
+                supabaseAdmin
+                    .from('aluno_ocorrencias')
+                    .select('cod_matriz_aluno, tipo')
+                    .in('cod_matriz_aluno', codMatrizes),
+                pool.query(
+                    `SELECT cod_matriz_aluno,
+                            COUNT(*)::int          AS qtd,
+                            MAX(impressa_em)       AS ultima_impressao,
+                            MAX(impressa_por_nome) AS impressa_por
+                     FROM ata_impressa
+                     WHERE cod_matriz_aluno = ANY($1)
+                     GROUP BY cod_matriz_aluno`,
+                    [codMatrizes]
+                ).catch(() => ({ rows: [] })),
+            ]);
 
             const ocorrMap = {};
             for (const o of (ocorrencias || [])) {
                 const k = o.cod_matriz_aluno;
                 if (!ocorrMap[k]) ocorrMap[k] = { positivo: 0, atencao: 0, grave: 0 };
                 if (ocorrMap[k][o.tipo] !== undefined) ocorrMap[k][o.tipo]++;
+            }
+
+            const atasMap = {};
+            for (const r of (atasResult.rows || [])) {
+                atasMap[r.cod_matriz_aluno] = {
+                    qtd:           r.qtd,
+                    ultimaImpressao: r.ultima_impressao,
+                    impressaPor:   r.impressa_por,
+                };
             }
 
             res.json({
@@ -59,6 +80,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                     numchamada:    a.numchamada,
                     turma:         a.turma,
                     ocorrencias:   ocorrMap[a.codmatrizaluno] || { positivo: 0, atencao: 0, grave: 0 },
+                    atasImpressas: atasMap[a.codmatrizaluno]  || null,
                 })),
             });
         } catch (e) {

@@ -580,6 +580,22 @@ export async function initializeDatabase() {
         await client.query(`ALTER TABLE evento_inscricoes ADD COLUMN IF NOT EXISTS foto_url TEXT`);
         await client.query(`ALTER TABLE evento_inscricoes ADD COLUMN IF NOT EXISTS comprovante_arquivo_url TEXT`);
 
+        /* ── Registro de Atas Impressas ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS ata_impressa (
+                id                SERIAL PRIMARY KEY,
+                cod_matriz_aluno  INTEGER      NOT NULL,
+                ocorrencia_id     TEXT         NOT NULL,
+                ata_num           INTEGER,
+                ata_total         INTEGER,
+                impressa_em       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                impressa_por_cpf  TEXT,
+                impressa_por_nome TEXT,
+                UNIQUE(cod_matriz_aluno, ocorrencia_id)
+            )
+        `);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_ata_impressa_aluno ON ata_impressa(cod_matriz_aluno)`);
+
         console.log('[DB] Tabelas edusync inicializadas');
     } finally {
         client.release();

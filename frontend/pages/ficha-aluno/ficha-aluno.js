@@ -197,9 +197,23 @@ async function carregarAlunos(codturma) {
         window._fichaAlunosSelecionados = new Set();
         listEl.classList.add('multi-mode');
 
+        // Guarda mapa de atas impressas para uso no aviso de re-impressão
+        window._atasImpressasMap = {};
+        for (const a of alunos) {
+            if (a.atasImpressas) window._atasImpressasMap[a.codMatrizAluno] = a.atasImpressas;
+        }
+
         listEl.innerHTML = alunos.map(a => {
             const { positivo = 0, atencao = 0, grave = 0 } = a.ocorrencias || {};
+            const ai = a.atasImpressas;
+            const dataImp = ai?.ultimaImpressao
+                ? new Date(ai.ultimaImpressao).toLocaleDateString('pt-BR')
+                : null;
+            const tooltipImp = ai
+                ? `🖨️ ${ai.qtd} ata${ai.qtd !== 1 ? 's' : ''} já impressa${ai.qtd !== 1 ? 's' : ''}${dataImp ? ' — última em ' + dataImp : ''}${ai.impressaPor ? ' por ' + ai.impressaPor : ''}`
+                : '';
             const badges = [
+                ai       ? `<span class="fai-badge fai-impressa" title="${escHtml(tooltipImp)}">🖨️ ${ai.qtd}</span>` : '',
                 positivo > 0 ? `<span class="fai-badge fai-pos" title="${positivo} positiv${positivo===1?'a':'as'}">✅ ${positivo}</span>` : '',
                 atencao  > 0 ? `<span class="fai-badge fai-atencao" title="${atencao} atenção">⚠️ ${atencao}</span>` : '',
                 grave    > 0 ? `<span class="fai-badge fai-grave" title="${grave} grav${grave===1?'e':'es'}">❌ ${grave}</span>` : '',
@@ -208,7 +222,7 @@ async function carregarAlunos(codturma) {
             return `<div class="fai-item-wrap">
                 <input type="checkbox" class="fai-check" id="faic-${a.codMatrizAluno}"
                        onchange="toggleAlunoSelecao(${a.codMatrizAluno}, this.checked)">
-                <button class="ficha-aluno-item" data-cod="${a.codMatrizAluno}"
+                <button class="ficha-aluno-item${ai ? ' fai-tem-impressa' : ''}" data-cod="${a.codMatrizAluno}"
                         onclick="selecionarAluno(${a.codMatrizAluno})"
                         title="${escHtml(a.nome)}">
                     <div class="fai-linha1">
@@ -338,6 +352,27 @@ async function gerarTermosBatch(btn) {
     if (selecionados.length === 0) {
         notificar('Nenhum aluno selecionado', 'Marque ao menos um aluno na lista antes de gerar o PDF em lote.', { tipo: 'info', icone: '☑️', okLabel: 'Entendido' });
         return;
+    }
+
+    // Verifica se algum selecionado já tem atas impressas
+    const mapa = window._atasImpressasMap || {};
+    const comImpressas = selecionados.filter(cod => mapa[cod]?.qtd > 0);
+    if (comImpressas.length > 0) {
+        const linhas = comImpressas.slice(0, 5).map(cod => {
+            const ai = mapa[cod];
+            const nomeEl = document.querySelector(`.ficha-aluno-item[data-cod="${cod}"] .fai-nome`);
+            const nome = nomeEl?.textContent?.trim() || `Aluno #${cod}`;
+            const data = ai.ultimaImpressao
+                ? new Date(ai.ultimaImpressao).toLocaleDateString('pt-BR')
+                : null;
+            return `• ${nome} — ${ai.qtd} ata${ai.qtd !== 1 ? 's' : ''} impressa${ai.qtd !== 1 ? 's' : ''}${data ? ' em ' + data : ''}`;
+        });
+        if (comImpressas.length > 5) linhas.push(`  ...e mais ${comImpressas.length - 5} aluno(s)`);
+        const ok = await confirmar(
+            linhas.join('\n'),
+            { titulo: `⚠️ ${comImpressas.length} aluno${comImpressas.length !== 1 ? 's' : ''} com atas já impressas`, confirmLabel: 'Imprimir mesmo assim', tipo: 'danger' }
+        );
+        if (!ok) return;
     }
 
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando…'; }

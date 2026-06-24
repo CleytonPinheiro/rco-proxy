@@ -610,7 +610,35 @@ function gerarPDF(registros, escola, cidadeRef, nomeProfLogado = '') {
     }
 
     doc.end();
-    return { doc, chunks };
+    return { doc, chunks, paginas };
+}
+
+// ─── Registra atas impressas no banco local ───────────────────────────────────
+async function registrarImpressoes(paginas, cpf = '', nome = '') {
+    if (!paginas || paginas.length === 0) return;
+    const vals = [];
+    const flat = [];
+    let p = 1;
+    for (const { aluno, ocorrencia } of paginas) {
+        const codMatriz = aluno?.codmatrizaluno;
+        const ocorrId   = String(ocorrencia?.id ?? '');
+        if (!codMatriz || !ocorrId) continue;
+        vals.push(`($${p++},$${p++},$${p++},$${p++},NOW(),$${p++},$${p++})`);
+        flat.push(codMatriz, ocorrId, ocorrencia.ataNum ?? null, ocorrencia.ataTotal ?? null, cpf, nome);
+    }
+    if (vals.length === 0) return;
+    await pool.query(
+        `INSERT INTO ata_impressa
+             (cod_matriz_aluno, ocorrencia_id, ata_num, ata_total, impressa_em, impressa_por_cpf, impressa_por_nome)
+         VALUES ${vals.join(',')}
+         ON CONFLICT (cod_matriz_aluno, ocorrencia_id) DO UPDATE SET
+             impressa_em       = EXCLUDED.impressa_em,
+             impressa_por_cpf  = EXCLUDED.impressa_por_cpf,
+             impressa_por_nome = EXCLUDED.impressa_por_nome,
+             ata_num           = EXCLUDED.ata_num,
+             ata_total         = EXCLUDED.ata_total`,
+        flat
+    ).catch(e => console.warn('[ATA-IMPRESSA] Erro ao registrar:', e.message));
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -658,7 +686,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             if (dado.combinadas.length === 0) return res.status(204).end();
 
             const nomeProfLogado = req.userSession?.nome || '';
-            const { doc, chunks } = gerarPDF([dado], escola, cidadeRef, nomeProfLogado);
+            const { doc, chunks, paginas } = gerarPDF([dado], escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
             const nomeArq = montarNomeArquivo(dado.aluno.turma);
@@ -666,6 +694,8 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArq}"`);
             res.setHeader('Cache-Control', 'no-store');
             res.send(Buffer.concat(chunks));
+
+            registrarImpressoes(paginas, req.userSession?.cpf || '', req.userSession?.nome || '');
         } catch (e) {
             console.error('[RELATORIO-OCORRENCIAS]', e.message);
             res.status(500).json({ erro: e.message });
@@ -703,7 +733,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             registros.sort((a, b) => (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR'));
 
             const nomeProfLogado = req.userSession?.nome || '';
-            const { doc, chunks } = gerarPDF(registros, escola, cidadeRef, nomeProfLogado);
+            const { doc, chunks, paginas } = gerarPDF(registros, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
             const nomeArqBatch = montarNomeArquivo(registros[0]?.aluno?.turma || '');
@@ -711,6 +741,8 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArqBatch}"`);
             res.setHeader('Cache-Control', 'no-store');
             res.send(Buffer.concat(chunks));
+
+            registrarImpressoes(paginas, req.userSession?.cpf || '', req.userSession?.nome || '');
         } catch (e) {
             console.error('[RELATORIO-OCORRENCIAS-BATCH]', e.message);
             res.status(500).json({ erro: e.message });
