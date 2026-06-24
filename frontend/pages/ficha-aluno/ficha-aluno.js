@@ -306,6 +306,8 @@ function toggleMultiMode() {
 function toggleAlunoSelecao(codMatrizAluno, selecionado) {
     if (selecionado) {
         window._fichaAlunosSelecionados.add(codMatrizAluno);
+        /* Ao marcar um aluno, carrega também sua ficha no painel direito */
+        selecionarAluno(codMatrizAluno);
     } else {
         window._fichaAlunosSelecionados.delete(codMatrizAluno);
     }
