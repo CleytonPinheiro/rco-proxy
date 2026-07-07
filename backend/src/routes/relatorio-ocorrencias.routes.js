@@ -254,26 +254,24 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
     doc.fillColor('#000');
 
     // ── Posições do rodapé — bottom-up ───────────────────────────────────────
-    // OBS
-    const yObs2Ln  = BOX_END - IP;            // segunda linha de obs
-    const yObs1Ln  = yObs2Ln - 14;            // primeira linha de obs (alinhada ao label)
-    // SIG 2 (Pai/Resp, Testemunha): linha ACIMA do label
-    const ySig2Lab = yObs1Ln - 12;            // label assinatura 2 (abaixo da linha)
+    // SIG 2 (Pai/Resp, Testemunha): parte diretamente do fundo da caixa
+    const ySig2Lab = BOX_END - IP - 12;       // label assinatura 2
     const ySig2Ln  = ySig2Lab - 8;            // linha de assinatura 2
-    // SIG 1 (Prof, Aluno): linha ACIMA do label; espaço generoso para escrita
-    const ySig1Lab = ySig2Ln - 44;            // label assinatura 1 (44pt = espaço entre fileiras)
-    const ySig1Ln  = ySig1Lab - 8;            // linha de assinatura 1
+    // SIG 1 (Prof, Aluno)
+    const ySig1Lab = ySig2Ln - 44;
+    const ySig1Ln  = ySig1Lab - 8;
     // Separador e data
-    const ySepIn   = ySig1Ln - 38;            // separador desc/rodapé (38pt acima = espaço escrita sig1)
-    const yDate    = ySepIn + 4;              // data logo abaixo do separador
+    const ySepIn   = ySig1Ln - 38;
+    const yDate    = ySepIn + 4;
 
-    // ── Faixa de frequência (opcional, acima do separador) ───────────────────
+    // ── Faixa de frequência (opcional) e campo Obs. — ficam acima do separador ─
     const freqResumo = ocorrencia.freqResumo || null;
     const FREQ_H     = freqResumo ? 26 : 0;
+    const OBS_H      = 30;   // label "Obs.:" + 2 linhas manuscritas
 
     // ── Área de texto da descrição ────────────────────────────────────────────
     const yTxtStart = BOX_Y + IP + 2;
-    const yTxtEnd   = ySepIn - 4 - (FREQ_H > 0 ? FREQ_H + 4 : 0);
+    const yTxtEnd   = ySepIn - 4 - OBS_H - 4 - (FREQ_H > 0 ? FREQ_H + 4 : 0);
     const txtH      = Math.max(20, yTxtEnd - yTxtStart);
 
     const descricao = (ocorrencia.descricao || '').trim();
@@ -290,9 +288,23 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
         }
     }
 
+    // ── Campo Obs.: (acima da frequência, para preenchimento manuscrito) ──────
+    {
+        const yObsLbl = yTxtEnd + 4;
+        const yObs2   = yObsLbl + 16;
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1a1d23')
+           .text('Obs.: ', colX + IP, yObsLbl, { lineBreak: false });
+        doc.moveTo(colX + IP + lwObs, yObsLbl)
+           .lineTo(colX + colW - IP, yObsLbl)
+           .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
+        doc.moveTo(colX + IP, yObs2)
+           .lineTo(colX + colW - IP, yObs2)
+           .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
+    }
+
     // ── Faixa de frequência ───────────────────────────────────────────────────
     if (freqResumo) {
-        const yF  = yTxtEnd + 2;
+        const yF  = yTxtEnd + OBS_H + 4;
         const fW  = colW - IP * 2;
         const fTY = yF + (FREQ_H - 8) / 2;
 
@@ -357,15 +369,7 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
            .text(lbl, sx + sigPad, yLab, { width: sigColW - sigPad * 2, lineBreak: false });
     });
 
-    // ── Obs. ──────────────────────────────────────────────────────────────────
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1a1d23')
-       .text('Obs.: ', colX + IP, yObs1Ln, { lineBreak: false });
-    doc.moveTo(colX + IP + lwObs, yObs1Ln)
-       .lineTo(colX + colW - IP, yObs1Ln)
-       .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
-    doc.moveTo(colX + IP, yObs2Ln)
-       .lineTo(colX + colW - IP, yObs2Ln)
-       .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
+    // (Obs. movido para acima da frequência — ver bloco acima)
 }
 
 // ─── Duas vias lado a lado em paisagem ───────────────────────────────────────
