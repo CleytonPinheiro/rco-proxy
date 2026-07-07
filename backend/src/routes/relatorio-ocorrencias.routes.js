@@ -123,9 +123,16 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
     const LG = 16;   // espaçamento entre linhas de campos (label height + gap)
     let y = MT;
 
-    // VIA label com destaque
+    // VIA label com destaque + turma à direita
     doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e293b')
        .text(viaLabel, colX, y, { width: colW, align: 'center', lineBreak: false });
+
+    // Turma right-aligned na mesma linha do VIA
+    const turmaCurta = [serie, periodo].filter(Boolean).join(' — ');
+    if (turmaCurta) {
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#4338ca')
+           .text(turmaCurta, colX, y + 0.5, { width: colW - 2, align: 'right', lineBreak: false });
+    }
     y += 14;
 
     // ── Cabeçalho ─────────────────────────────────────────────────────────────
