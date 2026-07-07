@@ -39,17 +39,30 @@ function parseTurma(nomeTurma) {
 
     const serie = pts[0];
 
-    /* "turma:" no formulário deve mostrar o identificador da classe (ex: "3ª Série",
-       "1º C"), e NÃO o turno (Manhã/Tarde/Noturno).
-       Se o último segmento for um turno, usa o penúltimo como identificador.
-       Caso só haja dois segmentos e o último NÃO for turno, usa-o normalmente. */
-    let periodo = '';
-    if (pts.length === 1) {
-        periodo = pts[0];
-    } else if (TURNOS.test(pts[pts.length - 1])) {
-        periodo = pts[pts.length - 2];  // ex: "3ª Série" ou "1º C"
+    /* Remove os segmentos de turno (Manhã/Tarde/…) — pode haver mais de um */
+    const semTurno = pts.filter(p => !TURNOS.test(p));
+    if (semTurno.length <= 1) {
+        return { serie, periodo: semTurno[0] || serie, ensino: inferirEnsino(nomeTurma) };
+    }
+
+    /* Formato RCO real: CURSO - ANO - TURNO - SEÇÃO
+       ex: "ENS FUND 6/9 ANO-SERIE - 9ºAno - Tarde - C"
+       Após remover turno → ["ENS FUND 6/9 ANO-SERIE", "9ºAno", "C"]
+       Regra: se o último segmento for uma única letra (A–Z) = seção de turma,
+       combina com o segmento anterior (ano) → "9º C". */
+    const lastSeg = semTurno[semTurno.length - 1];
+    const isSecao = /^[A-Z]$/i.test(lastSeg);
+    let periodo;
+
+    if (isSecao && semTurno.length >= 3) {
+        // Extrai o ordinal do segmento de ano (ex: "9ºAno" → "9º", "3ª SÉRIE" → "3ª")
+        const yearSeg = semTurno[semTurno.length - 2];
+        const yearNum = yearSeg.match(/^\d+[ºª°]?/)?.[0] ?? yearSeg.split(/\s/)[0];
+        periodo = `${yearNum} ${lastSeg.toUpperCase()}`;
     } else {
-        periodo = pts[pts.length - 1];
+        /* Sem seção separada: usa o último segmento diretamente
+           (ex: "NEM EPT TEC DESE - 3ª SÉRIE - MANHÃ" → "3ª SÉRIE") */
+        periodo = lastSeg;
     }
 
     return { serie, periodo, ensino: inferirEnsino(nomeTurma) };
