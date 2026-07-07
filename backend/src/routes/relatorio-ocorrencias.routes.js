@@ -440,7 +440,8 @@ function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado }
 }
 
 // ─── Monta mapa de frequência por disciplina (via RCO API) ───────────────────
-async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatriz, nomeAluno) {
+async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatrizes, nomeAluno) {
+    const matIds = Array.isArray(codMatrizes) ? codMatrizes : [codMatrizes];
     let classes;
     try {
         const r = await supabaseAdmin
@@ -487,9 +488,9 @@ async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatriz, n
 
             const raw = normalize(resp.data);
             // eslint-disable-next-line eqeqeq
-            let alunoFreq = raw.find(a => a.codMatrizAluno == codMatriz);
+            let alunoFreq = raw.find(a => matIds.some(id => a.codMatrizAluno == id));
 
-            // Tenta match por nome se não achou por ID
+            // Tenta match por nome se não achou por nenhum dos IDs
             if (!alunoFreq && raw.length > 0 && nomeAluno) {
                 const nomeNorm = nomeAluno.trim().toUpperCase();
                 alunoFreq = raw.find(a => a.nome?.trim().toUpperCase() === nomeNorm);
@@ -614,10 +615,25 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
 /* Retorna o mapa de notas para UM aluno específico: { "DISCIPLINA": [{nome,nota}] }
    Tenta primeiro pelo codMatrizAluno; se vazio, tenta pelo nome normalizado
    (o RCO atribui IDs diferentes por classe, então o ID pode divergir do sync). */
-async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz, nomeAluno) {
+async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatrizes, nomeAluno) {
     const turmaData = await _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma);
-    const porId = turmaData[String(codMatriz)];
-    if (porId && Object.keys(porId).length > 0) return porId;
+    const ids = Array.isArray(codMatrizes) ? codMatrizes : [codMatrizes];
+
+    /* Mescla notas de TODOS os codMatrizAluno do aluno (um por disciplina no RCO) */
+    const merged = {};
+    for (const id of ids) {
+        const porId = turmaData[String(id)];
+        if (!porId) continue;
+        for (const [disc, notas] of Object.entries(porId)) {
+            if (!merged[disc]) merged[disc] = [];
+            for (const n of notas) {
+                if (!merged[disc].some(e => e.nome === n.nome)) merged[disc].push(n);
+            }
+        }
+    }
+    if (Object.keys(merged).length > 0) return merged;
+
+    /* Fallback por nome (IDs podem divergir entre ciclos do RCO) */
     if (nomeAluno) {
         const nk = `nome:${nomeAluno.toUpperCase().trim()}`;
         return turmaData[nk] ?? {};
@@ -765,8 +781,8 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     let freqMap = {}, notasMap = {};
     if (rcoApiService && aluno.codturma) {
         const [freqResult, notasResult] = await Promise.allSettled([
-            buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome),
-            buildNotasMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome),
+            buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, todosIdsMat, aluno.nome),
+            buildNotasMap(supabaseAdmin, rcoApiService, aluno.codturma, todosIdsMat, aluno.nome),
         ]);
         if (freqResult.status  === 'fulfilled') freqMap  = freqResult.value;
         else console.warn('[RELATORIO-OCORR] freq:',  freqResult.reason?.message);
