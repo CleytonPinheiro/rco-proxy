@@ -165,8 +165,9 @@ function _zerarPainelDireito() {
             <h2 class="ficha-aluno-nome" style="font-size:18px;opacity:.7">Selecione um aluno</h2>
             <p style="margin:4px 0 0;opacity:.55;font-size:13px">Escolha a turma no painel à esquerda e clique em um aluno.</p>
         </div>`;
-    document.getElementById('fichaDetalhe').innerHTML = '';
-    const bar = document.querySelector('.ficha-batch-bar');
+    const detalhe = document.getElementById('fichaConteudo');
+    if (detalhe) detalhe.innerHTML = '';
+    const bar = document.getElementById('fichaBatchBar');
     if (bar) bar.style.display = 'none';
 }
 
