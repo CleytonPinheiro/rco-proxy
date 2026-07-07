@@ -511,18 +511,25 @@ async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatriz, n
     return freqMap;
 }
 
-// ─── Monta mapa de notas por disciplina (via RCO API) ────────────────────────
-const RCO_AVALI_BASE = '/classe/v1';
+// ─── Cache de notas por turma (5 min) ────────────────────────────────────────
+const RCO_AVALI_BASE  = '/classe/v1';
+const _notasCache     = new Map();  // codturma(str) → { ts, data: { matId → { DISC → [{nome,nota}] } } }
+const NOTAS_CACHE_TTL = 5 * 60 * 1000;
 
-async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz) {
-    let classes;
+/* Busca grades de TODOS os alunos da turma de uma só vez e armazena no cache.
+   Em batch de N alunos, esse fetch ocorre apenas 1×  em vez de N×. */
+async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
+    const now = Date.now();
+    const hit = _notasCache.get(String(codturma));
+    if (hit && now - hit.ts < NOTAS_CACHE_TTL) return hit.data;
+
+    let classes = [];
     try {
         const r = await supabaseAdmin.from('rco_classes')
             .select('cod_classe, cod_periodo_avaliacao, rco_disciplinas(nome_disciplina)')
             .eq('cod_turma', codturma);
         classes = r.error ? [] : (r.data || []);
-    } catch { return {}; }
-    if (!classes.length) return {};
+    } catch { /* retorna vazio */ }
 
     let classPeriodMap = {};
     try {
@@ -530,50 +537,73 @@ async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz) 
         if (rows.length) classPeriodMap = JSON.parse(rows[0].valor);
     } catch {}
 
-    const notasMap = {};
+    const porAluno = {};   // { matId: { "DISCIPLINA": [{ nome, nota }] } }
+
     await Promise.allSettled(classes.map(async (cl) => {
         const codClasse      = cl.cod_classe;
         const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || '';
         if (!nomeDisciplina) return;
         try {
             const periodoLocal = classPeriodMap[String(codClasse)];
-            const codPA = periodoLocal?.codPA ?? cl.cod_periodo_avaliacao ?? 9;
+            const codPA = periodoLocal?.codPA ?? cl.cod_periodo_avaliacao
+                          ?? process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
 
-            /* 1. Lista de avaliações da classe */
-            const avResp = await rcoApiService.get(
-                `${RCO_AVALI_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
-                `&codPeriodoAvaliacao=${codPA}&codRegraCalculo=1&qtdeAvaliacao=2&page=1&perPage=20`
-            );
-            if (avResp.status !== 200) return;
-            const avaliacoes = Array.isArray(avResp.data) ? avResp.data
-                : (avResp.data?.content ?? avResp.data?.data ?? []);
-            if (!avaliacoes.length) return;
+            /* Lista de avaliações — fallback de qtdeAvaliacao igual ao boletim */
+            let avaliacoes = [];
+            for (const qtde of [2, 1, 3, 4]) {
+                try {
+                    const r = await rcoApiService.get(
+                        `${RCO_AVALI_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
+                        `&codPeriodoAvaliacao=${codPA}&codRegraCalculo=1&qtdeAvaliacao=${qtde}&page=1&perPage=20`
+                    );
+                    if (r.status === 200) {
+                        const d = Array.isArray(r.data) ? r.data
+                            : (r.data?.content ?? r.data?.data ?? []);
+                        if (d.length > 0) { avaliacoes = d; break; }
+                    }
+                } catch { /* tenta próximo qtde */ }
+            }
+            if (!avaliacoes.length) {
+                console.log(`[NOTAS] classe ${codClasse} (${nomeDisciplina}): sem avaliações (codPA=${codPA})`);
+                return;
+            }
 
-            /* 2. Detalhes de cada avaliação (alunos com notas) — em paralelo */
+            /* Detalhe de cada avaliação — retorna TODOS os alunos */
             const detalhes = await Promise.allSettled(avaliacoes.map(av =>
                 rcoApiService.get(
                     `${RCO_AVALI_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=alunos`
                 )
             ));
 
-            const notas = [];
+            const discKey = nomeDisciplina.trim().toUpperCase();
             avaliacoes.forEach((av, i) => {
                 const det = detalhes[i];
-                const nome = (av.descrAvaliacaoParcial ?? av.nomeAvaliacao ?? `AV${i + 1}`)
+                const nomAv = (av.descrAvaliacaoParcial ?? av.nomeAvaliacao ?? `AV${i + 1}`)
                     .replace(/\n\s*/g, ' ').trim();
-                if (det.status !== 'fulfilled' || det.value?.status !== 200) {
-                    notas.push({ nome, nota: null });
-                    return;
-                }
-                const aln = (det.value.data?.alunos ?? [])
-                    .find(a => String(a.codMatrizAluno) === String(codMatriz));
-                notas.push({ nome, nota: aln?.notaDecimal ?? aln?.nota ?? null });
-            });
+                if (det.status !== 'fulfilled' || det.value?.status !== 200) return;
 
-            if (notas.length) notasMap[nomeDisciplina.trim().toUpperCase()] = notas;
+                (det.value.data?.alunos ?? []).forEach(aln => {
+                    const matId = String(aln.codMatrizAluno);
+                    if (!porAluno[matId])          porAluno[matId] = {};
+                    if (!porAluno[matId][discKey]) porAluno[matId][discKey] = [];
+                    porAluno[matId][discKey].push({
+                        nome: nomAv,
+                        nota: aln.notaDecimal ?? aln.nota ?? null,
+                    });
+                });
+            });
         } catch { /* best-effort */ }
     }));
-    return notasMap;
+
+    console.log(`[NOTAS] turma ${codturma}: ${Object.keys(porAluno).length} aluno(s) com notas no cache`);
+    _notasCache.set(String(codturma), { ts: now, data: porAluno });
+    return porAluno;
+}
+
+/* Retorna o mapa de notas para UM aluno específico: { "DISCIPLINA": [{nome,nota}] } */
+async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz) {
+    const turmaData = await _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma);
+    return turmaData[String(codMatriz)] ?? {};
 }
 
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
@@ -660,7 +690,9 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     let ocorrencias = ocorrenciasRaw.map(o => ({
         ...o,
         professor_nome: metaMap[o.id]?.professor_nome || '',
-        nome_turma:     metaMap[o.id]?.nome_turma     || aluno.turma || '',
+        /* Prefere aluno.turma (Supabase sync, sempre atualizado com seção)
+           em vez do nome_turma salvo na ocorrência (pode estar desatualizado) */
+        nome_turma:     aluno.turma || metaMap[o.id]?.nome_turma || '',
         disciplina:     metaMap[o.id]?.disciplina     || '',
     }));
     if (professor)
