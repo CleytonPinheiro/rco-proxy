@@ -265,13 +265,18 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
     const yDate    = ySepIn + 4;
 
     // ── Faixa de frequência (opcional) e campo Obs. — ficam acima do separador ─
-    const freqResumo = ocorrencia.freqResumo || null;
-    const FREQ_H     = freqResumo ? 26 : 0;
-    const OBS_H      = 30;   // label "Obs.:" + 2 linhas manuscritas
+    const freqResumo  = ocorrencia.freqResumo  || null;
+    const notaResumo  = (ocorrencia.notaResumo && ocorrencia.notaResumo.length > 0)
+                        ? ocorrencia.notaResumo : null;
+    const FREQ_H      = freqResumo  ? 26 : 0;
+    const NOTAS_H     = notaResumo  ? 22 : 0;
+    const OBS_H       = 30;   // label "Obs.:" + 2 linhas manuscritas
 
     // ── Área de texto da descrição ────────────────────────────────────────────
     const yTxtStart = BOX_Y + IP + 2;
-    const yTxtEnd   = ySepIn - 4 - OBS_H - 4 - (FREQ_H > 0 ? FREQ_H + 4 : 0);
+    const yTxtEnd   = ySepIn - 4 - OBS_H - 4
+                      - (NOTAS_H > 0 ? NOTAS_H + 4 : 0)
+                      - (FREQ_H  > 0 ? FREQ_H  + 4 : 0);
     const txtH      = Math.max(20, yTxtEnd - yTxtStart);
 
     const descricao = (ocorrencia.descricao || '').trim();
@@ -288,7 +293,7 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
         }
     }
 
-    // ── Campo Obs.: (acima da frequência, para preenchimento manuscrito) ──────
+    // ── Campo Obs.: (acima das notas / frequência, para preenchimento manuscrito) ──
     {
         const yObsLbl = yTxtEnd + 4;
         const yObs2   = yObsLbl + 16;
@@ -302,9 +307,32 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
            .lineWidth(0.6).stroke('#94a3b8').lineWidth(1);
     }
 
-    // ── Faixa de frequência ───────────────────────────────────────────────────
+    // ── Faixa de notas (verde, opcional) ─────────────────────────────────────
+    if (notaResumo) {
+        const yN  = yTxtEnd + OBS_H + 4;
+        const nW  = colW - IP * 2;
+        const nTY = yN + (NOTAS_H - 8) / 2;
+
+        doc.rect(colX + IP, yN, nW, NOTAS_H).fill('#f0fdf4');
+        doc.rect(colX + IP, yN, nW, NOTAS_H).lineWidth(0.5).stroke('#86efac').lineWidth(1);
+
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#15803d')
+           .text('NOTA: ', colX + IP + 6, nTY, { lineBreak: false });
+        const nLblW = doc.widthOfString('NOTA: ');
+
+        const notasTxt = notaResumo
+            .map(n => `${n.nome}: ${n.nota != null ? Number(n.nota).toFixed(1) : '—'}`)
+            .join('  ·  ');
+
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#166534')
+           .text(notasTxt, colX + IP + 6 + nLblW, nTY,
+                 { width: nW - 12 - nLblW, lineBreak: false, ellipsis: true });
+        doc.fillColor('#000');
+    }
+
+    // ── Faixa de frequência (azul, opcional) ─────────────────────────────────
     if (freqResumo) {
-        const yF  = yTxtEnd + OBS_H + 4;
+        const yF  = yTxtEnd + OBS_H + 4 + (NOTAS_H > 0 ? NOTAS_H + 2 : 0);
         const fW  = colW - IP * 2;
         const fTY = yF + (FREQ_H - 8) / 2;
 
@@ -470,6 +498,71 @@ async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatriz, n
     return freqMap;
 }
 
+// ─── Monta mapa de notas por disciplina (via RCO API) ────────────────────────
+const RCO_AVALI_BASE = '/classe/v1';
+
+async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz) {
+    let classes;
+    try {
+        const r = await supabaseAdmin.from('rco_classes')
+            .select('cod_classe, cod_periodo_avaliacao, rco_disciplinas(nome_disciplina)')
+            .eq('cod_turma', codturma);
+        classes = r.error ? [] : (r.data || []);
+    } catch { return {}; }
+    if (!classes.length) return {};
+
+    let classPeriodMap = {};
+    try {
+        const { rows } = await pool.query(`SELECT valor FROM edusync_config WHERE chave = 'rco_classes_periodos'`);
+        if (rows.length) classPeriodMap = JSON.parse(rows[0].valor);
+    } catch {}
+
+    const notasMap = {};
+    await Promise.allSettled(classes.map(async (cl) => {
+        const codClasse      = cl.cod_classe;
+        const nomeDisciplina = cl.rco_disciplinas?.nome_disciplina || '';
+        if (!nomeDisciplina) return;
+        try {
+            const periodoLocal = classPeriodMap[String(codClasse)];
+            const codPA = periodoLocal?.codPA ?? cl.cod_periodo_avaliacao ?? 9;
+
+            /* 1. Lista de avaliações da classe */
+            const avResp = await rcoApiService.get(
+                `${RCO_AVALI_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
+                `&codPeriodoAvaliacao=${codPA}&codRegraCalculo=1&qtdeAvaliacao=2&page=1&perPage=20`
+            );
+            if (avResp.status !== 200) return;
+            const avaliacoes = Array.isArray(avResp.data) ? avResp.data
+                : (avResp.data?.content ?? avResp.data?.data ?? []);
+            if (!avaliacoes.length) return;
+
+            /* 2. Detalhes de cada avaliação (alunos com notas) — em paralelo */
+            const detalhes = await Promise.allSettled(avaliacoes.map(av =>
+                rcoApiService.get(
+                    `${RCO_AVALI_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=alunos`
+                )
+            ));
+
+            const notas = [];
+            avaliacoes.forEach((av, i) => {
+                const det = detalhes[i];
+                const nome = (av.descrAvaliacaoParcial ?? av.nomeAvaliacao ?? `AV${i + 1}`)
+                    .replace(/\n\s*/g, ' ').trim();
+                if (det.status !== 'fulfilled' || det.value?.status !== 200) {
+                    notas.push({ nome, nota: null });
+                    return;
+                }
+                const aln = (det.value.data?.alunos ?? [])
+                    .find(a => String(a.codMatrizAluno) === String(codMatriz));
+                notas.push({ nome, nota: aln?.notaDecimal ?? aln?.nota ?? null });
+            });
+
+            if (notas.length) notasMap[nomeDisciplina.trim().toUpperCase()] = notas;
+        } catch { /* best-effort */ }
+    }));
+    return notasMap;
+}
+
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
 async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, professor }, rcoApiService) {
     const [alunoResult, byIdResult, obsRcoResult] = await Promise.all([
@@ -604,21 +697,25 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const ataNumMap = new Map(todasParaAta.map((o, idx) => [String(o.id), idx + 1]));
     const ataTotal  = todasParaAta.length;
 
-    // ── Frequência por disciplina (best-effort via RCO API) ───────────────────
-    let freqMap = {};
+    // ── Frequência + Notas por disciplina (best-effort via RCO API, em paralelo) ──
+    let freqMap = {}, notasMap = {};
     if (rcoApiService && aluno.codturma) {
-        try {
-            freqMap = await buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome);
-        } catch (e) {
-            console.warn('[RELATORIO-OCORR] freq:', e.message);
-        }
+        const [freqResult, notasResult] = await Promise.allSettled([
+            buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome),
+            buildNotasMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz),
+        ]);
+        if (freqResult.status  === 'fulfilled') freqMap  = freqResult.value;
+        else console.warn('[RELATORIO-OCORR] freq:',  freqResult.reason?.message);
+        if (notasResult.status === 'fulfilled') notasMap = notasResult.value;
+        else console.warn('[RELATORIO-OCORR] notas:', notasResult.reason?.message);
     }
 
     const combinadas = combinadasBase.map(o => {
         const key = (o.disciplina || '').trim().toUpperCase();
         return {
             ...o,
-            freqResumo: key ? (freqMap[key] ?? null) : null,
+            freqResumo:  key ? (freqMap[key]  ?? null) : null,
+            notaResumo:  key ? (notasMap[key] ?? null) : null,
             ataNum:  ataNumMap.get(String(o.id)) ?? null,
             ataTotal,
         };
