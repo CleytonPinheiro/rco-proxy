@@ -804,14 +804,24 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     return { aluno, combinadas };
 }
 
+// ─── Trimestre a partir do mês ────────────────────────────────────────────────
+// 1º TRIM: fev–abr  |  2º TRIM: mai–ago  |  3º TRIM: set–dez
+// Jan é recesso/férias; cai no 1º por padrão.
+function getTrimestre(date = new Date()) {
+    const m = date.getMonth() + 1; // 1-12
+    if (m <= 4)  return '1TRIM';
+    if (m <= 8)  return '2TRIM';
+    return '3TRIM';
+}
+
 // ─── Monta nome do arquivo PDF ────────────────────────────────────────────────
-// Formato: termos-[PERIODO]-[DISCIPLINA]-DD-MM-AAAA.pdf
+// Formato: termos-[PERIODO]-[DISCIPLINA]-[TRIMESTRE]-DD-MM-AAAA.pdf
 // Exemplos:
 //   turma "NEM EPT - 3ª Série - Manhã - C", disc "PROGRAMACAO BACK-END"
-//   → termos-3C-PROGRAMACAO-BACK-END-07-07-2026.pdf
+//   → termos-3C-PROGRAMACAO-BACK-END-2TRIM-07-07-2026.pdf
 //   batch sem disciplina:
-//   → termos-3C-07-07-2026.pdf
-function montarNomeArquivo(turma, disciplina = '') {
+//   → termos-3C-2TRIM-07-07-2026.pdf
+function montarNomeArquivo(turma, disciplina = '', trimestre = '') {
     const slug = (str) =>
         (str || '')
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // remove acentos
@@ -830,8 +840,9 @@ function montarNomeArquivo(turma, disciplina = '') {
     const mm   = String(hoje.getMonth() + 1).padStart(2, '0');
     const aaaa = hoje.getFullYear();
 
-    const discParte = disciplina ? `-${slug(disciplina)}` : '';
-    return `termos-${periodoSlug || 'TURMA'}${discParte}-${dd}-${mm}-${aaaa}.pdf`;
+    const discParte = disciplina  ? `-${slug(disciplina)}`  : '';
+    const trimParte = trimestre   ? `-${trimestre}`         : '';
+    return `termos-${periodoSlug || 'TURMA'}${discParte}${trimParte}-${dd}-${mm}-${aaaa}.pdf`;
 }
 
 // ─── Gera PDF paisagem (2 vias por página) ────────────────────────────────────
@@ -951,7 +962,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
                 if (d) discCounts[d] = (discCounts[d] || 0) + 1;
             }
             const discPrincipal = Object.entries(discCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-            const nomeArq = montarNomeArquivo(dado.aluno.turma, discPrincipal);
+            const nomeArq = montarNomeArquivo(dado.aluno.turma, discPrincipal, getTrimestre());
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArq}"`);
             res.setHeader('Cache-Control', 'no-store');
@@ -1017,7 +1028,7 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             const { doc, chunks, paginas } = gerarPDF(registrosNorm, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
 
-            const nomeArqBatch = montarNomeArquivo(registrosNorm[0]?.aluno?.turma || '');
+            const nomeArqBatch = montarNomeArquivo(registrosNorm[0]?.aluno?.turma || '', '', getTrimestre());
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArqBatch}"`);
             res.setHeader('Cache-Control', 'no-store');
