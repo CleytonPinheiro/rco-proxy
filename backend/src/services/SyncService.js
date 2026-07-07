@@ -393,7 +393,7 @@ export class SyncService {
                                 alunosMap[chaveNome] = {
                                     registro:       truncate(String(a.codMatrizAluno), 50),
                                     nome:           truncate(a.nome, 120),
-                                    turma:          truncate(info.descrTurma, 50),
+                                    turma:          truncate(info.descrTurma, 200),
                                     codmatrizaluno: a.codMatrizAluno,
                                     codturma:       codTurma,
                                     numchamada:     a.numChamada ?? a.numchamada ?? null,
