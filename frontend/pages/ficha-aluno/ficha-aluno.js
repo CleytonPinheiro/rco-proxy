@@ -253,6 +253,24 @@ async function carregarAlunos(codturma) {
         window._fichaAlunosSelecionados = new Set();
         listEl.classList.add('multi-mode');
 
+        /* Mostra nome curto da turma na barra de batch */
+        const turmaNomeEl = document.getElementById('fichaBatchTurma');
+        if (turmaNomeEl) {
+            const turmaObj = _fichaTodasTurmas.find(t => String(t.codturma) === String(codturma));
+            const nomeCompleto = turmaObj?.turma || '';
+            /* Extrai parte curta: exclui último segmento se for turno (Manhã/Tarde/Noturno) */
+            const TURNOS_RE = /^(manh[aã]|tarde|noturno|integral|vespertino|matutino)$/i;
+            const pts = nomeCompleto.split(/\s*[-–]\s*/).map(s => s.trim()).filter(Boolean);
+            let nomeCurto = nomeCompleto;
+            if (pts.length >= 2 && TURNOS_RE.test(pts[pts.length - 1])) {
+                nomeCurto = pts[pts.length - 2]; // ex: "3ª Série" ou "1º C"
+            } else if (pts.length >= 2) {
+                nomeCurto = pts[pts.length - 1];
+            }
+            turmaNomeEl.textContent = nomeCurto;
+            turmaNomeEl.title = nomeCompleto;
+        }
+
         // Guarda mapa de atas impressas para uso no aviso de re-impressão
         window._atasImpressasMap = {};
         for (const a of alunos) {

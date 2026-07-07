@@ -30,14 +30,29 @@ function inferirEnsino(nomeTurma) {
     return '';
 }
 
+const TURNOS = /^(manh[aã]|tarde|noturno|integral|vespertino|matutino)$/i;
+
 function parseTurma(nomeTurma) {
     if (!nomeTurma) return { serie: '', periodo: '', ensino: '' };
     const pts = nomeTurma.split(/\s*[-–]\s*/).map(s => s.trim()).filter(Boolean);
-    return {
-        serie:   pts[0]  || nomeTurma,
-        periodo: pts.length > 1 ? pts[pts.length - 1] : '',
-        ensino:  inferirEnsino(nomeTurma),
-    };
+    if (pts.length === 0) return { serie: nomeTurma, periodo: '', ensino: '' };
+
+    const serie = pts[0];
+
+    /* "turma:" no formulário deve mostrar o identificador da classe (ex: "3ª Série",
+       "1º C"), e NÃO o turno (Manhã/Tarde/Noturno).
+       Se o último segmento for um turno, usa o penúltimo como identificador.
+       Caso só haja dois segmentos e o último NÃO for turno, usa-o normalmente. */
+    let periodo = '';
+    if (pts.length === 1) {
+        periodo = pts[0];
+    } else if (TURNOS.test(pts[pts.length - 1])) {
+        periodo = pts[pts.length - 2];  // ex: "3ª Série" ou "1º C"
+    } else {
+        periodo = pts[pts.length - 1];
+    }
+
+    return { serie, periodo, ensino: inferirEnsino(nomeTurma) };
 }
 
 // ─── Desenha logo circular ────────────────────────────────────────────────────
