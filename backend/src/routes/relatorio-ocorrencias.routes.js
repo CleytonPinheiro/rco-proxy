@@ -528,8 +528,9 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
     let classes = [];
     try {
         const r = await supabaseAdmin.from('rco_classes')
-            .select('cod_classe, cod_periodo_avaliacao, rco_disciplinas(nome_disciplina)')
+            .select('cod_classe, rco_disciplinas(nome_disciplina)')
             .eq('cod_turma', codturma);
+        if (r.error) console.warn('[NOTAS] rco_classes query error:', r.error.message);
         classes = r.error ? [] : (r.data || []);
     } catch { /* retorna vazio */ }
 
@@ -558,11 +559,9 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
                         `${RCO_AVALI_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
                         `&codPeriodoAvaliacao=${codPA}&codRegraCalculo=1&qtdeAvaliacao=${qtde}&page=1&perPage=20`
                     );
-                    if (r.status === 200) {
-                        const d = Array.isArray(r.data) ? r.data
-                            : (r.data?.content ?? r.data?.data ?? []);
-                        if (d.length > 0) { avaliacoes = d; break; }
-                    }
+                    const d = Array.isArray(r.data) ? r.data
+                        : (r.data?.content ?? r.data?.data ?? []);
+                    if (r.status === 200 && d.length > 0) { avaliacoes = d; break; }
                 } catch { /* tenta próximo qtde */ }
             }
             if (!avaliacoes.length) {
@@ -576,7 +575,6 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
                     `${RCO_AVALI_BASE}/avaliacaoParcialClasses/${av.codAvaliacaoParcialClasse}?listas=alunos`
                 )
             ));
-
             const discKey = nomeDisciplina.trim().toUpperCase();
             avaliacoes.forEach((av, i) => {
                 const det = detalhes[i];
