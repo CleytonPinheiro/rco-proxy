@@ -55,14 +55,16 @@ function parseTurma(nomeTurma) {
     let periodo;
 
     if (isSecao && semTurno.length >= 3) {
-        // Extrai o ordinal do segmento de ano (ex: "9ºAno" → "9º", "3ª SÉRIE" → "3ª")
+        // ex: ["CURSO", "9ºAno", "C"] → "9º C"
         const yearSeg = semTurno[semTurno.length - 2];
         const yearNum = yearSeg.match(/^\d+[ºª°]?/)?.[0] ?? yearSeg.split(/\s/)[0];
         periodo = `${yearNum} ${lastSeg.toUpperCase()}`;
     } else {
-        /* Sem seção separada: usa o último segmento diretamente
-           (ex: "NEM EPT TEC DESE - 3ª SÉRIE - MANHÃ" → "3ª SÉRIE") */
-        periodo = lastSeg;
+        /* Sem seção separada: compacta para apenas o ordinal do ano
+           ex: "3ª Série" → "3ª"  |  "9ºAno" → "9º"
+           Se não houver ordinal identificável, usa o segmento completo. */
+        const yearOrd = lastSeg.match(/^\d+[ºª°]?/)?.[0];
+        periodo = yearOrd ?? lastSeg;
     }
 
     return { serie, periodo, ensino: inferirEnsino(nomeTurma) };
