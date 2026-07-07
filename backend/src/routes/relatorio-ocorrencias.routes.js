@@ -585,27 +585,46 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
                 if (det.status !== 'fulfilled' || det.value?.status !== 200) return;
 
                 (det.value.data?.alunos ?? []).forEach(aln => {
-                    const matId = String(aln.codMatrizAluno);
+                    const matId   = String(aln.codMatrizAluno);
+                    const nomeKey = (aln.nome || '').toUpperCase().trim();
+                    const entrada = { nome: nomAv, nota: aln.notaDecimal ?? aln.nota ?? null };
+
+                    /* Indexa por codMatrizAluno */
                     if (!porAluno[matId])          porAluno[matId] = {};
                     if (!porAluno[matId][discKey]) porAluno[matId][discKey] = [];
-                    porAluno[matId][discKey].push({
-                        nome: nomAv,
-                        nota: aln.notaDecimal ?? aln.nota ?? null,
-                    });
+                    porAluno[matId][discKey].push(entrada);
+
+                    /* Indexa também por nome normalizado (fallback para ID-mismatch entre classes) */
+                    if (nomeKey) {
+                        const nk = `nome:${nomeKey}`;
+                        if (!porAluno[nk])          porAluno[nk] = {};
+                        if (!porAluno[nk][discKey]) porAluno[nk][discKey] = [];
+                        /* Evita duplicar se já indexado por mesmo matId */
+                        if (!porAluno[nk][discKey].some(e => e.nome === entrada.nome))
+                            porAluno[nk][discKey].push(entrada);
+                    }
                 });
             });
         } catch { /* best-effort */ }
     }));
 
-    console.log(`[NOTAS] turma ${codturma}: ${Object.keys(porAluno).length} aluno(s) com notas no cache`);
+    console.log(`[NOTAS] turma ${codturma}: ${Object.keys(porAluno).filter(k=>!k.startsWith('nome:')).length} aluno(s) com notas no cache`);
     _notasCache.set(String(codturma), { ts: now, data: porAluno });
     return porAluno;
 }
 
-/* Retorna o mapa de notas para UM aluno específico: { "DISCIPLINA": [{nome,nota}] } */
-async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz) {
+/* Retorna o mapa de notas para UM aluno específico: { "DISCIPLINA": [{nome,nota}] }
+   Tenta primeiro pelo codMatrizAluno; se vazio, tenta pelo nome normalizado
+   (o RCO atribui IDs diferentes por classe, então o ID pode divergir do sync). */
+async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatriz, nomeAluno) {
     const turmaData = await _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma);
-    return turmaData[String(codMatriz)] ?? {};
+    const porId = turmaData[String(codMatriz)];
+    if (porId && Object.keys(porId).length > 0) return porId;
+    if (nomeAluno) {
+        const nk = `nome:${nomeAluno.toUpperCase().trim()}`;
+        return turmaData[nk] ?? {};
+    }
+    return {};
 }
 
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
@@ -749,7 +768,7 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     if (rcoApiService && aluno.codturma) {
         const [freqResult, notasResult] = await Promise.allSettled([
             buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome),
-            buildNotasMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz),
+            buildNotasMap(supabaseAdmin, rcoApiService, aluno.codturma, codMatriz, aluno.nome),
         ]);
         if (freqResult.status  === 'fulfilled') freqMap  = freqResult.value;
         else console.warn('[RELATORIO-OCORR] freq:',  freqResult.reason?.message);
