@@ -10,7 +10,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
  * Reutiliza a mesma lógica de GET /api/rco/observacoes.
  * Retorna o total de observações inseridas/atualizadas (0 em caso de erro).
  */
-async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codturma) {
+export async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codturma) {
     try {
         /* 1. Busca classes da turma */
         const { data: classes } = await supabaseAdmin
@@ -29,6 +29,7 @@ async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codtu
         } catch (_) {}
 
         let total = 0;
+        const erros = [];
         for (const cl of classes) {
             try {
                 const codClasse = cl.cod_classe;
@@ -100,12 +101,16 @@ async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codtu
                 }
             } catch (e) {
                 console.warn(`[SYNC-OBS] Erro na classe ${cl.cod_classe}:`, e.message);
+                erros.push(`classe ${cl.cod_classe}: ${e.message}`);
             }
+        }
+        if (erros.length > 0) {
+            throw new Error(`Não foi possível atualizar todas as disciplinas no RCO (${erros.join('; ')})`);
         }
         return total;
     } catch (e) {
         console.warn('[SYNC-OBS] Erro geral:', e.message);
-        return 0;
+        throw e;
     }
 }
 

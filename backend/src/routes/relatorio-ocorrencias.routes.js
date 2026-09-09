@@ -1,5 +1,6 @@
 import { Router }        from 'express';
 import { requireModulo } from '../middleware/auth.middleware.js';
+import { sincronizarObsParaTurma } from './ficha-aluno.routes.js';
 import pkg               from 'pg';
 import PDFDocument       from 'pdfkit';
 
@@ -934,6 +935,21 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
         const codMatriz = parseInt(req.params.codMatrizAluno, 10);
         if (isNaN(codMatriz)) return res.status(400).json({ erro: 'codMatrizAluno inválido.' });
         try {
+            /* O PDF deve refletir o RCO oficial no momento da geração, não apenas
+               o último snapshot salvo quando a turma foi aberta na tela. */
+            const { data: alunoParaSync, error: alunoSyncError } = await supabaseAdmin
+                .from('alunos')
+                .select('codturma')
+                .eq('codmatrizaluno', codMatriz)
+                .maybeSingle();
+            if (alunoSyncError) throw new Error(`Falha ao localizar turma do aluno: ${alunoSyncError.message}`);
+            if (alunoParaSync?.codturma) {
+                const totalSync = await sincronizarObsParaTurma(
+                    supabaseAdmin, rcoApiService, pool, alunoParaSync.codturma
+                );
+                console.log(`[PDF-SYNC] aluno ${codMatriz} turma ${alunoParaSync.codturma}: ${totalSync} observações atualizadas antes do PDF`);
+            }
+
             const configResult = await pool.query(
                 `SELECT chave, valor FROM edusync_config WHERE chave = ANY($1)`,
                 [['escola_nome_oficial','escola_endereco','escola_telefone','escola_email','escola_logo_base64','escola_cidade_ref']]
@@ -985,6 +1001,24 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
         if (ids.length === 0) return res.status(400).json({ erro: 'Nenhum ID válido.' });
 
         try {
+            /* Sincroniza uma vez cada turma envolvida antes de buscar os dados.
+               Em lote, vários alunos normalmente pertencem à mesma turma. */
+            const { data: alunosParaSync, error: alunosSyncError } = await supabaseAdmin
+                .from('alunos')
+                .select('codturma')
+                .in('codmatrizaluno', ids);
+            if (alunosSyncError) throw new Error(`Falha ao localizar turmas do lote: ${alunosSyncError.message}`);
+
+            const turmasParaSync = [...new Set(
+                (alunosParaSync || []).map(a => a.codturma).filter(Boolean)
+            )];
+            for (const codturma of turmasParaSync) {
+                const totalSync = await sincronizarObsParaTurma(
+                    supabaseAdmin, rcoApiService, pool, codturma
+                );
+                console.log(`[PDF-SYNC] lote turma ${codturma}: ${totalSync} observações atualizadas antes do PDF`);
+            }
+
             const configResult = await pool.query(
                 `SELECT chave, valor FROM edusync_config WHERE chave = ANY($1)`,
                 [['escola_nome_oficial','escola_endereco','escola_telefone','escola_email','escola_logo_base64','escola_cidade_ref']]
