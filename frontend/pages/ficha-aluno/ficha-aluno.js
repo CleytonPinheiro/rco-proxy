@@ -224,9 +224,31 @@ async function _sincronizarObsTurmaBackground(codturma) {
         if (!r.ok) return;
         const data = await r.json().catch(() => ({}));
         if (data.total > 0) {
-            /* Recarrega lista silenciosamente para atualizar badges de observações */
+            /* Preserva o aluno aberto e a seleção múltipla. Antes, o sync atualizava
+               apenas a lista lateral; a ficha já aberta continuava exibindo os
+               dados antigos até o usuário clicar novamente no aluno. */
             const selTurma = document.getElementById('fichaTurmaSelect');
-            if (selTurma && selTurma.value == codturma) await carregarAlunos(codturma);
+            if (selTurma && selTurma.value == codturma) {
+                const alunoAtivo = document.querySelector('.ficha-aluno-item.ativo')?.dataset.cod || null;
+                const selecionados = new Set(window._fichaAlunosSelecionados || []);
+
+                await carregarAlunos(codturma);
+
+                window._fichaAlunosSelecionados = selecionados;
+                for (const cod of selecionados) {
+                    const check = document.getElementById(`faic-${cod}`);
+                    const btn = document.querySelector(`.ficha-aluno-item[data-cod="${cod}"]`);
+                    if (check) check.checked = true;
+                    if (btn) btn.classList.add('selecionado');
+                }
+                updateBatchBtn();
+
+                if (alunoAtivo) {
+                    const btnAtivo = document.querySelector(`.ficha-aluno-item[data-cod="${alunoAtivo}"]`);
+                    if (btnAtivo) btnAtivo.classList.add('ativo');
+                    await carregarFicha(Number(alunoAtivo));
+                }
+            }
         }
     } catch (_) { /* silencioso — não perturba a UX */ }
 }

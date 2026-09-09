@@ -79,10 +79,24 @@ async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool, codtu
                 }
 
                 if (todasObs.length > 0) {
-                    await supabaseAdmin
+                    /* A API do RCO pode repetir o mesmo aluno/aula na resposta.
+                       Deduplicar evita que um único upsert tente atualizar a mesma
+                       chave de conflito duas vezes e seja rejeitado pelo Postgres. */
+                    const obsUnicas = [...new Map(
+                        todasObs.map(o => [`${o.cod_aula}:${o.cod_matriz_aluno}`, o])
+                    ).values()].map(o => ({
+                        ...o,
+                        sincronizado_em: new Date().toISOString(),
+                    }));
+
+                    const { error: upsertError } = await supabaseAdmin
                         .from('rco_observacoes')
-                        .upsert(todasObs, { onConflict: 'cod_aula,cod_matriz_aluno' });
-                    total += todasObs.length;
+                        .upsert(obsUnicas, { onConflict: 'cod_aula,cod_matriz_aluno' });
+
+                    if (upsertError) {
+                        throw new Error(`Falha ao salvar observações: ${upsertError.message}`);
+                    }
+                    total += obsUnicas.length;
                 }
             } catch (e) {
                 console.warn(`[SYNC-OBS] Erro na classe ${cl.cod_classe}:`, e.message);
