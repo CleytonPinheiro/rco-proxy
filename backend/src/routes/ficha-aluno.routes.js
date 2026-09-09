@@ -34,20 +34,29 @@ export async function sincronizarObsParaTurma(supabaseAdmin, rcoApiService, pool
             try {
                 const codClasse = cl.cod_classe;
                 const per = classPeriodMap[String(codClasse)] || {};
-                const codPA = per.codPA ?? 9;
                 const codPL = per.codPL ?? 261;
+                const periodos = per.periodos?.length
+                    ? per.periodos.map(p => p.codPA).filter(v => v != null)
+                    : [per.codPA ?? 9];
 
-                /* Busca lista de aulas (mesma chamada que o front de Frequências faz) */
-                const freqResp = await rcoApiService.get(
-                    `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
-                );
-                const alunosFreq = Array.isArray(freqResp.data)
-                    ? freqResp.data
-                    : (freqResp.data?.data || []);
                 const aulaSet = new Set();
-                alunosFreq.forEach(a =>
-                    Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); })
-                );
+                /* Cada período avaliativo contém apenas suas próprias aulas.
+                   Consultar todos os calendários oficiais evita limitar a ficha
+                   ao primeiro trimestre (codPA 9). */
+                for (const codPA of [...new Set(periodos)]) {
+                    const freqResp = await rcoApiService.get(
+                        `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
+                    );
+                    if (freqResp.status !== 200) {
+                        throw new Error(`RCO retornou status ${freqResp.status} no período ${codPA}`);
+                    }
+                    const alunosFreq = Array.isArray(freqResp.data)
+                        ? freqResp.data
+                        : (freqResp.data?.data || freqResp.data?.content || []);
+                    alunosFreq.forEach(a =>
+                        Object.keys(a).forEach(k => { if (/^\d+$/.test(k)) aulaSet.add(k); })
+                    );
+                }
                 const codAulas = [...aulaSet];
                 if (!codAulas.length) continue;
 

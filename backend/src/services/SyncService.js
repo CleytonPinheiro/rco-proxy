@@ -213,6 +213,7 @@ export class SyncService {
             const turmasPayload = [];
             const disciplinasPayload = [];
             const classesPayload = [];
+            const periodosPorClasse = {};
             /* turmaParaClasses: turma → TODAS as classes (para buscar alunos com fallback) */
             const turmaParaClasses = {};
 
@@ -243,7 +244,15 @@ export class SyncService {
                             });
 
                             if (classe.codClasse) {
-                                const firstPeriodo = (livro.calendarioAvaliacaos || [])[0];
+                                const calendarios = livro.calendarioAvaliacaos || [];
+                                const firstPeriodo = calendarios[0];
+                                periodosPorClasse[String(classe.codClasse)] = calendarios
+                                    .map(c => ({
+                                        codPA: c.periodoAvaliacao?.codPeriodoAvaliacao,
+                                        inicio: c.dataInicio || null,
+                                        fim: c.dataFim || null,
+                                    }))
+                                    .filter(p => p.codPA != null);
                                 if (!turmaParaClasses[turma.codTurma]) {
                                     turmaParaClasses[turma.codTurma] = {
                                         descrTurma: turma.descrTurma || '',
@@ -336,6 +345,7 @@ export class SyncService {
                             periodoMap[String(c.cod_classe)] = {
                                 codPA: c.cod_periodo_avaliacao,
                                 codPL: c.cod_periodo_letivo,
+                                periodos: periodosPorClasse[String(c.cod_classe)] || [],
                             };
                         }
                     });

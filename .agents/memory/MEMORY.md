@@ -1,1 +1,2 @@
 - [RCO codMatrizAluno por classe](rco-codmatrizaluno-por-classe.md) — ID de matrícula é por classe, não por aluno; use match por nome para outras disciplinas.
+- [Períodos avaliativos do RCO](rco-periodos-avaliativos.md) — calendários são segmentados; consultar só o primeiro período oculta aulas e observações posteriores.
