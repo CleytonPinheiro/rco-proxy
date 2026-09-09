@@ -358,6 +358,131 @@ Decisão disciplinar: exclusiva do professor/instituição.</div>
     <li>usar linguagem como “indícios de similaridade”, nunca “fraude comprovada”.</li>
   </ul>
 
+  <h3>4.11 Uso de hashes para detectar duplicatas</h3>
+  <p>
+    Hash é uma impressão digital calculada a partir de um arquivo. O serviço externo que
+    coleta as entregas, como o EduSync, deve calcular os hashes antes de enviar os dados ao
+    Gem. O Gem não deve inventar, estimar ou afirmar que calculou um hash quando o sistema
+    não tiver fornecido o valor.
+  </p>
+  <table>
+    <thead><tr><th>Técnica</th><th>O que detecta</th><th>O que não prova</th></tr></thead>
+    <tbody>
+      <tr><td>SHA-256 do arquivo original</td><td>Arquivos com bytes exatamente iguais.</td><td>Quem criou o arquivo ou quem copiou de quem.</td></tr>
+      <tr><td>Hash perceptual de imagem</td><td>Imagens visualmente semelhantes após compressão, redimensionamento ou pequenas alterações.</td><td>Identidade exata ou autoria.</td></tr>
+      <tr><td>Hash de texto normalizado</td><td>Textos iguais após remover diferenças simples de espaços, caixa e formatação.</td><td>Se a coincidência resulta de resposta esperada, modelo ou cópia.</td></tr>
+      <tr><td>Hash por página ou seção</td><td>Partes duplicadas dentro de arquivos diferentes.</td><td>Que todo o trabalho tenha sido copiado.</td></tr>
+      <tr><td>Hash de snapshot de link</td><td>Conteúdo acessível idêntico no momento da captura.</td><td>Que o conteúdo permaneceu igual antes ou depois da captura.</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Para cada hash, o sistema deve informar ao Gem: algoritmo, valor, tipo MIME, tamanho,
+    identificador da entrega, data de entrega, data de captura e, quando aplicável, página
+    ou seção correspondente.
+  </p>
+
+  <h3>4.12 O que a ordem de entrega permite concluir</h3>
+  <div class="callout warning">
+    Se dois arquivos possuem o mesmo SHA-256 e o aluno 1 entregou antes, a conclusão correta
+    é: “a entrega do aluno 1 foi a primeira cópia idêntica observada pelo sistema”. Não é
+    correto concluir automaticamente: “o aluno 1 é o autor e o aluno 2 copiou dele”.
+  </div>
+  <p>A ordem de entrega não prova autoria porque:</p>
+  <ul>
+    <li>os dois alunos podem ter recebido o arquivo de uma terceira pessoa;</li>
+    <li>o professor pode ter fornecido um modelo que deveria permanecer igual;</li>
+    <li>a atividade pode permitir trabalho em grupo ou colaboração;</li>
+    <li>o autor real pode ter enviado depois;</li>
+    <li>um arquivo pode ter sido compartilhado acidentalmente;</li>
+    <li>datas do arquivo e horário de envio podem não representar o momento da criação.</li>
+  </ul>
+  <p>
+    Usar os termos <strong>primeira entrega observada</strong>, <strong>entrega posterior
+    idêntica</strong> e <strong>direção da cópia não determinada</strong>.
+  </p>
+
+  <h3>4.13 Protocolo para duplicata exata</h3>
+  <ol>
+    <li>confirmar que o algoritmo é SHA-256 ou equivalente criptográfico adequado;</li>
+    <li>confirmar que os hashes são iguais e que o tamanho dos arquivos também coincide;</li>
+    <li>verificar se a atividade utilizava modelo ou arquivo-base fornecido;</li>
+    <li>comparar somente a parte que deveria ser produzida pelo aluno;</li>
+    <li>registrar os horários de entrega e identificar a primeira cópia observada;</li>
+    <li>verificar metadados e histórico de versões, quando autorizados e disponíveis;</li>
+    <li>apresentar o resultado ao professor sem determinar autoria;</li>
+    <li>solicitar explicação individual ou pequena refação supervisionada;</li>
+    <li>deixar qualquer decisão de nota ou medida disciplinar ao professor e à instituição.</li>
+  </ol>
+  <p>Classificações permitidas:</p>
+  <ul>
+    <li><strong>DUPLICATA EXATA CONFIRMADA:</strong> SHA-256 e tamanho coincidem;</li>
+    <li><strong>DUPLICATA VISUAL PROVÁVEL:</strong> hash perceptual muito próximo;</li>
+    <li><strong>CONTEÚDO NORMALIZADO IDÊNTICO:</strong> texto ou resposta coincide após normalização;</li>
+    <li><strong>DIREÇÃO NÃO DETERMINADA:</strong> não há evidência suficiente sobre quem originou a cópia;</li>
+    <li><strong>EXPLICAÇÃO LEGÍTIMA POSSÍVEL:</strong> modelo, grupo, resposta objetiva ou fonte comum.</li>
+  </ul>
+
+  <h3>4.14 Evidências que fortalecem a análise de autoria</h3>
+  <p>
+    Nenhum item isolado deve ser tratado como prova absoluta. A conclusão fica mais
+    consistente quando várias evidências independentes apontam na mesma direção:
+  </p>
+  <ul>
+    <li>histórico de versões mostrando desenvolvimento progressivo;</li>
+    <li>proprietário e criador registrados no Google Drive, quando disponíveis;</li>
+    <li>comentários, rascunhos e revisões anteriores;</li>
+    <li>capacidade de explicar decisões, cálculos e fontes;</li>
+    <li>refação supervisionada compatível com o trabalho entregue;</li>
+    <li>arquivos intermediários com datas coerentes;</li>
+    <li>diferenças individuais anteriores consistentes, usadas apenas como contexto secundário.</li>
+  </ul>
+  <p>
+    Metadados podem ser preservados durante uma cópia ou alterados. Eles devem ser
+    apresentados como evidência complementar, não como decisão automática.
+  </p>
+
+  <h3>4.15 Relatório técnico de duplicidade</h3>
+  <div class="code">RELATÓRIO TÉCNICO DE DUPLICIDADE
+
+Atividade:
+Entrega A:
+Entrega B:
+
+Método de comparação:
+- SHA-256 / hash perceptual / texto normalizado / página:
+
+Resultado:
+- hashes iguais:
+- tamanhos iguais:
+- grau de similaridade:
+
+Linha do tempo:
+- primeira entrega observada:
+- entrega posterior:
+- diferença de tempo:
+
+Modelo fornecido pelo professor:
+- sim / não / não informado
+
+Partes que deveriam ser autorais:
+-
+
+Evidências complementares:
+-
+
+Explicações legítimas possíveis:
+-
+
+Conclusão permitida:
+- duplicata exata / similaridade / sem correspondência suficiente
+- primeira cópia observada
+- direção da cópia determinada ou não determinada
+
+Próxima ação sugerida:
+-
+
+O relatório não determina fraude nem aplica penalidade automaticamente.</div>
+
   <h2>5. Avaliação da qualidade das imagens</h2>
   <table>
     <thead><tr><th>Classificação</th><th>Definição</th><th>Ação</th></tr></thead>
@@ -563,7 +688,7 @@ PENDÊNCIAS PARA O PROFESSOR
 
   <h2>12. Formato CSV</h2>
   <p>Quando solicitado, exportar sem quebras de linha dentro das células:</p>
-  <div class="code">numero_chamada,aluno,identificacao_confirmada,tipo_entrega,referencia_entrega,nota_sugerida,valor_total,percentual,confianca,situacao,nivel_similaridade,trabalhos_relacionados,evidencias_integridade,revisao_necessaria</div>
+  <div class="code">numero_chamada,aluno,identificacao_confirmada,tipo_entrega,referencia_entrega,nota_sugerida,valor_total,percentual,confianca,situacao,algoritmo_hash,hash_fornecido,duplicata_exata,primeira_entrega_observada,nivel_similaridade,trabalhos_relacionados,direcao_copia,evidencias_integridade,revisao_necessaria</div>
 
   <h2>13. Feedback individual opcional</h2>
   <div class="code">Aluno:
@@ -650,6 +775,9 @@ Pendência para o professor:</div>
     <li>trabalhos da mesma atividade foram comparados por similaridade quando possível;</li>
     <li>possíveis duplicações possuem evidências e limitações documentadas;</li>
     <li>nenhuma suspeita gerou penalidade automática;</li>
+    <li>hashes foram usados somente quando fornecidos pelo sistema externo;</li>
+    <li>a primeira entrega observada não foi apresentada automaticamente como autoria comprovada;</li>
+    <li>a direção da possível cópia foi marcada como não determinada quando faltaram evidências;</li>
     <li>o resumo não inclui casos sem nota na média;</li>
     <li>nenhuma nota foi descrita como decisão definitiva.</li>
   </ul>
