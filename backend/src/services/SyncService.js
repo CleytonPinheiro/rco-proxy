@@ -249,6 +249,7 @@ export class SyncService {
                                 periodosPorClasse[String(classe.codClasse)] = calendarios
                                     .map(c => ({
                                         codPA: c.periodoAvaliacao?.codPeriodoAvaliacao,
+                                        nome: c.periodoAvaliacao?.descrPeriodoAvaliacao || null,
                                         inicio: c.dataInicio || null,
                                         fim: c.dataFim || null,
                                     }))

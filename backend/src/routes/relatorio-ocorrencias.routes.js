@@ -284,6 +284,7 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
     const freqResumo  = ocorrencia.freqResumo  || null;
     const notaResumo  = (ocorrencia.notaResumo && ocorrencia.notaResumo.length > 0)
                         ? ocorrencia.notaResumo : null;
+    const periodoResumo = ocorrencia.periodoResumo || '';
     const FREQ_H      = freqResumo  ? 26 : 0;
     const NOTAS_H     = notaResumo  ? 22 : 0;
     const OBS_H       = 30;   // label "Obs.:" + 2 linhas manuscritas
@@ -332,9 +333,10 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
         doc.rect(colX + IP, yN, nW, NOTAS_H).fill('#f0fdf4');
         doc.rect(colX + IP, yN, nW, NOTAS_H).lineWidth(0.5).stroke('#86efac').lineWidth(1);
 
+        const notaLabel = periodoResumo ? `NOTA (${periodoResumo}): ` : 'NOTA: ';
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#15803d')
-           .text('NOTA: ', colX + IP + 6, nTY, { lineBreak: false });
-        const nLblW = doc.widthOfString('NOTA: ');
+           .text(notaLabel, colX + IP + 6, nTY, { lineBreak: false });
+        const nLblW = doc.widthOfString(notaLabel);
 
         const notasTxt = notaResumo
             .map(n => `${n.nome}: ${n.nota != null ? Number(n.nota).toFixed(1) : '—'}`)
@@ -355,10 +357,11 @@ function drawTermoCopy(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLoga
         doc.rect(colX + IP, yF, fW, FREQ_H).fill('#eef3ff');
         doc.rect(colX + IP, yF, fW, FREQ_H).lineWidth(0.5).stroke('#b3c6f0').lineWidth(1);
 
-        // Label "FREQUÊNCIA:"
+        // Identifica explicitamente o calendário usado no cálculo
+        const freqLabel = periodoResumo ? `FREQUÊNCIA (${periodoResumo}): ` : 'FREQUÊNCIA: ';
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#2a45a0')
-           .text('FREQUÊNCIA: ', colX + IP + 6, fTY, { lineBreak: false });
-        const lblW = doc.widthOfString('FREQUÊNCIA: ');
+           .text(freqLabel, colX + IP + 6, fTY, { lineBreak: false });
+        const lblW = doc.widthOfString(freqLabel);
 
         let freqTxt;
         let freqColor = '#1a1d23';
@@ -441,7 +444,7 @@ function drawTermo(doc, { escola, aluno, ocorrencia, cidadeRef, nomeProfLogado }
 }
 
 // ─── Monta mapa de frequência por disciplina (via RCO API) ───────────────────
-async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatrizes, nomeAluno) {
+async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatrizes, nomeAluno, codPA) {
     const matIds = Array.isArray(codMatrizes) ? codMatrizes : [codMatrizes];
     let classes;
     try {
@@ -479,11 +482,12 @@ async function buildFreqMap(supabaseAdmin, rcoApiService, codturma, codMatrizes,
 
         try {
             const periodoLocal = classPeriodMap[String(codClasse)];
-            const codPA = periodoLocal?.codPA ?? cl.cod_periodo_avaliacao ?? process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+            const periodoConsulta = codPA ?? periodoLocal?.codPA
+                ?? cl.cod_periodo_avaliacao ?? process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
             const codPL = periodoLocal?.codPL ?? cl.cod_periodo_letivo ?? process.env.RCO_COD_PERIODO_LETIVO ?? 261;
 
             const resp = await rcoApiService.get(
-                `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${codPA}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
+                `/classe/v3/relatorios/frequenciaAulas?codClasse=${codClasse}&codPeriodoAvaliacao=${periodoConsulta}&codPeriodoLetivo=${codPL}&page=1&perPage=200`
             );
             if (resp.status !== 200) return;
 
@@ -522,9 +526,10 @@ const NOTAS_CACHE_TTL = 5 * 60 * 1000;
 
 /* Busca grades de TODOS os alunos da turma de uma só vez e armazena no cache.
    Em batch de N alunos, esse fetch ocorre apenas 1×  em vez de N×. */
-async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
+async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma, codPA) {
     const now = Date.now();
-    const hit = _notasCache.get(String(codturma));
+    const cacheKey = `${codturma}:${codPA ?? 'default'}`;
+    const hit = _notasCache.get(cacheKey);
     if (hit && now - hit.ts < NOTAS_CACHE_TTL) return hit.data;
 
     let classes = [];
@@ -550,8 +555,8 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
         if (!nomeDisciplina) return;
         try {
             const periodoLocal = classPeriodMap[String(codClasse)];
-            const codPA = periodoLocal?.codPA ?? cl.cod_periodo_avaliacao
-                          ?? process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
+            const periodoConsulta = codPA ?? periodoLocal?.codPA ?? cl.cod_periodo_avaliacao
+                ?? process.env.RCO_COD_PERIODO_AVALIACAO ?? 9;
 
             /* Lista de avaliações — fallback de qtdeAvaliacao igual ao boletim */
             let avaliacoes = [];
@@ -559,7 +564,7 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
                 try {
                     const r = await rcoApiService.get(
                         `${RCO_AVALI_BASE}/avaliacaoParcialClasses?codClasse=${codClasse}` +
-                        `&codPeriodoAvaliacao=${codPA}&codRegraCalculo=1&qtdeAvaliacao=${qtde}&page=1&perPage=20`
+                        `&codPeriodoAvaliacao=${periodoConsulta}&codRegraCalculo=1&qtdeAvaliacao=${qtde}&page=1&perPage=20`
                     );
                     const d = Array.isArray(r.data) ? r.data
                         : (r.data?.content ?? r.data?.data ?? []);
@@ -567,7 +572,7 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
                 } catch { /* tenta próximo qtde */ }
             }
             if (!avaliacoes.length) {
-                console.log(`[NOTAS] classe ${codClasse} (${nomeDisciplina}): sem avaliações (codPA=${codPA})`);
+                console.log(`[NOTAS] classe ${codClasse} (${nomeDisciplina}): sem avaliações (codPA=${periodoConsulta})`);
                 return;
             }
 
@@ -609,15 +614,15 @@ async function _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma) {
     }));
 
     console.log(`[NOTAS] turma ${codturma}: ${Object.keys(porAluno).filter(k=>!k.startsWith('nome:')).length} aluno(s) com notas no cache`);
-    _notasCache.set(String(codturma), { ts: now, data: porAluno });
+    _notasCache.set(cacheKey, { ts: now, data: porAluno });
     return porAluno;
 }
 
 /* Retorna o mapa de notas para UM aluno específico: { "DISCIPLINA": [{nome,nota}] }
    Tenta primeiro pelo codMatrizAluno; se vazio, tenta pelo nome normalizado
    (o RCO atribui IDs diferentes por classe, então o ID pode divergir do sync). */
-async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatrizes, nomeAluno) {
-    const turmaData = await _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma);
+async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatrizes, nomeAluno, codPA) {
+    const turmaData = await _buildTurmaNotasCache(supabaseAdmin, rcoApiService, codturma, codPA);
     const ids = Array.isArray(codMatrizes) ? codMatrizes : [codMatrizes];
 
     /* Mescla notas de TODOS os codMatrizAluno do aluno (um por disciplina no RCO) */
@@ -640,6 +645,61 @@ async function buildNotasMap(supabaseAdmin, rcoApiService, codturma, codMatrizes
         return turmaData[nk] ?? {};
     }
     return {};
+}
+
+const _periodosTurmaCache = new Map();
+async function getPeriodosTurma(supabaseAdmin, codturma) {
+    const hit = _periodosTurmaCache.get(String(codturma));
+    if (hit && Date.now() - hit.ts < 5 * 60 * 1000) return hit.data;
+
+    const { data: classes } = await supabaseAdmin
+        .from('rco_classes')
+        .select('cod_classe')
+        .eq('cod_turma', codturma);
+    const idsClasse = new Set((classes || []).map(c => String(c.cod_classe)));
+
+    let classPeriodMap = {};
+    try {
+        const { rows } = await pool.query(
+            `SELECT valor FROM edusync_config WHERE chave = 'rco_classes_periodos'`
+        );
+        if (rows.length) classPeriodMap = JSON.parse(rows[0].valor);
+    } catch {}
+
+    const porCodigo = new Map();
+    for (const [codClasse, cfg] of Object.entries(classPeriodMap)) {
+        if (!idsClasse.has(codClasse)) continue;
+        for (const p of (cfg.periodos || [])) {
+            if (p.codPA == null) continue;
+            const nomePadrao = p.codPA === 9 ? '1º TRIMESTRE'
+                : p.codPA === 10 ? '2º TRIMESTRE'
+                : p.codPA === 11 ? '3º TRIMESTRE'
+                : `PERÍODO ${p.codPA}`;
+            porCodigo.set(Number(p.codPA), {
+                codPA: Number(p.codPA),
+                nome: (p.nome || nomePadrao).toUpperCase(),
+                inicio: p.inicio || null,
+                fim: p.fim || null,
+            });
+        }
+    }
+
+    const periodos = [...porCodigo.values()].sort((a, b) =>
+        (a.inicio || '').localeCompare(b.inicio || '')
+    );
+    const data = periodos.length > 0
+        ? periodos
+        : [{ codPA: 9, nome: '1º TRIMESTRE', inicio: null, fim: null }];
+    _periodosTurmaCache.set(String(codturma), { ts: Date.now(), data });
+    return data;
+}
+
+function periodoDaOcorrencia(periodos, dataOcorrencia) {
+    const data = String(dataOcorrencia || '').slice(0, 10);
+    if (!data) return null;
+    return periodos.find(p =>
+        (!p.inicio || data >= p.inicio) && (!p.fim || data <= p.fim)
+    ) || null;
 }
 
 // ─── Busca dados de um aluno ──────────────────────────────────────────────────
@@ -778,25 +838,44 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
     const ataNumMap = new Map(todasParaAta.map((o, idx) => [String(o.id), idx + 1]));
     const ataTotal  = todasParaAta.length;
 
-    // ── Frequência + Notas por disciplina (best-effort via RCO API, em paralelo) ──
-    let freqMap = {}, notasMap = {};
+    // ── Frequência + notas separadas pelo calendário de cada ocorrência ─────────
+    const freqPorPeriodo = {};
+    const notasPorPeriodo = {};
+    let periodos = [];
     if (rcoApiService && aluno.codturma) {
-        const [freqResult, notasResult] = await Promise.allSettled([
-            buildFreqMap(supabaseAdmin, rcoApiService, aluno.codturma, todosIdsMat, aluno.nome),
-            buildNotasMap(supabaseAdmin, rcoApiService, aluno.codturma, todosIdsMat, aluno.nome),
-        ]);
-        if (freqResult.status  === 'fulfilled') freqMap  = freqResult.value;
-        else console.warn('[RELATORIO-OCORR] freq:',  freqResult.reason?.message);
-        if (notasResult.status === 'fulfilled') notasMap = notasResult.value;
-        else console.warn('[RELATORIO-OCORR] notas:', notasResult.reason?.message);
+        periodos = await getPeriodosTurma(supabaseAdmin, aluno.codturma);
+        const periodosUsados = periodos.filter(p =>
+            combinadasBase.some(o => periodoDaOcorrencia([p], o.data))
+        );
+
+        await Promise.all(periodosUsados.map(async p => {
+            const [freqResult, notasResult] = await Promise.allSettled([
+                buildFreqMap(
+                    supabaseAdmin, rcoApiService, aluno.codturma,
+                    todosIdsMat, aluno.nome, p.codPA
+                ),
+                buildNotasMap(
+                    supabaseAdmin, rcoApiService, aluno.codturma,
+                    todosIdsMat, aluno.nome, p.codPA
+                ),
+            ]);
+            if (freqResult.status === 'fulfilled') freqPorPeriodo[p.codPA] = freqResult.value;
+            else console.warn(`[RELATORIO-OCORR] freq período ${p.codPA}:`, freqResult.reason?.message);
+            if (notasResult.status === 'fulfilled') notasPorPeriodo[p.codPA] = notasResult.value;
+            else console.warn(`[RELATORIO-OCORR] notas período ${p.codPA}:`, notasResult.reason?.message);
+        }));
     }
 
     const combinadas = combinadasBase.map(o => {
         const key = (o.disciplina || '').trim().toUpperCase();
+        const periodo = periodoDaOcorrencia(periodos, o.data);
+        const freqMap = periodo ? (freqPorPeriodo[periodo.codPA] || {}) : {};
+        const notasMap = periodo ? (notasPorPeriodo[periodo.codPA] || {}) : {};
         return {
             ...o,
             freqResumo:  key ? (freqMap[key]  ?? null) : null,
             notaResumo:  key ? (notasMap[key] ?? null) : null,
+            periodoResumo: periodo?.nome || null,
             ataNum:  ataNumMap.get(String(o.id)) ?? null,
             ataTotal,
         };
