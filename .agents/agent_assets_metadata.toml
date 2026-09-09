@@ -11,39 +11,54 @@ id = "_hBL8cNfbGPnS80jh6yyM"
 uri = "file://edusync-insomnia.json"
 type = "unspecified"
 title = "EduSync API - Insomnia (201 rotas)"
+logical_id = "3356158d-0266-4d94-bc85-f950aee88563"
 
 [[outputs]]
 id = "c1LW17ADk0BzT7qB0SDWZ"
 uri = "file://EduSync_Insomnia.json"
 type = "unspecified"
 title = "EduSync_Insomnia.json — Coleção Insomnia completa"
+logical_id = "7744a6fb-6d07-494e-aadd-c1645501857c"
 
 [[outputs]]
 id = "dgS-kJSZHI0YSV-qx9k0B"
 uri = "file://insomnia_edusync.json"
 type = "unspecified"
 title = "EduSync API — Coleção Insomnia (217 endpoints)"
+logical_id = "7d273884-eb92-481a-95e1-134a3bbf977d"
 
 [[outputs]]
 id = "anje1zj4SLieLyuFA3zCe"
 uri = "file://attached_assets/generated_images/edusync_architecture.png"
 type = "image"
 title = "Arquitetura EduSync — Classroom · EduSync · RCO"
+logical_id = "6314bd13-b67e-44b1-b784-05ba1e5ba43f"
 
 [[outputs]]
 id = "m2V3lEg9WR1yi3KEwu8He"
 uri = "file://edusync_insomnia.json"
 type = "unspecified"
 title = "EduSync — Coleção Insomnia (todas as rotas)"
+logical_id = "09904de4-7b0e-4e8c-95c2-fa72eefb9e71"
 
 [[outputs]]
 id = "fNDOFgb91k6nDdx-UqThj"
 uri = "file://docs/supabase-pro-evaluation.md"
 type = "text"
 title = "Avaliação Supabase Free vs Pro"
+logical_id = "08fce542-c367-4918-add7-fb902f28996b"
 
 [[outputs]]
 id = "NEXgv5f11Cc1E1KQhI6bB"
 uri = "file://edusync-skills.tar.gz"
 type = "unspecified"
 title = "EduSync Custom Skills (tar.gz)"
+logical_id = "e8263424-7170-4884-8728-48a1ba997f0b"
+
+[[outputs]]
+id = "_5H4sO7EA5QS0YwCtlMxT"
+uri = "file://assets/Base-de-Conhecimento-Gem-Correcao-Visual.pdf"
+type = "pdf"
+title = "Base do Gem — Correção Multimodal"
+description = "Versão atualizada para corrigir entregas por imagem, PDF, link, Docs, apresentações, planilhas, vídeo, áudio, texto e outros formatos do Classroom."
+logical_id = "7560f8a5-8c3d-4d7d-b317-14c8187eac13"
