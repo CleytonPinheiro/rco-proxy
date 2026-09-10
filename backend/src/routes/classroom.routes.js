@@ -5,6 +5,7 @@ import path                from 'path';
 import { fileURLToPath }   from 'url';
 import pkg                 from 'pg';
 import { requireFuncionalidade } from '../middleware/auth.middleware.js';
+import { auditLogger } from '../services/AuditLogger.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -267,6 +268,65 @@ function withClassroomErrorHandling(handler, label) {
             if (!res.headersSent) res.status(500).json({ erro: e.message });
         }
     };
+}
+
+function normalizeClassroomLink(value) {
+    try {
+        const url = new URL(String(value || '').trim());
+        if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'classroom.google.com') return null;
+        return `${url.origin}${decodeURIComponent(url.pathname).replace(/\/+$/, '')}`;
+    } catch (_) {
+        return null;
+    }
+}
+
+function parseClassroomActivityLink(value) {
+    const normalized = normalizeClassroomLink(value);
+    if (!normalized) return null;
+    const pathname = new URL(normalized).pathname;
+    const match = pathname.match(/^\/(?:u\/\d+\/)?c\/([^/]+)\/a\/([^/]+)(?:\/details)?$/);
+    return {
+        normalized,
+        courseId: match ? decodeURIComponent(match[1]) : null,
+        courseWorkId: match ? decodeURIComponent(match[2]) : null,
+    };
+}
+
+function normalizeSubmissionAttachment(attachment) {
+    if (attachment.driveFile) {
+        const file = attachment.driveFile.driveFile || attachment.driveFile;
+        return {
+            tipo: 'drive',
+            id: file.id || null,
+            titulo: file.title || 'Arquivo do Drive',
+            url: file.alternateLink || file.thumbnailUrl || null,
+        };
+    }
+    if (attachment.link) {
+        return {
+            tipo: 'link',
+            id: null,
+            titulo: attachment.link.title || attachment.link.url || 'Link',
+            url: attachment.link.url || null,
+        };
+    }
+    if (attachment.form) {
+        return {
+            tipo: 'formulario',
+            id: attachment.form.formUrl || null,
+            titulo: attachment.form.title || 'Formulário',
+            url: attachment.form.formUrl || attachment.form.responseUrl || null,
+        };
+    }
+    if (attachment.youTubeVideo) {
+        return {
+            tipo: 'video',
+            id: attachment.youTubeVideo.id || null,
+            titulo: attachment.youTubeVideo.title || 'Vídeo do YouTube',
+            url: attachment.youTubeVideo.alternateLink || null,
+        };
+    }
+    return { tipo: 'desconhecido', id: null, titulo: 'Anexo não reconhecido', url: null };
 }
 
 export async function getAuthenticatedClient(req) {
@@ -569,6 +629,215 @@ export function createClassroomRouter(deps = {}) {
             ausente: ausentes.has(s.userId),
         })));
     }, '[CLASSROOM] Erro ao listar entregas'));
+
+    /* ── Correção assistida: resolver link e preparar contexto para validação ── */
+    router.post('/classroom/assistida/resolve', requireFuncionalidade('classroom-leitura'), withClassroomErrorHandling(async (req, res) => {
+        const parsed = parseClassroomActivityLink(req.body?.url);
+        if (!parsed) {
+            return res.status(400).json({
+                erro: 'Informe um link válido de atividade do Google Classroom.',
+                codigo: 'LINK_CLASSROOM_INVALIDO',
+            });
+        }
+
+        const cpf = req.userSession?.cpf;
+        if (!cpf) return res.status(401).json({ erro: 'Sessão do professor não identificada.' });
+        const auth = await getAuthenticatedClientForCpf(req, cpf);
+        if (!auth) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
+        const classroom = google.classroom({ version: 'v1', auth });
+        let course = null;
+        let courseWork = null;
+
+        if (parsed.courseId && parsed.courseWorkId) {
+            try {
+                const [courseResp, workResp] = await Promise.all([
+                    classroom.courses.get({ id: parsed.courseId }),
+                    classroom.courses.courseWork.get({
+                        courseId: parsed.courseId,
+                        id: parsed.courseWorkId,
+                    }),
+                ]);
+                course = courseResp.data;
+                courseWork = workResp.data;
+            } catch (e) {
+                if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
+            }
+        }
+
+        // Alguns links usam identificadores de navegação diferentes dos IDs da API.
+        // Nesses casos, comparamos o alternateLink retornado pelo próprio Classroom.
+        if (!courseWork) {
+            const courses = [];
+            let coursePageToken;
+            do {
+                const resp = await classroom.courses.list({
+                    teacherId: 'me',
+                    courseStates: ['ACTIVE'],
+                    pageSize: 100,
+                    pageToken: coursePageToken,
+                });
+                courses.push(...(resp.data.courses || []));
+                coursePageToken = resp.data.nextPageToken;
+            } while (coursePageToken);
+
+            for (const candidateCourse of courses) {
+                let workPageToken;
+                do {
+                    const resp = await classroom.courses.courseWork.list({
+                        courseId: candidateCourse.id,
+                        pageSize: 100,
+                        pageToken: workPageToken,
+                    });
+                    courseWork = (resp.data.courseWork || []).find(
+                        work => normalizeClassroomLink(work.alternateLink) === parsed.normalized
+                    );
+                    workPageToken = resp.data.nextPageToken;
+                    if (courseWork) {
+                        course = candidateCourse;
+                        break;
+                    }
+                } while (workPageToken);
+                if (courseWork) break;
+            }
+        }
+
+        if (!course || !courseWork) {
+            return res.status(404).json({
+                erro: 'A atividade não foi encontrada entre as turmas ativas desta conta.',
+                codigo: 'ATIVIDADE_NAO_ENCONTRADA',
+            });
+        }
+
+        const [students, submissions] = await Promise.all([
+            (async () => {
+                const result = [];
+                let pageToken;
+                do {
+                    const resp = await classroom.courses.students.list({
+                        courseId: course.id, pageSize: 100, pageToken,
+                    });
+                    result.push(...(resp.data.students || []));
+                    pageToken = resp.data.nextPageToken;
+                } while (pageToken);
+                return result;
+            })(),
+            (async () => {
+                const result = [];
+                let pageToken;
+                do {
+                    const resp = await classroom.courses.courseWork.studentSubmissions.list({
+                        courseId: course.id,
+                        courseWorkId: courseWork.id,
+                        pageSize: 100,
+                        pageToken,
+                    });
+                    result.push(...(resp.data.studentSubmissions || []));
+                    pageToken = resp.data.nextPageToken;
+                } while (pageToken);
+                return result;
+            })(),
+        ]);
+
+        const studentMap = new Map(students.map(s => [s.userId, s]));
+        const normalizedSubmissions = submissions.map(submission => {
+            const student = studentMap.get(submission.userId);
+            const attachments = (submission.assignmentSubmission?.attachments || [])
+                .map(normalizeSubmissionAttachment);
+            const respostaTexto = submission.shortAnswerSubmission?.answer
+                || submission.multipleChoiceSubmission?.answer
+                || null;
+            return {
+                id: submission.id,
+                userId: submission.userId,
+                aluno: student?.profile?.name?.fullName || 'Aluno não identificado',
+                estado: submission.state,
+                entregue: submission.state === 'TURNED_IN' || submission.state === 'RETURNED',
+                atrasado: !!submission.late,
+                criadoEm: submission.creationTime || null,
+                atualizadoEm: submission.updateTime || null,
+                nota: submission.assignedGrade ?? null,
+                notaRascunho: submission.draftGrade ?? null,
+                respostaTexto,
+                anexos: attachments,
+                problema: attachments.some(a => !a.url)
+                    ? 'Um ou mais anexos não possuem link acessível.'
+                    : null,
+            };
+        });
+
+        const materiais = (courseWork.materials || []).map(normalizeSubmissionAttachment);
+        const duvidasCriticas = [];
+        if (!courseWork.description?.trim() && materiais.length === 0) {
+            duvidasCriticas.push({
+                codigo: 'ENUNCIADO_AUSENTE',
+                mensagem: 'A atividade não possui enunciado nem material de apoio acessível.',
+            });
+        }
+        if (courseWork.maxPoints == null) {
+            duvidasCriticas.push({
+                codigo: 'VALOR_AUSENTE',
+                mensagem: 'A atividade não possui valor máximo definido.',
+            });
+        }
+        duvidasCriticas.push({
+            codigo: 'TIPO_ENTREGA_NAO_CONFIRMADO',
+            mensagem: 'Confirme se o trabalho é individual ou coletivo.',
+        });
+
+        const tipos = {};
+        normalizedSubmissions.forEach(s => s.anexos.forEach(a => {
+            tipos[a.tipo] = (tipos[a.tipo] || 0) + 1;
+        }));
+        const entregues = normalizedSubmissions.filter(s => s.entregue);
+
+        const response = {
+            resolvido: true,
+            iaDisponivel: !!process.env.GEMINI_API_KEY,
+            curso: {
+                id: course.id,
+                nome: course.name,
+                secao: course.section || '',
+                link: course.alternateLink || '',
+            },
+            atividade: {
+                id: courseWork.id,
+                titulo: courseWork.title,
+                descricao: courseWork.description || '',
+                tipo: courseWork.workType,
+                pontos: courseWork.maxPoints ?? null,
+                prazo: courseWork.dueDate || null,
+                horarioPrazo: courseWork.dueTime || null,
+                link: courseWork.alternateLink || parsed.normalized,
+                materiais,
+            },
+            resumo: {
+                alunos: students.length,
+                entregues: entregues.length,
+                pendentes: normalizedSubmissions.length - entregues.length,
+                atrasados: entregues.filter(s => s.atrasado).length,
+                tiposAnexo: tipos,
+                problemasIndividuais: normalizedSubmissions.filter(s => s.problema).length,
+            },
+            duvidasCriticas,
+            entregas: normalizedSubmissions,
+        };
+
+        await auditLogger.registrar({
+            usuarioId: req.userSession?.usuarioId || req.userSession?.id || null,
+            usuarioNome: req.userSession?.nome || 'Professor',
+            acao: 'CLASSROOM_CORRECAO_ASSISTIDA_ANALISADA',
+            modulo: 'classroom',
+            detalhes: {
+                cursoId: course.id,
+                atividadeId: courseWork.id,
+                totalEntregas: normalizedSubmissions.length,
+                duvidasCriticas: duvidasCriticas.map(d => d.codigo),
+            },
+            ip: req.ip || null,
+        });
+
+        res.json(response);
+    }, '[CLASSROOM] Erro ao resolver atividade para correção assistida'));
 
     /* ── Atualizar nota de uma entrega ── */
     router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {

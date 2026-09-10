@@ -543,6 +543,18 @@
                                                 </div>
                                         </div>
 
+                                        <div style="padding:10px 12px;border-bottom:1px solid var(--border,#e5e7eb);background:var(--bg-hover,#f8fafc)">
+                                                <label class="cl-label" for="clAssistidaUrl" style="margin:0 0 5px">Correção assistida</label>
+                                                <div style="display:flex;gap:6px">
+                                                        <input id="clAssistidaUrl" class="cl-input" type="url"
+                                                                placeholder="Cole o link da atividade do Classroom"
+                                                                autocomplete="off" style="min-width:0;flex:1">
+                                                        <button id="clAssistidaAnalisar" class="cl-btn cl-btn--primary" type="button"
+                                                                style="white-space:nowrap">Analisar</button>
+                                                </div>
+                                                <p class="cl-label-hint" style="margin:5px 0 0">O EduSync apenas coleta e valida o contexto nesta etapa. Nenhuma nota é alterada.</p>
+                                        </div>
+
                                         <!-- Abas Atividades / Grupos / Auditoria / Solicitações -->
                                         <div class="cl-tabs" id="clTabs" style="display: none">
                                                 <button class="cl-tab cl-tab--ativo" id="clTabAtiv">
@@ -946,6 +958,23 @@
                         </div>
                         <!-- /cl-workspace -->
                 </main>
+
+                <!-- ─── Modal de validação da correção assistida ─── -->
+                <div class="cl-modal-overlay" id="clAssistidaModal">
+                        <div class="cl-modal" style="max-width:760px">
+                                <div class="cl-modal-head">
+                                        <h3>Validar atividade antes da correção</h3>
+                                        <button class="cl-modal-close" id="clAssistidaFechar" type="button">✕</button>
+                                </div>
+                                <div class="cl-modal-body" id="clAssistidaConteudo"></div>
+                                <div class="cl-modal-foot" style="display:flex;justify-content:flex-end;gap:8px">
+                                        <button class="cl-btn cl-btn--secondary" id="clAssistidaCancelar" type="button">Fechar</button>
+                                        <button class="cl-btn cl-btn--primary" id="clAssistidaContinuar" type="button" disabled>
+                                                Continuar para correção
+                                        </button>
+                                </div>
+                        </div>
+                </div>
 
                 <!-- ─── Modal de Grupo ─── -->
                 <div class="cl-modal-overlay" id="clGrupoModal">

@@ -117,6 +117,11 @@ const elNotasTitulo    = document.getElementById('clNotasTitulo');
 const elNotasBreadcrumb = document.getElementById('clNotasBreadcrumb');
 const elCorrecaoAviso  = document.getElementById('clCorrecaoAviso');
 const elRascunhoAviso  = document.getElementById('clRascunhoAviso');
+const elAssistidaUrl       = document.getElementById('clAssistidaUrl');
+const elAssistidaAnalisar  = document.getElementById('clAssistidaAnalisar');
+const elAssistidaModal     = document.getElementById('clAssistidaModal');
+const elAssistidaConteudo  = document.getElementById('clAssistidaConteudo');
+const elAssistidaContinuar = document.getElementById('clAssistidaContinuar');
 
 /* ── Escala RCO: divide por 10, 1 casa decimal ── */
 const rco = v => (v != null && v !== '' ? (Number(v) / 10).toFixed(1) : '—');
@@ -221,6 +226,114 @@ const TIPO_LABELS = {
     MATERIAL:                 'Material',
 };
 const GRUPO_CORES = ['#4285F4','#EA4335','#34A853','#FBBC05','#8B5CF6','#EC4899','#14B8A6','#F97316','#0ea5e9','#a3e635'];
+
+/* ── Correção assistida: resolução e validação do contexto ── */
+function fecharAssistidaModal() {
+    elAssistidaModal?.classList.remove('cl-modal-overlay--visivel');
+}
+
+function resumoTiposAnexo(tipos = {}) {
+    const labels = {
+        drive: 'Drive',
+        link: 'Links',
+        formulario: 'Formulários',
+        video: 'Vídeos',
+        desconhecido: 'Não reconhecidos',
+    };
+    const itens = Object.entries(tipos).map(([tipo, total]) => `${labels[tipo] || tipo}: ${total}`);
+    return itens.length ? itens.join(' · ') : 'Nenhum anexo identificado';
+}
+
+function renderizarValidacaoAssistida(data) {
+    const atividade = data.atividade || {};
+    const resumo = data.resumo || {};
+    const duvidas = data.duvidasCriticas || [];
+    const problemas = (data.entregas || []).filter(e => e.problema);
+    const prazo = atividade.prazo
+        ? `${String(atividade.prazo.day).padStart(2, '0')}/${String(atividade.prazo.month).padStart(2, '0')}/${atividade.prazo.year}`
+        : 'Não definido';
+
+    elAssistidaConteudo.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px">
+            <div><span class="cl-label">Turma</span><strong>${esc(data.curso?.nome || '—')}</strong></div>
+            <div><span class="cl-label">Atividade</span><strong>${esc(atividade.titulo || '—')}</strong></div>
+            <div><span class="cl-label">Valor</span><strong>${atividade.pontos == null ? 'Não definido' : esc(atividade.pontos) + ' pontos'}</strong></div>
+            <div><span class="cl-label">Prazo</span><strong>${esc(prazo)}</strong></div>
+        </div>
+        <div style="padding:10px;border:1px solid var(--border,#e5e7eb);border-radius:8px;margin-bottom:12px">
+            <strong>${resumo.entregues || 0} de ${resumo.alunos || 0} alunos entregaram</strong>
+            <div class="cl-label-hint" style="margin-top:4px">
+                ${resumo.pendentes || 0} pendentes · ${resumo.atrasados || 0} atrasadas · ${esc(resumoTiposAnexo(resumo.tiposAnexo))}
+            </div>
+        </div>
+        <label class="cl-label" for="clAssistidaTipoEntrega">Formato do trabalho</label>
+        <select class="cl-select" id="clAssistidaTipoEntrega" style="margin-bottom:12px">
+            <option value="">— confirme antes de continuar —</option>
+            <option value="individual">Individual</option>
+            <option value="coletivo">Coletivo</option>
+        </select>
+        ${duvidas.length ? `
+            <div style="padding:10px;border:1px solid #f59e0b;background:rgba(245,158,11,.08);border-radius:8px;margin-bottom:12px">
+                <strong>Dúvidas que bloqueiam a correção</strong>
+                <ul id="clAssistidaDuvidas" style="margin:7px 0 0;padding-left:20px">
+                    ${duvidas.map(d => `<li data-codigo="${esc(d.codigo)}">${esc(d.mensagem)}</li>`).join('')}
+                </ul>
+            </div>` : ''}
+        ${problemas.length ? `
+            <div style="padding:10px;border:1px solid var(--border,#e5e7eb);border-radius:8px;margin-bottom:12px">
+                <strong>Problemas individuais (${problemas.length})</strong>
+                <p class="cl-label-hint" style="margin:4px 0 0">Eles não bloqueiam a turma e não geram nota zero automática.</p>
+            </div>` : ''}
+        <div style="padding:10px;border-radius:8px;background:var(--bg-hover,#f8fafc)">
+            ${data.iaDisponivel
+                ? 'O contexto está pronto. Resolva todas as dúvidas críticas para liberar a próxima etapa.'
+                : '<strong>Correção por IA ainda indisponível.</strong> A chave do Gemini não está configurada. O contexto foi validado, mas nenhuma nota será gerada.'}
+        </div>`;
+
+    const tipo = document.getElementById('clAssistidaTipoEntrega');
+    const atualizarBotao = () => {
+        const outrasDuvidas = duvidas.some(d => d.codigo !== 'TIPO_ENTREGA_NAO_CONFIRMADO');
+        elAssistidaContinuar.disabled = !data.iaDisponivel || !tipo.value || outrasDuvidas;
+    };
+    tipo.addEventListener('change', atualizarBotao);
+    atualizarBotao();
+    elAssistidaModal.classList.add('cl-modal-overlay--visivel');
+}
+
+async function analisarAtividadeAssistida() {
+    const url = elAssistidaUrl.value.trim();
+    if (!url) {
+        await notificar('Atenção', 'Cole o link da atividade do Google Classroom.', { tipo: 'danger' });
+        return;
+    }
+    elAssistidaAnalisar.disabled = true;
+    const textoOriginal = elAssistidaAnalisar.textContent;
+    elAssistidaAnalisar.textContent = 'Analisando...';
+    try {
+        const data = await api('/assistida/resolve', { method: 'POST', body: { url } });
+        renderizarValidacaoAssistida(data);
+    } catch (e) {
+        if (!isErroEscopo(e)) {
+            await notificar('Não foi possível analisar', e.message, { tipo: 'danger' });
+        }
+    } finally {
+        elAssistidaAnalisar.disabled = false;
+        elAssistidaAnalisar.textContent = textoOriginal;
+    }
+}
+
+elAssistidaAnalisar?.addEventListener('click', analisarAtividadeAssistida);
+elAssistidaUrl?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') analisarAtividadeAssistida();
+});
+document.getElementById('clAssistidaFechar')?.addEventListener('click', fecharAssistidaModal);
+document.getElementById('clAssistidaCancelar')?.addEventListener('click', fecharAssistidaModal);
+elAssistidaModal?.addEventListener('click', e => {
+    if (e.target === elAssistidaModal) fecharAssistidaModal();
+});
+elAssistidaContinuar?.addEventListener('click', async () => {
+    await notificar('Em breve', 'A etapa de correção será liberada após configurar o Gemini.', { tipo: 'ok' });
+});
 
 /* ── Chave localStorage para mapeamento curso→codClasse ── */
 function auditMapKey(courseId) {
