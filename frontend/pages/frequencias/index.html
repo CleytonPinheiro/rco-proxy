@@ -146,7 +146,13 @@
                     <div class="page-header-freq">
                         <h2 id="tituloModoPagina">Frequências por Disciplina</h2>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                            <div class="freq-periodo-badge">1º Trimestre · 2026</div>
+                            <label class="freq-periodo-controle" for="selectPeriodoFreq">
+                                <span class="sr-only">Período avaliativo</span>
+                                <select id="selectPeriodoFreq" class="freq-periodo-select" onchange="trocarPeriodoFrequencia(this.value)"
+                                        aria-label="Selecionar trimestre">
+                                    <option value="">Carregando períodos…</option>
+                                </select>
+                            </label>
                             <button class="btn-sync-rco" id="btnSyncRco" onclick="sincronizarFrequencias()">
                                 🔄 Sincronizar RCO
                             </button>

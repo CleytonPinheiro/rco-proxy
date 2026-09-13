@@ -5,6 +5,10 @@ let acessosCache   = null;
 const disciplinaCache   = {};        // { codClasse: { nomeDisciplina, cor, ... } }
 const disciplinasAbertas = new Set(); // codClasse dos painéis ABERTOS no momento
 let alunoSelecionado = null;          // { nome, numChamada }
+let periodosDisponiveis = [];
+let periodoAtivo = null;
+let geracaoConsultas = 0;
+let periodoSelecionadoManualmente = false;
 
 // ── Auth guard ───────────────────────────────────────────────────────────────
 async function checkAuth() {
@@ -55,12 +59,128 @@ async function init() {
         return;
     }
 
+    configurarPeriodos(acessosCache);
     const turmas = coletarTurmas(acessosCache);
     renderCards(turmas);
     renderChipEscolaAtiva();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
+}
+
+function parseDataRco(valor) {
+    if (!valor) return null;
+    const texto = String(valor).slice(0, 10);
+    const br = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const partes = br ? [br[3], br[2], br[1]] : iso ? [iso[1], iso[2], iso[3]] : null;
+    if (!partes) return null;
+    return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12);
+}
+
+function escolaAtivaDosAcessos(acessos) {
+    const estabs = Array.isArray(acessos) ? acessos : [acessos];
+    const filtro = localStorage.getItem('edusync_escola');
+    return (filtro
+        ? estabs.find(e => (e.nomeCompletoEstab || e.nmEstabelecimento || '') === filtro)
+        : null) || estabs[0] || {};
+}
+
+function extrairPeriodos(acessos) {
+    const root = escolaAtivaDosAcessos(acessos);
+    const mapa = new Map();
+    for (const periodoLetivo of (root.periodoLetivos || [])) {
+        for (const livro of (periodoLetivo.livros || [])) {
+            for (const calendario of (livro.calendarioAvaliacaos || [])) {
+                const pa = calendario.periodoAvaliacao || {};
+                if (pa.codPeriodoAvaliacao == null) continue;
+                const codigo = String(pa.codPeriodoAvaliacao);
+                const codPeriodoLetivo = String(periodoLetivo.codPeriodoLetivo || '');
+                if (!codPeriodoLetivo) continue;
+                const chave = `${codPeriodoLetivo}:${codigo}`;
+                const atual = mapa.get(chave) || {
+                    chave,
+                    codigo,
+                    nome: pa.descrPeriodoAvaliacao || `Período ${codigo}`,
+                    inicio: calendario.dataInicio || null,
+                    fim: calendario.dataFim || null,
+                    codPeriodoLetivo,
+                };
+                if (!atual.inicio && calendario.dataInicio) atual.inicio = calendario.dataInicio;
+                if (!atual.fim && calendario.dataFim) atual.fim = calendario.dataFim;
+                mapa.set(chave, atual);
+            }
+        }
+    }
+    return [...mapa.values()].sort((a, b) => {
+        const da = parseDataRco(a.inicio);
+        const db = parseDataRco(b.inicio);
+        return da && db ? da - db : Number(a.codigo) - Number(b.codigo);
+    });
+}
+
+function configurarPeriodos(acessos, preservarSelecao = true) {
+    const anterior = preservarSelecao && periodoSelecionadoManualmente ? periodoAtivo?.chave : null;
+    periodosDisponiveis = extrairPeriodos(acessos);
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+    periodoAtivo = periodosDisponiveis.find(p => p.chave === anterior)
+        || periodosDisponiveis.find(p => {
+            const inicio = parseDataRco(p.inicio);
+            const fim = parseDataRco(p.fim);
+            return inicio && fim && hoje >= inicio && hoje <= fim;
+        })
+        || periodosDisponiveis[periodosDisponiveis.length - 1]
+        || null;
+
+    const select = document.getElementById('selectPeriodoFreq');
+    if (!select) return;
+    if (!periodosDisponiveis.length) {
+        select.innerHTML = '<option value="">Nenhum período encontrado</option>';
+        select.disabled = true;
+        return;
+    }
+    const ano = parseDataRco(periodoAtivo?.inicio)?.getFullYear() || new Date().getFullYear();
+    select.replaceChildren(...periodosDisponiveis.map((p, i) => {
+        const option = document.createElement('option');
+        const nome = p.nome || `${i + 1}º Período`;
+        const anoPeriodo = parseDataRco(p.inicio)?.getFullYear() || ano;
+        option.value = p.chave;
+        option.textContent = `${nome} · ${anoPeriodo}`;
+        return option;
+    }));
+    select.value = periodoAtivo.chave;
+    select.disabled = false;
+}
+
+function periodoDaDisciplina(livro, periodoLetivo) {
+    if (!periodoAtivo) return null;
+    if (String(periodoLetivo?.codPeriodoLetivo || '') !== periodoAtivo.codPeriodoLetivo) return null;
+    const calendario = (livro.calendarioAvaliacaos || []).find(
+        c => String(c.periodoAvaliacao?.codPeriodoAvaliacao) === periodoAtivo.codigo
+    );
+    return calendario ? {
+        codPeriodoAvaliacao: calendario.periodoAvaliacao?.codPeriodoAvaliacao,
+        inicio: calendario.dataInicio || null,
+        fim: calendario.dataFim || null,
+    } : null;
+}
+
+function trocarPeriodoFrequencia(chave) {
+    const novo = periodosDisponiveis.find(p => p.chave === String(chave));
+    if (!novo || novo.chave === periodoAtivo?.chave) return;
+    periodoAtivo = novo;
+    periodoSelecionadoManualmente = true;
+    geracaoConsultas++;
+    Object.keys(disciplinaCache).forEach(k => delete disciplinaCache[k]);
+    disciplinasAbertas.clear();
+    modoGeralCarregado = false;
+    alunoSelecionado = null;
+    fecharDrawerAluno();
+    renderCards(coletarTurmas(acessosCache));
+    if (document.getElementById('painelGeral').style.display !== 'none') {
+        carregarTodasDisciplinas().then(renderModoGeral);
+    }
 }
 
 /* Mostra um chip junto ao título com o colégio ativo (vem do menu Turmas).
@@ -98,16 +218,14 @@ document.getElementById('content').addEventListener('click', e => {
 // ── Coletar turmas com suas disciplinas ──────────────────────────────────────
 function coletarTurmas(acessos) {
     const mapa   = {};
-    const estabs = Array.isArray(acessos) ? acessos : [acessos];
-    const filtro = localStorage.getItem('edusync_escola');
-    const root   = (filtro
-        ? estabs.find(e => (e.nomeCompletoEstab || e.nmEstabelecimento || '') === filtro)
-        : null) || estabs[0] || {};
+    const root = escolaAtivaDosAcessos(acessos);
 
     for (const periodo of (root.periodoLetivos || [])) {
         for (const livro of (periodo.livros || [])) {
             const classe = livro.classe;
             if (!classe) continue;
+            const periodoDisciplina = periodoDaDisciplina(livro, periodo);
+            if (periodoAtivo && !periodoDisciplina) continue;
 
             const disc      = classe.disciplina || {};
             const turma     = classe.turma || {};
@@ -125,6 +243,8 @@ function coletarTurmas(acessos) {
                 nome:      disc.nomeDisciplina || 'Disciplina',
                 cor:       disc.corFundo || '#667eea',
                 codClasse: classe.codClasse,
+                codPeriodoAvaliacao: periodoDisciplina?.codPeriodoAvaliacao || periodoAtivo?.codigo || '',
+                codPeriodoLetivo: periodo.codPeriodoLetivo || periodoAtivo?.codPeriodoLetivo || '',
             });
         }
     }
@@ -162,6 +282,8 @@ function renderCards(turmas) {
                     </button>
                     <div class="disc-freq-panel" id="freq-panel-${ti}-${di}"
                          data-codclasse="${disc.codClasse}"
+                            data-codperiodoavaliacao="${disc.codPeriodoAvaliacao}"
+                            data-codperiodoletivo="${disc.codPeriodoLetivo}"
                          data-nome="${disc.nome}"
                          data-cor="${disc.cor}"
                          data-codturma="${turma.codTurma}"
@@ -242,14 +364,21 @@ function toggleDisc(btn, ti) {
 
 // ── Carregar frequências via API ──────────────────────────────────────────────
 async function carregarFrequencias(panel, codClasse, ti, di) {
+    const geracao = geracaoConsultas;
     panel.innerHTML = `<div class="freq-loading-mini"><div class="spinner-sm"></div><span>Carregando lista de chamada...</span></div>`;
     try {
-        const r = await fetch(`${API}/api/frequencias?codClasse=${codClasse}`);
+        const params = new URLSearchParams({
+            codClasse,
+            codPeriodoAvaliacao: panel.dataset.codperiodoavaliacao,
+            codPeriodoLetivo: panel.dataset.codperiodoletivo,
+        });
+        const r = await fetch(`${API}/api/frequencias?${params}`);
         if (!r.ok) {
             const err = await r.json().catch(() => ({ erro: `HTTP ${r.status}` }));
             throw new Error(err.erro || `HTTP ${r.status}`);
         }
         const data = await r.json();
+        if (geracao !== geracaoConsultas || !panel.isConnected) return;
         panel.dataset.loaded = 'true';
 
         // ── Armazenar no cache da disciplina ──────────────────────────────
@@ -259,6 +388,8 @@ async function carregarFrequencias(panel, codClasse, ti, di) {
             cor:            panel.dataset.cor       || '#667eea',
             codTurma:       parseInt(panel.dataset.codturma)  || 0,
             nomeTurma:      panel.dataset.nometurma || '',
+            codPeriodoAvaliacao: panel.dataset.codperiodoavaliacao,
+            codPeriodoLetivo: panel.dataset.codperiodoletivo,
             alunos:         data.alunos             || [],
             codAulas:       data.codAulas            || [],
             aulaDatas:      data.aulaDatas           || {},
@@ -417,13 +548,16 @@ async function abrirDrawerAluno(nome, numChamada) {
 // ── Busca todas as disciplinas do acessosCache em paralelo ───────────────────
 async function carregarTodasDisciplinas() {
     if (!acessosCache) return;
-    const root = Array.isArray(acessosCache) ? acessosCache[0] : acessosCache;
+    const geracao = geracaoConsultas;
+    const root = escolaAtivaDosAcessos(acessosCache);
     const pendentes = [];
 
     for (const periodo of (root.periodoLetivos || [])) {
         for (const livro of (periodo.livros || [])) {
             const classe = livro.classe;
             if (!classe) continue;
+            const periodoDisciplina = periodoDaDisciplina(livro, periodo);
+            if (periodoAtivo && !periodoDisciplina) continue;
             const codClasse = classe.codClasse;
             if (disciplinaCache[codClasse]) continue; // já carregado
 
@@ -433,6 +567,8 @@ async function carregarTodasDisciplinas() {
                 cor:            classe.disciplina?.corFundo       || '#667eea',
                 codTurma:       classe.turma?.codTurma            || 0,
                 nomeTurma:      classe.turma?.descrTurma          || '',
+                codPeriodoAvaliacao: periodoDisciplina?.codPeriodoAvaliacao || periodoAtivo?.codigo || '',
+                codPeriodoLetivo: periodo.codPeriodoLetivo || periodoAtivo?.codPeriodoLetivo || '',
             });
         }
     }
@@ -440,13 +576,16 @@ async function carregarTodasDisciplinas() {
     if (pendentes.length === 0) return;
 
     // Buscar em paralelo — ignora falhas individuais
-    await Promise.allSettled(pendentes.map(async ({ codClasse, nomeDisciplina, cor, codTurma, nomeTurma }) => {
+    await Promise.allSettled(pendentes.map(async ({ codClasse, nomeDisciplina, cor, codTurma, nomeTurma, codPeriodoAvaliacao, codPeriodoLetivo }) => {
         try {
-            const r = await fetch(`${API}/api/frequencias?codClasse=${codClasse}`);
+            const params = new URLSearchParams({ codClasse, codPeriodoAvaliacao, codPeriodoLetivo });
+            const r = await fetch(`${API}/api/frequencias?${params}`);
             if (!r.ok) return;
             const data = await r.json();
+            if (geracao !== geracaoConsultas) return;
             disciplinaCache[codClasse] = {
                 codClasse, nomeDisciplina, cor, codTurma, nomeTurma,
+                codPeriodoAvaliacao, codPeriodoLetivo,
                 alunos:    data.alunos    || [],
                 codAulas:  data.codAulas  || [],
                 aulaDatas: data.aulaDatas || {},
@@ -457,6 +596,7 @@ async function carregarTodasDisciplinas() {
             if (panel) panel.dataset.loaded = 'true';
         } catch { /* silencioso */ }
     }));
+    if (geracao !== geracaoConsultas) return;
 
     // Atualizar aside de resumo diário com todos os dados carregados
     atualizarResumoDiario();
@@ -1335,7 +1475,7 @@ function imprimirGeralFreq() {
 <div class="print-header">
   <div class="print-titulo">📋 Frequências — Visão Geral por Aluno</div>
   <div class="print-meta">
-    <span>Período: 1º Trimestre 2026</span>
+    <span>Período: ${periodoAtivo ? `${periodoAtivo.nome} ${parseDataRco(periodoAtivo.inicio)?.getFullYear() || ''}` : 'não identificado'}</span>
     ${turmaLabel ? `<span>Turma: ${turmaLabel}</span>` : ''}
     <span>Faixa exibida: ${faixaLabel}</span>
     <span>Ordenação: ${sortLabel}</span>
@@ -1427,6 +1567,9 @@ async function sincronizarFrequencias() {
     // Limpa caches para forçar nova busca
     acessosCache = null;
     rcoRawCache  = null;
+    geracaoConsultas++;
+    modoGeralCarregado = false;
+    disciplinasAbertas.clear();
     Object.keys(disciplinaCache).forEach(k => delete disciplinaCache[k]);
     alunoSelecionado = null;
 
@@ -1466,7 +1609,8 @@ async function sincronizarFrequencias() {
             return;
         }
 
-        // 2. Re-renderiza os cards com os dados novos
+        // 2. Recria os períodos oficiais e preserva a seleção quando disponível
+        configurarPeriodos(acessosCache);
         const turmas = coletarTurmas(acessosCache);
         renderCards(turmas);
 

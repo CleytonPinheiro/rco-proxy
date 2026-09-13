@@ -944,6 +944,39 @@
     color: #0369a1; font-size: 12px; font-weight: 700;
     cursor: pointer; transition: all 0.2s; white-space: nowrap;
 }
+
+.freq-periodo-controle {
+    display: inline-flex;
+}
+
+.freq-periodo-select {
+    min-height: 32px;
+    padding: 5px 30px 5px 12px;
+    border: 1px solid #c7d2fe;
+    border-radius: 18px;
+    background: #eef2ff;
+    color: #4338ca;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.freq-periodo-select:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, .25);
+    outline-offset: 2px;
+}
+
+.freq-periodo-select:disabled {
+    opacity: .65;
+    cursor: not-allowed;
+}
+
+[data-theme="dark"] .freq-periodo-select {
+    color: #c7d2fe;
+    background: var(--bg-card);
+    border-color: #6366f1;
+}
 .btn-sync-rco:hover:not(:disabled) { background: #e0f2fe; }
 .btn-sync-rco:disabled {
     opacity: .65; cursor: not-allowed;
