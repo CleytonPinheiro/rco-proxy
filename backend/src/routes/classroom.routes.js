@@ -6,6 +6,11 @@ import { fileURLToPath }   from 'url';
 import pkg                 from 'pg';
 import { requireFuncionalidade } from '../middleware/auth.middleware.js';
 import { auditLogger } from '../services/AuditLogger.js';
+import {
+    calculateSubmissionContribution,
+    indexSubmissionsByUser,
+    normalizePointsToTarget,
+} from '../services/classroom-summary.service.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -1673,7 +1678,7 @@ export function createClassroomRouter(deps = {}) {
         {
             /* Carrega metadados do grupo para saber se é recuperação */
             const { rows: [grupoInfo] } = await pool.query(
-                `SELECT tipo, grupo_origem_id, data_inicio, data_fechamento FROM classroom_grupos WHERE id = $1`,
+                `SELECT tipo, grupo_origem_id, data_inicio, data_fechamento, pontos_meta FROM classroom_grupos WHERE id = $1`,
                 [req.params.id]
             );
             const isRecuperacao = grupoInfo?.tipo === 'recuperacao';
@@ -1765,21 +1770,34 @@ export function createClassroomRouter(deps = {}) {
                         quizizzId = 'TITULO';
                     }
 
-                    const allSubs = [];
+                    /* A API pagina por atividade. Indexar por aluno evita somar duas vezes
+                       caso uma página repetida seja devolvida durante uma mudança de token. */
+                    const subsPorAluno = new Map();
                     let pageToken;
                     do {
                         const resp = await classroom.courses.courseWork.studentSubmissions.list({
                             courseId, courseWorkId: a.atividade_id, pageSize: 100, pageToken,
                         });
-                        allSubs.push(...(resp.data.studentSubmissions || []));
+                        indexSubmissionsByUser(resp.data.studentSubmissions, subsPorAluno);
                         pageToken = resp.data.nextPageToken;
                     } while (pageToken);
-                    return { atividade: { ...a, _pontosMaxReal: pontosMaxReal, _quizizzId: quizizzId }, submissions: allSubs };
+                    return {
+                        atividade: { ...a, _pontosMaxReal: pontosMaxReal, _quizizzId: quizizzId },
+                        submissions: Array.from(subsPorAluno.values()),
+                    };
                 } catch (e) {
                     if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                     return { atividade: { ...a, _pontosMaxReal: null, _quizizzId: null }, submissions: [], erro: e.message };
                 }
             }));
+            const errosResumo = results
+                .filter(({ erro }) => erro)
+                .map(({ atividade, erro }) => ({
+                    tipo: 'atividade',
+                    id: atividade.atividade_id,
+                    titulo: atividade.atividade_titulo,
+                    erro,
+                }));
 
             /* pontosMaxEfetivo: usa valor do DB se disponível, senão maxPoints do Classroom,
                senão null (atividade sem escala → excluída do denominador para não distorcer) */
@@ -1866,35 +1884,16 @@ export function createClassroomRouter(deps = {}) {
                     if (alunoMap[s.userId].totalGanhoPrevisto === undefined) {
                         alunoMap[s.userId].totalGanhoPrevisto = 0;
                     }
-                    if (pontosMax === null) {
-                        /* Atividade sem escala de pontos definida em nenhum lugar:
-                           não participa do cálculo de nota (ignorada no numerador e denominador) */
-                    } else if (eDeRecuperacao) {
-                        /* Submission pertence ao grupo de recuperação (updateTime >= dataCorteOriginal).
-                           Excluída do grupo original: nota intacta, calculada apenas no grupo de rec.
-                           Rascunhos ainda contribuem para totalGanhoPrevisto no grupo principal,
-                           permitindo ao frontend exibir o "+X" de previsão mesmo para atividades de rec. */
-                        if (notaRascunho !== null) {
-                            alunoMap[s.userId].totalGanhoPrevisto += Math.min(notaRascunho, pontosMax);
-                        }
-                    } else if (eTardia) {
-                        /* Submission entregue após o fechamento da nota DESTE grupo:
-                           não entra no cálculo — registrada como entrega tardia separadamente. */
-                    } else if (nota !== null) {
-                        const v = Math.min(nota, pontosMax);
-                        alunoMap[s.userId].totalGanho         += v;
-                        alunoMap[s.userId].totalGanhoPrevisto += v;
-                    } else if (notaRascunho !== null) {
-                        /* Rascunho: NÃO conta no totalGanho (oficial), mas conta no totalGanhoPrevisto.
-                           Permite ao frontend exibir "previsto: X / Y" sem mudar o cálculo histórico.
-                           Também conta como pendente — o professor precisa devolver. */
-                        alunoMap[s.userId].totalGanhoPrevisto += Math.min(notaRascunho, pontosMax);
-                        alunoMap[s.userId].pendentes++;
-                    } else if (entregue) {
-                        alunoMap[s.userId].pendentes++;
-                    } else {
-                        alunoMap[s.userId].pendentes++;
-                    }
+                    const contribution = calculateSubmissionContribution({
+                        assignedGrade: nota,
+                        draftGrade: notaRascunho,
+                        maxPoints: pontosMax,
+                        excludedByRecovery: eDeRecuperacao,
+                        excludedAsLate: eTardia,
+                    });
+                    alunoMap[s.userId].totalGanho += contribution.official;
+                    alunoMap[s.userId].totalGanhoPrevisto += contribution.predicted;
+                    alunoMap[s.userId].pendentes += contribution.pending;
                 });
             });
 
@@ -1971,6 +1970,7 @@ export function createClassroomRouter(deps = {}) {
                         const pesoFrac = (fc.peso || 100) / 100;
 
                         const fonteScores = {};
+                        const fonteDraftScores = {};
                         const fonteAtvSubs = {};
                         for (const fa of fonteAtivs) {
                             const pm = Number(fa.pontos_max) || 0;
@@ -1982,23 +1982,37 @@ export function createClassroomRouter(deps = {}) {
                                         courseId: fc.fonte_curso_id, courseWorkId: fa.atividade_id, pageSize: 100, pageToken: pt3,
                                     });
                                     for (const s of (resp3.data.studentSubmissions || [])) {
-                                        const grade = s.assignedGrade ?? s.draftGrade ?? null;
+                                        const grade = s.assignedGrade ?? null;
+                                        const draftGrade = s.draftGrade ?? null;
                                         const entregue = ['TURNED_IN','RETURNED','RECLAIMED_BY_STUDENT'].includes(s.state);
                                         if (!fonteAtvSubs[s.userId]) fonteAtvSubs[s.userId] = {};
                                         fonteAtvSubs[s.userId][fa.atividade_id] = {
                                             nota: grade !== null ? Math.min(grade, pm) : null,
+                                            notaRascunho: draftGrade !== null ? Math.min(draftGrade, pm) : null,
                                             entregue,
                                             estado: s.state || null,
                                         };
-                                        if (grade !== null) {
-                                            fonteScores[s.userId] = (fonteScores[s.userId] || 0) + Math.min(grade, pm);
-                                        }
                                     }
                                     pt3 = resp3.data.nextPageToken;
                                 } while (pt3);
                             } catch (eSub) {
                                 if (isInsufficientScope(eSub) || isInvalidGrant(eSub)) throw eSub;
                                 console.error(`[FONTES] Erro subs atv ${fa.atividade_id} courseId=${fc.fonte_curso_id}:`, eSub.message);
+                                errosResumo.push({
+                                    tipo: 'fonte',
+                                    id: fa.atividade_id,
+                                    titulo: fa.atividade_titulo,
+                                    erro: eSub.message,
+                                });
+                            }
+                        }
+                        for (const [uid, atvMap] of Object.entries(fonteAtvSubs)) {
+                            for (const sub of Object.values(atvMap)) {
+                                if (sub.nota !== null) {
+                                    fonteScores[uid] = (fonteScores[uid] || 0) + sub.nota;
+                                } else if (sub.notaRascunho !== null) {
+                                    fonteDraftScores[uid] = (fonteDraftScores[uid] || 0) + sub.notaRascunho;
+                                }
                             }
                         }
 
@@ -2008,13 +2022,19 @@ export function createClassroomRouter(deps = {}) {
                                 matchCount++;
                                 const contrib = score * pesoFrac;
                                 alunoMap[uid].totalGanho         += contrib;
-                                /* Espelha em totalGanhoPrevisto: fontes têm apenas notas oficiais
-                                   (rascunho de fonte não é considerado), então oficial == previsto. */
                                 if (alunoMap[uid].totalGanhoPrevisto === undefined) {
                                     alunoMap[uid].totalGanhoPrevisto = 0;
                                 }
                                 alunoMap[uid].totalGanhoPrevisto += contrib;
                             } else { missCount++; }
+                        }
+                        for (const [uid, score] of Object.entries(fonteDraftScores)) {
+                            if (alunoMap[uid]) {
+                                if (alunoMap[uid].totalGanhoPrevisto === undefined) {
+                                    alunoMap[uid].totalGanhoPrevisto = alunoMap[uid].totalGanho;
+                                }
+                                alunoMap[uid].totalGanhoPrevisto += score * pesoFrac;
+                            }
                         }
 
                         for (const [uid, atvMap] of Object.entries(fonteAtvSubs)) {
@@ -2046,6 +2066,12 @@ export function createClassroomRouter(deps = {}) {
                     } catch (e) {
                         if (isInsufficientScope(e) || isInvalidGrant(e)) throw e;
                         console.error(`[CLASSROOM] Erro ao carregar fonte ${fc.fonte_grupo_id}:`, e.message);
+                        errosResumo.push({
+                            tipo: 'fonte',
+                            id: String(fc.fonte_grupo_id),
+                            titulo: `Fonte ${fc.fonte_grupo_id}`,
+                            erro: e.message,
+                        });
                     }
                 }
             }
@@ -2100,12 +2126,16 @@ export function createClassroomRouter(deps = {}) {
                             pontos: pm,
                         });
                         try {
+                            const subsPorAluno = new Map();
                             let pt;
                             do {
                                 const r = await classroom.courses.courseWork.studentSubmissions.list({
                                     courseId, courseWorkId: fa.atividade_id, pageSize: 100, pageToken: pt,
                                 });
-                                for (const s of (r.data.studentSubmissions || [])) {
+                                indexSubmissionsByUser(r.data.studentSubmissions, subsPorAluno);
+                                pt = r.data.nextPageToken;
+                            } while (pt);
+                            for (const s of subsPorAluno.values()) {
                                     if (!alunoMap[s.userId]) {
                                         alunoMap[s.userId] = {
                                             userId: s.userId, totalGanho: 0, totalGanhoInterno: 0,
@@ -2140,12 +2170,16 @@ export function createClassroomRouter(deps = {}) {
                                         /* Subgrupo: rascunho conta APENAS no previsto (mesma regra do grupo principal). */
                                         alunoMap[s.userId].totalGanhoPrevisto += Math.min(rascGrad, pm);
                                     }
-                                }
-                                pt = r.data.nextPageToken;
-                            } while (pt);
+                            }
                         } catch (eSub) {
                             if (isInsufficientScope(eSub) || isInvalidGrant(eSub)) throw eSub;
                             console.error(`[SUBGRUPO] Erro subs atv ${fa.atividade_id}:`, eSub.message);
+                            errosResumo.push({
+                                tipo: 'subgrupo',
+                                id: fa.atividade_id,
+                                titulo: fa.atividade_titulo,
+                                erro: eSub.message,
+                            });
                         }
                     }
                     if (filhoPontosMax > 0) {
@@ -2160,6 +2194,7 @@ export function createClassroomRouter(deps = {}) {
             }
 
             const totalFinal = fontesConfig.length > 0 ? totalPossivelComFontes : totalPossivel;
+            const pontosMeta = Number(grupoInfo?.pontos_meta) || 0;
 
             let alunos = Object.values(alunoMap).map(a => {
                 const ganhoInterno  = a.totalGanhoInterno  ?? a.totalGanho;
@@ -2169,6 +2204,12 @@ export function createClassroomRouter(deps = {}) {
                 const ganhoPrevisto = Math.max(a.totalGanhoPrevisto ?? a.totalGanho, a.totalGanho);
                 return {
                     userId:      a.userId,
+                    totalGanho:          a.totalGanho,
+                    totalGanhoInterno:   ganhoInterno,
+                    totalGanhoPrevisto:  ganhoPrevisto,
+                    totalNaMeta: normalizePointsToTarget(a.totalGanho, totalFinal, pontosMeta),
+                    totalInternoNaMeta: normalizePointsToTarget(ganhoInterno, totalPossivel, pontosMeta),
+                    totalPrevistoNaMeta: normalizePointsToTarget(ganhoPrevisto, totalFinal, pontosMeta),
                     mediaIndice:         totalFinal    > 0 ? (a.totalGanho   / totalFinal)    * 100 : 0,
                     mediaIndiceInterno:  totalPossivel > 0 ? (ganhoInterno   / totalPossivel) * 100 : 0,
                     /* mediaIndicePrevisto: usa o mesmo denominador do oficial (totalFinal),
@@ -2243,6 +2284,8 @@ export function createClassroomRouter(deps = {}) {
                 grupoOrigemId: grupoInfo?.grupo_origem_id ?? null,
                 fontes: fontesInfo,
                 subgruposInjetados,
+                resumoCompleto: errosResumo.length === 0,
+                errosResumo,
             });
         }
     }, '[CLASSROOM] Erro no resumo de grupo'));

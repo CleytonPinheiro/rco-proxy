@@ -2236,7 +2236,7 @@ function renderTardias(tardias) {
 }
 
 async function carregarResumoGrupo(grupo) {
-    if (!grupo || !grupo.atividades.length) return;
+    if (!grupo) return;
 
     elNotasLista.innerHTML     = '<div class="cl-loading">Calculando somas...</div>';
     elNotasCount.textContent   = 'Carregando...';
@@ -2265,23 +2265,14 @@ async function carregarResumoGrupo(grupo) {
             recMeta = gruposCache.find(g => String(g.id) === String(grupo.recuperacaoId))?.pontosMeta || meta;
             resumoRec.alunos.forEach(a => {
                 recMap[a.userId] = {
-                    soma:     ((a.mediaIndice ?? 0) / 100) * recMeta,
+                    soma:     a.totalNaMeta ?? ((a.mediaIndice ?? 0) / 100) * recMeta,
                     pendentes: a.pendentes,
                 };
             });
         }
 
         const hasFontes = (resumo.fontes || []).length > 0;
-        const alunosResumo = resumo.alunos.map(a => ({
-            ...a,
-            aluno:     alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
-            soma:      ((a.mediaIndice ?? 0) / 100) * meta,
-            somaInterna: ((a.mediaIndiceInterno ?? a.mediaIndice ?? 0) / 100) * meta,
-            /* somaPrevista: oficial + rascunhos pendentes de devolução. Sempre >= soma. */
-            somaPrevista: ((a.mediaIndicePrevisto ?? a.mediaIndice ?? 0) / 100) * meta,
-            temEntrou: Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
-            recData:   recMap[a.userId] ?? null,
-        })).sort((a, b) => {
+        const alunosResumo = resumo.alunos.map(a => mapearAlunoResumo(a, meta, recMap)).sort((a, b) => {
             const na = a.aluno.numChamada ?? 9999;
             const nb = b.aluno.numChamada ?? 9999;
             return na !== nb ? na - nb : (a.aluno.nome || '').localeCompare(b.aluno.nome || '');
@@ -2310,7 +2301,7 @@ async function carregarResumoGrupo(grupo) {
         }
 
         const hasRec = Object.keys(recMap).length > 0;
-        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null, fontes: resumo.fontes || [], subgrupos: resumo.subgruposInjetados || [] };
+        grupoResumoData    = { atividades: resumo.atividades, alunosResumo, meta, recMeta, isRec, hasRec, dataInicio: resumo.dataInicio, dataCorteOriginal: resumo.dataCorteOriginal ?? null, dataFechamento: resumo.dataFechamento ?? null, fontes: resumo.fontes || [], subgrupos: resumo.subgruposInjetados || [], resumoCompleto: resumo.resumoCompleto !== false, errosResumo: resumo.errosResumo || [] };
         filtrosGrupoAtivos = new Set(['todos']);
         renderListaFiltrada();
         renderAvisoCorrecao();
@@ -2335,6 +2326,20 @@ async function carregarResumoGrupo(grupo) {
         elBtnAtualizar.disabled = false;
         elBtnAtualizarIcon.style.animation = '';
     }
+}
+
+function mapearAlunoResumo(a, meta, recMap = {}) {
+    return {
+        ...a,
+        aluno: alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
+        /* O backend entrega os pontos já normalizados para a meta do grupo.
+           Os índices preservam compatibilidade com respostas antigas em trânsito. */
+        soma: a.totalNaMeta ?? ((a.mediaIndice ?? 0) / 100) * meta,
+        somaInterna: a.totalInternoNaMeta ?? ((a.mediaIndiceInterno ?? a.mediaIndice ?? 0) / 100) * meta,
+        somaPrevista: a.totalPrevistoNaMeta ?? ((a.mediaIndicePrevisto ?? a.mediaIndice ?? 0) / 100) * meta,
+        temEntrou: Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
+        recData: recMap[a.userId] ?? null,
+    };
 }
 
 function renderAvisoCorrecao() {
@@ -2667,6 +2672,15 @@ function renderListaFiltrada() {
                </div>
            </div>`
         : '';
+    const resumoIncompletoHtml = grupoResumoData.resumoCompleto === false
+        ? `<div class="cl-rec-banner cl-rec-banner--corte">
+               <span class="cl-rec-banner-icon">!</span>
+               <div>
+                   <div><strong>Resumo incompleto</strong> — não foi possível consultar ${grupoResumoData.errosResumo.length} atividade${grupoResumoData.errosResumo.length !== 1 ? 's' : ''}.</div>
+                   <div class="cl-rec-banner-data">Os totais abaixo não incluem essas atividades. Atualize para tentar novamente.</div>
+               </div>
+           </div>`
+        : '';
 
     /* ── Colunas visíveis (filtra 'rec' se grupo não tem recuperação) ── */
     const colsVisiveis = colOrder.filter(k => k !== 'rec' || hasRec);
@@ -2693,6 +2707,7 @@ function renderListaFiltrada() {
     ).join('');
 
     elNotasLista.innerHTML = `
+        ${resumoIncompletoHtml}
         ${fechBannerHtml}
         ${recBannerHtml}
         <div id="clQuizizzPainel" style="display:none"></div>
@@ -3535,20 +3550,12 @@ async function _refreshGrupoSilent() {
         if (resumoRec?.alunos) {
             recMeta = gruposCache.find(g => String(g.id) === String(grupoAtivo.recuperacaoId))?.pontosMeta || meta;
             resumoRec.alunos.forEach(a => {
-                recMap[a.userId] = { soma: ((a.mediaIndice ?? 0) / 100) * recMeta, pendentes: a.pendentes };
+                recMap[a.userId] = { soma: a.totalNaMeta ?? ((a.mediaIndice ?? 0) / 100) * recMeta, pendentes: a.pendentes };
             });
         }
         const isRec  = !!resumo.isRecuperacao;
         const hasRec = Object.keys(recMap).length > 0;
-        const alunosResumo = resumo.alunos.map(a => ({
-            ...a,
-            aluno:       alunos[a.userId] || { nome: 'Aluno ' + a.userId, email: '', foto: null },
-            soma:        ((a.mediaIndice        ?? 0) / 100) * meta,
-            somaInterna: ((a.mediaIndiceInterno ?? a.mediaIndice ?? 0) / 100) * meta,
-            somaPrevista:((a.mediaIndicePrevisto ?? a.mediaIndice ?? 0) / 100) * meta,
-            temEntrou:   Object.values(a.atividades || {}).some(s => s.nota === 0 && s.entregue),
-            recData:     recMap[a.userId] ?? null,
-        })).sort((a, b) => {
+        const alunosResumo = resumo.alunos.map(a => mapearAlunoResumo(a, meta, recMap)).sort((a, b) => {
             const na = a.aluno.numChamada ?? 9999;
             const nb = b.aluno.numChamada ?? 9999;
             return na !== nb ? na - nb : (a.aluno.nome || '').localeCompare(b.aluno.nome || '', 'pt-BR');
@@ -3561,6 +3568,8 @@ async function _refreshGrupoSilent() {
             hasRec,
             fontes:    resumo.fontes             || [],
             subgrupos: resumo.subgruposInjetados || [],
+            resumoCompleto: resumo.resumoCompleto !== false,
+            errosResumo: resumo.errosResumo || [],
         };
         if (alunoDetalheAberto) {
             refrescarDetalheAlunoAberto();
