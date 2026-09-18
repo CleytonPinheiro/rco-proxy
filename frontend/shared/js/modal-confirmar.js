@@ -10,6 +10,56 @@
  */
 (function () {
     const MODAL_ID = 'mcModalConfirmar';
+    const SELETOR_FOCAVEL = [
+        'a[href]',
+        'area[href]',
+        'button:not([disabled])',
+        'input:not([disabled]):not([type="hidden"])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        'iframe',
+        'object',
+        'embed',
+        '[contenteditable]',
+        '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+
+    function obterFocaveis(overlay) {
+        return Array.from(overlay.querySelectorAll(SELETOR_FOCAVEL)).filter(elemento => {
+            const estilo = window.getComputedStyle(elemento);
+            return estilo.display !== 'none'
+                && estilo.visibility !== 'hidden'
+                && !elemento.hasAttribute('hidden');
+        });
+    }
+
+    function manterFocoNoModal(e, overlay) {
+        if (e.key !== 'Tab') return;
+
+        const focaveis = obterFocaveis(overlay);
+        if (!focaveis.length) {
+            e.preventDefault();
+            return;
+        }
+
+        const primeiro = focaveis[0];
+        const ultimo = focaveis[focaveis.length - 1];
+        const focoAtual = document.activeElement;
+
+        if (e.shiftKey && (focoAtual === primeiro || !overlay.contains(focoAtual))) {
+            e.preventDefault();
+            ultimo.focus();
+        } else if (!e.shiftKey && (focoAtual === ultimo || !overlay.contains(focoAtual))) {
+            e.preventDefault();
+            primeiro.focus();
+        }
+    }
+
+    function restaurarFoco(elemento) {
+        if (elemento && elemento.isConnected && typeof elemento.focus === 'function') {
+            elemento.focus();
+        }
+    }
 
     function injetarEstilos() {
         if (document.getElementById('mcModalEstilos')) return;
@@ -221,6 +271,7 @@
      * @returns {Promise<string|null>} Texto digitado ou null se cancelado.
      */
     window.solicitarTexto = function solicitarTexto(titulo, mensagem, valorPadrao, opcoes) {
+        const focoAnterior = document.activeElement;
         injetarEstilos();
         injetarHTMLTexto();
 
@@ -266,14 +317,22 @@
                 btnCan.removeEventListener('click', onCancel);
                 overlay.removeEventListener('click', onBackdrop);
                 document.removeEventListener('keydown', onKey);
+                restaurarFoco(focoAnterior);
                 resolve(valor);
             }
             function onOk()     { fechar(elInput.value); }
             function onCancel() { fechar(null); }
             function onBackdrop(e) { if (e.target === overlay) fechar(null); }
             function onKey(e) {
-                if (e.key === 'Escape') { fechar(null); }
-                if (e.key === 'Enter' && document.activeElement !== btnCan) { e.preventDefault(); fechar(elInput.value); }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    fechar(null);
+                } else if (e.key === 'Enter' && document.activeElement !== btnCan) {
+                    e.preventDefault();
+                    fechar(elInput.value);
+                } else {
+                    manterFocoNoModal(e, overlay);
+                }
             }
 
             btnOk.addEventListener('click', onOk);
@@ -421,6 +480,7 @@
     };
 
     window.confirmar = function confirmar(titulo, mensagem, opcoes) {
+        const focoAnterior = document.activeElement;
         injetar();
 
         const {
@@ -465,14 +525,22 @@
                 btnCan.removeEventListener('click', onCancel);
                 overlay.removeEventListener('click', onBackdrop);
                 document.removeEventListener('keydown', onKey);
+                restaurarFoco(focoAnterior);
                 resolve(resultado);
             }
             function onOk()      { fechar(true); }
             function onCancel()  { fechar(false); }
             function onBackdrop(e) { if (backdropClose && e.target === overlay) fechar(false); }
             function onKey(e) {
-                if (backdropClose && e.key === 'Escape') { fechar(false); }
-                if (e.key === 'Enter' && document.activeElement === btnOk) { e.preventDefault(); fechar(true); }
+                if (backdropClose && e.key === 'Escape') {
+                    e.preventDefault();
+                    fechar(false);
+                } else if (e.key === 'Enter' && document.activeElement === btnOk) {
+                    e.preventDefault();
+                    fechar(true);
+                } else {
+                    manterFocoNoModal(e, overlay);
+                }
             }
 
             btnOk.addEventListener('click', onOk);
@@ -490,6 +558,7 @@
      * @returns {Promise<string|null>}
      */
     window.escolherConfirmacao = function escolherConfirmacao(titulo, mensagem, opcoes) {
+        const focoAnterior = document.activeElement;
         injetar();
         const {
             primaryLabel, primaryValue, secondaryLabel, secondaryValue,
@@ -526,13 +595,21 @@
                 btnCan.removeEventListener('click', onCancel);
                 overlay.removeEventListener('click', onBackdrop);
                 document.removeEventListener('keydown', onKey);
+                restaurarFoco(focoAnterior);
                 resolve(valor);
             }
             const onPrimary = () => fechar(primaryValue);
             const onSecondary = () => fechar(secondaryValue);
             const onCancel = () => fechar(null);
             const onBackdrop = e => { if (e.target === overlay) fechar(null); };
-            const onKey = e => { if (e.key === 'Escape') fechar(null); };
+            const onKey = e => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    fechar(null);
+                } else {
+                    manterFocoNoModal(e, overlay);
+                }
+            };
             btnOk.addEventListener('click', onPrimary);
             btnSec.addEventListener('click', onSecondary);
             btnCan.addEventListener('click', onCancel);
