@@ -32,4 +32,5 @@
 ## Notes
 - The app is primarily an Express-served multi-page/static HTML experience, not a single SPA.
 - `/video/` is a separate React + Vite SPA with one public route.
+- SEO audits for `/video/` must inspect the served `dist/index.html`, not only the root source `index.html`, because Express serves the built artifact.
 - `frontend/robots.txt` currently treats `/pages/**` as non-indexable, which aligns with scope.
