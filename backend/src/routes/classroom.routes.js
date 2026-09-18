@@ -11,6 +11,13 @@ import {
     indexSubmissionsByUser,
     normalizePointsToTarget,
 } from '../services/classroom-summary.service.js';
+import {
+    DRIVE_READONLY_SCOPE,
+    compareSubmissions,
+    extractDriveFile,
+    submissionVersion,
+    tokenHasDriveScope,
+} from '../services/classroom-similarity.service.js';
 
 const { Pool } = pkg;
 const pool     = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -27,7 +34,11 @@ const SCOPES = [
     'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
+    DRIVE_READONLY_SCOPE,
 ];
+
+const similarityJobs = new Map();
+const MAX_SIMILARITY_JOBS = 2;
 
 /* ── Migração das tabelas ── */
 async function migrarTabelas() {
@@ -843,6 +854,238 @@ export function createClassroomRouter(deps = {}) {
 
         res.json(response);
     }, '[CLASSROOM] Erro ao resolver atividade para correção assistida'));
+
+    /* ── Comparação de similaridade das entregas (somente leitura) ── */
+    router.post('/classroom/assistida/similaridade', requireFuncionalidade('classroom-leitura'), withClassroomErrorHandling(async (req, res) => {
+        const { courseId, courseWorkId } = req.body || {};
+        const cpf = req.userSession?.cpf;
+        if (!cpf || !courseId || !courseWorkId) {
+            return res.status(400).json({ erro: 'Professor, turma e atividade são obrigatórios.' });
+        }
+        const token = await loadTokenFromDB(cpf);
+        if (!token) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
+        if (!tokenHasDriveScope(token)) {
+            return res.status(403).json({
+                erro: 'Reconecte sua conta Google para permitir a leitura dos anexos das entregas.',
+                codigo: 'ESCOPO_DRIVE_NECESSARIO',
+                escopo: DRIVE_READONLY_SCOPE,
+            });
+        }
+        const auth = await getAuthenticatedClientForCpf(req, cpf);
+        if (!auth) return res.status(401).json({ erro: 'Não autenticado com Google Classroom.' });
+        const classroom = google.classroom({ version: 'v1', auth });
+        const [courseResp, workResp] = await Promise.all([
+            classroom.courses.get({ id: courseId }),
+            classroom.courses.courseWork.get({ courseId, id: courseWorkId }),
+        ]);
+        const submissions = [];
+        let pageToken;
+        do {
+            const response = await classroom.courses.courseWork.studentSubmissions.list({
+                courseId, courseWorkId, pageSize: 100, pageToken,
+            });
+            submissions.push(...(response.data.studentSubmissions || []));
+            pageToken = response.data.nextPageToken;
+        } while (pageToken);
+        const delivered = submissions.filter(s => s.state === 'TURNED_IN' || s.state === 'RETURNED');
+        const version = (await import('crypto')).default.createHash('sha256')
+            .update(delivered.map(submissionVersion).sort().join('|')).digest('hex');
+        const jobKey = `${cpf}:${courseId}:${courseWorkId}`;
+        if (!similarityJobs.has(jobKey)) {
+            await pool.query(
+                `UPDATE classroom_similarity_runs SET status='falhou', erro='Processamento interrompido antes da conclusão.', concluido_em=NOW()
+                  WHERE professor_cpf=$1 AND curso_id=$2 AND atividade_id=$3 AND status='processando'
+                    AND criado_em < NOW() - INTERVAL '20 minutes'`,
+                [cpf, courseId, courseWorkId]
+            );
+        }
+        const existing = await pool.query(
+            `SELECT * FROM classroom_similarity_runs
+              WHERE professor_cpf=$1 AND curso_id=$2 AND atividade_id=$3 AND versao_entregas=$4
+                AND status IN ('processando','concluido')`,
+            [cpf, courseId, courseWorkId, version]
+        );
+        if (existing.rows[0]) {
+            return res.status(200).json({ run: existing.rows[0], reutilizado: true });
+        }
+        if (similarityJobs.has(jobKey)) {
+            return res.status(409).json({
+                erro: 'Esta atividade já está sendo analisada. Aguarde a conclusão antes de processar uma nova versão.',
+                codigo: 'ATIVIDADE_EM_PROCESSAMENTO',
+            });
+        }
+        if (similarityJobs.size >= MAX_SIMILARITY_JOBS) {
+            return res.status(429).json({
+                erro: 'Há outras análises em processamento. Aguarde alguns instantes e tente novamente.',
+                codigo: 'ANALISE_OCUPADA',
+            });
+        }
+        await pool.query(
+            `DELETE FROM classroom_similarity_runs
+              WHERE professor_cpf=$1 AND curso_id=$2 AND atividade_id=$3 AND versao_entregas=$4 AND status='falhou'`,
+            [cpf, courseId, courseWorkId, version]
+        );
+        const inserted = await pool.query(
+            `INSERT INTO classroom_similarity_runs
+                (professor_cpf, curso_id, atividade_id, atividade_titulo, versao_entregas)
+             VALUES ($1,$2,$3,$4,$5)
+             ON CONFLICT (professor_cpf, curso_id, atividade_id, versao_entregas) DO NOTHING
+             RETURNING *`,
+            [cpf, courseId, courseWorkId, workResp.data.title || '', version]
+        );
+        if (!inserted.rows[0]) {
+            const raced = await pool.query(
+                `SELECT * FROM classroom_similarity_runs
+                  WHERE professor_cpf=$1 AND curso_id=$2 AND atividade_id=$3 AND versao_entregas=$4`,
+                [cpf, courseId, courseWorkId, version]
+            );
+            return res.status(200).json({ run: raced.rows[0], reutilizado: true });
+        }
+        const run = inserted.rows[0];
+        res.status(202).json({ run, reutilizado: false });
+
+        const job = (async () => {
+            try {
+                const studentRows = [];
+                let studentPage;
+                do {
+                    const response = await classroom.courses.students.list({ courseId, pageSize: 100, pageToken: studentPage });
+                    studentRows.push(...(response.data.students || []));
+                    studentPage = response.data.nextPageToken;
+                } while (studentPage);
+                const names = new Map(studentRows.map(s => [s.userId, s.profile?.name?.fullName || 'Aluno não identificado']));
+                const prepared = [];
+                const failures = [];
+                const baseParts = [workResp.data.description || ''];
+                const teacherHashes = new Set();
+                for (const material of workResp.data.materials || []) {
+                    const driveFile = material.driveFile?.driveFile || material.driveFile;
+                    if (!driveFile?.id) continue;
+                    const extracted = await extractDriveFile(auth, driveFile.id);
+                    if (extracted.text) baseParts.push(extracted.text);
+                    if (extracted.hash) teacherHashes.add(extracted.hash);
+                }
+                for (let i = 0; i < delivered.length; i++) {
+                    const submission = delivered[i];
+                    const sources = [];
+                    const answer = submission.shortAnswerSubmission?.answer || submission.multipleChoiceSubmission?.answer;
+                    if (answer) sources.push({ label: 'Resposta textual', text: answer });
+                    const files = [];
+                    for (const attachment of submission.assignmentSubmission?.attachments || []) {
+                        const driveFile = attachment.driveFile?.driveFile || attachment.driveFile;
+                        if (!driveFile?.id) {
+                            failures.push({ submissionId: submission.id, arquivo: driveFile?.title || 'Anexo', motivo: 'Tipo de anexo não suportado.' });
+                            continue;
+                        }
+                        const extracted = await extractDriveFile(auth, driveFile.id);
+                        files.push({
+                            name: extracted.name || driveFile.title,
+                            hash: teacherHashes.has(extracted.hash) ? null : extracted.hash,
+                            status: extracted.status,
+                            reason: extracted.reason,
+                        });
+                        if (extracted.text) sources.push({ label: extracted.name || driveFile.title || 'Arquivo', text: extracted.text });
+                        if (extracted.status !== 'processado') {
+                            failures.push({ submissionId: submission.id, arquivo: extracted.name || driveFile.title, motivo: extracted.reason });
+                        }
+                    }
+                    prepared.push({ id: submission.id, userId: submission.userId, name: names.get(submission.userId) || submission.userId, sources, files });
+                    await pool.query(`UPDATE classroom_similarity_runs SET progresso=$2 WHERE id=$1 AND professor_cpf=$3`,
+                        [run.id, Math.round(((i + 1) / Math.max(delivered.length, 1)) * 80), cpf]);
+                }
+                const pairs = compareSubmissions(prepared, baseParts.join('\n'));
+                for (const pair of pairs) {
+                    const [a, b] = pair.alunoA.userId < pair.alunoB.userId
+                        ? [pair.alunoA, pair.alunoB] : [pair.alunoB, pair.alunoA];
+                    await pool.query(
+                        `INSERT INTO classroom_similarity_pairs
+                            (run_id, aluno_a_id, aluno_a_nome, aluno_b_id, aluno_b_nome,
+                             percentual, sinal, fontes, trechos, arquivos_identicos)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                         ON CONFLICT (run_id, aluno_a_id, aluno_b_id) DO NOTHING`,
+                        [run.id, a.userId, a.name, b.userId, b.name, pair.percent, pair.signal,
+                         JSON.stringify(pair.sources.map(s => ({ origemA: s.origemA, origemB: s.origemB }))),
+                         JSON.stringify(pair.sources.flatMap(s => s.trechos || [])),
+                         JSON.stringify(pair.identicalFiles)]
+                    );
+                }
+                const summary = {
+                    entregas: delivered.length, pares: pairs.length,
+                    alto: pairs.filter(p => p.percent >= 85 || p.identicalFiles.length).length,
+                    medio: pairs.filter(p => p.percent >= 55 && p.percent < 85 && !p.identicalFiles.length).length,
+                    baixo: pairs.filter(p => p.percent < 55 && !p.identicalFiles.length).length,
+                    arquivosComFalha: failures.length,
+                };
+                await pool.query(
+                    `UPDATE classroom_similarity_runs SET status='concluido', progresso=100, resumo=$2, falhas=$3, concluido_em=NOW()
+                      WHERE id=$1 AND professor_cpf=$4`,
+                    [run.id, JSON.stringify(summary), JSON.stringify(failures), cpf]
+                );
+                await auditLogger.registrar({
+                    usuarioId: req.userSession?.userId || req.userSession?.id || null,
+                    usuarioNome: req.userSession?.nome || 'Professor',
+                    acao: 'CLASSROOM_SIMILARIDADE_CONCLUIDA', modulo: 'classroom',
+                    detalhes: { cursoId: courseResp.data.id, atividadeId: courseWorkId, runId: run.id, ...summary },
+                    ip: req.ip || null,
+                });
+            } catch (error) {
+                await pool.query(
+                    `UPDATE classroom_similarity_runs SET status='falhou', erro=$2, concluido_em=NOW()
+                      WHERE id=$1 AND professor_cpf=$3`,
+                    [run.id, 'A análise não pôde ser concluída. Tente novamente.', cpf]
+                );
+                console.error('[CLASSROOM] Falha na análise de similaridade:', error.message);
+            } finally {
+                similarityJobs.delete(jobKey);
+            }
+        })();
+        similarityJobs.set(jobKey, job);
+    }, '[CLASSROOM] Erro ao iniciar análise de similaridade'));
+
+    router.get('/classroom/assistida/similaridade/:runId', requireFuncionalidade('classroom-leitura'), async (req, res) => {
+        const cpf = req.userSession?.cpf;
+        const threshold = Math.min(100, Math.max(0, Number(req.query.limite) || 35));
+        const runResult = await pool.query(`SELECT * FROM classroom_similarity_runs WHERE id=$1 AND professor_cpf=$2`, [req.params.runId, cpf]);
+        if (!runResult.rows[0]) return res.status(404).json({ erro: 'Análise não encontrada.' });
+        const pairResult = await pool.query(
+            `SELECT id, aluno_a_nome, aluno_b_nome, percentual, sinal, arquivos_identicos,
+                    revisao_status, revisao_observacao
+               FROM classroom_similarity_pairs
+              WHERE run_id=$1
+                AND (percentual >= $2 OR jsonb_array_length(arquivos_identicos) > 0)
+              ORDER BY (jsonb_array_length(arquivos_identicos) > 0) DESC, percentual DESC`,
+            [req.params.runId, threshold]
+        );
+        res.json({ run: runResult.rows[0], pares: pairResult.rows, limite: threshold });
+    });
+
+    router.get('/classroom/assistida/similaridade/:runId/pares/:pairId', requireFuncionalidade('classroom-leitura'), async (req, res) => {
+        const result = await pool.query(
+            `SELECT p.* FROM classroom_similarity_pairs p
+              JOIN classroom_similarity_runs r ON r.id=p.run_id
+             WHERE p.id=$1 AND p.run_id=$2 AND r.professor_cpf=$3`,
+            [req.params.pairId, req.params.runId, req.userSession?.cpf]
+        );
+        if (!result.rows[0]) return res.status(404).json({ erro: 'Par não encontrado.' });
+        res.json({ par: result.rows[0] });
+    });
+
+    router.patch('/classroom/assistida/similaridade/:runId/pares/:pairId', requireFuncionalidade('classroom-leitura'), async (req, res) => {
+        const allowed = new Set(['investigar', 'revisado', 'descartado']);
+        const status = String(req.body?.status || '').toLowerCase();
+        const observation = String(req.body?.observacao || '').trim().slice(0, 2000);
+        if (!allowed.has(status)) return res.status(400).json({ erro: 'Estado de revisão inválido.' });
+        const result = await pool.query(
+            `UPDATE classroom_similarity_pairs p
+                SET revisao_status=$1, revisao_observacao=$2, revisado_em=NOW()
+               FROM classroom_similarity_runs r
+              WHERE p.id=$3 AND p.run_id=$4 AND r.id=p.run_id AND r.professor_cpf=$5
+              RETURNING p.*`,
+            [status, observation || null, req.params.pairId, req.params.runId, req.userSession?.cpf]
+        );
+        if (!result.rows[0]) return res.status(404).json({ erro: 'Par não encontrado.' });
+        res.json({ par: result.rows[0] });
+    });
 
     /* ── Atualizar nota de uma entrega ── */
     router.patch('/classroom/courses/:courseId/coursework/:cwId/submissions/:subId/grade', requireFuncionalidade('classroom-escrita'), withClassroomErrorHandling(async (req, res) => {

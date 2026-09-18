@@ -24,6 +24,7 @@ const DEFAULTS = {
     notifNlidaDias:     365,
     notifProfLidaDias:   90,
     notifProfNlidaDias: 365,
+    similarityDias:     365,
     lote:              1000,
 };
 
@@ -41,6 +42,7 @@ export function getConfig() {
         notifNlidaDias:     cfg('PURGA_NOTIF_NLIDA_DIAS',       DEFAULTS.notifNlidaDias),
         notifProfLidaDias:  cfg('PURGA_NOTIF_PROF_LIDA_DIAS',  DEFAULTS.notifProfLidaDias),
         notifProfNlidaDias: cfg('PURGA_NOTIF_PROF_NLIDA_DIAS', DEFAULTS.notifProfNlidaDias),
+        similarityDias:     cfg('PURGA_SIMILARIDADE_DIAS',      DEFAULTS.similarityDias),
         lote:               cfg('PURGA_LOTE',                   DEFAULTS.lote),
     };
 }
@@ -57,6 +59,7 @@ const DB_KEY_MAP = [
     { dbKey: 'purga_notif_nlida_dias',      field: 'notifNlidaDias',     envKey: 'PURGA_NOTIF_NLIDA_DIAS',      def: DEFAULTS.notifNlidaDias     },
     { dbKey: 'purga_notif_prof_lida_dias',  field: 'notifProfLidaDias',  envKey: 'PURGA_NOTIF_PROF_LIDA_DIAS',  def: DEFAULTS.notifProfLidaDias  },
     { dbKey: 'purga_notif_prof_nlida_dias', field: 'notifProfNlidaDias', envKey: 'PURGA_NOTIF_PROF_NLIDA_DIAS', def: DEFAULTS.notifProfNlidaDias },
+    { dbKey: 'purga_similaridade_dias',      field: 'similarityDias',     envKey: 'PURGA_SIMILARIDADE_DIAS',     def: DEFAULTS.similarityDias     },
     { dbKey: 'purga_lote',                  field: 'lote',               envKey: 'PURGA_LOTE',                  def: DEFAULTS.lote               },
 ];
 
@@ -262,6 +265,23 @@ export async function executarPurga(pool) {
         resultados.notif_prof_nlidas = -1;
     }
 
+    try {
+        resultados.classroom_similarity = await deletarEmLotes(
+            pool,
+            `DELETE FROM classroom_similarity_runs
+              WHERE id IN (
+                  SELECT id FROM classroom_similarity_runs
+                   WHERE criado_em < NOW() - ($1 || ' days')::INTERVAL
+                   LIMIT $2
+              )`,
+            [conf.similarityDias],
+            conf.lote
+        );
+    } catch (e) {
+        console.error('[PURGA] Erro ao purgar análises de similaridade:', e.message);
+        resultados.classroom_similarity = -1;
+    }
+
     const durMs = Date.now() - inicio;
     console.log(
         `[PURGA] Concluída em ${durMs}ms — ` +
@@ -329,6 +349,10 @@ export async function garantirIndicesPurga(pool) {
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_notif_prof_lida_criado
                 ON notificacoes_professor(lida, criado_em)
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_similarity_runs_criado
+                ON classroom_similarity_runs(criado_em)
         `);
         console.log('[PURGA] Índices de purga OK');
     } catch (e) {

@@ -185,6 +185,7 @@ export async function initializeDatabase() {
                 ('purga_reputacao_dias',   '365',  'Dias de retenção do aluno_reputacao_log. Agregados em aluno_reputacao não são afetados.'),
                 ('purga_notif_lida_dias',  '90',   'Dias de retenção de notificações lidas (notificacoes_aluno com lida=true).'),
                 ('purga_notif_nlida_dias', '365',  'Dias de retenção de notificações não-lidas (notificacoes_aluno com lida=false).'),
+                 ('purga_similaridade_dias', '365',  'Dias de retenção dos resultados de similaridade do Classroom.'),
                 ('purga_lote',             '1000', 'Número máximo de linhas apagadas por operação DELETE em lote. Valores menores reduzem locks de tabela.')
             ON CONFLICT (chave) DO NOTHING
         `);
@@ -294,6 +295,47 @@ export async function initializeDatabase() {
                 atualizado  TIMESTAMP    NOT NULL DEFAULT NOW()
             );
             CREATE INDEX IF NOT EXISTS idx_ct_cpf ON classroom_tokens(cpf);
+        `);
+
+        /* ── Indícios de similaridade em entregas do Classroom ── */
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS classroom_similarity_runs (
+                id BIGSERIAL PRIMARY KEY,
+                professor_cpf VARCHAR(11) NOT NULL,
+                curso_id TEXT NOT NULL,
+                atividade_id TEXT NOT NULL,
+                atividade_titulo TEXT NOT NULL DEFAULT '',
+                versao_entregas TEXT NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'processando',
+                progresso INTEGER NOT NULL DEFAULT 0,
+                resumo JSONB NOT NULL DEFAULT '{}',
+                falhas JSONB NOT NULL DEFAULT '[]',
+                erro TEXT,
+                criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                concluido_em TIMESTAMPTZ,
+                UNIQUE(professor_cpf, curso_id, atividade_id, versao_entregas)
+            );
+            CREATE INDEX IF NOT EXISTS idx_similarity_runs_owner
+                ON classroom_similarity_runs(professor_cpf, curso_id, atividade_id, criado_em DESC);
+            CREATE TABLE IF NOT EXISTS classroom_similarity_pairs (
+                id BIGSERIAL PRIMARY KEY,
+                run_id BIGINT NOT NULL REFERENCES classroom_similarity_runs(id) ON DELETE CASCADE,
+                aluno_a_id TEXT NOT NULL,
+                aluno_a_nome TEXT NOT NULL,
+                aluno_b_id TEXT NOT NULL,
+                aluno_b_nome TEXT NOT NULL,
+                percentual INTEGER NOT NULL,
+                sinal VARCHAR(40) NOT NULL,
+                fontes JSONB NOT NULL DEFAULT '[]',
+                trechos JSONB NOT NULL DEFAULT '[]',
+                arquivos_identicos JSONB NOT NULL DEFAULT '[]',
+                revisao_status VARCHAR(20),
+                revisao_observacao TEXT,
+                revisado_em TIMESTAMPTZ,
+                UNIQUE(run_id, aluno_a_id, aluno_b_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_similarity_pairs_run_score
+                ON classroom_similarity_pairs(run_id, percentual DESC);
         `);
 
         await client.query(`

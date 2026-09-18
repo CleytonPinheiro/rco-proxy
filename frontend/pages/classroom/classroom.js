@@ -55,6 +55,9 @@ async function carregarSolicitacoesCache() {
 }
 let solicitBadgeCount = 0;   // contagem de pendentes
 let _escopoAvisoAtivo = false; // evita exibir o modal de reconexão em duplicata
+let assistidaContexto = null;
+let assistidaRunId = null;
+let assistidaPollTimer = null;
 
 /* ── Elementos ── */
 const elConnectScreen  = document.getElementById('clConnectScreen');
@@ -229,6 +232,8 @@ const GRUPO_CORES = ['#4285F4','#EA4335','#34A853','#FBBC05','#8B5CF6','#EC4899'
 
 /* ── Correção assistida: resolução e validação do contexto ── */
 function fecharAssistidaModal() {
+    if (assistidaPollTimer) clearTimeout(assistidaPollTimer);
+    assistidaPollTimer = null;
     elAssistidaModal?.classList.remove('cl-modal-overlay--visivel');
 }
 
@@ -245,6 +250,7 @@ function resumoTiposAnexo(tipos = {}) {
 }
 
 function renderizarValidacaoAssistida(data) {
+    assistidaContexto = data;
     const atividade = data.atividade || {};
     const resumo = data.resumo || {};
     const duvidas = data.duvidasCriticas || [];
@@ -284,20 +290,133 @@ function renderizarValidacaoAssistida(data) {
                 <strong>Problemas individuais (${problemas.length})</strong>
                 <p class="cl-label-hint" style="margin:4px 0 0">Eles não bloqueiam a turma e não geram nota zero automática.</p>
             </div>` : ''}
-        <div style="padding:10px;border-radius:8px;background:var(--bg-hover,#f8fafc)">
-            ${data.iaDisponivel
-                ? 'O contexto está pronto. Resolva todas as dúvidas críticas para liberar a próxima etapa.'
-                : '<strong>Correção por IA ainda indisponível.</strong> A chave do Gemini não está configurada. O contexto foi validado, mas nenhuma nota será gerada.'}
+        <div class="cl-similarity-notice">
+            <strong>Análise de indícios de similaridade</strong>
+            <p>Compara somente as entregas desta atividade. O resultado apoia a revisão humana, não declara culpa e não cria, altera ou devolve notas.</p>
         </div>`;
 
     const tipo = document.getElementById('clAssistidaTipoEntrega');
     const atualizarBotao = () => {
-        const outrasDuvidas = duvidas.some(d => d.codigo !== 'TIPO_ENTREGA_NAO_CONFIRMADO');
-        elAssistidaContinuar.disabled = !data.iaDisponivel || !tipo.value || outrasDuvidas;
+        elAssistidaContinuar.disabled = !tipo.value;
     };
     tipo.addEventListener('change', atualizarBotao);
     atualizarBotao();
     elAssistidaModal.classList.add('cl-modal-overlay--visivel');
+}
+
+function labelSinal(sinal) {
+    return ({
+        arquivo_identico: 'Arquivo idêntico',
+        texto_muito_semelhante: 'Texto muito semelhante',
+        copia_parcial: 'Cópia parcial',
+        possivel_parafrase: 'Possível paráfrase',
+        baixo: 'Baixa similaridade',
+    })[sinal] || 'Indício de similaridade';
+}
+
+async function carregarDetalhePar(runId, pairId, container) {
+    const { par } = await api(`/assistida/similaridade/${runId}/pares/${pairId}`);
+    container.innerHTML = `
+        ${(par.arquivos_identicos || []).length ? `<div class="cl-sim-evidence"><strong>Arquivos binariamente idênticos</strong>${par.arquivos_identicos.map(f => `<p>${esc(f.arquivoA)} ↔ ${esc(f.arquivoB)}</p>`).join('')}</div>` : ''}
+        ${(par.fontes || []).length ? `<div class="cl-sim-evidence"><strong>Fontes comparadas</strong>${par.fontes.map(f => `<p>${esc(f.origemA)} ↔ ${esc(f.origemB)}</p>`).join('')}</div>` : ''}
+        ${(par.trechos || []).length ? `<div class="cl-sim-evidence"><strong>Trechos coincidentes</strong>${par.trechos.map(t => `<blockquote>${esc(t)}</blockquote>`).join('')}</div>` : '<p class="cl-label-hint">Nenhum trecho textual longo foi preservado como evidência.</p>'}
+        <div class="cl-sim-review">
+            <select class="cl-select" data-review-status>
+                <option value="">Marcar revisão…</option>
+                <option value="investigar" ${par.revisao_status === 'investigar' ? 'selected' : ''}>Investigar</option>
+                <option value="revisado" ${par.revisao_status === 'revisado' ? 'selected' : ''}>Revisado</option>
+                <option value="descartado" ${par.revisao_status === 'descartado' ? 'selected' : ''}>Descartado</option>
+            </select>
+            <textarea class="cl-input" data-review-note maxlength="2000" placeholder="Observação do professor">${esc(par.revisao_observacao || '')}</textarea>
+            <button class="cl-btn cl-btn--primary cl-btn--sm" data-review-save>Salvar revisão</button>
+        </div>`;
+    container.querySelector('[data-review-save]').addEventListener('click', async () => {
+        const status = container.querySelector('[data-review-status]').value;
+        if (!status) return notificar('Atenção', 'Selecione um estado de revisão.', { tipo: 'danger' });
+        await api(`/assistida/similaridade/${runId}/pares/${pairId}`, {
+            method: 'PATCH',
+            body: { status, observacao: container.querySelector('[data-review-note]').value },
+        });
+        await notificar('Revisão salva', 'O indício foi atualizado sem alterar notas.', { tipo: 'ok' });
+    });
+}
+
+function renderizarRelatorioSimilaridade(data) {
+    const run = data.run;
+    assistidaRunId = run.id;
+    if (run.status === 'processando') {
+        elAssistidaConteudo.innerHTML = `
+            <div class="cl-sim-progress"><strong>Processando entregas… ${run.progresso || 0}%</strong>
+            <div><span style="width:${Math.max(2, run.progresso || 0)}%"></span></div>
+            <p>Arquivos inacessíveis ou não suportados serão registrados sem interromper a turma.</p></div>`;
+        assistidaPollTimer = setTimeout(() => consultarSimilaridade(run.id), 1200);
+        return;
+    }
+    if (run.status === 'falhou') {
+        elAssistidaConteudo.innerHTML = `<div class="cl-sim-error"><strong>Análise não concluída</strong><p>${esc(run.erro || 'Tente novamente.')}</p></div>`;
+        return;
+    }
+    const resumo = run.resumo || {};
+    elAssistidaConteudo.innerHTML = `
+        <div class="cl-sim-summary">
+            <span><strong>${resumo.entregas || 0}</strong> entregas</span>
+            <span><strong>${resumo.alto || 0}</strong> indícios altos</span>
+            <span><strong>${resumo.medio || 0}</strong> médios</span>
+            <span><strong>${resumo.arquivosComFalha || 0}</strong> arquivos com falha</span>
+        </div>
+        <div class="cl-sim-toolbar">
+            <label>Limite exibido <input id="clSimThreshold" type="range" min="0" max="100" value="${data.limite || 35}"><strong id="clSimThresholdValue">${data.limite || 35}%</strong></label>
+        </div>
+        ${(run.falhas || []).length ? `<details class="cl-sim-failures"><summary>Arquivos inacessíveis ou não suportados (${run.falhas.length})</summary>${run.falhas.map(f => `<p>${esc(f.arquivo)} — ${esc(f.motivo)}</p>`).join('')}</details>` : ''}
+        <div class="cl-sim-list">${(data.pares || []).length ? data.pares.map(p => `
+            <article class="cl-sim-pair">
+                <button type="button" data-pair-id="${p.id}">
+                    <span><strong>${esc(p.aluno_a_nome)}</strong> ↔ <strong>${esc(p.aluno_b_nome)}</strong><small>${esc(labelSinal(p.sinal))}${p.revisao_status ? ` · ${esc(p.revisao_status)}` : ''}</small></span>
+                    <b>${p.percentual}%</b>
+                </button>
+                <div class="cl-sim-detail" data-pair-detail="${p.id}" hidden></div>
+            </article>`).join('') : '<p class="cl-empty-state">Nenhum par atingiu o limite selecionado.</p>'}</div>
+        <p class="cl-sim-disclaimer">Estes resultados são indícios para revisão do professor. Nenhuma nota foi alterada.</p>`;
+    const range = document.getElementById('clSimThreshold');
+    range.addEventListener('input', () => { document.getElementById('clSimThresholdValue').textContent = range.value + '%'; });
+    range.addEventListener('change', () => consultarSimilaridade(run.id, range.value));
+    elAssistidaConteudo.querySelectorAll('[data-pair-id]').forEach(button => button.addEventListener('click', async () => {
+        const detail = elAssistidaConteudo.querySelector(`[data-pair-detail="${button.dataset.pairId}"]`);
+        detail.hidden = !detail.hidden;
+        if (!detail.hidden && !detail.dataset.loaded) {
+            detail.textContent = 'Carregando evidências…';
+            await carregarDetalhePar(run.id, button.dataset.pairId, detail);
+            detail.dataset.loaded = '1';
+        }
+    }));
+}
+
+async function consultarSimilaridade(runId, limite = 35) {
+    try {
+        renderizarRelatorioSimilaridade(await api(`/assistida/similaridade/${runId}?limite=${encodeURIComponent(limite)}`));
+    } catch (e) {
+        elAssistidaConteudo.innerHTML = `<div class="cl-sim-error">${esc(e.message)}</div>`;
+    }
+}
+
+async function iniciarSimilaridade() {
+    if (!assistidaContexto?.curso?.id || !assistidaContexto?.atividade?.id) return;
+    elAssistidaContinuar.disabled = true;
+    elAssistidaContinuar.textContent = 'Iniciando…';
+    try {
+        const data = await api('/assistida/similaridade', {
+            method: 'POST',
+            body: { courseId: assistidaContexto.curso.id, courseWorkId: assistidaContexto.atividade.id },
+        });
+        renderizarRelatorioSimilaridade({ run: data.run, pares: [], limite: 35 });
+        elAssistidaContinuar.style.display = 'none';
+    } catch (e) {
+        if (e.codigo === 'ESCOPO_DRIVE_NECESSARIO') await mostrarAvisoEscopo();
+        else await notificar('Não foi possível iniciar', e.message, { tipo: 'danger' });
+        elAssistidaContinuar.disabled = false;
+    } finally {
+        elAssistidaContinuar.textContent = 'Comparar entregas';
+    }
 }
 
 async function analisarAtividadeAssistida() {
@@ -332,7 +451,7 @@ elAssistidaModal?.addEventListener('click', e => {
     if (e.target === elAssistidaModal) fecharAssistidaModal();
 });
 elAssistidaContinuar?.addEventListener('click', async () => {
-    await notificar('Em breve', 'A etapa de correção será liberada após configurar o Gemini.', { tipo: 'ok' });
+    await iniciarSimilaridade();
 });
 
 /* ── Chave localStorage para mapeamento curso→codClasse ── */
