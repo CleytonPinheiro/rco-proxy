@@ -172,21 +172,11 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 .map(a => (a.nome || '').trim())
                 .filter(Boolean);
 
-            const [todasMatriculasResult, atasResult] = await Promise.all([
+            const [todasMatriculasResult] = await Promise.all([
                 supabaseAdmin
                     .from('alunos')
                     .select('nome, codmatrizaluno')
                     .in('nome', nomesAlunos),
-                pool.query(
-                    `SELECT cod_matriz_aluno,
-                            COUNT(*)::int          AS qtd,
-                            MAX(impressa_em)       AS ultima_impressao,
-                            MAX(impressa_por_nome) AS impressa_por
-                     FROM ata_impressa
-                     WHERE cod_matriz_aluno = ANY($1)
-                     GROUP BY cod_matriz_aluno`,
-                    [codMatrizesTurma]
-                ).catch(() => ({ rows: [] })),
             ]);
 
             /* Mapa nome-normalizado → Set<codMatrizAluno> em TODAS as disciplinas */
@@ -205,6 +195,15 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                 ...codMatrizesTurma,
                 ...Object.values(nomeParaTodosIds).flatMap(s => [...s]),
             ])];
+
+            const atasResult = todosIds.length > 0
+                ? await pool.query(
+                    `SELECT cod_matriz_aluno, ocorrencia_id, impressa_em, impressa_por_nome
+                     FROM ata_impressa
+                     WHERE cod_matriz_aluno = ANY($1)`,
+                    [todosIds]
+                ).catch(() => ({ rows: [] }))
+                : { rows: [] };
 
             /* ── 3 fontes de ocorrências + rco_observacoes cross-disciplina ─────
                1) byId   — todos os IDs do aluno em todas as disciplinas
@@ -287,11 +286,8 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
 
             const atasMap = {};
             for (const r of (atasResult.rows || [])) {
-                atasMap[r.cod_matriz_aluno] = {
-                    qtd:            r.qtd,
-                    ultimaImpressao: r.ultima_impressao,
-                    impressaPor:    r.impressa_por,
-                };
+                if (!atasMap[r.cod_matriz_aluno]) atasMap[r.cod_matriz_aluno] = [];
+                atasMap[r.cod_matriz_aluno].push(r);
             }
 
             res.json({
@@ -313,6 +309,24 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                         obsCount       += obsMapCod[id] || 0;
                     }
 
+                    const atasUnicas = new Map();
+                    for (const id of idsAluno) {
+                        for (const ata of (atasMap[id] || [])) {
+                            const anterior = atasUnicas.get(String(ata.ocorrencia_id));
+                            if (!anterior || new Date(ata.impressa_em) > new Date(anterior.impressa_em)) {
+                                atasUnicas.set(String(ata.ocorrencia_id), ata);
+                            }
+                        }
+                    }
+                    const atasOrdenadas = [...atasUnicas.values()]
+                        .sort((a1, a2) => new Date(a2.impressa_em) - new Date(a1.impressa_em));
+                    const ataMaisRecente = atasOrdenadas[0];
+                    const atasAluno = ataMaisRecente ? {
+                        qtd: atasOrdenadas.length,
+                        ultimaImpressao: ataMaisRecente.impressa_em,
+                        impressaPor: ataMaisRecente.impressa_por_nome,
+                    } : null;
+
                     return {
                         codMatrizAluno: a.codmatrizaluno,
                         nome:          a.nome,
@@ -320,7 +334,7 @@ export function createFichaAlunoRouter({ supabaseAdmin, rcoApiService }) {
                         turma:         a.turma,
                         ocorrencias:   ocorr,
                         obsCount,
-                        atasImpressas: atasMap[codSync] || atasMap[a.codmatrizaluno] || null,
+                        atasImpressas: atasAluno,
                     };
                 }),
             });

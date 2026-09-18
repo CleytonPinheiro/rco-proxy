@@ -1,6 +1,7 @@
 import { Router }        from 'express';
 import { requireModulo } from '../middleware/auth.middleware.js';
 import { sincronizarObsParaTurma } from './ficha-aluno.routes.js';
+import { filtrarAtasPendentes } from '../services/atas-pendentes.service.js';
 import pkg               from 'pg';
 import PDFDocument       from 'pdfkit';
 
@@ -881,7 +882,7 @@ async function fetchAlunoData(supabaseAdmin, codMatriz, { de, ate, tipo, profess
         };
     });
 
-    return { aluno, combinadas };
+    return { aluno, combinadas, matriculasEquivalentes: todosIdsMat };
 }
 
 // ─── Trimestre a partir do mês ────────────────────────────────────────────────
@@ -1072,12 +1073,14 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
 
     /* ── Termos em lote (múltiplos alunos) ── */
     router.post('/relatorio-ocorrencias/batch', requireModulo('ficha-aluno'), async (req, res) => {
-        const { codMatrizes, de, ate, tipo, professor } = req.body || {};
+        const { codMatrizes, de, ate, tipo, professor, modoImpressao } = req.body || {};
         if (!Array.isArray(codMatrizes) || codMatrizes.length === 0)
             return res.status(400).json({ erro: 'Informe ao menos um codMatrizAluno em "codMatrizes".' });
 
         const ids = codMatrizes.map(Number).filter(n => !isNaN(n));
         if (ids.length === 0) return res.status(400).json({ erro: 'Nenhum ID válido.' });
+        if (modoImpressao != null && !['todas', 'pendentes'].includes(modoImpressao))
+            return res.status(400).json({ erro: 'modoImpressao deve ser "todas" ou "pendentes".' });
 
         try {
             /* Sincroniza uma vez cada turma envolvida antes de buscar os dados.
@@ -1128,9 +1131,18 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
 
             /* Inclui apenas alunos com ocorrências ou observações registradas */
             const todos     = resultados.filter(r => r != null);
-            const registros = todos.filter(r => r.combinadas && r.combinadas.length > 0);
+            let registros = todos.filter(r => r.combinadas && r.combinadas.length > 0);
             console.log(`[BATCH] ${ids.length} solicitados → ${todos.length} encontrados → ${registros.length} com registros → ${todos.length - registros.length} sem registros (omitidos)`);
             if (registros.length === 0) return res.status(204).end();
+
+            if (modoImpressao === 'pendentes') {
+                registros = (await filtrarAtasPendentes(registros, pool))
+                    .filter(r => r.combinadas.length > 0);
+                if (registros.length === 0) {
+                    res.setHeader('X-Motivo-Sem-Conteudo', 'todas-impressas');
+                    return res.status(204).end();
+                }
+            }
 
             /* Ordena alfabeticamente por nome */
             const registrosNorm = [...registros].sort(
@@ -1140,14 +1152,14 @@ export function createRelatorioOcorrenciasRouter({ supabaseAdmin, rcoApiService 
             const nomeProfLogado = req.userSession?.nome || '';
             const { doc, chunks, paginas } = gerarPDF(registrosNorm, escola, cidadeRef, nomeProfLogado);
             await new Promise((resolve, reject) => { doc.on('end', resolve); doc.on('error', reject); });
+            await registrarImpressoes(paginas, req.userSession?.cpf || '', req.userSession?.nome || '');
 
             const nomeArqBatch = montarNomeArquivo(registrosNorm[0]?.aluno?.turma || '', '', getTrimestre());
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArqBatch}"`);
             res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('X-Atas-Geradas', String(paginas.length));
             res.send(Buffer.concat(chunks));
-
-            registrarImpressoes(paginas, req.userSession?.cpf || '', req.userSession?.nome || '');
         } catch (e) {
             console.error('[RELATORIO-OCORRENCIAS-BATCH]', e.message);
             res.status(500).json({ erro: e.message });

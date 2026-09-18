@@ -344,6 +344,25 @@ async function carregarAlunos(codturma) {
     }
 }
 
+async function atualizarResumoTurmaPreservandoEstado() {
+    const selTurma = document.getElementById('fichaTurmaSelect');
+    if (!selTurma?.value) return;
+    const selecionados = new Set(window._fichaAlunosSelecionados || []);
+    const alunoAtivo = document.querySelector('.ficha-aluno-item.ativo')?.dataset.cod || null;
+    await carregarAlunos(selTurma.value);
+    window._fichaAlunosSelecionados = selecionados;
+    for (const cod of selecionados) {
+        const check = document.getElementById(`faic-${cod}`);
+        const item = document.querySelector(`.ficha-aluno-item[data-cod="${cod}"]`);
+        if (check) check.checked = true;
+        if (item) item.classList.add('selecionado');
+    }
+    if (alunoAtivo) {
+        document.querySelector(`.ficha-aluno-item[data-cod="${alunoAtivo}"]`)?.classList.add('ativo');
+    }
+    updateBatchBtn();
+}
+
 async function selecionarAluno(codMatrizAluno) {
     /* Destaca na lista */
     document.querySelectorAll('.ficha-aluno-item').forEach(btn => {
@@ -461,6 +480,7 @@ async function gerarTermosBatch(btn) {
     // Verifica se algum selecionado já tem atas impressas
     const mapa = window._atasImpressasMap || {};
     const comImpressas = selecionados.filter(cod => mapa[cod]?.qtd > 0);
+    let modoImpressao = 'todas';
     if (comImpressas.length > 0) {
         const linhas = comImpressas.slice(0, 5).map(cod => {
             const ai = mapa[cod];
@@ -472,23 +492,39 @@ async function gerarTermosBatch(btn) {
             return `• ${nome} — ${ai.qtd} ata${ai.qtd !== 1 ? 's' : ''} impressa${ai.qtd !== 1 ? 's' : ''}${data ? ' em ' + data : ''}`;
         });
         if (comImpressas.length > 5) linhas.push(`  ...e mais ${comImpressas.length - 5} aluno(s)`);
-        const ok = await confirmar(
+        const escolha = await escolherConfirmacao(
             `⚠️ ${comImpressas.length} aluno${comImpressas.length !== 1 ? 's' : ''} com atas já impressas`,
             linhas.join('\n'),
-            { confirmLabel: 'Imprimir mesmo assim', tipo: 'danger' }
+             {
+                 primaryLabel: 'Imprimir mesmo assim',
+                 primaryValue: 'todas',
+                 secondaryLabel: 'Somente as não impressas',
+                 secondaryValue: 'pendentes',
+                 cancelLabel: 'Cancelar',
+                 tipo: 'danger',
+             }
         );
-        if (!ok) return;
+        if (!escolha) return;
+        modoImpressao = escolha;
     }
 
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando…'; }
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = modoImpressao === 'pendentes' ? '⏳ Buscando pendentes…' : '⏳ Gerando…';
+    }
     try {
         const r = await fetch('/api/relatorio-ocorrencias/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ codMatrizes: selecionados }),
+            body: JSON.stringify({ codMatrizes: selecionados, modoImpressao }),
         });
         if (r.status === 204) {
-            notificar('Sem ocorrências', 'Nenhum dos alunos selecionados possui ocorrências ou observações registradas para os filtros informados.', { tipo: 'info', icone: '📋', okLabel: 'OK' });
+            const tudoImpresso = r.headers.get('X-Motivo-Sem-Conteudo') === 'todas-impressas';
+            if (tudoImpresso) {
+                notificar('Todas as atas já foram impressas', 'Não há atas pendentes entre os alunos e filtros selecionados.', { tipo: 'info', icone: '✅', okLabel: 'OK' });
+            } else {
+                notificar('Sem ocorrências', 'Nenhum dos alunos selecionados possui ocorrências ou observações registradas para os filtros informados.', { tipo: 'info', icone: '📋', okLabel: 'OK' });
+            }
             return;
         }
         if (!r.ok) {
@@ -499,7 +535,9 @@ async function gerarTermosBatch(btn) {
         const objUrl = URL.createObjectURL(blob);
         window.open(objUrl, '_blank');
         setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
-        toast(`PDF aberto em nova aba — ${selecionados.length} aluno${selecionados.length !== 1 ? 's' : ''}!`, 'ok');
+        const paginasGeradas = Number(r.headers.get('X-Atas-Geradas')) || 0;
+        toast(`PDF aberto em nova aba — ${paginasGeradas} ata${paginasGeradas !== 1 ? 's' : ''} gerada${paginasGeradas !== 1 ? 's' : ''}!`, 'ok');
+        await atualizarResumoTurmaPreservandoEstado();
     } catch (e) {
         notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {

@@ -63,6 +63,7 @@
             .mc-rodape {
                 display: flex;
                 justify-content: flex-end;
+                 flex-wrap: wrap;
                 gap: .6rem;
             }
             .mc-btn {
@@ -84,6 +85,12 @@
                 color: #fff;
             }
             .mc-btn-ok:hover { background: #1d4ed8; }
+             .mc-btn-secundario {
+                 background: #eef2ff;
+                 color: #4338ca;
+                 border: 1px solid #c7d2fe;
+             }
+             .mc-btn-secundario:hover { background: #e0e7ff; }
             .mc-caixa.mc-danger .mc-btn-ok {
                 background: #dc2626;
             }
@@ -92,6 +99,25 @@
                 background: #16a34a;
             }
             .mc-caixa.mc-ok .mc-btn-ok:hover { background: #15803d; }
+             @media (max-width: 480px) {
+                 .mc-caixa { padding: 1.25rem; }
+                 .mc-rodape { flex-direction: column-reverse; }
+                 .mc-btn { width: 100%; min-height: 42px; }
+             }
+             [data-theme="dark"] .mc-caixa {
+                 background: #1f2937;
+             }
+             [data-theme="dark"] .mc-titulo { color: #f9fafb; }
+             [data-theme="dark"] .mc-mensagem { color: #d1d5db; }
+             [data-theme="dark"] .mc-btn-cancelar {
+                 background: #374151;
+                 color: #f3f4f6;
+             }
+             [data-theme="dark"] .mc-btn-secundario {
+                 background: #312e81;
+                 color: #e0e7ff;
+                 border-color: #4f46e5;
+             }
         `;
         document.head.appendChild(style);
     }
@@ -110,6 +136,7 @@
                 <p class="mc-mensagem" id="mcModalMensagem"></p>
                 <div class="mc-rodape">
                     <button class="mc-btn mc-btn-cancelar" id="mcModalCancelar">Cancelar</button>
+                     <button class="mc-btn mc-btn-secundario" id="mcModalSecundario" style="display:none"></button>
                     <button class="mc-btn mc-btn-ok" id="mcModalOk">Confirmar</button>
                 </div>
             </div>
@@ -412,6 +439,7 @@
         const elIcone  = document.getElementById('mcModalIcone');
         const btnOk    = document.getElementById('mcModalOk');
         const btnCan   = document.getElementById('mcModalCancelar');
+         const btnSec   = document.getElementById('mcModalSecundario');
 
         elTitulo.textContent = titulo;
         elMsg.textContent    = mensagem;
@@ -419,6 +447,7 @@
         btnOk.textContent    = confirmLabel;
         btnCan.textContent   = cancelLabel;
         btnCan.style.display = cancelLabel ? '' : 'none';
+         btnSec.style.display = 'none';
         caixa.classList.toggle('mc-danger', tipo === 'danger');
         caixa.classList.toggle('mc-ok', tipo === 'ok');
 
@@ -447,6 +476,65 @@
             }
 
             btnOk.addEventListener('click', onOk);
+            btnCan.addEventListener('click', onCancel);
+            overlay.addEventListener('click', onBackdrop);
+            document.addEventListener('keydown', onKey);
+        });
+    };
+
+    /**
+     * Exibe três caminhos e retorna o valor da opção escolhida, ou null ao cancelar.
+     * @param {string} titulo
+     * @param {string} mensagem
+     * @param {{primaryLabel:string, primaryValue:string, secondaryLabel:string, secondaryValue:string, cancelLabel?:string, tipo?:string, icone?:string}} opcoes
+     * @returns {Promise<string|null>}
+     */
+    window.escolherConfirmacao = function escolherConfirmacao(titulo, mensagem, opcoes) {
+        injetar();
+        const {
+            primaryLabel, primaryValue, secondaryLabel, secondaryValue,
+            cancelLabel = 'Cancelar', tipo = 'info', icone = '⚠️',
+        } = opcoes || {};
+        const overlay  = document.getElementById(MODAL_ID);
+        const caixa    = document.getElementById('mcModalCaixa');
+        const elTitulo = document.getElementById('mcModalTitulo');
+        const elMsg    = document.getElementById('mcModalMensagem');
+        const elIcone  = document.getElementById('mcModalIcone');
+        const btnOk    = document.getElementById('mcModalOk');
+        const btnCan   = document.getElementById('mcModalCancelar');
+        const btnSec   = document.getElementById('mcModalSecundario');
+
+        elTitulo.textContent = titulo;
+        elMsg.textContent = mensagem;
+        elIcone.textContent = icone;
+        btnOk.textContent = primaryLabel;
+        btnSec.textContent = secondaryLabel;
+        btnCan.textContent = cancelLabel;
+        btnCan.style.display = '';
+        btnSec.style.display = '';
+        caixa.classList.toggle('mc-danger', tipo === 'danger');
+        caixa.classList.toggle('mc-ok', tipo === 'ok');
+        overlay.classList.add('mc-visivel');
+        btnSec.focus();
+
+        return new Promise(resolve => {
+            function fechar(valor) {
+                overlay.classList.remove('mc-visivel');
+                btnSec.style.display = 'none';
+                btnOk.removeEventListener('click', onPrimary);
+                btnSec.removeEventListener('click', onSecondary);
+                btnCan.removeEventListener('click', onCancel);
+                overlay.removeEventListener('click', onBackdrop);
+                document.removeEventListener('keydown', onKey);
+                resolve(valor);
+            }
+            const onPrimary = () => fechar(primaryValue);
+            const onSecondary = () => fechar(secondaryValue);
+            const onCancel = () => fechar(null);
+            const onBackdrop = e => { if (e.target === overlay) fechar(null); };
+            const onKey = e => { if (e.key === 'Escape') fechar(null); };
+            btnOk.addEventListener('click', onPrimary);
+            btnSec.addEventListener('click', onSecondary);
             btnCan.addEventListener('click', onCancel);
             overlay.addEventListener('click', onBackdrop);
             document.addEventListener('keydown', onKey);
