@@ -512,6 +512,21 @@ async function gerarTermosBatch(btn) {
         btn.disabled = true;
         btn.textContent = modoImpressao === 'pendentes' ? '⏳ Buscando pendentes…' : '⏳ Gerando…';
     }
+    /* Reserva a aba ainda dentro da ação do usuário. Abrir somente depois do
+       await faz navegadores bloquearem o PDF, sobretudo no modo "pendentes",
+       cuja consulta costuma demorar mais. */
+    const abaPdf = window.open('', '_blank');
+    if (abaPdf) {
+        abaPdf.document.title = 'Gerando atas…';
+        abaPdf.document.body.innerHTML = `
+            <div style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:80vh;color:#475569">
+                <div style="text-align:center">
+                    <div style="font-size:34px;margin-bottom:12px">📄</div>
+                    <strong>Gerando o PDF das atas…</strong>
+                    <p style="font-size:14px">Esta aba será atualizada automaticamente.</p>
+                </div>
+            </div>`;
+    }
     try {
         const r = await fetch('/api/relatorio-ocorrencias/batch', {
             method: 'POST',
@@ -519,6 +534,7 @@ async function gerarTermosBatch(btn) {
             body: JSON.stringify({ codMatrizes: selecionados, modoImpressao }),
         });
         if (r.status === 204) {
+            if (abaPdf && !abaPdf.closed) abaPdf.close();
             const tudoImpresso = r.headers.get('X-Motivo-Sem-Conteudo') === 'todas-impressas';
             if (tudoImpresso) {
                 notificar('Todas as atas já foram impressas', 'Não há atas pendentes entre os alunos e filtros selecionados.', { tipo: 'info', icone: '✅', okLabel: 'OK' });
@@ -533,12 +549,26 @@ async function gerarTermosBatch(btn) {
         }
         const blob   = await r.blob();
         const objUrl = URL.createObjectURL(blob);
-        window.open(objUrl, '_blank');
+        if (abaPdf && !abaPdf.closed) {
+            abaPdf.location.replace(objUrl);
+        } else {
+            /* Contingência para bloqueadores rígidos de pop-up: entrega o PDF
+               como download em vez de descartar silenciosamente o resultado. */
+            const link = document.createElement('a');
+            link.href = objUrl;
+            link.download = 'atas-pendentes.pdf';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            notificar('PDF baixado', 'O navegador bloqueou a nova aba; o arquivo foi enviado para seus downloads.', { tipo: 'info', icone: '📥', okLabel: 'OK' });
+        }
         setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
         const paginasGeradas = Number(r.headers.get('X-Atas-Geradas')) || 0;
         toast(`PDF aberto em nova aba — ${paginasGeradas} ata${paginasGeradas !== 1 ? 's' : ''} gerada${paginasGeradas !== 1 ? 's' : ''}!`, 'ok');
         await atualizarResumoTurmaPreservandoEstado();
     } catch (e) {
+        if (abaPdf && !abaPdf.closed) abaPdf.close();
         notificar('Erro ao gerar PDF', e.message, { tipo: 'danger', icone: '❌', okLabel: 'Fechar' });
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar PDF'; }
